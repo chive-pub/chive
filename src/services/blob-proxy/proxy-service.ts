@@ -30,6 +30,7 @@
 import type { IPolicy } from 'cockatiel';
 
 import { IdentityResolutionError } from '../../atproto/errors/repository-errors.js';
+import { blobProxyMetrics } from '../../observability/prometheus-registry.js';
 import type { BlobRef, CID, DID } from '../../types/atproto.js';
 import { DatabaseError } from '../../types/errors.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
@@ -371,6 +372,8 @@ export class BlobProxyService {
     cid: CID,
     contentType: string
   ): Promise<Result<BlobFetchResult, DatabaseError>> {
+    const endTimer = blobProxyMetrics.duration.startTimer();
+
     try {
       // Use request coalescer to prevent duplicate concurrent fetches
       const result = await this.coalescer.execute(cid, async () => {
@@ -445,8 +448,15 @@ export class BlobProxyService {
         return pdsResult.value;
       });
 
+      blobProxyMetrics.requestsTotal.inc({ status: 'success', cache: result.source });
+      blobProxyMetrics.bytesTotal.inc({ direction: 'out' }, result.size);
+      endTimer();
+
       return { ok: true, value: result };
     } catch (error) {
+      blobProxyMetrics.requestsTotal.inc({ status: 'error', cache: 'none' });
+      endTimer();
+
       return {
         ok: false,
         error: new DatabaseError(

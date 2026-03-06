@@ -292,6 +292,64 @@ export class AlphaApplicationService {
   }
 
   /**
+   * Grant alpha access directly without requiring an application.
+   *
+   * @param did - User's DID
+   * @param reviewerDid - Admin DID who granted access
+   * @returns Upserted application record
+   */
+  async grantAccess(did: DID, reviewerDid?: DID): Promise<AlphaApplication> {
+    try {
+      const result = await this.pool.query<{
+        id: string;
+        did: string;
+        handle: string | null;
+        email: string;
+        sector: string;
+        sector_other: string | null;
+        career_stage: string;
+        career_stage_other: string | null;
+        affiliations: AlphaAffiliation[];
+        research_keywords: AlphaResearchKeyword[];
+        motivation: string | null;
+        status: string;
+        zulip_invited: boolean;
+        reviewed_at: Date | null;
+        reviewed_by: string | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
+        `INSERT INTO alpha_applications (id, did, email, sector, career_stage, motivation, status, reviewed_at, reviewed_by, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, '', 'other', 'other', 'Direct admin grant', 'approved', NOW(), $2, NOW(), NOW())
+         ON CONFLICT (did) DO UPDATE SET
+           status = 'approved',
+           reviewed_at = NOW(),
+           reviewed_by = $2,
+           updated_at = NOW()
+         RETURNING *`,
+        [did, reviewerDid ?? null]
+      );
+
+      const row = result.rows[0];
+      if (!row) {
+        throw new DatabaseError('INSERT', 'Failed to grant alpha access');
+      }
+
+      this.logger.info('Alpha access granted directly', { did, reviewerDid });
+
+      return this.mapRowToApplication(row);
+    } catch (error) {
+      if (error instanceof DatabaseError) throw error;
+      this.logger.error('Failed to grant alpha access', error instanceof Error ? error : undefined);
+      throw new DatabaseError(
+        'INSERT',
+        'Failed to grant alpha access',
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
    * Approve an alpha application.
    *
    * @param did - Applicant's DID

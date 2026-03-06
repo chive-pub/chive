@@ -2370,7 +2370,7 @@ export interface CollectionNodeRecord {
   label: string;
   description?: string;
   metadata: {
-    visibility: 'public' | 'unlisted' | 'private';
+    visibility: 'listed' | 'unlisted';
     itemOrder: string[];
     enableCosmikMirror?: boolean;
     [key: string]: unknown;
@@ -2388,7 +2388,7 @@ export interface CreateCollectionNodeInput {
   /** Optional description */
   description?: string;
   /** Visibility setting */
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   /** Optional tags for categorization */
   tags?: string[];
   /** Whether to mirror to Cosmik */
@@ -2415,7 +2415,7 @@ export interface CreateCollectionNodeInput {
  * const result = await createCollectionNode(agent, {
  *   name: 'Reading List: NLP',
  *   description: 'Papers on natural language processing',
- *   visibility: 'public',
+ *   visibility: 'listed',
  *   tags: ['nlp', 'machine-learning'],
  * });
  * ```
@@ -2481,7 +2481,7 @@ export interface UpdateCollectionNodeInput {
   /** Updated description */
   description?: string;
   /** Updated visibility */
-  visibility?: 'public' | 'unlisted' | 'private';
+  visibility?: 'listed' | 'unlisted';
   /** Updated tags */
   tags?: string[];
 }
@@ -3412,7 +3412,7 @@ export async function updateProfileConfig(
  * Maps Chive visibility to Semble's accessType values.
  */
 function toCosmikAccessType(visibility: string): 'OPEN' | 'CLOSED' {
-  return visibility === 'private' ? 'CLOSED' : 'OPEN';
+  return visibility === 'unlisted' ? 'CLOSED' : 'OPEN';
 }
 
 /**
@@ -3716,7 +3716,7 @@ export async function createCosmikMirror(
     /** Optional description */
     description?: string;
     /** Visibility setting */
-    visibility: 'public' | 'unlisted' | 'private';
+    visibility: 'listed' | 'unlisted';
     /** Items to create cards for */
     items: Array<{
       /** URL or AT-URI of the item */

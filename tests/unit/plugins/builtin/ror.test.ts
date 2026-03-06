@@ -236,7 +236,7 @@ describe('RorPlugin', () => {
     });
 
     it('should have correct version', () => {
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
     });
 
     it('should declare storage permissions for caching', () => {

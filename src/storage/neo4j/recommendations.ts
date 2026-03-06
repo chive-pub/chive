@@ -153,7 +153,7 @@ export class RecommendationService {
       OPTIONAL MATCH (user)-[:INTERESTED_IN]->(field:FieldNode)
       WITH user, collect(DISTINCT field) AS userFields
 
-      // Find papers in user's fields that they haven't read
+      // Find papers from user's fields and citation network
       CALL {
         WITH user, userFields
         UNWIND userFields AS field
@@ -164,11 +164,9 @@ export class RecommendationService {
         WITH paper, field, 'similar-fields' AS reason
         RETURN paper, reason, field.label AS fieldName
         LIMIT 50
-      }
 
-      // Find papers cited by papers user has engaged with
-      UNION ALL
-      CALL {
+        UNION ALL
+
         WITH user
         MATCH (user)-[:READ|BOOKMARKED]->(engaged:Node:Object:Eprint)-[:CITES]->(cited:Node:Object:Eprint)
         WHERE engaged.subkind = 'eprint' AND cited.subkind = 'eprint'
@@ -383,7 +381,7 @@ export class RecommendationService {
       MATCH (target:Node:Object:Eprint {uri: $paperUri})
       WHERE target.subkind = 'eprint'
 
-      // Co-citation similarity: papers cited together
+      // Co-citation and bibliographic coupling in a single CALL block
       CALL {
         WITH target
         MATCH (target)<-[:CITES]-(citingPaper:Node:Object:Eprint)-[:CITES]->(similar:Node:Object:Eprint)
@@ -391,11 +389,9 @@ export class RecommendationService {
           AND similar <> target AND similar.status = 'published'
         WITH similar, count(DISTINCT citingPaper) AS sharedCiters
         RETURN similar, 'co-citation' AS reason, 0 AS sharedRefs, sharedCiters
-      }
 
-      // Bibliographic coupling: papers citing same references
-      UNION ALL
-      CALL {
+        UNION ALL
+
         WITH target
         MATCH (target)-[:CITES]->(ref)<-[:CITES]-(similar:Node:Object:Eprint)
         WHERE similar.subkind = 'eprint' AND similar <> target AND similar.status = 'published'

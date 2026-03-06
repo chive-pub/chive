@@ -67,24 +67,26 @@ loki.process "faro_logs" {
     }
   }
 
-  // Extract JSON fields as labels
-  stage.json {
-    expressions = {
-      level       = "level",
-      browser     = "browser.name",
-      os          = "os.name",
-      page_url    = "page.url",
-      session_id  = "session.id",
-      trace_id    = "trace.id",
-    }
+  // Faro receiver emits key=value log lines (not JSON).
+  // Extract low-cardinality fields as labels for efficient querying.
+  stage.regex {
+    expression = "kind=(?P<kind>\\S+)"
   }
 
-  // Map extracted values to labels (only low-cardinality ones)
+  stage.regex {
+    expression = "browser_name=(?P<browser>\\S+)"
+  }
+
+  stage.regex {
+    expression = "view_name=(?P<view>\\S+)"
+  }
+
+  // Map extracted values to queryable labels
   stage.labels {
     values = {
-      level   = "",
+      kind    = "",
       browser = "",
-      os      = "",
+      view    = "",
     }
   }
 }

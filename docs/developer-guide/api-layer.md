@@ -1,10 +1,4 @@
-# API Layer Developer Guide
-
-**Version:** 1.0.0
-**Phase:** 9 - API Layer
-**Last Updated:** December 2025
-
----
+# API layer
 
 ## Overview
 
@@ -19,16 +13,16 @@ Both interfaces share the same middleware stack and return equivalent data with 
 
 ## Architecture
 
-### Technology Stack
+### Technology stack
 
-- **Framework**: [Hono](https://hono.dev/), a fast, lightweight web framework
+- **Framework**: [Hono](https://hono.dev/), a lightweight web framework
 - **Validation**: ATProto Lexicon validation (`@atproto/lexicon`)
 - **Type Generation**: Lexicon-to-TypeScript via `@atproto/lex-cli`
 - **Documentation**: OpenAPI 3.1 generation for REST endpoints
 
-### Directory Structure
+### Directory structure
 
-```
+```text
 src/api/
 ├── server.ts              # Application factory
 ├── routes.ts              # Route registration
@@ -56,9 +50,9 @@ src/api/
 
 ---
 
-## Quick Start
+## Quick start
 
-### Creating the Server
+### Creating the server
 
 ```typescript
 import { createServer } from '@/api/server.js';
@@ -81,7 +75,7 @@ serve({ fetch: app.fetch, port: 3000 });
 export default { port: 3000, fetch: app.fetch };
 ```
 
-### Making Requests
+### Making requests
 
 ```bash
 # XRPC: Get an eprint
@@ -98,9 +92,9 @@ curl -X POST "https://api.chive.pub/xrpc/pub.chive.eprint.searchSubmissions" \
 
 ---
 
-## XRPC Endpoints
+## XRPC endpoints
 
-### Eprint Endpoints
+### Eprint endpoints
 
 #### `pub.chive.eprint.getSubmission`
 
@@ -108,7 +102,7 @@ Retrieves a single eprint by AT URI.
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.eprint.getSubmission?uri={atUri}
 ```
 
@@ -162,7 +156,7 @@ Lists eprints by author DID.
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.eprint.listByAuthor?did={did}&limit={n}&cursor={c}&sort={sort}
 ```
 
@@ -180,7 +174,7 @@ Full-text search across eprints.
 
 **Request:**
 
-```
+```text
 POST /xrpc/pub.chive.eprint.searchSubmissions
 Content-Type: application/json
 
@@ -194,7 +188,7 @@ Content-Type: application/json
 }
 ```
 
-### Graph Endpoints
+### Graph endpoints
 
 #### `pub.chive.graph.getField`
 
@@ -202,7 +196,7 @@ Retrieves a knowledge graph field by ID.
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.graph.getField?id={fieldId}
 ```
 
@@ -212,7 +206,7 @@ Searches authority records (controlled vocabulary).
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.graph.searchAuthorities?query={q}&type={type}&status={status}
 ```
 
@@ -222,11 +216,11 @@ Browse eprints using PMEST faceted classification.
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.graph.browseFaceted?facets.matter=physics&facets.time=2024
 ```
 
-### Metrics Endpoints
+### Metrics endpoints
 
 #### `pub.chive.metrics.getTrending`
 
@@ -234,13 +228,13 @@ Retrieves trending eprints.
 
 **Request:**
 
-```
+```text
 GET /xrpc/pub.chive.metrics.getTrending?window={24h|7d|30d}&limit={n}
 ```
 
 ---
 
-## REST Endpoints
+## REST endpoints
 
 ### Eprints
 
@@ -264,9 +258,9 @@ GET /xrpc/pub.chive.metrics.getTrending?window={24h|7d|30d}&limit={n}
 
 ---
 
-## ATProto Compliance
+## ATProto compliance
 
-### Critical Requirements
+### Critical requirements
 
 Every API response MUST include:
 
@@ -275,7 +269,7 @@ Every API response MUST include:
 3. **`source.lastVerifiedAt`**: When data was last synced from PDS
 4. **`source.stale`**: Boolean indicating if data may be outdated (>7 days)
 
-### BlobRef Only
+### BlobRef only
 
 Documents are returned as BlobRefs, never inline data:
 
@@ -301,7 +295,7 @@ Documents are returned as BlobRefs, never inline data:
 }
 ```
 
-### No Write Operations
+### No write operations
 
 The API is read-only. These endpoints do NOT exist:
 
@@ -314,7 +308,7 @@ Users create content in their PDSes directly. Chive indexes via firehose.
 
 ---
 
-## Rate Limiting
+## Rate limiting
 
 ### Tiers
 
@@ -322,18 +316,17 @@ Users create content in their PDSes directly. Chive indexes via firehose.
 | ------------- | ------------ | ---------- |
 | Anonymous     | 60 req/min   | IP address |
 | Authenticated | 300 req/min  | User DID   |
-| Premium       | 1000 req/min | User DID   |
 | Admin         | 5000 req/min | User DID   |
 
-### Response Headers
+### Response headers
 
-```
+```text
 X-RateLimit-Limit: 60
 X-RateLimit-Remaining: 42
 X-RateLimit-Reset: 1700000060
 ```
 
-### Rate Limited Response
+### Rate limited response
 
 ```http
 HTTP/1.1 429 Too Many Requests
@@ -349,15 +342,15 @@ Retry-After: 30
 }
 ```
 
-### Bypassed Endpoints
+### Bypassed endpoints
 
 Health endpoints (`/health`, `/ready`) are not rate limited.
 
 ---
 
-## Error Handling
+## Error handling
 
-### Error Response Format
+### Error response format
 
 All errors follow Stripe/GitHub pattern:
 
@@ -372,7 +365,7 @@ All errors follow Stripe/GitHub pattern:
 }
 ```
 
-### Error Codes
+### Error codes
 
 | Code                   | HTTP Status | Description                  |
 | ---------------------- | ----------- | ---------------------------- |
@@ -387,7 +380,7 @@ All errors follow Stripe/GitHub pattern:
 
 ---
 
-## Middleware Stack
+## Middleware stack
 
 The middleware executes in order:
 
@@ -401,9 +394,9 @@ The middleware executes in order:
 
 ---
 
-## Adding New Handlers
+## Adding new handlers
 
-### 1. Define Lexicon Schema
+### 1. Define lexicon schema
 
 Create the lexicon definition in `lexicons/pub/chive/{namespace}/{method}.json`:
 
@@ -439,7 +432,7 @@ Create the lexicon definition in `lexicons/pub/chive/{namespace}/{method}.json`:
 }
 ```
 
-### 2. Generate Types
+### 2. Generate types
 
 Run lexicon generation to create TypeScript types:
 
@@ -449,7 +442,7 @@ pnpm lexicon:generate
 
 This generates types at `src/lexicons/generated/types/pub/chive/myFeature/getItem.ts`.
 
-### 3. Create Handler
+### 3. Create handler
 
 ```typescript
 // src/api/handlers/xrpc/my-feature/getItem.ts
@@ -486,7 +479,7 @@ export const getItem: XRPCMethod<QueryParams, void, OutputSchema> = {
 };
 ```
 
-### 4. Register Handler
+### 4. Register handler
 
 Export the handler from the namespace index:
 
@@ -540,7 +533,7 @@ interface XRPCResponse<T> {
 
 ## Testing
 
-### Unit Tests
+### Unit tests
 
 ```bash
 npm run test:unit -- tests/unit/api/
@@ -551,7 +544,7 @@ Test files:
 - `tests/unit/api/middleware/*.test.ts`
 - `tests/unit/api/handlers/**/*.test.ts`
 
-### Integration Tests
+### Integration tests
 
 ```bash
 # Start test infrastructure
@@ -567,7 +560,7 @@ Test files:
 - `tests/integration/api/rest/**/*.test.ts`
 - `tests/integration/api/rate-limiting.test.ts`
 
-### Compliance Tests
+### Compliance tests
 
 ```bash
 npm run test:compliance
@@ -579,7 +572,7 @@ Test file: `tests/compliance/api-layer-compliance.test.ts`
 
 ---
 
-## Common Issues
+## Common issues
 
 ### 1. "source field missing in response"
 
@@ -622,7 +615,7 @@ export async function myHandler(c: Context<ChiveEnv>) {
 
 ## Configuration
 
-### Environment Variables
+### Environment variables
 
 | Variable                 | Description                                                   | Default                  |
 | ------------------------ | ------------------------------------------------------------- | ------------------------ |
@@ -633,7 +626,7 @@ export async function myHandler(c: Context<ChiveEnv>) {
 | `STALENESS_THRESHOLD_MS` | Threshold for marking records as stale (milliseconds)         | `604800000` (7 days)     |
 | `LOG_LEVEL`              | Logging level                                                 | `info`                   |
 
-### Rate Limit Configuration
+### Rate limit configuration
 
 Edit `src/api/config.ts`:
 
@@ -641,14 +634,13 @@ Edit `src/api/config.ts`:
 export const RATE_LIMITS = {
   anonymous: { maxRequests: 60, windowMs: 60_000 },
   authenticated: { maxRequests: 300, windowMs: 60_000 },
-  premium: { maxRequests: 1000, windowMs: 60_000 },
   admin: { maxRequests: 5000, windowMs: 60_000 },
 } as const;
 ```
 
 ---
 
-## OpenAPI Documentation
+## OpenAPI documentation
 
 Access interactive documentation at:
 
@@ -657,22 +649,22 @@ Access interactive documentation at:
 
 ---
 
-## Security Notice
+## Security notice
 
-> **Security Placeholder Implementations**
+> **Placeholder implementations**
 >
 > The following security features are placeholder implementations pending full authentication integration:
 >
-> - **Token Verification** (`src/api/middleware/auth.ts`): Currently only validates token structure and expiration, not cryptographic signatures. See `@todo` comments in code.
-> - **Scope Authorization** (`src/api/middleware/auth.ts`): Only admin scope is enforced; other scopes pass through.
-> - **Rate Limiter Fail Mode**: Configurable via `RATE_LIMIT_FAIL_MODE` env var. Default is `closed` (reject requests when Redis is down) for Zero Trust compliance.
+> - **Token verification** (`src/api/middleware/auth.ts`): Currently only validates token structure and expiration, not cryptographic signatures. See `@todo` comments in code.
+> - **Scope authorization** (`src/api/middleware/auth.ts`): Only admin scope is enforced; other scopes pass through.
+> - **Rate limiter fail mode**: Configurable via `RATE_LIMIT_FAIL_MODE` env var. Default is `closed` (reject requests when Redis is down) for zero-trust compliance.
 >
 > For production deployments, ensure authentication and authorization features are completed.
 
 ---
 
-## Related documentation
+## Next steps
 
-- [ATProto Specification](https://atproto.com/specs)
-- [Authentication](./authentication-authorization.md): Auth flows and error handling
-- [API Reference](/api-reference/overview): Endpoint documentation
+- [Authentication and authorization](./authentication-authorization): auth flows and error handling
+- [Core business services](./core-business-services): service layer that handlers delegate to
+- [API reference](/api-reference/overview): full endpoint documentation

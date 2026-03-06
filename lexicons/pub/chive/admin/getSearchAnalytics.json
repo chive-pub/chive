@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getSearchAnalytics",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get search usage analytics",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["totalSearches", "totalClicks", "timestamp"],
+          "properties": {
+            "totalSearches": {
+              "type": "integer",
+              "description": "Total number of search queries"
+            },
+            "totalClicks": {
+              "type": "integer",
+              "description": "Total number of search result clicks"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Analytics snapshot timestamp"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getAlphaApplication",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get a single alpha tester application by DID",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "Applicant DID"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "pub.chive.admin.listAlphaApplications#alphaApplication"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "NotFound" }
+      ]
+    }
+  }
+}

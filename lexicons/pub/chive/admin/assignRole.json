@@ -1,0 +1,55 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.assignRole",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Assign a role to a user",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "role"],
+          "properties": {
+            "did": {
+              "type": "string",
+              "format": "did",
+              "description": "Target user DID"
+            },
+            "role": {
+              "type": "string",
+              "knownValues": [
+                "admin",
+                "moderator",
+                "graph-editor",
+                "author",
+                "reader",
+                "alpha-tester",
+                "premium"
+              ],
+              "description": "Role to assign"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the role was assigned"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "InvalidRequest" }
+      ]
+    }
+  }
+}

@@ -277,7 +277,7 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.openreview',
     name: 'OpenReview Integration',
-    version: '0.1.0',
+    version: '0.2.0',
     description:
       'Imports peer-reviewed submissions from OpenReview with claiming verification support',
     author: 'Aaron Steven White',

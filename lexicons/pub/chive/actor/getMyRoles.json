@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.getMyRoles",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the authenticated user's roles and access flags",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["roles", "isAdmin", "isAlphaTester", "isPremium"],
+          "properties": {
+            "roles": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of role identifiers assigned to the user"
+            },
+            "isAdmin": {
+              "type": "boolean",
+              "description": "Whether the user has admin privileges"
+            },
+            "isAlphaTester": {
+              "type": "boolean",
+              "description": "Whether the user has alpha tester access"
+            },
+            "isPremium": {
+              "type": "boolean",
+              "description": "Whether the user has premium access"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }]
+    }
+  }
+}

@@ -40,6 +40,8 @@ import {
   ImportScheduler,
 } from './plugins/index.js';
 import { ActivityService } from './services/activity/activity-service.js';
+import { AdminService } from './services/admin/admin-service.js';
+import { BackfillManager } from './services/admin/backfill-manager.js';
 import { AlphaApplicationService } from './services/alpha/alpha-application-service.js';
 import { AnnotationService } from './services/annotation/annotation-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
@@ -207,7 +209,7 @@ function loadConfig(): EnvConfig {
     sessionEncryptionKey: process.env.SESSION_ENCRYPTION_KEY,
 
     // ATProto Service Auth
-    serviceDid: process.env.SERVICE_DID ?? 'did:web:chive.pub',
+    serviceDid: process.env.ATPROTO_SERVICE_DID ?? 'did:web:chive.pub',
 
     // Relevance logging
     relevanceLoggingEnabled: process.env.RELEVANCE_LOGGING_ENABLED !== 'false',
@@ -558,6 +560,10 @@ function createServices(
     documentTextExtractor,
   });
 
+  // Create admin service and backfill manager for dashboard
+  const adminService = new AdminService(pgPool, redis, esPool, neo4jConnection, logger);
+  const backfillManager = new BackfillManager(redis, logger);
+
   // Create index retry worker for failed indexRecord calls
   const redisUrl = new URL(config.redisUrl);
   const indexRetryWorker = new IndexRetryWorker({
@@ -604,6 +610,8 @@ function createServices(
     citationExtractionService,
     personalGraphService,
     collectionService,
+    adminService,
+    backfillManager,
     redis,
     logger,
     serviceDid: config.serviceDid,
@@ -1037,6 +1045,44 @@ async function seedPDSRegistryFromKnownDIDs(
 }
 
 /**
+ * Seeds admin roles from the ADMIN_DIDS environment variable.
+ *
+ * @remarks
+ * Reads a comma-separated list of DIDs from ADMIN_DIDS and assigns
+ * the 'admin' role to each via the authorization service. This is
+ * idempotent (Redis SADD is a no-op for existing members).
+ *
+ * @param authzService - Authorization service for role assignment
+ * @param logger - Logger instance
+ */
+async function seedAdminRoles(
+  authzService: InstanceType<typeof AuthorizationService>,
+  logger: PinoLogger
+): Promise<void> {
+  const defaultAdminDids = 'did:plc:34mbm5v3umztwvvgnttvcz6e';
+  const adminDidsRaw = process.env.ADMIN_DIDS ?? defaultAdminDids;
+
+  const adminDids = adminDidsRaw
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean);
+
+  if (adminDids.length === 0) {
+    logger.info('No admin DIDs to seed');
+    return;
+  }
+
+  logger.info('Seeding admin roles...', { count: adminDids.length });
+
+  for (const did of adminDids) {
+    await authzService.assignRole(did as DID, 'admin', 'system-startup' as DID);
+    logger.info('Admin role assigned', { did });
+  }
+
+  logger.info('Admin role seeding complete', { count: adminDids.length });
+}
+
+/**
  * Main entry point.
  */
 async function main(): Promise<void> {
@@ -1080,6 +1126,12 @@ async function main(): Promise<void> {
 
     // Store index retry worker in state for shutdown handling
     state.indexRetryWorker = serverConfig.indexRetryWorker;
+
+    // Seed admin roles from ADMIN_DIDS environment variable
+    await seedAdminRoles(
+      serverConfig.authzService as InstanceType<typeof AuthorizationService>,
+      logger
+    );
 
     // Create Hono app
     const app = createServer(serverConfig);

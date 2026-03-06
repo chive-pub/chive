@@ -178,7 +178,7 @@ const GEOGRAPHIC_REGIONS = [
     label: 'Pacific Region',
     description: 'Research focused on the Pacific Ocean region.',
     externalIds: [
-      { system: 'wikidata', identifier: 'Q3359409', uri: 'https://www.wikidata.org/wiki/Q3359409' },
+      { system: 'wikidata', identifier: 'Q844857', uri: 'https://www.wikidata.org/wiki/Q844857' },
     ],
   },
 ] as const;

@@ -1,0 +1,32 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getGraphStats",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get knowledge graph statistics",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["nodeCount", "edgeCount"],
+          "properties": {
+            "nodeCount": {
+              "type": "integer",
+              "description": "Total graph nodes"
+            },
+            "edgeCount": {
+              "type": "integer",
+              "description": "Total graph edges"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

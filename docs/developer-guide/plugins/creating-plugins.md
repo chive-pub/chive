@@ -362,5 +362,5 @@ npm install @your-org/chive-plugin-example --prefix $CHIVE_PLUGIN_DIR
 
 ## Next steps
 
-- See [Builtin plugins](./builtin-plugins.md) for reference implementations
-- Review the plugin SDK documentation for advanced features
+- [Builtin plugins](./builtin-plugins.md): Reference implementations for all included plugins
+- [Plugin system overview](./README.md): Architecture and security model

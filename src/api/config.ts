@@ -232,7 +232,7 @@ export const REQUEST_TIMEOUT_MS = 30_000;
  *
  * @public
  */
-export const API_VERSION = '0.1.0';
+export const API_VERSION = '0.2.0';
 
 /**
  * XRPC endpoint path prefix.
@@ -293,7 +293,7 @@ export const SERVER_INFO = {
   contact: {
     name: 'Chive',
     url: 'https://chive.pub',
-    email: 'contact@chive.pub',
+    email: 'admin@chive.pub',
   },
   license: {
     name: 'MIT',

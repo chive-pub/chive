@@ -21,6 +21,7 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/eprint/searchSubmissions.js';
+import { searchMetrics } from '../../../../observability/prometheus-registry.js';
 import { TaxonomyCategoryMatcher } from '../../../../services/search/category-matcher.js';
 import type { LTRFeatureVector } from '../../../../services/search/relevance-logger.js';
 import { AcademicTextScorer } from '../../../../services/search/text-scorer.js';
@@ -78,6 +79,7 @@ function computeRecencyScore(dateStr: string): number {
 export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
+    const endTimer = searchMetrics.duration.startTimer({ phase: 'total' });
     const { search, eprint, relevanceLogger, ranking, graph } = c.get('services');
     const logger = c.get('logger');
     const user = c.get('user');
@@ -302,6 +304,10 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
       total: searchResults.total,
       facetAggregations: undefined,
     };
+
+    searchMetrics.queriesTotal.inc({ type: 'search' });
+    searchMetrics.resultsTotal.inc({ type: 'search' }, searchResults.total);
+    endTimer({ phase: 'total' });
 
     logger.info('Search completed', {
       query: queryString,

@@ -172,7 +172,7 @@ These must be set for Chive to start:
 | Variable                   | Default                             | Description             |
 | -------------------------- | ----------------------------------- | ----------------------- |
 | `WIKIDATA_SPARQL_ENDPOINT` | `https://query.wikidata.org/sparql` | SPARQL endpoint         |
-| `WIKIDATA_USER_AGENT`      | `Chive/1.0`                         | User agent for requests |
+| `WIKIDATA_USER_AGENT`      | `Chive/0.2.0`                       | User agent for requests |
 
 ### GROBID
 
@@ -250,8 +250,8 @@ OTEL_ENABLED=true
 OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318
 ```
 
-## Related documentation
+## Next steps
 
-- [Configuration](./configuration.md): Configuration file reference
-- [Deployment](../operations/deployment.md): Production setup
-- [Secrets management](../operations/deployment.md#secrets-management): Secure credential handling
+- [Configuration](./configuration): configuration file reference
+- [Deployment](../operations/deployment): production setup
+- [Secrets management](../operations/deployment#secrets-management): secure credential handling

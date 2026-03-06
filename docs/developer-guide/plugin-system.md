@@ -1,4 +1,4 @@
-# Plugin System
+# Plugin system
 
 This guide covers Chive's plugin system architecture, development patterns, and security model. Plugins extend Chive's functionality through a hybrid TSyringe DI + EventEmitter2 hooks architecture.
 
@@ -12,7 +12,7 @@ The plugin system provides:
 - **ResourceGovernor**: CPU and memory limits per plugin
 - **IsolatedVmSandbox**: V8 isolate for untrusted plugin code
 
-All plugins follow ATProto compliance rules: they can read events and cache computed results but never write to user PDSes.
+All plugins follow AT Protocol compliance rules: they can read events and cache computed results but never write to user PDSes.
 
 ## Architecture
 
@@ -43,7 +43,7 @@ flowchart TB
 6. When events fire, plugin handlers execute with resource limits
 7. Plugin caches computed results (ephemeral, rebuildable)
 
-## Creating a Plugin
+## Creating a plugin
 
 ### Plugin manifest
 
@@ -53,7 +53,7 @@ Every plugin requires a `manifest.json`:
 {
   "id": "pub.chive.plugin.my-plugin",
   "name": "My Plugin",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Adds custom functionality to Chive",
   "author": "Your Name",
   "license": "MIT",
@@ -100,7 +100,7 @@ export class MyPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.my-plugin',
     name: 'My Plugin',
-    version: '0.1.0',
+    version: '0.2.0',
     description: 'Adds custom functionality',
     author: 'Your Name',
     license: 'MIT',
@@ -162,7 +162,7 @@ interface IPluginContext {
 }
 ```
 
-## Event System
+## Event system
 
 ### Available hooks
 
@@ -218,7 +218,7 @@ this.context.eventBus.on('eprint.indexed', async (event) => {
 });
 ```
 
-## Security Model
+## Security model
 
 ### Permission enforcement
 
@@ -273,11 +273,11 @@ The sandbox prevents access to:
 - Native modules
 - Network unless explicitly proxied
 
-## Builtin Plugins
+## Builtin plugins
 
 Chive includes five builtin plugins:
 
-### GitHub Integration
+### GitHub integration
 
 Links eprints to GitHub repositories.
 
@@ -294,7 +294,7 @@ network: ['api.github.com']
 - Links code repositories to eprints
 ```
 
-### ORCID Linking
+### ORCID linking
 
 Verifies author identities via ORCID.
 
@@ -311,7 +311,7 @@ network: ['pub.orcid.org', 'orcid.org']
 - Links authors to their publications
 ```
 
-### DOI Registration
+### DOI registration
 
 Registers DOIs via DataCite API.
 
@@ -328,7 +328,7 @@ network: ['api.datacite.org']
 - Caches DOI mappings
 ```
 
-### Semantics Archive
+### Semantics archive
 
 Imports linguistics eprints from Semantics Archive.
 
@@ -364,7 +364,7 @@ network: ['ling.auf.net', 'feeds.feedburner.com']
 - Caches for 7 days
 ```
 
-## Loading Plugins
+## Loading plugins
 
 ### Builtin plugins
 
@@ -393,7 +393,7 @@ await manager.loadBuiltinPlugin(plugin);
 await manager.loadPlugin({
   id: 'pub.chive.plugin.custom',
   name: 'Custom Plugin',
-  version: '0.1.0',
+  version: '0.2.0',
   // ... manifest
 });
 
@@ -440,7 +440,7 @@ for (const p of info) {
 const count = manager.getPluginCount();
 ```
 
-## Testing Plugins
+## Testing plugins
 
 ### Unit tests
 
@@ -492,22 +492,22 @@ npx vitest run tests/integration/plugins/plugin-lifecycle.test.ts
 ### Compliance tests
 
 ```bash
-# Verify ATProto compliance
+# Verify AT Protocol compliance
 npx vitest run tests/compliance/plugin-atproto-compliance.test.ts
 ```
 
-## ATProto Compliance
+## AT Protocol compliance
 
-Plugins must follow ATProto compliance rules:
+Plugins must follow AT Protocol compliance rules:
 
-### What plugins CAN do
+### What plugins can do
 
 - Subscribe to firehose events (via event bus)
 - Cache computed results (ephemeral, with TTL)
 - Call external APIs (side effects like DOI registration)
 - Read from user PDSes (via IRepository)
 
-### What plugins CANNOT do
+### What plugins cannot do
 
 - Write to user PDSes
 - Store blob data (only BlobRefs)
@@ -531,7 +531,7 @@ const blobRef = { $type: 'blob', ref: { $link: cid } };
 // await database.insert({ content });
 ```
 
-## Error Handling
+## Error handling
 
 ### Plugin errors
 
@@ -592,8 +592,8 @@ context.metrics.incrementCounter('events_processed', { status: 'success' });
 # plugin_events_processed_total{plugin_id="pub.chive.plugin.my-plugin",status="success"}
 ```
 
-## Related Documentation
+## Next steps
 
-- [ATProto Specification](https://atproto.com/specs): Data sovereignty rules
-- [Core Services Guide](./core-business-services.md): Service integration
-- [API Layer Guide](./api-layer.md): HTTP endpoint integration
+- [AT Protocol specification](https://atproto.com/specs): Data sovereignty rules for plugins
+- [Core services guide](./core-business-services.md): Service integration patterns
+- [API layer guide](./api-layer.md): HTTP endpoint integration

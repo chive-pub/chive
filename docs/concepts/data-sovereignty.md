@@ -205,7 +205,7 @@ This signature proves:
 
 Blobs (PDFs, images) use content-addressed storage:
 
-```
+```text
 PDF content → SHA-256 hash → CID: bafyreibvocy34...
 ```
 
@@ -249,6 +249,6 @@ Data sovereignty comes with responsibility:
 
 ## Next steps
 
-- [AT Protocol](./at-protocol.md): Technical foundations
-- [Knowledge graph](./knowledge-graph.md): Community classification
+- [AT Protocol](at-protocol): Technical foundations
+- [Knowledge graph](knowledge-graph): Community classification
 - [Submitting eprints](/user-guide/submitting-eprints): Get started

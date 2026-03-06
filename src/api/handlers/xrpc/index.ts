@@ -21,6 +21,7 @@ import { lexicons, getMethodType } from '../../xrpc/validation.js';
 // Re-export all endpoint modules
 export * from './activity/index.js';
 export * from './actor/index.js';
+export { adminMethods } from './admin/index.js';
 export * from './alpha/index.js';
 export { annotationMethods } from './annotation/index.js';
 export * from './author/index.js';
@@ -42,6 +43,7 @@ export * from './notification/index.js';
 // Import methods for registration
 import { activityMethods } from './activity/index.js';
 import { actorMethods } from './actor/index.js';
+import { adminMethods } from './admin/index.js';
 import { alphaMethods } from './alpha/index.js';
 import { annotationMethods } from './annotation/index.js';
 import { authorMethods } from './author/index.js';
@@ -66,6 +68,7 @@ import { tagMethods } from './tag/index.js';
 export const allXRPCMethods = {
   ...activityMethods,
   ...actorMethods,
+  ...adminMethods,
   ...alphaMethods,
   ...annotationMethods,
   ...authorMethods,

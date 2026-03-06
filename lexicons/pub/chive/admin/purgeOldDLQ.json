@@ -1,0 +1,38 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.purgeOldDLQ",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Purge DLQ entries older than a specified number of days",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "olderThanDays": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 7,
+              "description": "Purge entries older than this many days"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["purgedCount"],
+          "properties": {
+            "purgedCount": {
+              "type": "integer",
+              "description": "Number of entries purged"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

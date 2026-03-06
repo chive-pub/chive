@@ -82,7 +82,7 @@ const SAMPLE_NODE_RECORD = {
   description: 'Curated papers on computational linguistics and NLP',
   createdAt: '2025-06-15T10:00:00Z',
   metadata: {
-    visibility: 'public',
+    visibility: 'listed',
   },
 };
 
@@ -109,7 +109,7 @@ const SAMPLE_COLLECTION_ROW = {
   owner_did: SAMPLE_DID,
   label: 'NLP Reading List',
   description: 'Curated papers on computational linguistics and NLP',
-  visibility: 'public',
+  visibility: 'listed',
   created_at: new Date('2025-06-15T10:00:00Z'),
   updated_at: null,
   item_count: '3',
@@ -163,7 +163,7 @@ describe('CollectionService', () => {
           uri: SAMPLE_COLLECTION_URI,
           ownerDid: SAMPLE_DID,
           label: 'NLP Reading List',
-          visibility: 'public',
+          visibility: 'listed',
         })
       );
     });
@@ -206,7 +206,7 @@ describe('CollectionService', () => {
       expect(params?.[2]).toBe('did:plc:jgrove');
     });
 
-    it('defaults visibility to private when metadata.visibility is missing', async () => {
+    it('defaults visibility to unlisted when metadata.visibility is missing', async () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
       const recordNoVisibility = {
         ...SAMPLE_NODE_RECORD,
@@ -217,19 +217,19 @@ describe('CollectionService', () => {
 
       const params = pool.query.mock.calls[0]?.[1] as unknown[];
       // Visibility is the 6th parameter (index 5)
-      expect(params?.[5]).toBe('private');
+      expect(params?.[5]).toBe('unlisted');
     });
 
-    it('sets visibility to public when metadata.visibility is public', async () => {
+    it('sets visibility to listed when metadata.visibility is listed', async () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
 
       await service.indexCollection(SAMPLE_NODE_RECORD, SAMPLE_METADATA);
 
       const params = pool.query.mock.calls[0]?.[1] as unknown[];
-      expect(params?.[5]).toBe('public');
+      expect(params?.[5]).toBe('listed');
     });
 
-    it('defaults visibility to private when metadata is undefined', async () => {
+    it('defaults visibility to unlisted when metadata is undefined', async () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
       const recordNoMetadata = {
         ...SAMPLE_NODE_RECORD,
@@ -239,7 +239,20 @@ describe('CollectionService', () => {
       await service.indexCollection(recordNoMetadata, SAMPLE_METADATA);
 
       const params = pool.query.mock.calls[0]?.[1] as unknown[];
-      expect(params?.[5]).toBe('private');
+      expect(params?.[5]).toBe('unlisted');
+    });
+
+    it('maps legacy private visibility to unlisted', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      const recordWithPrivate = {
+        ...SAMPLE_NODE_RECORD,
+        metadata: { visibility: 'private' },
+      };
+
+      await service.indexCollection(recordWithPrivate, SAMPLE_METADATA);
+
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      expect(params?.[5]).toBe('unlisted');
     });
 
     it('stores tags from record metadata', async () => {
@@ -247,7 +260,7 @@ describe('CollectionService', () => {
       const recordWithTags = {
         ...SAMPLE_NODE_RECORD,
         metadata: {
-          visibility: 'public',
+          visibility: 'listed',
           tags: ['nlp', 'machine-learning'],
         },
       };
@@ -838,7 +851,7 @@ describe('CollectionService', () => {
       expect(result?.uri).toBe(SAMPLE_COLLECTION_URI);
       expect(result?.label).toBe('NLP Reading List');
       expect(result?.itemCount).toBe(3);
-      expect(result?.visibility).toBe('public');
+      expect(result?.visibility).toBe('listed');
     });
 
     it('returns null for non-existent collection', async () => {
@@ -861,7 +874,7 @@ describe('CollectionService', () => {
       expect(params?.[1]).toBe(SAMPLE_DID);
     });
 
-    it('returns null when private collection is accessed by non-owner', async () => {
+    it('returns null when unlisted collection is accessed by non-owner', async () => {
       // The SQL query filters by visibility OR owner_did, so an empty result
       // means the collection exists but is not visible to this user.
       pool.query.mockResolvedValueOnce({ rows: [] });
@@ -869,6 +882,15 @@ describe('CollectionService', () => {
       const result = await service.getCollection(SAMPLE_COLLECTION_URI, 'did:plc:stranger' as DID);
 
       expect(result).toBeNull();
+    });
+
+    it('normalizes legacy public visibility in DB rows to listed', async () => {
+      const legacyRow = { ...SAMPLE_COLLECTION_ROW, visibility: 'public' };
+      pool.query.mockResolvedValueOnce({ rows: [legacyRow] });
+
+      const result = await service.getCollection(SAMPLE_COLLECTION_URI);
+
+      expect(result?.visibility).toBe('listed');
     });
 
     it('returns null on database error', async () => {
@@ -994,7 +1016,7 @@ describe('CollectionService', () => {
   // ==========================================================================
 
   describe('listPublic', () => {
-    it('returns only public collections', async () => {
+    it('returns only listed collections', async () => {
       pool.query
         .mockResolvedValueOnce({ rows: [{ count: '1' }] })
         .mockResolvedValueOnce({ rows: [SAMPLE_COLLECTION_ROW] });
@@ -1002,9 +1024,9 @@ describe('CollectionService', () => {
       const result = await service.listPublic();
 
       expect(result.items).toHaveLength(1);
-      // Verify the query filters by visibility='public'
+      // Verify the query filters by visibility='listed'
       const countQuery = pool.query.mock.calls[0]?.[0] as string;
-      expect(countQuery).toContain("visibility = 'public'");
+      expect(countQuery).toContain("visibility = 'listed'");
     });
 
     it('supports pagination', async () => {
@@ -1110,7 +1132,7 @@ describe('CollectionService', () => {
         .mockResolvedValueOnce({ rows: [{ count: '0' }] })
         .mockResolvedValueOnce({ rows: [] });
 
-      await service.searchCollections('semantics', { visibility: 'public' });
+      await service.searchCollections('semantics', { visibility: 'listed' });
 
       const countQuery = pool.query.mock.calls[0]?.[0] as string;
       expect(countQuery).toContain('visibility =');
@@ -1225,13 +1247,13 @@ describe('CollectionService', () => {
       expect(params?.[1]).toBe(SAMPLE_DID);
     });
 
-    it('filters private subcollections for unauthenticated users', async () => {
+    it('filters unlisted subcollections for unauthenticated users', async () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
 
       await service.getSubcollections(SAMPLE_COLLECTION_URI);
 
       const queryArg = pool.query.mock.calls[0]?.[0] as string;
-      expect(queryArg).toContain("c.visibility = 'public' OR c.owner_did = $2");
+      expect(queryArg).toContain("c.visibility = 'listed' OR c.owner_did = $2");
       const params = pool.query.mock.calls[0]?.[1] as unknown[];
       expect(params?.[1]).toBe('');
     });
@@ -1284,14 +1306,14 @@ describe('CollectionService', () => {
       expect(params?.[1]).toBe(SAMPLE_DID);
     });
 
-    it('returns null when private parent is accessed by non-owner', async () => {
+    it('returns null when unlisted parent is accessed by non-owner', async () => {
       pool.query.mockResolvedValueOnce({ rows: [] });
 
       const result = await service.getParentCollection(SAMPLE_CHILD_URI, 'did:plc:stranger' as DID);
 
       expect(result).toBeNull();
       const queryArg = pool.query.mock.calls[0]?.[0] as string;
-      expect(queryArg).toContain("c.visibility = 'public' OR c.owner_did = $2");
+      expect(queryArg).toContain("c.visibility = 'listed' OR c.owner_did = $2");
     });
   });
 

@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listEprints",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List indexed eprints with pagination",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results"
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": 0,
+            "default": 0,
+            "description": "Number of results to skip"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["items", "total"],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#eprintSummary" },
+              "description": "Eprint records"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total matching eprints"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "eprintSummary": {
+      "type": "object",
+      "description": "Summary of an indexed eprint",
+      "required": ["uri", "title"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri", "description": "Eprint AT URI" },
+        "cid": { "type": "string", "description": "Content identifier" },
+        "title": { "type": "string", "description": "Eprint title" },
+        "authorDid": { "type": "string", "format": "did", "description": "Author DID" },
+        "authorHandle": { "type": "string", "description": "Author handle" },
+        "status": { "type": "string", "description": "Eprint status" },
+        "field": { "type": "string", "description": "Primary field" },
+        "views": { "type": "integer", "description": "Total views" },
+        "downloads": { "type": "integer", "description": "Total downloads" },
+        "indexedAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was indexed"
+        }
+      }
+    }
+  }
+}

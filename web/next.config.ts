@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   output: 'standalone',
   reactStrictMode: true,
+  allowedDevHosts: ['chive.ngrok.app'],
 
   // typedRoutes: Disabled until route pages are created
   // typedRoutes: true,

@@ -6,7 +6,7 @@ Chive is built on AT Protocol, the same network that powers Bluesky. You can sha
 
 If you signed into Chive with your Bluesky account, you're already connected. Otherwise:
 
-1. Go to **Settings** → **Connected Accounts**
+1. Go to **Settings** > **Connected Accounts**
 2. Click **Connect Bluesky**
 3. Authorize Chive to post on your behalf
 
@@ -28,7 +28,7 @@ If you signed into Chive with your Bluesky account, you're already connected. Ot
 
 Add your thoughts when sharing:
 
-1. Click **Share** → **Share to Bluesky**
+1. Click **Share** > **Share to Bluesky**
 2. Write your comment above the paper card
 3. The paper appears as an embedded card in your post
 4. Click **Post**
@@ -143,9 +143,9 @@ With your permission, Chive can:
 
 ### Revoking access
 
-1. Go to **Settings** → **Connected Accounts**
+1. Go to **Settings** > **Connected Accounts**
 2. Click **Disconnect** next to Bluesky
-3. Or revoke from Bluesky: **Settings** → **App Passwords**
+3. Or revoke from Bluesky: **Settings** > **App Passwords**
 
 ## Share settings
 
@@ -176,8 +176,8 @@ With your permission, Chive can:
 - Check that the eprint URL is correct
 - Some older eprints may not have preview images
 
-## Related topics
+## Next steps
 
-- [Endorsements](./endorsements.md): Endorsing papers
-- [Peer Review](./peer-review.md): Writing reviews
-- [AT Protocol](../concepts/at-protocol.md): How Chive connects to Bluesky
+- [Endorsements](./endorsements): Endorsing papers you find valuable
+- [Peer review](./peer-review): Writing and sharing reviews
+- [AT Protocol](../concepts/at-protocol): How Chive connects to Bluesky

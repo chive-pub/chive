@@ -1,0 +1,37 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerFullReindex",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a full Elasticsearch reindex of all indexed records",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "batchSize": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of records per batch"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

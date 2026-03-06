@@ -17,7 +17,7 @@ Claiming links imported eprints to your Chive identity:
 
 After you complete your profile (especially ORCID linking), Chive suggests papers that may be yours:
 
-1. Go to **Dashboard** → **Import Your Papers**
+1. Go to **Dashboard** > **Import Your Papers**
 2. Review the **Suggested For You** tab
 
 Suggestions are ranked by a multi-signal scoring system. Each paper receives a score from 0 to 100; only papers scoring 10 or above appear in your suggestions.
@@ -80,6 +80,8 @@ If a paper isn't suggested:
 2. Enter the paper title, DOI, or arXiv ID
 3. Select the paper from results
 4. Click **Start Claim**
+
+If a particular external source is temporarily unavailable, a warning banner indicates which sources encountered errors. Results from the remaining working sources are still displayed.
 
 ## The verification process
 
@@ -151,7 +153,7 @@ To get better paper suggestions, listed from highest to lowest impact:
 
 ### The wrong person claimed my paper
 
-If someone else has incorrectly claimed your paper, contact the Chive team at admin@chive.pub with evidence of your authorship (e.g., ORCID profile link, institutional email, or co-author confirmation).
+If someone has incorrectly claimed your paper, contact the Chive team at [admin@chive.pub](mailto:admin@chive.pub) with evidence of your authorship. Admins can reject incorrect claims through the admin dashboard.
 
 ## Privacy considerations
 
@@ -160,8 +162,8 @@ If someone else has incorrectly claimed your paper, contact the Chive team at ad
 - You can withdraw a pending claim at any time
 - Verified claims are public (the paper shows on your profile)
 
-## Related topics
+## Next steps
 
-- [Profiles](./profiles.md): Setting up your profile
-- [Submitting Eprints](./submitting-eprints.md): Adding new papers
-- [Endorsements](./endorsements.md): Endorsing claimed papers
+- [Profiles](./profiles): Setting up your academic profile
+- [Submitting eprints](./submitting-eprints): Adding new papers directly
+- [Endorsements](./endorsements): Endorsing claimed papers

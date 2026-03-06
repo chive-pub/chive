@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 
 import { EprintDetailContent } from './eprint-content';
 import { EprintDetailSkeleton } from './loading';
+import { EprintFaroErrorBoundary } from './eprint-error-boundary';
 import { createServerClient } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 
@@ -104,7 +105,9 @@ export default async function EprintPage({ params }: EprintPageProps) {
 
   return (
     <Suspense fallback={<EprintDetailSkeleton />}>
-      <EprintDetailContent uri={fullUri} />
+      <EprintFaroErrorBoundary uri={fullUri}>
+        <EprintDetailContent uri={fullUri} />
+      </EprintFaroErrorBoundary>
     </Suspense>
   );
 }

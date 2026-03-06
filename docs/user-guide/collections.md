@@ -1,21 +1,21 @@
 # Collections
 
-Collections let you organize eprints, reviews, endorsements, and knowledge graph nodes into curated groups. Collections are stored in your PDS and are fully portable. You control their visibility: public, unlisted, or private.
+Collections let you organize eprints, reviews, endorsements, and knowledge graph nodes into curated groups. Collections are stored in your PDS and are fully portable. You control their visibility: listed or unlisted. Since collections are AT Protocol records in your PDS, they are always accessible to anyone who resolves the URI directly. The visibility setting controls whether Chive surfaces them in listings and search.
 
 ## What is a collection?
 
 A collection is a user-owned container for grouping related items. Each item you add to a collection is wrapped as a personal graph node in your PDS, keeping your organizational choices independent of the original content.
 
-Collections support nesting (subcollections), inter-item relationships (edges), and optional Cosmik/Semble mirroring for external integration.
+Collections support nesting (subcollections), inter-item relationships (edges), and optional Cosmik mirroring for cross-platform integration.
 
 ## Creating a collection
 
 1. Click **Create Collection** from the dashboard or navigate to `/collections/new`
-2. **Basics**: enter a label, description, visibility (public, unlisted, or private), and optional tags
+2. **Basics**: enter a label, description, visibility (listed or unlisted), and optional tags
 3. **Items**: add eprints, authors, graph nodes, or other items by searching
 4. **Edges**: define relationships between items (optional)
 5. **Structure**: set up subcollection hierarchy (optional)
-6. **Semble**: enable Cosmik/Semble mirroring (optional)
+6. **Cosmik**: enable Cosmik mirroring (optional)
 7. **Review**: confirm your choices and create the collection
 
 ## Adding items to a collection
@@ -40,7 +40,7 @@ When you add an item to a subcollection, it is automatically propagated to all a
 
 A subcollection belongs to a parent collection. You can nest collections to build reading lists, topic groups, or multi-level curricula.
 
-```
+```text
 Machine Learning Reading List
   |-- NLP Papers
   |-- Computer Vision
@@ -60,8 +60,8 @@ The collection detail page shows:
 
 When a collection has subcollections, a toggle lets you switch between:
 
-- **All items** -- items from this collection plus all subcollections
-- **Direct only** -- only items directly in this collection, excluding subcollection items
+- **All items**: items from this collection plus all subcollections
+- **Direct only**: only items directly in this collection, excluding subcollection items
 
 ## Managing collection items
 
@@ -81,7 +81,7 @@ Access from **Dashboard > Collections**. The dashboard shows a hierarchical list
 
 - Collection label and description
 - Item count
-- Visibility badge (public, unlisted, or private)
+- Visibility badge (listed or unlisted)
 - Tags
 - Creation date
 
@@ -97,14 +97,15 @@ Subcollections of a deleted collection are re-linked to the deleted collection's
 
 ## Visibility levels
 
-| Level    | Who can see it              |
-| -------- | --------------------------- |
-| Public   | Anyone browsing Chive       |
-| Unlisted | Anyone with the direct link |
-| Private  | Only you                    |
+| Level    | Behavior                                                        |
+| -------- | --------------------------------------------------------------- |
+| Listed   | Surfaced in public listings, search results, and tag filtering  |
+| Unlisted | Accessible by direct link only, not shown in listings or search |
 
-## Related topics
+Since all collections are AT Protocol records in your PDS, they are always technically accessible to anyone who resolves the AT-URI directly. The visibility setting controls what Chive's AppView surfaces, not what exists.
 
-- [Tags and classification](./tags-and-classification.md): Organizing eprints with fields and tags
-- [Endorsements](./endorsements.md): Public signals of support for eprints
-- [Searching](./searching.md): Full search guide
+## Next steps
+
+- [Tags and classification](./tags-and-classification): Organizing eprints with fields and tags
+- [Endorsements](./endorsements): Public signals of support for eprints
+- [Searching](./searching): Finding eprints, collections, and authors

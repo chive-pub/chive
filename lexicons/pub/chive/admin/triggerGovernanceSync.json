@@ -1,0 +1,31 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.triggerGovernanceSync",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a sync of governance records from the Governance PDS",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["operationId"],
+          "properties": {
+            "operationId": {
+              "type": "string",
+              "description": "ID of the started backfill operation"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

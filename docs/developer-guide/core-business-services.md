@@ -367,7 +367,7 @@ const count = await scanner.scanDID(pdsUrl, 'did:plc:abc123');
 
 Users can register their PDS via `pub.chive.sync.registerPDS`. If authenticated, their records are scanned immediately.
 
-See [PDS Discovery](./services/pds-discovery.md) for detailed documentation.
+See [PDS Discovery](./services/pds-discovery) for detailed documentation.
 
 ## AnnotationService
 
@@ -449,7 +449,7 @@ AnnotationService indexes records from the firehose and never writes to user PDS
 
 ## ReviewService
 
-Indexes document-level reviews and endorsements with support for threaded discussions and soft deletion. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation.md) for the pattern). For inline text annotations, see [AnnotationService](#annotationservice) above.
+Indexes document-level reviews and endorsements with support for threaded discussions and soft deletion. ReviewService uses generated lexicon types with runtime validation (see [Lexicon type validation](./lexicon-type-validation) for the pattern). For inline text annotations, see [AnnotationService](#annotationservice) above.
 
 ### Type imports
 
@@ -1143,8 +1143,8 @@ npm run test:compliance
 | Blob cache hit (L1)       | < 50ms     |
 | Metrics recording         | < 10ms     |
 
-## Related documentation
+## Next steps
 
-- [ATProto Specification](https://atproto.com/specs): Data sovereignty rules
-- [API Layer Guide](./api-layer.md): HTTP endpoint integration
-- [Plugin System](./plugin-system.md): External API plugins
+- [API layer](./api-layer): HTTP endpoint integration with services
+- [Plugin system](./plugin-system): external API plugins for enrichment
+- [Lexicon type validation](./lexicon-type-validation): runtime validation pattern used by services

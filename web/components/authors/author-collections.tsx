@@ -124,8 +124,8 @@ export function AuthorCollections({
     );
   }
 
-  // Filter to public collections only for profile display
-  const publicCollections = (data?.collections ?? []).filter((c) => c.visibility === 'public');
+  // Filter to listed collections only for profile display
+  const publicCollections = (data?.collections ?? []).filter((c) => c.visibility === 'listed');
 
   if (publicCollections.length === 0) {
     return (

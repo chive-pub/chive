@@ -1,0 +1,82 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.auth.basicReader",
+  "defs": {
+    "main": {
+      "type": "permission-set",
+      "description": "Read-only access to browse and search eprints on Chive.",
+      "permissions": [
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.getSubmission"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.searchSubmissions"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.listByAuthor"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.listCitations"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.eprint.listRelatedWorks"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.getNode"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.listNodes"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.graph.searchNodes"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.review.listForEprint"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.review.getThread"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.endorsement.getSummary"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.endorsement.listForEprint"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.author.getProfile"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.author.searchAuthors"
+        }
+      ]
+    }
+  }
+}

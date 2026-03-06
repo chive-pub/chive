@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.rescanPDS",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Trigger a rescan of a specific PDS",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["pdsUrl"],
+          "properties": {
+            "pdsUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "URL of the PDS to rescan"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the rescan was triggered"
+            }
+          }
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "InvalidRequest" }
+      ]
+    }
+  }
+}

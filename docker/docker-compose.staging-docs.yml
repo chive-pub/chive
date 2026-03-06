@@ -1,0 +1,29 @@
+# Docs container for the staging environment.
+# Attaches to the existing chive-network where Traefik is already running
+# (started by docker-compose.prod.yml via deploy-staging.yml).
+services:
+  chive-staging-docs:
+    image: nginx:alpine
+    container_name: chive-staging-docs
+    restart: unless-stopped
+    volumes:
+      - /opt/chive/docs/build:/usr/share/nginx/html:ro
+      - /opt/chive/docker/nginx-docs.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - chive-network
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost/introduction/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.staging-docs.rule=Host(`docs.${DOMAIN}`)"
+      - "traefik.http.routers.staging-docs.entrypoints=websecure"
+      - "traefik.http.routers.staging-docs.tls.certresolver=letsencrypt"
+      - "traefik.http.services.staging-docs.loadbalancer.server.port=80"
+
+networks:
+  chive-network:
+    external: true

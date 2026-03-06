@@ -16,54 +16,8 @@
             "description": "AT-URI of the eprint that cites this work"
           },
           "citedWork": {
-            "type": "object",
-            "required": ["title"],
-            "properties": {
-              "title": {
-                "type": "string",
-                "maxLength": 1000,
-                "description": "Title of the cited work"
-              },
-              "doi": {
-                "type": "string",
-                "maxLength": 200,
-                "description": "DOI of the cited work"
-              },
-              "arxivId": {
-                "type": "string",
-                "maxLength": 50,
-                "description": "arXiv identifier of the cited work"
-              },
-              "url": {
-                "type": "string",
-                "format": "uri",
-                "maxLength": 1000,
-                "description": "URL of the cited work"
-              },
-              "authors": {
-                "type": "array",
-                "items": {
-                  "type": "string",
-                  "maxLength": 200
-                },
-                "maxLength": 50,
-                "description": "Author names of the cited work"
-              },
-              "year": {
-                "type": "integer",
-                "description": "Publication year of the cited work"
-              },
-              "venue": {
-                "type": "string",
-                "maxLength": 500,
-                "description": "Publication venue (journal or conference)"
-              },
-              "chiveUri": {
-                "type": "string",
-                "format": "at-uri",
-                "description": "AT-URI of the cited work if it exists in Chive"
-              }
-            }
+            "type": "ref",
+            "ref": "#citedWork"
           },
           "citationType": {
             "type": "string",
@@ -79,6 +33,56 @@
             "type": "string",
             "format": "datetime"
           }
+        }
+      }
+    },
+    "citedWork": {
+      "type": "object",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Title of the cited work"
+        },
+        "doi": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "DOI of the cited work"
+        },
+        "arxivId": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "arXiv identifier of the cited work"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 1000,
+          "description": "URL of the cited work"
+        },
+        "authors": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "maxLength": 50,
+          "description": "Author names of the cited work"
+        },
+        "year": {
+          "type": "integer",
+          "description": "Publication year of the cited work"
+        },
+        "venue": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Publication venue (journal or conference)"
+        },
+        "chiveUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the cited work if it exists in Chive"
         }
       }
     }

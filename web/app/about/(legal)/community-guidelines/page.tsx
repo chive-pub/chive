@@ -234,10 +234,10 @@ export default function CommunityGuidelinesPage() {
           If you experience or witness unacceptable behavior, you can report it through the
           platform&apos;s report mechanism or by emailing{' '}
           <a
-            href="mailto:moderation@chive.pub"
+            href="mailto:admin@chive.pub"
             className="text-primary underline underline-offset-4 hover:text-primary/80"
           >
-            moderation@chive.pub
+            admin@chive.pub
           </a>{' '}
           with:
         </p>
@@ -283,10 +283,10 @@ export default function CommunityGuidelinesPage() {
         <p className="text-muted-foreground leading-relaxed">
           If you believe a moderation action was made in error, you may submit an appeal to{' '}
           <a
-            href="mailto:appeals@chive.pub"
+            href="mailto:admin@chive.pub"
             className="text-primary underline underline-offset-4 hover:text-primary/80"
           >
-            appeals@chive.pub
+            admin@chive.pub
           </a>{' '}
           within 14 days of the action. Include:
         </p>

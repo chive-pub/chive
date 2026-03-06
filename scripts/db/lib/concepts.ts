@@ -234,7 +234,7 @@ export const DOCUMENT_FORMAT_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Jupyter Notebook',
     description: 'Interactive computational document combining code, text, and visualizations.',
     category: 'document-format',
-    wikidataId: 'Q55630549',
+    wikidataId: 'Q70357595',
   },
   {
     slug: 'docx',
@@ -358,7 +358,6 @@ export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Gold Open Access',
     description: 'Open access via publisher with article processing charges.',
     category: 'access-type',
-    wikidataId: 'Q30893612',
     parentSlug: 'open-access',
   },
   {
@@ -366,7 +365,6 @@ export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Green Open Access',
     description: 'Open access via self-archiving in repository.',
     category: 'access-type',
-    wikidataId: 'Q30893656',
     parentSlug: 'open-access',
   },
   {
@@ -374,7 +372,7 @@ export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Hybrid Open Access',
     description: 'Open access article in subscription journal.',
     category: 'access-type',
-    wikidataId: 'Q30893609',
+    wikidataId: 'Q5953270',
     parentSlug: 'open-access',
   },
   {
@@ -382,7 +380,7 @@ export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Bronze Open Access',
     description: 'Free to read on publisher site but without open license.',
     category: 'access-type',
-    wikidataId: 'Q63065597',
+    wikidataId: 'Q131569725',
     parentSlug: 'open-access',
   },
   {
@@ -390,7 +388,6 @@ export const ACCESS_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Closed Access',
     description: 'Access restricted to subscribers or purchasers.',
     category: 'access-type',
-    wikidataId: 'Q116847925',
   },
   {
     slug: 'embargoed',
@@ -434,21 +431,21 @@ export const CODE_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Codeberg',
     description: 'Free and open-source Git hosting service.',
     category: 'platform-code',
-    wikidataId: 'Q79145161',
+    wikidataId: 'Q106102182',
   },
   {
     slug: 'sourcehut',
     name: 'SourceHut',
     description: 'Minimalist code hosting platform.',
     category: 'platform-code',
-    wikidataId: 'Q65093956',
+    wikidataId: 'Q78514485',
   },
   {
     slug: 'software-heritage',
     name: 'Software Heritage',
     description: 'Universal archive for software source code.',
     category: 'platform-code',
-    wikidataId: 'Q23791193',
+    wikidataId: 'Q112594892',
   },
   {
     slug: 'huggingface-code',
@@ -462,21 +459,21 @@ export const CODE_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Kaggle',
     description: 'Data science platform with code notebooks.',
     category: 'platform-code',
-    wikidataId: 'Q21652686',
+    wikidataId: 'Q10996045',
   },
   {
     slug: 'colab',
     name: 'Google Colab',
     description: 'Cloud-based Jupyter notebook environment.',
     category: 'platform-code',
-    wikidataId: 'Q56823884',
+    wikidataId: 'Q126084995',
   },
   {
     slug: 'paperswithcode',
     name: 'Papers With Code',
     description: 'Platform linking papers with implementation code.',
     category: 'platform-code',
-    wikidataId: 'Q98968941',
+    wikidataId: 'Q105775455',
   },
 ];
 
@@ -500,35 +497,34 @@ export const DATA_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Figshare',
     description: 'Repository for research outputs including datasets and figures.',
     category: 'platform-data',
-    wikidataId: 'Q22907194',
+    wikidataId: 'Q17013516',
   },
   {
     slug: 'dryad',
     name: 'Dryad',
     description: 'Curated digital repository for research data.',
     category: 'platform-data',
-    wikidataId: 'Q17078663',
+    wikidataId: 'Q5309616',
   },
   {
     slug: 'osf-data',
     name: 'OSF',
     description: 'Open Science Framework for research data.',
     category: 'platform-data',
-    wikidataId: 'Q25713029',
+    wikidataId: 'Q18691678',
   },
   {
     slug: 'dataverse',
     name: 'Dataverse',
     description: 'Open source web application for sharing research data.',
     category: 'platform-data',
-    wikidataId: 'Q5227102',
+    wikidataId: 'Q5227499',
   },
   {
     slug: 'mendeley-data',
     name: 'Mendeley Data',
     description: 'Research data repository by Elsevier.',
     category: 'platform-data',
-    wikidataId: 'Q29032495',
   },
   {
     slug: 'huggingface-data',
@@ -542,14 +538,13 @@ export const DATA_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Kaggle',
     description: 'Data science platform with datasets.',
     category: 'platform-data',
-    wikidataId: 'Q21652686',
+    wikidataId: 'Q10996045',
   },
   {
     slug: 'wandb',
     name: 'Weights & Biases',
     description: 'ML experiment tracking and model registry.',
     category: 'platform-data',
-    wikidataId: 'Q107431107',
   },
 ];
 
@@ -580,7 +575,7 @@ export const PREPRINT_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'medRxiv',
     description: 'Preprint server for health sciences.',
     category: 'platform-preprint',
-    wikidataId: 'Q66640488',
+    wikidataId: 'Q58465838',
   },
   {
     slug: 'ssrn',
@@ -594,28 +589,28 @@ export const PREPRINT_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'OSF Preprints',
     description: 'Open Science Framework preprint service.',
     category: 'platform-preprint',
-    wikidataId: 'Q25713029',
+    wikidataId: 'Q18691678',
   },
   {
     slug: 'eartharxiv',
     name: 'EarthArXiv',
     description: 'Preprint server for earth sciences.',
     category: 'platform-preprint',
-    wikidataId: 'Q56478267',
+    wikidataId: 'Q45787277',
   },
   {
     slug: 'psyarxiv',
     name: 'PsyArXiv',
     description: 'Preprint server for psychological sciences.',
     category: 'platform-preprint',
-    wikidataId: 'Q56478251',
+    wikidataId: 'Q30640195',
   },
   {
     slug: 'socarxiv',
     name: 'SocArXiv',
     description: 'Preprint server for social sciences.',
     category: 'platform-preprint',
-    wikidataId: 'Q56478238',
+    wikidataId: 'Q42417760',
   },
 ];
 
@@ -632,7 +627,7 @@ export const PREREGISTRATION_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = 
     name: 'OSF Registrations',
     description: 'Open Science Framework for pre-registrations.',
     category: 'platform-preregistration',
-    wikidataId: 'Q25713029',
+    wikidataId: 'Q18691678',
   },
   {
     slug: 'aspredicted',
@@ -652,14 +647,13 @@ export const PREREGISTRATION_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = 
     name: 'PROSPERO',
     description: 'International prospective register of systematic reviews.',
     category: 'platform-preregistration',
-    wikidataId: 'Q28133417',
   },
   {
     slug: 'anzctr',
     name: 'ANZCTR',
     description: 'Australian New Zealand Clinical Trials Registry.',
     category: 'platform-preregistration',
-    wikidataId: 'Q4777251',
+    wikidataId: 'Q65242932',
   },
 ];
 
@@ -683,14 +677,14 @@ export const PROTOCOL_PLATFORM_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Bio-protocol',
     description: 'Peer-reviewed protocol journal and repository.',
     category: 'platform-protocol',
-    wikidataId: 'Q60267627',
+    wikidataId: 'Q27725732',
   },
   {
     slug: 'nature-protocols',
     name: 'Nature Protocols',
     description: 'Journal for detailed experimental protocols.',
     category: 'platform-protocol',
-    wikidataId: 'Q2015821',
+    wikidataId: 'Q3337109',
   },
 ];
 
@@ -714,7 +708,7 @@ export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Source Code',
     description: 'Computer program or script for research.',
     category: 'supplementary-type',
-    wikidataId: 'Q80006',
+    wikidataId: 'Q128751',
   },
   {
     slug: 'video',
@@ -742,14 +736,13 @@ export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Computational Notebook',
     description: 'Interactive document with code, results, and narrative.',
     category: 'supplementary-type',
-    wikidataId: 'Q55630549',
+    wikidataId: 'Q70357595',
   },
   {
     slug: 'protocol',
     name: 'Protocol',
     description: 'Detailed experimental procedure or methodology.',
     category: 'supplementary-type',
-    wikidataId: 'Q2101564',
   },
   {
     slug: 'model',
@@ -769,7 +762,7 @@ export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Audio',
     description: 'Audio recording or sound file.',
     category: 'supplementary-type',
-    wikidataId: 'Q106428747',
+    wikidataId: 'Q26987229',
   },
   {
     slug: 'presentation',
@@ -783,7 +776,7 @@ export const SUPPLEMENTARY_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Questionnaire',
     description: 'Survey instrument or questionnaire.',
     category: 'supplementary-type',
-    wikidataId: 'Q895992',
+    wikidataId: 'Q747810',
   },
   {
     slug: 'supplementary-other',
@@ -855,7 +848,7 @@ export const INSTITUTION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Funding Body',
     description: 'Organization providing research grants.',
     category: 'institution-type',
-    wikidataId: 'Q1714374',
+    wikidataId: 'Q5509032',
   },
   {
     slug: 'publisher',
@@ -869,7 +862,7 @@ export const INSTITUTION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Research Consortium',
     description: 'Group of organizations collaborating on research.',
     category: 'institution-type',
-    wikidataId: 'Q1325119',
+    wikidataId: 'Q20747412',
   },
 ];
 
@@ -893,14 +886,14 @@ export const RESEARCHER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Postdoctoral Researcher',
     description: 'Researcher holding a doctorate in temporary position.',
     category: 'researcher-type',
-    wikidataId: 'Q188862',
+    wikidataId: 'Q1125292',
   },
   {
     slug: 'phd-student',
     name: 'PhD Student',
     description: 'Doctoral candidate pursuing a PhD degree.',
     category: 'researcher-type',
-    wikidataId: 'Q28695116',
+    wikidataId: 'Q12764792',
   },
   {
     slug: 'research-scientist',
@@ -920,14 +913,14 @@ export const RESEARCHER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Independent Researcher',
     description: 'Researcher not affiliated with an institution.',
     category: 'researcher-type',
-    wikidataId: 'Q18576619',
+    wikidataId: 'Q109564989',
   },
   {
     slug: 'masters-student',
     name: "Master's Student",
     description: "Student pursuing a master's degree.",
     category: 'researcher-type',
-    wikidataId: 'Q28695119',
+    wikidataId: 'Q99464934',
   },
 ];
 
@@ -958,14 +951,14 @@ export const IDENTIFIER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'PMID',
     description: 'PubMed unique identifier.',
     category: 'identifier-type',
-    wikidataId: 'Q2140879',
+    wikidataId: 'Q2082879',
   },
   {
     slug: 'pmcid',
     name: 'PMCID',
     description: 'PubMed Central identifier.',
     category: 'identifier-type',
-    wikidataId: 'Q21685851',
+    wikidataId: 'Q11801904',
   },
   {
     slug: 'isbn',
@@ -993,7 +986,6 @@ export const IDENTIFIER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'ROR',
     description: 'Research Organization Registry identifier.',
     category: 'identifier-type',
-    wikidataId: 'Q64413744',
   },
   {
     slug: 'handle',
@@ -1007,7 +999,6 @@ export const IDENTIFIER_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'URN',
     description: 'Uniform Resource Name.',
     category: 'identifier-type',
-    wikidataId: 'Q15606652',
   },
 ];
 
@@ -1024,7 +1015,6 @@ export const PRESENTATION_TYPE_CONCEPTS: readonly TypeNodeDefinition[] = [
     name: 'Oral Presentation',
     description: 'Spoken presentation at a conference or symposium.',
     category: 'presentation-type',
-    wikidataId: 'Q604733',
   },
   {
     slug: 'poster-presentation',

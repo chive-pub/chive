@@ -1,0 +1,85 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getActivityCorrelation",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get activity correlation metrics across content types",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["metrics", "timestamp"],
+          "properties": {
+            "metrics": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#correlationMetric"
+              },
+              "description": "Correlation metric entries"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Metrics snapshot timestamp"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "correlationMetric": {
+      "type": "object",
+      "description": "Activity correlation metric for a category",
+      "required": ["category", "totalActivities", "confirmed", "failed", "confirmationRate"],
+      "properties": {
+        "category": {
+          "type": "string",
+          "description": "Activity category (create, update, delete)"
+        },
+        "totalActivities": {
+          "type": "integer",
+          "description": "Total activities in category"
+        },
+        "confirmed": {
+          "type": "integer",
+          "description": "Confirmed activities"
+        },
+        "failed": {
+          "type": "integer",
+          "description": "Failed activities"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Timed-out activities"
+        },
+        "pending": {
+          "type": "integer",
+          "description": "Pending activities"
+        },
+        "confirmationRate": {
+          "type": "integer",
+          "description": "Confirmation rate in basis points (0-10000, divide by 100 for percentage)"
+        },
+        "avgLatency": {
+          "type": "integer",
+          "description": "Average latency in microseconds"
+        },
+        "p95Latency": {
+          "type": "integer",
+          "description": "95th percentile latency in microseconds"
+        },
+        "hour": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Hourly bucket timestamp"
+        }
+      }
+    }
+  }
+}

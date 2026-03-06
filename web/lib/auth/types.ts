@@ -8,6 +8,8 @@
  * @see {@link https://atproto.com/specs/oauth | ATProto OAuth Specification}
  */
 
+import type { AuthIntent } from './scopes';
+
 /**
  * Decentralized identifier (DID) string.
  *
@@ -61,6 +63,9 @@ export interface ChiveUser {
 
   /** User's PDS endpoint */
   pdsEndpoint: string;
+
+  /** Whether user has admin access */
+  isAdmin?: boolean;
 
   /** Whether user has alpha tester access */
   isAlphaTester?: boolean;
@@ -122,6 +127,9 @@ export interface LoginOptions {
 
   /** URL to redirect to after successful login */
   redirectUrl?: string;
+
+  /** Authorization intent determining scope level. Defaults to 'full'. */
+  intent?: AuthIntent;
 }
 
 /**

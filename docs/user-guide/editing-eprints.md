@@ -1,4 +1,4 @@
-# Editing Eprints
+# Editing eprints
 
 This guide covers editing, versioning, and deleting eprints.
 
@@ -13,13 +13,13 @@ Chive supports full lifecycle management for eprints:
 
 All operations write to your PDS (or the paper's PDS for paper-centric submissions). Chive indexes changes from the firehose; your data remains under your control.
 
-## Editing an Eprint
+## Editing an eprint
 
-### Who Can Edit
+### Who can edit
 
 For traditional eprints, only the submitter can edit. For paper-centric eprints (those stored in a paper account PDS), you must authenticate as the paper account.
 
-### How to Edit
+### How to edit
 
 1. Navigate to your eprint
 2. Click the **Edit** button (visible only if you have permission)
@@ -29,11 +29,11 @@ For traditional eprints, only the submitter can edit. For paper-centric eprints 
 6. Optionally add changelog details
 7. Click **Save Changes**
 
-### Quick Title Editing
+### Quick title editing
 
 For quick title changes, click the pencil icon next to the title on the eprint page. This opens an inline editor without navigating to the full edit page.
 
-### Section-Based Edit Page
+### Section-based edit page
 
 The edit page organizes fields into logical sections:
 
@@ -45,13 +45,13 @@ The edit page organizes fields into logical sections:
 | Publication                     | Publication status, DOI, journal, volume, pages, published date  |
 | External IDs                    | arXiv ID, PMID, PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID |
 | Files                           | PDF document, supplementary files                                |
-| Repositories & Pre-registration | Code repositories, data repositories, pre-registration links     |
+| Repositories & pre-registration | Code repositories, data repositories, pre-registration links     |
 | Facets                          | PMEST classification values                                      |
 | Review                          | Version bump, changelog                                          |
 
 Sections with unsaved changes display a badge indicator. Expand or collapse sections to focus on what you need to edit.
 
-### Editable Fields
+### Editable fields
 
 The edit form supports the same fields as the submission wizard:
 
@@ -61,17 +61,17 @@ The edit form supports the same fields as the submission wizard:
 | Abstract          | Plain text or rich text abstract                                    |
 | Keywords          | Comma-separated keyword list                                        |
 | Document          | Replace the manuscript file                                         |
-| Code Repositories | Multiple entries, each with URL, platform (e.g., GitHub), and label |
-| Data Repositories | Multiple entries, each with URL, platform, and label                |
+| Code repositories | Multiple entries, each with URL, platform (e.g., GitHub), and label |
+| Data repositories | Multiple entries, each with URL, platform, and label                |
 | Pre-registration  | URL and platform for pre-registration records                       |
 | External IDs      | arXiv ID, PMID, PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID    |
-| Published Version | DOI, journal, volume, pages, published date, publisher URL          |
+| Published version | DOI, journal, volume, pages, published date, publisher URL          |
 | Funding           | Funder name, grant number, grant title, grant URL                   |
 | Conference        | Conference name, location, date, presentation type                  |
 
 ### Repositories
 
-The Repositories & Pre-registration section supports multiple code and data repository entries. Each entry includes:
+The Repositories & pre-registration section supports multiple code and data repository entries. Each entry includes:
 
 - **URL**: Link to the repository
 - **Platform**: Selected from the knowledge graph (GitHub, GitLab, Zenodo, Figshare, Dryad, etc.)
@@ -85,17 +85,17 @@ Pre-registration links follow the same pattern but without a label field. Select
 
 The External IDs section provides autocomplete-assisted entry for arXiv IDs and PubMed IDs. Type a query to search, then select from results to populate the field automatically. The remaining IDs (PMC ID, SSRN ID, OSF ID, Zenodo DOI, OpenAlex ID) are plain text inputs.
 
-### Schema Migration
+### Schema migration
 
 If your eprint uses an older record format, you may see a migration banner prompting you to update. Click "Update to Latest Format" to migrate your record to the latest schema. This is a one-time operation that preserves all your content.
 
-## Semantic Versioning
+## Semantic versioning
 
 Eprints use semantic versioning (MAJOR.MINOR.PATCH) to communicate the nature of changes.
 
-### Version Format
+### Version format
 
-```
+```text
 1.2.3-draft
 │ │ │  └── Prerelease tag (optional)
 │ │ └───── Patch version
@@ -103,36 +103,36 @@ Eprints use semantic versioning (MAJOR.MINOR.PATCH) to communicate the nature of
 └───────── Major version
 ```
 
-### When to Use Each Version Type
+### When to use each version type
 
-| Type  | When to Use                                        | Examples                                           |
+| Type  | When to use                                        | Examples                                           |
 | ----- | -------------------------------------------------- | -------------------------------------------------- |
 | Patch | Typo fixes, formatting corrections, citation fixes | "Fixed typos", "Corrected formatting"              |
 | Minor | New content, significant additions, new analysis   | "Added new section", "Expanded methodology"        |
 | Major | Fundamental revisions, methodology changes         | "Complete rewrite", "New experimental methodology" |
 
-### Prerelease Tags
+### Prerelease tags
 
 Optional prerelease identifiers mark work-in-progress versions:
 
 - `1.0.0-draft`: Initial draft before formal release
 - `2.0.0-rc1`: Release candidate for major revision
 
-## Structured Changelogs
+## Structured changelogs
 
 When updating an eprint, you can create a structured changelog to document your changes. Changelogs help readers understand what evolved between versions.
 
-### Changelog Structure
+### Changelog structure
 
 A changelog contains:
 
 - **Summary**: One-line overview (max 500 characters)
 - **Sections**: Changes grouped by category
-- **Reviewer Response**: Response to peer review feedback (optional)
+- **Reviewer response**: Response to peer review feedback (optional)
 
-### Changelog Categories
+### Changelog categories
 
-| Category                | Use For                                 |
+| Category                | Use for                                 |
 | ----------------------- | --------------------------------------- |
 | methodology             | Changes to research methods             |
 | results                 | New or updated results                  |
@@ -151,19 +151,18 @@ A changelog contains:
 | authorship              | Author list changes                     |
 | other                   | Changes not fitting other categories    |
 
-### Change Types
+### Change types
 
 Each change item can have a type:
 
-| Type       | Meaning                        |
-| ---------- | ------------------------------ |
-| added      | New content that did not exist |
-| changed    | Modified existing content      |
-| removed    | Deleted content                |
-| fixed      | Corrected errors               |
-| deprecated | Content marked for removal     |
+| Type    | Meaning                        |
+| ------- | ------------------------------ |
+| added   | New content that did not exist |
+| changed | Modified existing content      |
+| removed | Deleted content                |
+| fixed   | Corrected errors               |
 
-### Creating a Changelog
+### Creating a changelog
 
 1. In the edit dialog, click **Changelog Details** to expand
 2. Enter a brief summary
@@ -172,21 +171,21 @@ Each change item can have a type:
 5. Optionally specify location (e.g., "Section 3.2")
 6. Optionally reference a reviewer comment
 
-### Responding to Peer Review
+### Responding to peer review
 
 If you are revising in response to peer review, expand the "Response to Peer Review" section to add a general response. For individual changes, use the "Review Reference" field to cite specific reviewer comments.
 
-## Version History
+## Version history
 
 The version history panel shows all versions of an eprint with their changelogs.
 
-### Viewing Version History
+### Viewing version history
 
 1. Navigate to any eprint
 2. Scroll to the **Version History** section
 3. Click a version to expand its changelog details
 
-### Information Shown
+### Information shown
 
 - Version number and date
 - Summary of changes
@@ -194,9 +193,9 @@ The version history panel shows all versions of an eprint with their changelogs.
 - Location references
 - Reviewer responses
 
-## Deleting an Eprint
+## Deleting an eprint
 
-### Before You Delete
+### Before you delete
 
 Deletion is permanent. The following will be removed:
 
@@ -205,11 +204,11 @@ Deletion is permanent. The following will be removed:
 - All reviews and comments on the eprint
 - View and download metrics
 
-### Who Can Delete
+### Who can delete
 
 For traditional eprints, only the submitter can delete. For paper-centric eprints, you must authenticate as the paper account.
 
-### How to Delete
+### How to delete
 
 1. Navigate to your eprint
 2. Click the **Delete** button
@@ -218,11 +217,11 @@ For traditional eprints, only the submitter can delete. For paper-centric eprint
 
 The deletion propagates from your PDS to all indexers, including Chive.
 
-## Paper-Centric Eprints
+## Paper-centric eprints
 
 Paper-centric eprints store data in a dedicated paper account PDS rather than your personal PDS. This model suits collaborative projects where authorship may change.
 
-### Authentication Requirements
+### Authentication requirements
 
 To edit or delete a paper-centric eprint:
 
@@ -231,23 +230,23 @@ To edit or delete a paper-centric eprint:
 3. Complete the OAuth flow for the paper account
 4. Proceed with your edit or deletion
 
-### Identifying Paper-Centric Eprints
+### Identifying paper-centric eprints
 
 Paper-centric eprints display the paper's DID on the eprint page. The edit dialog also indicates when paper authentication is required.
 
 ## Troubleshooting
 
-### Cannot Edit
+### Cannot edit
 
 - Verify you are signed in
 - Check that you are the submitter (or authenticated as the paper account)
 - For paper-centric eprints, ensure you complete the paper authentication flow
 
-### Update Conflict
+### Update conflict
 
 If you see "The eprint was modified by someone else," the record changed after you loaded it. Refresh the page and try again.
 
-### Version History Not Loading
+### Version history not loading
 
 Version history queries the Chive AppView. If changelogs appear missing:
 
@@ -255,8 +254,8 @@ Version history queries the Chive AppView. If changelogs appear missing:
 - Refresh the page
 - Check that the eprint has multiple versions
 
-## Related Documentation
+## Next steps
 
-- [Submitting Eprints](./submitting-eprints.md): Initial submission process
-- [Peer Review](./peer-review.md): Review and endorsement system
-- [Lexicons Reference](../reference/lexicons.md): Record schemas
+- [Submitting eprints](./submitting-eprints): Initial submission process.
+- [Peer review](./peer-review): Review and endorsement system.
+- [Lexicons reference](../reference/lexicons): Record schemas for eprint records.

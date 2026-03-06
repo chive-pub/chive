@@ -1,0 +1,230 @@
+# =============================================================================
+# Chive CI Docker Compose
+# =============================================================================
+# Mirrors docker-compose.prod.yml but stripped down for GitHub Actions:
+# - No Traefik (ports exposed directly)
+# - No observability stack (Grafana, Tempo, Loki, Prometheus, Alloy)
+# - No Governance PDS
+# - No GROBID (not needed for smoke tests)
+# - Hardcoded test credentials
+#
+# Usage (from repo root):
+#   docker compose -f docker/docker-compose.ci.yml up -d
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Database Migrations (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-migrate:
+    image: chive:latest
+    container_name: chive-migrate
+    command: ["sh", "-c", "node node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir dist/src/storage/postgresql/migrations --ignore-pattern '.*\\.(map|d\\.ts)$'"]
+    environment:
+      DATABASE_URL: postgresql://chive:chive_test_password@postgres:5432/chive_test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ci-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch Setup (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-es-setup:
+    image: chive:latest
+    container_name: chive-es-setup
+    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-elasticsearch.js"]
+    environment:
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - ci-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Neo4j Setup (runs once before API starts)
+  # ---------------------------------------------------------------------------
+  chive-neo4j-setup:
+    image: chive:latest
+    container_name: chive-neo4j-setup
+    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-neo4j.js"]
+    environment:
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: chive_test_password
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    networks:
+      - ci-network
+    restart: "no"
+
+  # ---------------------------------------------------------------------------
+  # Chive API (AppView)
+  # ---------------------------------------------------------------------------
+  chive-api:
+    image: chive:latest
+    container_name: chive-api
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgresql://chive:chive_test_password@postgres:5432/chive_test
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: chive
+      POSTGRES_PASSWORD: chive_test_password
+      POSTGRES_DB: chive_test
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: chive_test_password
+      JWT_SECRET: ci-test-jwt-secret
+      SESSION_SECRET: ci-test-session-secret
+      ADMIN_DIDS: did:plc:test-admin-did
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      chive-migrate:
+        condition: service_completed_successfully
+      chive-es-setup:
+        condition: service_completed_successfully
+      chive-neo4j-setup:
+        condition: service_completed_successfully
+    ports:
+      - "3000:3000"
+    networks:
+      - ci-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Chive Indexer (Firehose Consumer)
+  # ---------------------------------------------------------------------------
+  chive-indexer:
+    image: chive:latest
+    container_name: chive-indexer
+    restart: unless-stopped
+    command: ["node", "--enable-source-maps", "dist/src/indexer.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://chive:chive_test_password@postgres:5432/chive_test
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: chive
+      POSTGRES_PASSWORD: chive_test_password
+      POSTGRES_DB: chive_test
+      REDIS_URL: redis://redis:6379
+      ELASTICSEARCH_URL: http://elasticsearch:9200
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: chive_test_password
+      ADMIN_DIDS: did:plc:test-admin-did
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      chive-migrate:
+        condition: service_completed_successfully
+    networks:
+      - ci-network
+    # Indexer doesn't run HTTP server
+    healthcheck:
+      test: ["CMD-SHELL", "true"]
+      interval: 60s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: chive-postgres
+    environment:
+      POSTGRES_DB: chive_test
+      POSTGRES_USER: chive
+      POSTGRES_PASSWORD: chive_test_password
+    networks:
+      - ci-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chive -d chive_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Redis
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: chive-redis
+    networks:
+      - ci-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---------------------------------------------------------------------------
+  # Elasticsearch
+  # ---------------------------------------------------------------------------
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: chive-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - cluster.name=chive-ci
+    networks:
+      - ci-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1"]
+      interval: 10s
+      timeout: 30s
+      retries: 10
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # Neo4j
+  # ---------------------------------------------------------------------------
+  neo4j:
+    image: neo4j:5-community
+    container_name: chive-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/chive_test_password
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*
+      NEO4J_dbms_security_procedures_allowlist: apoc.*
+    networks:
+      - ci-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+networks:
+  ci-network:
+    driver: bridge

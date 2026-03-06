@@ -4,7 +4,7 @@ The Governance PDS is a dedicated Personal Data Server that stores all community
 
 ## Overview
 
-```
+```text
 did:plc:chive-governance
 ```
 
@@ -189,7 +189,7 @@ All changes include provenance:
 
 ```json
 {
-  "record": { ... },
+  "record": {},
   "sig": "z...",
   "provenance": {
     "proposal": "at://did:plc:.../pub.chive.graph.proposal/a1b2c3d4-e5f6-7890-abcd-ef1234567890",
@@ -236,19 +236,7 @@ If the Governance PDS becomes unavailable:
 
 ## Migration path
 
-### Current state (pre-2026)
-
-Authority records stored in PostgreSQL with Governance PDS as secondary.
-
-### Target state (2026+)
-
-Governance PDS becomes authoritative source:
-
-```
-Phase 1 (Q1 2026): Dual-write to both PG and PDS
-Phase 2 (Q2 2026): PDS becomes primary, PG becomes cache
-Phase 3 (Q3 2026): Remove PG dependency for governance data
-```
+The Governance PDS is transitioning to become the authoritative source for all governance data. During the transition, both PostgreSQL and the Governance PDS receive writes. The target state is for the Governance PDS to be primary, with PostgreSQL serving only as an indexed cache.
 
 ## API access
 
@@ -276,6 +264,6 @@ The AppView provides:
 
 ## Next steps
 
-- [Authority control](./authority-control.md): Managing authority records
-- [Governance overview](./overview.md): The governance model
+- [Authority control](authority-control): Managing authority records
+- [Governance overview](overview): The governance model
 - [AT Protocol](/concepts/at-protocol): Understanding PDSes

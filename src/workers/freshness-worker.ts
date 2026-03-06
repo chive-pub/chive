@@ -29,11 +29,13 @@ import { Queue, Worker, Job } from 'bullmq';
 import type { ConnectionOptions } from 'bullmq';
 import type { EventEmitter2 as EventEmitter2Type } from 'eventemitter2';
 
+import { workerMetrics } from '../observability/prometheus-registry.js';
 import type { PDSRateLimiter } from '../services/pds-sync/pds-rate-limiter.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
 import type { AtUri } from '../types/atproto.js';
 import { RateLimitError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
+import { makeJobId } from '../utils/at-uri.js';
 
 /**
  * Queue name.
@@ -315,6 +317,8 @@ export class FreshnessWorker {
       this.processedCount++;
       this.succeededCount++;
 
+      workerMetrics.tasksTotal.inc({ worker: 'freshness', status: 'success' });
+
       if (result.deleted) {
         this.deletedCount++;
         this.eventBus.emit('record.deleted', {
@@ -343,6 +347,8 @@ export class FreshnessWorker {
       this.processedCount++;
       this.failedCount++;
 
+      workerMetrics.tasksTotal.inc({ worker: 'freshness', status: 'error' });
+
       this.logger.warn('Freshness job failed', {
         uri: job?.data.uri,
         error: error.message,
@@ -363,60 +369,67 @@ export class FreshnessWorker {
    */
   private async processJob(job: Job<FreshnessJobData>): Promise<FreshnessCheckResult> {
     const { uri, pdsUrl, checkType, source } = job.data;
+    const endTimer = workerMetrics.taskDuration.startTimer({ worker: 'freshness' });
+    workerMetrics.activeCount.inc({ worker: 'freshness' });
 
-    this.logger.debug('Processing freshness job', {
-      uri,
-      pdsUrl,
-      checkType,
-      source,
-      attempt: job.attemptsMade,
-    });
+    try {
+      this.logger.debug('Processing freshness job', {
+        uri,
+        pdsUrl,
+        checkType,
+        source,
+        attempt: job.attemptsMade,
+      });
 
-    // Apply rate limiting
-    const rateLimitResult = await this.rateLimiter.waitForLimit(pdsUrl, this.maxRateLimitWait);
+      // Apply rate limiting
+      const rateLimitResult = await this.rateLimiter.waitForLimit(pdsUrl, this.maxRateLimitWait);
 
-    if (!rateLimitResult.allowed) {
-      this.rateLimitedCount++;
-      throw new RateLimitError(Math.ceil(this.maxRateLimitWait / 1000));
-    }
+      if (!rateLimitResult.allowed) {
+        this.rateLimitedCount++;
+        throw new RateLimitError(Math.ceil(this.maxRateLimitWait / 1000));
+      }
 
-    // Perform the refresh
-    const refreshResult = await this.syncService.refreshRecord(uri);
+      // Perform the refresh
+      const refreshResult = await this.syncService.refreshRecord(uri);
 
-    if (refreshResult.ok === false) {
-      const error = refreshResult.error;
+      if (refreshResult.ok === false) {
+        const error = refreshResult.error;
 
-      // Check if this is a 404 (record deleted from PDS)
-      if (error.name === 'NotFoundError') {
-        // Mark as deleted
-        this.markAsDeleted(uri, 'pds_404');
+        // Check if this is a 404 (record deleted from PDS)
+        if (error.name === 'NotFoundError') {
+          // Mark as deleted
+          this.markAsDeleted(uri, 'pds_404');
 
+          return {
+            uri,
+            success: true,
+            changed: false,
+            deleted: true,
+          };
+        }
+
+        // Other error
         return {
           uri,
-          success: true,
+          success: false,
           changed: false,
-          deleted: true,
+          deleted: false,
+          error: error.message,
         };
       }
 
-      // Other error
       return {
         uri,
-        success: false,
-        changed: false,
+        success: true,
+        changed: refreshResult.value.changed,
         deleted: false,
-        error: error.message,
+        previousCid: refreshResult.value.previousCID,
+        currentCid: refreshResult.value.currentCID,
       };
+    } finally {
+      endTimer();
+      workerMetrics.activeCount.dec({ worker: 'freshness' });
     }
-
-    return {
-      uri,
-      success: true,
-      changed: refreshResult.value.changed,
-      deleted: false,
-      previousCid: refreshResult.value.previousCID,
-      currentCid: refreshResult.value.currentCID,
-    };
   }
 
   /**
@@ -458,7 +471,7 @@ export class FreshnessWorker {
   async enqueue(job: FreshnessJobData): Promise<string> {
     const bullJob = await this.queue.add('freshness', job, {
       priority: job.priority,
-      jobId: `freshness:${job.uri}`, // Dedupe by URI
+      jobId: makeJobId('freshness', job.uri), // Dedupe by URI
     });
 
     this.logger.debug('Enqueued freshness job', {
@@ -484,7 +497,7 @@ export class FreshnessWorker {
       data: job,
       opts: {
         priority: job.priority,
-        jobId: `freshness:${job.uri}`,
+        jobId: makeJobId('freshness', job.uri),
       },
     }));
 
@@ -505,6 +518,9 @@ export class FreshnessWorker {
       this.queue.getWaitingCount(),
       this.queue.getActiveCount(),
     ]);
+
+    // Update Prometheus gauges with current queue state
+    workerMetrics.queueDepth.set({ worker: 'freshness' }, waiting);
 
     return {
       processed: this.processedCount,

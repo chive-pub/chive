@@ -381,8 +381,8 @@ pnpm test tests/integration/storage/elasticsearch-search.test.ts
 pnpm test tests/integration/storage/elasticsearch-relevance.test.ts
 ```
 
-## Related documentation
+## Next steps
 
-- [PostgreSQL Storage](./postgresql.md): Primary index storage
-- [SearchService](../core-business-services.md#searchservice): Search service layer
-- [API Layer](../api-layer.md): Search endpoints
+- [PostgreSQL storage](./postgresql.md): Primary index storage that feeds Elasticsearch
+- [SearchService](../core-business-services.md#searchservice): Service layer that queries Elasticsearch
+- [API layer](../api-layer.md): Search endpoints exposed to clients

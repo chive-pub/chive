@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     response_types: ['code'],
 
     // Scopes this client requests
+    // TODO: Re-enable granular permission sets when PDS support lands
     scope: 'atproto transition:generic',
 
     // DPoP (Demonstrating Proof of Possession) - required by ATProto

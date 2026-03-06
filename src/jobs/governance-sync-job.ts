@@ -20,6 +20,8 @@
 
 import { AtpAgent } from '@atproto/api';
 
+import { jobMetrics } from '../observability/prometheus-registry.js';
+import { withSpan } from '../observability/tracer.js';
 import type { EdgeService } from '../services/governance/edge-service.js';
 import type { NodeService } from '../services/governance/node-service.js';
 import type {
@@ -183,24 +185,39 @@ export class GovernanceSyncJob {
 
     this.isRunning = true;
     const startTime = Date.now();
+    const endTimer = jobMetrics.duration.startTimer({ job: 'governance_sync' });
 
     try {
-      this.config.logger.debug('Starting governance sync');
+      await withSpan('job.governance_sync', async () => {
+        this.config.logger.debug('Starting governance sync');
 
-      const nodeCount = await this.syncNodes();
-      const edgeCount = await this.syncEdges();
+        const nodeCount = await this.syncNodes();
+        const edgeCount = await this.syncEdges();
 
-      const duration = Date.now() - startTime;
-      this.config.logger.info('Governance sync completed', {
-        nodesIndexed: nodeCount,
-        edgesIndexed: edgeCount,
-        durationMs: duration,
+        const duration = Date.now() - startTime;
+        this.config.logger.info('Governance sync completed', {
+          nodesIndexed: nodeCount,
+          edgesIndexed: edgeCount,
+          durationMs: duration,
+        });
+
+        jobMetrics.executionsTotal.inc({ job: 'governance_sync', status: 'success' });
+        jobMetrics.lastRunTimestamp.set({ job: 'governance_sync' }, Date.now() / 1000);
+        jobMetrics.itemsProcessed.inc(
+          { job: 'governance_sync', status: 'success' },
+          nodeCount + edgeCount
+        );
+        endTimer({ status: 'success' });
       });
     } catch (error) {
       this.config.logger.error(
         'Governance sync failed',
         error instanceof Error ? error : undefined
       );
+
+      jobMetrics.executionsTotal.inc({ job: 'governance_sync', status: 'error' });
+      endTimer({ status: 'error' });
+
       throw error;
     } finally {
       this.isRunning = false;

@@ -6,7 +6,7 @@ CollectionService indexes and queries user-curated collections. Collections are 
 
 Three concepts form the collection system:
 
-- **Collection**: A personal graph node with `kind='object'`, `subkind='collection'`. Stores a label, optional description, visibility (`public` or `private`), and optional tags.
+- **Collection**: A personal graph node with `kind='object'`, `subkind='collection'`. Stores a label, optional description, visibility (`listed` or `unlisted`), and optional tags.
 - **CONTAINS edge**: Links a collection to an item. The item is another personal graph node (subkind varies: `eprint`, `person`, `review`, `endorsement`, `concept`, `reference`).
 - **SUBCOLLECTION_OF edge**: Links a child collection to its parent, forming a tree hierarchy. Cycle detection prevents circular references.
 
@@ -85,10 +85,16 @@ class CollectionService {
 
 ### Visibility filtering
 
-Most query methods accept an optional `authDid` parameter. Private collections are only visible to their owner. The SQL filter is:
+Most query methods accept an optional `authDid` parameter. Unlisted collections are excluded from public listings and search but accessible by direct URI. The SQL filter for listing endpoints is:
 
 ```sql
-WHERE (c.visibility = 'public' OR c.owner_did = $authDid)
+WHERE c.visibility = 'listed'
+```
+
+For direct access endpoints (e.g., `getCollection`), unlisted collections are visible to anyone with the URI:
+
+```sql
+WHERE (c.visibility = 'listed' OR c.owner_did = $authDid OR c.uri = $requestedUri)
 ```
 
 ### The `excludeSubcollectionItems` option
@@ -215,7 +221,7 @@ The `useAddItemToCollection` hook (in `web/components/collection/use-add-to-coll
 | `personal_graph_nodes_index` | Personal graph nodes that serve as collection items and collection nodes |
 | `personal_graph_edges_index` | Personal graph edges; used for inter-item edges within collections       |
 
-The `_index` suffix on all table names indicates these are index tables per ATProto compliance: they store indexed copies of records whose source of truth is in user PDSes.
+The `_index` suffix on all table names indicates these are index tables per AT Protocol compliance: they store indexed copies of records whose source of truth is in user PDSes.
 
 ### Key columns on `collections_index`
 
@@ -226,7 +232,7 @@ The `_index` suffix on all table names indicates these are index tables per ATPr
 | `owner_did`   | TEXT      | DID of the collection owner        |
 | `label`       | TEXT      | Display name                       |
 | `description` | TEXT      | Optional description               |
-| `visibility`  | TEXT      | `'public'` or `'private'`          |
+| `visibility`  | TEXT      | `'listed'` or `'unlisted'`         |
 | `tags`        | JSONB     | Array of string tags               |
 | `pds_url`     | TEXT      | Source PDS for staleness detection |
 
@@ -284,18 +290,16 @@ The `getCollectionFeed` method generates an activity feed for a collection by jo
 
 Events are deduplicated by `(type, event_uri)` and sorted by `event_at DESC`. Pagination uses compound cursors in the format `{ISO-8601}::{eventUri}`.
 
-## ATProto compliance
+## AT Protocol compliance
 
 - Collections, edges, and personal nodes are PDS records owned by users. Chive indexes them from the firehose.
-- Chive never writes to user PDSes. All mutations (create, update, delete) happen in the user's PDS via the ATProto agent in the frontend.
+- Chive never writes to user PDSes. All mutations (create, update, delete) happen in the user's PDS via the AT Protocol agent in the frontend.
 - All index tables use the `_index` suffix and track `pds_url` for staleness detection.
 - Indexes are fully rebuildable from the firehose at any time.
-- Visibility filtering is applied server-side; private collections are only exposed to their owner.
+- Visibility filtering is applied server-side; unlisted collections are excluded from listings and search but accessible by direct URI.
 
-## Related documentation
+## Next steps
 
-- [User guide: Collections](../../user-guide/collections.md)
-- [PostgreSQL storage](../storage/postgresql.md)
-- [Knowledge graph concepts](../../concepts/knowledge-graph.md)
-- [Indexing service](./indexing.md)
-- [PDS discovery](./pds-discovery.md)
+- [User guide: Collections](../../user-guide/collections.md): End-user documentation for creating and managing collections
+- [PostgreSQL storage](../storage/postgresql.md): Schema details for collection index tables
+- [Indexing service](./indexing.md): How collection records are consumed from the firehose

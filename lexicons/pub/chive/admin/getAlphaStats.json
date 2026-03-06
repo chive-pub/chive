@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getAlphaStats",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get aggregate statistics for alpha tester applications",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["byStatus", "bySector", "byCareerStage", "recentByDay", "total"],
+          "properties": {
+            "byStatus": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#countByKey" },
+              "description": "Application counts keyed by status"
+            },
+            "bySector": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#countByKey" },
+              "description": "Application counts keyed by sector"
+            },
+            "byCareerStage": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#countByKey" },
+              "description": "Application counts keyed by career stage"
+            },
+            "recentByDay": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#dayCount"
+              },
+              "description": "Recent application counts per day"
+            },
+            "total": {
+              "type": "integer",
+              "description": "Total application count"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "countByKey": {
+      "type": "object",
+      "description": "Count for a specific key",
+      "required": ["key", "count"],
+      "properties": {
+        "key": { "type": "string", "description": "Category key" },
+        "count": { "type": "integer", "description": "Count for this category" }
+      }
+    },
+    "dayCount": {
+      "type": "object",
+      "description": "Application count for a single day",
+      "required": ["date", "count"],
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "Date in YYYY-MM-DD format"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of applications on this date"
+        }
+      }
+    }
+  }
+}

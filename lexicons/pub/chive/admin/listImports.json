@@ -1,0 +1,47 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listImports",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List imported eprint statistics",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results"
+          },
+          "source": {
+            "type": "string",
+            "description": "Filter by import source"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "totalEprints": {
+              "type": "integer",
+              "description": "Total imported eprints"
+            },
+            "source": {
+              "type": "string",
+              "description": "Import source filter"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Applied limit"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    }
+  }
+}

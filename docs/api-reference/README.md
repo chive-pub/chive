@@ -36,18 +36,18 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 ## Documentation sections
 
-| Section                               | Description                             |
-| ------------------------------------- | --------------------------------------- |
-| [Overview](./overview.md)             | Base URLs, rate limits, error handling  |
-| [Authentication](./authentication.md) | OAuth flows, tokens, and authorization  |
-| [XRPC endpoints](./xrpc-endpoints.md) | Complete XRPC reference (80+ endpoints) |
-| [REST endpoints](./rest-endpoints.md) | HTTP API reference                      |
+| Section                            | Description                             |
+| ---------------------------------- | --------------------------------------- |
+| [Overview](./overview)             | Base URLs, rate limits, error handling  |
+| [Authentication](./authentication) | OAuth flows, tokens, and authorization  |
+| [XRPC endpoints](./xrpc-endpoints) | Complete XRPC reference (80+ endpoints) |
+| [REST endpoints](./rest-endpoints) | HTTP API reference                      |
 
 ## OpenAPI specification
 
 The full OpenAPI 3.1 specification is available at:
 
-```
+```text
 https://api.chive.pub/openapi.json
 ```
 
@@ -87,4 +87,7 @@ const { data, error } = useSWR<GetSubmissionResponse>(
 
 ## Next steps
 
-Start with the [Overview](./overview.md) to understand the API structure, then explore specific endpoints in [XRPC endpoints](./xrpc-endpoints.md) or [REST endpoints](./rest-endpoints.md).
+- [Overview](./overview): Base URLs, rate limits, error handling, and pagination
+- [Authentication](./authentication): OAuth flows, tokens, and authorization
+- [XRPC endpoints](./xrpc-endpoints): Full AT Protocol native endpoint reference
+- [REST endpoints](./rest-endpoints): HTTP API for web clients

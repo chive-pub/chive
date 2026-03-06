@@ -27,6 +27,7 @@ import { ATRepository } from './atproto/repository/at-repository.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
 import { getGrobidConfig } from './config/grobid.js';
 import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
+import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
 import { ActivityService } from './services/activity/activity-service.js';
@@ -155,6 +156,7 @@ interface IndexerState {
   readonly neo4jConnection: Neo4jConnection;
   indexingService?: IndexingService;
   fieldPromotionJob?: FieldPromotionJob;
+  fieldLabelResolutionJob?: FieldLabelResolutionJob;
 }
 
 /**
@@ -229,6 +231,9 @@ async function shutdown(state: IndexerState, signal: string): Promise<void> {
   // Stop jobs
   if (state.fieldPromotionJob) {
     state.fieldPromotionJob.stop();
+  }
+  if (state.fieldLabelResolutionJob) {
+    state.fieldLabelResolutionJob.stop();
   }
 
   // Stop indexing service
@@ -439,6 +444,17 @@ async function main(): Promise<void> {
     } else {
       logger.info('Automatic proposal service disabled (graph PDS not configured)');
     }
+
+    // Start field label resolution job (hourly scan for UUID labels in PostgreSQL)
+    state.fieldLabelResolutionJob = new FieldLabelResolutionJob({
+      pool: pgPool,
+      nodeLookup: graphAdapter,
+      logger,
+      intervalMs: 3_600_000, // 1 hour
+      runOnStartup: true,
+    });
+    await state.fieldLabelResolutionJob.start();
+    logger.info('Field label resolution job started');
 
     // Create personal graph and collection services for firehose indexing
     const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });

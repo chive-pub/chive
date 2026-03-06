@@ -175,14 +175,15 @@ After authentication, Chive checks authorization using role-based access control
 
 ### Roles
 
-| Role               | Description             |
-| ------------------ | ----------------------- |
-| `anonymous`        | Unauthenticated users   |
-| `user`             | Authenticated users     |
-| `researcher`       | Verified researchers    |
-| `trusted_editor`   | Community moderators    |
-| `authority_editor` | Library science experts |
-| `admin`            | System administrators   |
+| Role           | Description                                       |
+| -------------- | ------------------------------------------------- |
+| `anonymous`    | Unauthenticated users                             |
+| `reader`       | Standard read access                              |
+| `author`       | Eprint submission permissions                     |
+| `moderator`    | Knowledge graph governance and proposal review    |
+| `graph-editor` | Knowledge graph editing (node and edge proposals) |
+| `alpha-tester` | Access to alpha features during testing           |
+| `admin`        | Full access to admin dashboard and all endpoints  |
 
 ### Permission matrix
 
@@ -212,7 +213,7 @@ The API returns 403 Forbidden when authorization fails:
 }
 ```
 
-## WebAuthn (Passkeys)
+## WebAuthn (passkeys)
 
 Chive supports WebAuthn for passwordless authentication and MFA:
 
@@ -377,6 +378,6 @@ The `authApi` client handles authentication automatically:
 
 ## Next steps
 
-- [API overview](./overview.md): General API information
-- [XRPC endpoints](./xrpc-endpoints.md): Endpoint reference
-- [REST endpoints](./rest-endpoints.md): HTTP API reference
+- [API overview](./overview): General API information
+- [XRPC endpoints](./xrpc-endpoints): Endpoint reference
+- [REST endpoints](./rest-endpoints): HTTP API reference

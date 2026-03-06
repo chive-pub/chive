@@ -2,27 +2,27 @@
 
 Set up a local Chive development environment.
 
-## System Requirements
+## System requirements
 
 - Node.js 22 or later
 - Docker and Docker Compose
 - pnpm 8 or later
 - Git
 
-## Clone the Repository
+## Clone the repository
 
 ```bash
 git clone https://github.com/chive-pub/chive.git
 cd chive
 ```
 
-## Install Dependencies
+## Install dependencies
 
 ```bash
 pnpm install
 ```
 
-## Start Infrastructure
+## Start infrastructure
 
 The development stack requires PostgreSQL, Elasticsearch, Neo4j, and Redis. Start these services:
 
@@ -32,7 +32,7 @@ pnpm dev:db
 
 This starts the database containers using Docker Compose.
 
-## Run Database Migrations
+## Run database migrations
 
 Apply the database schema:
 
@@ -40,7 +40,7 @@ Apply the database schema:
 pnpm db:migrate:up
 ```
 
-## Start Development Server
+## Start development server
 
 Run the backend and frontend in development mode:
 
@@ -50,11 +50,11 @@ pnpm dev
 
 The API server runs on `http://localhost:3001` and the web interface on `http://localhost:3000`.
 
-## Verify Installation
+## Verify installation
 
 Open `http://localhost:3000` in your browser. You should see the Chive homepage.
 
-## Optional: Seed Test Data
+## Optional: seed test data
 
 For development, you may want sample data:
 
@@ -64,22 +64,22 @@ pnpm seed:test
 
 This creates test data for local testing.
 
-## Common Issues
+## Common issues
 
-### Port Conflicts
+### Port conflicts
 
 If ports 5432, 9200, 7474, or 6379 are in use, modify `docker-compose.yml` to use different ports.
 
-### Elasticsearch Memory
+### Elasticsearch memory
 
 Elasticsearch requires at least 2GB of memory. If it fails to start, increase Docker's memory allocation.
 
-### Neo4j Authentication
+### Neo4j authentication
 
 The development Neo4j instance uses authentication. Credentials are in `.env.development`.
 
-## Next Steps
+## Next steps
 
-- [Developer Guide](../developer-guide) for architecture details
-- [API Reference](../api-reference/overview) for endpoint documentation
-- [Contributing Guide](https://github.com/chive-pub/chive/blob/main/CONTRIBUTING.md) for submitting changes
+- [Developer guide](../developer-guide): architecture and design details
+- [API reference](../api-reference/overview): endpoint documentation
+- [Contributing guide](https://github.com/chive-pub/chive/blob/main/CONTRIBUTING.md): how to submit changes

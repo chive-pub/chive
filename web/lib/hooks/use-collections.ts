@@ -79,7 +79,7 @@ export interface CollectionView {
   ownerHandle?: string;
   label: string;
   description?: string;
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   itemCount: number;
   tags?: string[];
   parentCollectionUri?: string;
@@ -506,7 +506,7 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
  * const handleCreate = async () => {
  *   await createCollection.mutateAsync({
  *     name: 'My Reading List',
- *     visibility: 'public',
+ *     visibility: 'listed',
  *     tags: ['nlp'],
  *   });
  * };
@@ -655,7 +655,7 @@ export function useUpdateCollection() {
         ownerDid: input.ownerDid,
         label: input.name ?? '',
         description: input.description,
-        visibility: input.visibility ?? 'public',
+        visibility: input.visibility ?? 'listed',
         itemCount: 0,
         tags: input.tags,
         cosmikCollectionUri: input.cosmikCollectionUri,

@@ -19,6 +19,7 @@
 import type { MiddlewareHandler } from 'hono';
 
 import type { IServiceAuthVerifier } from '../../auth/service-auth/index.js';
+import { authMetrics } from '../../observability/prometheus-registry.js';
 import type { DID } from '../../types/atproto.js';
 import { AuthenticationError, AuthorizationError } from '../../types/errors.js';
 import type { IAuthorizationService } from '../../types/interfaces/authorization.interface.js';
@@ -109,22 +110,25 @@ export function authenticateServiceAuth(
 
     // No token; continue as anonymous
     if (!token) {
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'anonymous' });
       await next();
       return;
     }
 
     const logger = c.get('logger');
+    const endTimer = authMetrics.duration.startTimer({ method: 'service_auth' });
 
     try {
-      // Verify the service auth JWT
-      // Note: We don't enforce lxm (lexicon method) matching because not all
-      // PDS implementations include lxm in service auth tokens. The token is
-      // still validated against the user's DID document signing key.
+      // Verify the service auth JWT.
+      // The lxm (lexicon method) claim, when present, is extracted into user
+      // scopes for downstream authorization checks.
       const result = await verifier.verify(token);
 
       if (!result) {
         // Invalid token; log and continue as anonymous
         logger.debug('Invalid or expired service auth token');
+        authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'failure' });
+        endTimer();
         await next();
         return;
       }
@@ -142,7 +146,7 @@ export function authenticateServiceAuth(
         isAdmin,
         isPremium,
         isAlphaTester,
-        scopes: [], // Service auth doesn't use scopes
+        scopes: result.lxm ? [result.lxm] : [],
         sessionId: undefined, // Service auth is stateless
         tokenId: undefined, // Service auth JWTs may have jti
       };
@@ -155,12 +159,17 @@ export function authenticateServiceAuth(
       });
       c.set('logger', userLogger);
 
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'success' });
+      endTimer();
+
       await next();
     } catch (error) {
       // Verification error; log and continue as anonymous
       logger.warn('Service auth verification failed', {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+      authMetrics.attemptsTotal.inc({ method: 'service_auth', result: 'failure' });
+      endTimer();
       await next();
     }
   };

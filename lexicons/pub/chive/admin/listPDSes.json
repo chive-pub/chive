@@ -1,0 +1,100 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.listPDSes",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List known PDSes and their statistics",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum number of results"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "properties": {
+            "stats": {
+              "type": "ref",
+              "ref": "#pdsStats",
+              "description": "PDS statistics"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "pdsStats": {
+      "type": "object",
+      "description": "PDS registry statistics",
+      "required": ["total", "items"],
+      "properties": {
+        "total": {
+          "type": "integer",
+          "description": "Total known PDSes"
+        },
+        "healthy": {
+          "type": "integer",
+          "description": "Number of healthy PDSes"
+        },
+        "unhealthy": {
+          "type": "integer",
+          "description": "Number of unhealthy PDSes"
+        },
+        "withRecords": {
+          "type": "integer",
+          "description": "PDSes with indexed records"
+        },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#pdsInfo"
+          },
+          "description": "Individual PDS entries"
+        }
+      }
+    },
+    "pdsInfo": {
+      "type": "object",
+      "description": "Information about a single PDS",
+      "required": ["url", "status"],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "PDS URL"
+        },
+        "status": {
+          "type": "string",
+          "knownValues": ["healthy", "unhealthy", "unknown"],
+          "description": "Health status"
+        },
+        "lastScan": {
+          "type": "string",
+          "format": "datetime",
+          "description": "Last scan timestamp"
+        },
+        "recordCount": {
+          "type": "integer",
+          "description": "Number of indexed records"
+        },
+        "errorCount": {
+          "type": "integer",
+          "description": "Total errors encountered"
+        },
+        "consecutiveErrors": {
+          "type": "integer",
+          "description": "Consecutive error count"
+        }
+      }
+    }
+  }
+}

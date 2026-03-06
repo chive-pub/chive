@@ -530,6 +530,391 @@ export const citationMetrics = {
 };
 
 /**
+ * Pre-defined metrics for background job execution.
+ *
+ * @remarks
+ * Tracks job executions, duration, last run timestamps, and items processed.
+ *
+ * @public
+ */
+export const jobMetrics = {
+  /**
+   * Total job executions counter.
+   *
+   * @remarks
+   * Labels: job, status (success/error)
+   */
+  executionsTotal: new Counter({
+    name: 'chive_job_executions_total',
+    help: 'Total job executions',
+    labelNames: ['job', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'job' | 'status'>),
+
+  /**
+   * Job execution duration histogram.
+   *
+   * @remarks
+   * Labels: job, status (success/error)
+   * Buckets: 100ms to 5 minutes
+   */
+  duration: new Histogram({
+    name: 'chive_job_duration_seconds',
+    help: 'Job execution duration',
+    labelNames: ['job', 'status'] as const,
+    buckets: [0.1, 0.5, 1, 5, 10, 30, 60, 300],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'job' | 'status'>),
+
+  /**
+   * Unix timestamp of last job run.
+   *
+   * @remarks
+   * Labels: job
+   */
+  lastRunTimestamp: new Gauge({
+    name: 'chive_job_last_run_timestamp',
+    help: 'Unix timestamp of last job run',
+    labelNames: ['job'] as const,
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<'job'>),
+
+  /**
+   * Total items processed by jobs.
+   *
+   * @remarks
+   * Labels: job, status (success/error)
+   */
+  itemsProcessed: new Counter({
+    name: 'chive_job_items_processed_total',
+    help: 'Total items processed by jobs',
+    labelNames: ['job', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'job' | 'status'>),
+};
+
+/**
+ * Pre-defined metrics for background worker tasks.
+ *
+ * @remarks
+ * Tracks worker task counts, duration, queue depth, and active counts.
+ *
+ * @public
+ */
+export const workerMetrics = {
+  /**
+   * Total worker tasks processed counter.
+   *
+   * @remarks
+   * Labels: worker, status (success/error)
+   */
+  tasksTotal: new Counter({
+    name: 'chive_worker_tasks_total',
+    help: 'Total worker tasks processed',
+    labelNames: ['worker', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'worker' | 'status'>),
+
+  /**
+   * Worker task duration histogram.
+   *
+   * @remarks
+   * Labels: worker
+   * Buckets: 10ms to 30s
+   */
+  taskDuration: new Histogram({
+    name: 'chive_worker_task_duration_seconds',
+    help: 'Worker task duration',
+    labelNames: ['worker'] as const,
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 30],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'worker'>),
+
+  /**
+   * Current worker queue depth gauge.
+   *
+   * @remarks
+   * Labels: worker
+   */
+  queueDepth: new Gauge({
+    name: 'chive_worker_queue_depth',
+    help: 'Current worker queue depth',
+    labelNames: ['worker'] as const,
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<'worker'>),
+
+  /**
+   * Currently active workers gauge.
+   *
+   * @remarks
+   * Labels: worker
+   */
+  activeCount: new Gauge({
+    name: 'chive_worker_active_count',
+    help: 'Currently active workers',
+    labelNames: ['worker'] as const,
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<'worker'>),
+};
+
+/**
+ * Pre-defined metrics for authentication operations.
+ *
+ * @remarks
+ * Tracks auth attempts, duration, and role lookups.
+ *
+ * @public
+ */
+export const authMetrics = {
+  /**
+   * Total authentication attempts counter.
+   *
+   * @remarks
+   * Labels: method (service_auth), result (success/failure/anonymous)
+   */
+  attemptsTotal: new Counter({
+    name: 'chive_auth_attempts_total',
+    help: 'Total authentication attempts',
+    labelNames: ['method', 'result'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'method' | 'result'>),
+
+  /**
+   * Authentication duration histogram.
+   *
+   * @remarks
+   * Labels: method (service_auth)
+   * Buckets: 10ms to 5s
+   */
+  duration: new Histogram({
+    name: 'chive_auth_duration_seconds',
+    help: 'Authentication duration',
+    labelNames: ['method'] as const,
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 5],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'method'>),
+
+  /**
+   * Total role lookups counter.
+   *
+   * @remarks
+   * Labels: result (cache_hit/cache_miss)
+   */
+  roleLookups: new Counter({
+    name: 'chive_role_lookups_total',
+    help: 'Total role lookups',
+    labelNames: ['result'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'result'>),
+};
+
+/**
+ * Pre-defined metrics for search operations.
+ *
+ * @remarks
+ * Tracks search queries, results returned, and duration by phase.
+ *
+ * @public
+ */
+export const searchMetrics = {
+  /**
+   * Total search queries counter.
+   *
+   * @remarks
+   * Labels: type
+   */
+  queriesTotal: new Counter({
+    name: 'chive_search_queries_total',
+    help: 'Total search queries',
+    labelNames: ['type'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'type'>),
+
+  /**
+   * Total search results returned counter.
+   *
+   * @remarks
+   * Labels: type
+   */
+  resultsTotal: new Counter({
+    name: 'chive_search_results_total',
+    help: 'Total search results returned',
+    labelNames: ['type'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'type'>),
+
+  /**
+   * Search duration histogram by phase.
+   *
+   * @remarks
+   * Labels: phase
+   * Buckets: 10ms to 5s
+   */
+  duration: new Histogram({
+    name: 'chive_search_duration_seconds',
+    help: 'Search duration by phase',
+    labelNames: ['phase'] as const,
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'phase'>),
+};
+
+/**
+ * Pre-defined metrics for blob proxy operations.
+ *
+ * @remarks
+ * Tracks blob proxy requests, bytes transferred, and duration.
+ *
+ * @public
+ */
+export const blobProxyMetrics = {
+  /**
+   * Total blob proxy requests counter.
+   *
+   * @remarks
+   * Labels: status, cache (redis/cdn/pds)
+   */
+  requestsTotal: new Counter({
+    name: 'chive_blob_proxy_requests_total',
+    help: 'Total blob proxy requests',
+    labelNames: ['status', 'cache'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'status' | 'cache'>),
+
+  /**
+   * Total bytes transferred counter.
+   *
+   * @remarks
+   * Labels: direction (in/out)
+   */
+  bytesTotal: new Counter({
+    name: 'chive_blob_proxy_bytes_total',
+    help: 'Total bytes transferred',
+    labelNames: ['direction'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'direction'>),
+
+  /**
+   * Blob proxy request duration histogram.
+   *
+   * @remarks
+   * Buckets: 10ms to 10s
+   */
+  duration: new Histogram({
+    name: 'chive_blob_proxy_duration_seconds',
+    help: 'Blob proxy request duration',
+    buckets: [0.01, 0.05, 0.1, 0.5, 1, 5, 10],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<string>),
+};
+
+/**
+ * Pre-defined metrics for the dead letter queue.
+ *
+ * @remarks
+ * Tracks DLQ entry count and retry operations.
+ *
+ * @public
+ */
+export const dlqMetrics = {
+  /**
+   * Current DLQ entry count gauge.
+   */
+  entriesTotal: new Gauge({
+    name: 'chive_dlq_entries_total',
+    help: 'Current DLQ entry count',
+    registers: [prometheusRegistry],
+  } satisfies GaugeConfiguration<string>),
+
+  /**
+   * Total DLQ retries counter.
+   *
+   * @remarks
+   * Labels: status (success/failure)
+   */
+  retriesTotal: new Counter({
+    name: 'chive_dlq_retries_total',
+    help: 'Total DLQ retries',
+    labelNames: ['status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'status'>),
+};
+
+/**
+ * Pre-defined metrics for admin actions.
+ *
+ * @remarks
+ * Tracks administrative operations performed via the admin dashboard.
+ *
+ * @public
+ */
+export const adminMetrics = {
+  /**
+   * Total admin actions counter.
+   *
+   * @remarks
+   * Labels: action, target
+   */
+  actionsTotal: new Counter({
+    name: 'chive_admin_actions_total',
+    help: 'Total admin actions',
+    labelNames: ['action', 'target'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'action' | 'target'>),
+};
+
+/**
+ * Pre-defined metrics for backfill operations.
+ *
+ * @remarks
+ * Tracks backfill operations, records processed, and duration.
+ *
+ * @public
+ */
+export const backfillMetrics = {
+  /**
+   * Total backfill operations counter.
+   *
+   * @remarks
+   * Labels: type, status (success/error)
+   */
+  operationsTotal: new Counter({
+    name: 'chive_backfill_operations_total',
+    help: 'Total backfill operations',
+    labelNames: ['type', 'status'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'type' | 'status'>),
+
+  /**
+   * Total records processed during backfills counter.
+   *
+   * @remarks
+   * Labels: type
+   */
+  recordsProcessed: new Counter({
+    name: 'chive_backfill_records_processed',
+    help: 'Total records processed during backfills',
+    labelNames: ['type'] as const,
+    registers: [prometheusRegistry],
+  } satisfies CounterConfiguration<'type'>),
+
+  /**
+   * Backfill operation duration histogram.
+   *
+   * @remarks
+   * Labels: type
+   * Buckets: 1s to 1 hour
+   */
+  duration: new Histogram({
+    name: 'chive_backfill_duration_seconds',
+    help: 'Backfill operation duration',
+    labelNames: ['type'] as const,
+    buckets: [1, 5, 10, 30, 60, 300, 600, 1800, 3600],
+    registers: [prometheusRegistry],
+  } satisfies HistogramConfiguration<'type'>),
+};
+
+/**
  * Retrieves all metrics in Prometheus text format.
  *
  * @returns Promise resolving to metrics string

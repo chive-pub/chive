@@ -1,0 +1,42 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.updateAlphaApplication",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Approve, reject, or revoke an alpha tester application",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["did", "action"],
+          "properties": {
+            "did": {
+              "type": "string",
+              "format": "did",
+              "description": "Applicant DID"
+            },
+            "action": {
+              "type": "string",
+              "knownValues": ["approve", "reject", "revoke"],
+              "description": "Action to take on the application"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "ref",
+          "ref": "pub.chive.admin.listAlphaApplications#alphaApplication"
+        }
+      },
+      "errors": [
+        { "name": "AuthenticationRequired" },
+        { "name": "AdminRequired" },
+        { "name": "NotFound" },
+        { "name": "InvalidRequest" }
+      ]
+    }
+  }
+}

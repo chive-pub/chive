@@ -84,7 +84,7 @@ const createSampleCollection = (overrides?: Partial<IndexedCollection>): Indexed
   ownerDid: SAMPLE_DID,
   label: 'NLP Reading List',
   description: 'Curated papers on computational linguistics and NLP',
-  visibility: 'public',
+  visibility: 'listed',
   itemCount: 5,
   createdAt: new Date('2025-06-15T10:00:00Z'),
   updatedAt: undefined,
@@ -255,7 +255,7 @@ describe('XRPC Collection Handlers', () => {
       ).rejects.toThrow('not found');
     });
 
-    it('returns 404 for private collection when not owner', async () => {
+    it('returns 404 for unlisted collection when not owner', async () => {
       // The service returns null when visibility check fails
       mockCollectionService.getCollection.mockResolvedValue(null);
 
@@ -288,9 +288,9 @@ describe('XRPC Collection Handlers', () => {
       ).rejects.toThrow('not found');
     });
 
-    it('allows owner to see private collection', async () => {
-      const privateCollection = createSampleCollection({ visibility: 'private' });
-      mockCollectionService.getCollection.mockResolvedValue(privateCollection);
+    it('allows owner to see unlisted collection', async () => {
+      const unlistedCollection = createSampleCollection({ visibility: 'unlisted' });
+      mockCollectionService.getCollection.mockResolvedValue(unlistedCollection);
 
       const result = await get.handler({
         params: { uri: SAMPLE_COLLECTION_URI as string },
@@ -299,7 +299,7 @@ describe('XRPC Collection Handlers', () => {
         c: mockContext as never,
       });
 
-      expect(result.body.collection.visibility).toBe('private');
+      expect(result.body.collection.visibility).toBe('unlisted');
     });
 
     it('passes authenticated user DID to service for visibility check', async () => {
@@ -379,15 +379,15 @@ describe('XRPC Collection Handlers', () => {
       expect(result.body.hasMore).toBe(false);
     });
 
-    it('filters private collections for unauthenticated users', async () => {
-      const publicCollection = createSampleCollection({ visibility: 'public' });
-      const privateCollection = createSampleCollection({
-        uri: 'at://did:plc:aswhite/pub.chive.graph.node/private-list' as AtUri,
-        visibility: 'private',
-        label: 'Private Papers',
+    it('filters unlisted collections for unauthenticated users', async () => {
+      const listedCollection = createSampleCollection({ visibility: 'listed' });
+      const unlistedCollection = createSampleCollection({
+        uri: 'at://did:plc:aswhite/pub.chive.graph.node/unlisted-list' as AtUri,
+        visibility: 'unlisted',
+        label: 'Unlisted Papers',
       });
       mockCollectionService.listByOwner.mockResolvedValue({
-        items: [publicCollection, privateCollection],
+        items: [listedCollection, unlistedCollection],
         cursor: undefined,
         hasMore: false,
         total: 2,
@@ -419,20 +419,20 @@ describe('XRPC Collection Handlers', () => {
         c: unauthContext as never,
       });
 
-      // Only public collection should be returned
+      // Only listed collection should be returned
       expect(result.body.collections).toHaveLength(1);
       expect(result.body.collections[0]?.label).toBe('NLP Reading List');
     });
 
-    it('shows all collections (including private) to owner', async () => {
-      const publicCollection = createSampleCollection({ visibility: 'public' });
-      const privateCollection = createSampleCollection({
-        uri: 'at://did:plc:aswhite/pub.chive.graph.node/private-list' as AtUri,
-        visibility: 'private',
-        label: 'Private Papers',
+    it('shows all collections (including unlisted) to owner', async () => {
+      const listedCollection = createSampleCollection({ visibility: 'listed' });
+      const unlistedCollection = createSampleCollection({
+        uri: 'at://did:plc:aswhite/pub.chive.graph.node/unlisted-list' as AtUri,
+        visibility: 'unlisted',
+        label: 'Unlisted Papers',
       });
       mockCollectionService.listByOwner.mockResolvedValue({
-        items: [publicCollection, privateCollection],
+        items: [listedCollection, unlistedCollection],
         cursor: undefined,
         hasMore: false,
         total: 2,
@@ -489,10 +489,10 @@ describe('XRPC Collection Handlers', () => {
   // ==========================================================================
 
   describe('listPublic', () => {
-    it('returns only public collections', async () => {
-      const publicCollection = createSampleCollection({ visibility: 'public' });
+    it('returns only listed collections', async () => {
+      const listedCollection = createSampleCollection({ visibility: 'listed' });
       mockCollectionService.listPublic.mockResolvedValue({
-        items: [publicCollection],
+        items: [listedCollection],
         cursor: undefined,
         hasMore: false,
         total: 1,
@@ -506,7 +506,7 @@ describe('XRPC Collection Handlers', () => {
       });
 
       expect(result.body.collections).toHaveLength(1);
-      expect(result.body.collections[0]?.visibility).toBe('public');
+      expect(result.body.collections[0]?.visibility).toBe('listed');
     });
 
     it('returns empty when no collection service is configured', async () => {
@@ -582,7 +582,7 @@ describe('XRPC Collection Handlers', () => {
       expect(result.body.total).toBe(1);
     });
 
-    it('filters by public visibility', async () => {
+    it('filters by listed visibility', async () => {
       mockCollectionService.searchCollections.mockResolvedValue({
         items: [],
         cursor: undefined,
@@ -600,7 +600,7 @@ describe('XRPC Collection Handlers', () => {
       expect(mockCollectionService.searchCollections).toHaveBeenCalledWith('semantics', {
         limit: 50,
         cursor: undefined,
-        visibility: 'public',
+        visibility: 'listed',
       });
     });
 

@@ -240,7 +240,7 @@ describe('GitLabIntegrationPlugin', () => {
     });
 
     it('should have correct manifest version', () => {
-      expect(plugin.manifest.version).toBe('0.1.0');
+      expect(plugin.manifest.version).toBe('0.2.0');
     });
 
     it('should have correct manifest description', () => {
@@ -291,10 +291,9 @@ describe('GitLabIntegrationPlugin', () => {
       await plugin.initialize(context);
 
       expect(context.logger.info).toHaveBeenCalledWith(
-        'Plugin initialized',
+        'GitLab plugin initialized',
         expect.objectContaining({
-          pluginId: 'pub.chive.plugin.gitlab',
-          version: '0.1.0',
+          rateLimit: '0ms between requests',
         })
       );
     });

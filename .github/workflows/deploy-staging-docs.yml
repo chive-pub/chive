@@ -1,0 +1,86 @@
+name: Deploy Staging Docs
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'docs/**'
+      - 'docker/nginx-docs.conf'
+      - 'docker/docker-compose.staging-docs.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        run: pnpm --filter @chive/docs build
+
+      - name: Deploy docs build to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docs/build/*"
+          target: "/tmp/staging-docs-deploy"
+          strip_components: 2
+
+      - name: Deploy config files to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docker/nginx-docs.conf,docker/docker-compose.staging-docs.yml"
+          target: "/tmp/staging-docs-config"
+          strip_components: 1
+
+      - name: Deploy and restart staging docs container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            # Replace old docs build with new one
+            sudo rm -rf /opt/chive/docs/build
+            sudo mkdir -p /opt/chive/docs
+            sudo mv /tmp/staging-docs-deploy /opt/chive/docs/build
+            sudo chown -R root:root /opt/chive/docs/build
+            sudo chmod -R 755 /opt/chive/docs/build
+
+            # Update nginx and compose configs from the repo
+            sudo cp /tmp/staging-docs-config/nginx-docs.conf /opt/chive/docker/nginx-docs.conf
+            sudo cp /tmp/staging-docs-config/docker-compose.staging-docs.yml /opt/chive/docker/docker-compose.staging-docs.yml
+            rm -rf /tmp/staging-docs-config
+
+            # Start or recreate the staging docs container
+            # Uses the existing chive-network and Traefik from docker-compose.prod.yml
+            cd /opt/chive/docker
+            DOMAIN="${{ vars.STAGING_DOMAIN }}" docker compose -f docker-compose.staging-docs.yml up -d --force-recreate chive-staging-docs
+
+            echo "Staging docs deployed successfully!"
+
+      - name: Verify deployment
+        run: |
+          echo "Waiting for container and SSL cert provisioning..."
+          sleep 30
+          if curl -sf --max-time 30 https://docs.${{ vars.STAGING_DOMAIN }}/; then
+            echo "Staging docs health check passed"
+          else
+            echo "::warning::Staging docs health check failed (may need DNS propagation or cert provisioning)"
+          fi

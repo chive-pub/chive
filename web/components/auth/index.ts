@@ -8,3 +8,4 @@ export { HandleInput, type HandleInputProps } from './handle-input';
 export { UserMenu } from './user-menu';
 export { AuthGuard, withAuthGuard, type AuthGuardProps } from './auth-guard';
 export { LoginPrompt, InlineLoginPrompt, type LoginPromptProps } from './login-prompt';
+export { ScopeUpgradePrompt } from './scope-upgrade-prompt';

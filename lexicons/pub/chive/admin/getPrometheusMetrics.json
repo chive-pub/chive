@@ -1,0 +1,72 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.admin.getPrometheusMetrics",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get Prometheus metrics as JSON",
+      "parameters": {
+        "type": "params",
+        "properties": {}
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["metrics", "timestamp"],
+          "properties": {
+            "metrics": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#prometheusMetric" },
+              "description": "Prometheus metric entries"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "datetime",
+              "description": "Timestamp of the metrics snapshot"
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+    },
+    "prometheusMetric": {
+      "type": "object",
+      "description": "A single Prometheus metric with its values",
+      "required": ["name", "help", "type", "values"],
+      "properties": {
+        "name": { "type": "string", "description": "Metric name" },
+        "help": { "type": "string", "description": "Metric help text" },
+        "type": {
+          "type": "string",
+          "knownValues": ["counter", "gauge", "histogram", "summary"],
+          "description": "Metric type"
+        },
+        "values": {
+          "type": "array",
+          "items": { "type": "ref", "ref": "#metricValue" },
+          "description": "Metric values with labels"
+        }
+      }
+    },
+    "metricValue": {
+      "type": "object",
+      "description": "A single metric value with its label set",
+      "required": ["value"],
+      "properties": {
+        "labels": {
+          "type": "ref",
+          "ref": "#labelSet",
+          "description": "Label key-value pairs"
+        },
+        "value": { "type": "string", "description": "Metric value (numeric string)" },
+        "exemplar": { "type": "string", "description": "Optional exemplar value (numeric string)" }
+      }
+    },
+    "labelSet": {
+      "type": "object",
+      "description": "Key-value pairs for metric labels",
+      "properties": {}
+    }
+  }
+}

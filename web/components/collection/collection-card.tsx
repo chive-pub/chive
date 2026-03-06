@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Globe, Link as LinkIcon, Lock, FolderOpen, Hash } from 'lucide-react';
+import { Globe, Link as LinkIcon, FolderOpen, Hash } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ interface CollectionCardProps {
   name: string;
   description?: string;
   itemCount: number;
-  visibility: 'public' | 'unlisted' | 'private';
+  visibility: 'listed' | 'unlisted';
   tags?: string[];
   ownerDid?: string;
   ownerHandle?: string;
@@ -27,9 +27,8 @@ interface CollectionCardProps {
  * Visibility icon and label mapping.
  */
 const VISIBILITY_CONFIG = {
-  public: { icon: Globe, label: 'Public' },
+  listed: { icon: Globe, label: 'Listed' },
   unlisted: { icon: LinkIcon, label: 'Unlisted' },
-  private: { icon: Lock, label: 'Private' },
 } as const;
 
 /**

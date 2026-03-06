@@ -194,7 +194,7 @@ describe('FreshnessWorker', () => {
       expect(queue.add).toHaveBeenCalledWith(
         'freshness',
         expect.anything(),
-        expect.objectContaining({ jobId: `freshness:${TEST_URI}` })
+        expect.objectContaining({ jobId: `freshness_${TEST_URI.replaceAll(':', '_')}` })
       );
     });
   });

@@ -165,7 +165,7 @@ const results = await plugin.search(query);
 
 Uses RSS feed and web scraping with a 10-second delay between requests.
 
-### Semantics Archive
+### Semantics archive
 
 **ID:** `pub.chive.plugin.semanticsarchive`
 
@@ -226,7 +226,7 @@ Links eprints to supplementary materials on Figshare.
 
 Links eprints to research data on Dryad.
 
-### Software Heritage
+### Software heritage
 
 **ID:** `pub.chive.plugin.software-heritage`
 
@@ -276,7 +276,7 @@ FAST provides 1.7 million controlled vocabulary terms from OCLC.
 
 ## DOI registration
 
-### DOI Registration
+### DOI registration
 
 **ID:** `pub.chive.plugin.doi`
 
@@ -293,7 +293,7 @@ Requires DataCite credentials.
 
 These plugins track references to Chive eprints from ATProto apps.
 
-### Bluesky Backlinks
+### Bluesky backlinks
 
 **ID:** `pub.chive.plugin.bluesky-backlinks`
 
@@ -301,19 +301,19 @@ Tracks references from Bluesky posts (`app.bsky.feed.post`).
 
 Detects embedded eprint links and external URLs pointing to Chive.
 
-### Semble Backlinks
+### Cosmik backlinks
 
-**ID:** `pub.chive.plugin.semble-backlinks`
+**ID:** `pub.chive.plugin.cosmik-backlinks`
 
-Tracks references from Semble collections and research trails.
+Tracks references to Chive eprints from Cosmik cards and collections (`network.cosmik.card`).
 
-### Leaflet Backlinks
+### Leaflet backlinks
 
 **ID:** `pub.chive.plugin.leaflet-backlinks`
 
 Tracks references from Leaflet semantic annotations.
 
-### WhiteWind Backlinks
+### WhiteWind backlinks
 
 **ID:** `pub.chive.plugin.whitewind-backlinks`
 

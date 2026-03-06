@@ -9,11 +9,7 @@ const sidebars: SidebarsConfig = {
       type: 'category',
       label: 'Getting Started',
       collapsed: false,
-      items: [
-        'getting-started/introduction',
-        'getting-started/quick-start',
-        'getting-started/installation',
-      ],
+      items: ['introduction', 'getting-started/quick-start', 'getting-started/installation'],
     },
     {
       type: 'category',
@@ -67,6 +63,7 @@ const sidebars: SidebarsConfig = {
         },
         'developer-guide/plugin-system',
         'developer-guide/advanced-features',
+        'development/admin-architecture',
         {
           type: 'category',
           label: 'Storage',
@@ -86,6 +83,7 @@ const sidebars: SidebarsConfig = {
         'api-reference/overview',
         'api-reference/authentication',
         'api-reference/xrpc-endpoints',
+        'api-reference/admin-endpoints',
         'api-reference/rest-endpoints',
         {
           type: 'link',
@@ -137,6 +135,10 @@ const sidebars: SidebarsConfig = {
       items: [
         'operations/deployment',
         'operations/monitoring',
+        'operations/observability-metrics',
+        'operations/admin-dashboard',
+        'operations/roles-and-access',
+        'operations/backfill-operations',
         'operations/scaling',
         'operations/troubleshooting',
       ],

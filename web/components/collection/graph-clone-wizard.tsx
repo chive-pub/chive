@@ -597,8 +597,8 @@ interface StepSaveProps {
   onNameChange: (name: string) => void;
   description: string;
   onDescriptionChange: (description: string) => void;
-  visibility: 'public' | 'unlisted' | 'private';
-  onVisibilityChange: (v: 'public' | 'unlisted' | 'private') => void;
+  visibility: 'listed' | 'unlisted';
+  onVisibilityChange: (v: 'listed' | 'unlisted') => void;
   tags: Array<{ uri: string; label: string }>;
   onAddTag: (node: NodeSuggestion) => void;
   onRemoveTag: (uri: string) => void;
@@ -668,16 +668,15 @@ function StepSave({
         <Label>Visibility</Label>
         <Select
           value={visibility}
-          onValueChange={(v) => onVisibilityChange(v as 'public' | 'unlisted' | 'private')}
+          onValueChange={(v) => onVisibilityChange(v as 'listed' | 'unlisted')}
           disabled={isSubmitting}
         >
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="public">Public (anyone can find and view)</SelectItem>
-            <SelectItem value="unlisted">Unlisted (accessible via link)</SelectItem>
-            <SelectItem value="private">Private (only you)</SelectItem>
+            <SelectItem value="listed">Listed (visible in search and listings)</SelectItem>
+            <SelectItem value="unlisted">Unlisted (accessible via direct link only)</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -755,7 +754,7 @@ export function GraphCloneWizard({ onSuccess, onCancel, className }: GraphCloneW
   // Step 4 state: save form
   const [collectionName, setCollectionName] = useState('');
   const [collectionDescription, setCollectionDescription] = useState('');
-  const [visibility, setVisibility] = useState<'public' | 'unlisted' | 'private'>('public');
+  const [visibility, setVisibility] = useState<'listed' | 'unlisted'>('listed');
   const [tags, setTags] = useState<Array<{ uri: string; label: string }>>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
