@@ -1,6 +1,6 @@
 # Admin dashboard
 
-The admin dashboard provides a web-based interface for managing Chive's indexing infrastructure, user roles, content management, and system health. It is available to authenticated users with the `admin` role.
+The admin dashboard provides a web-based interface for managing Chive's indexing infrastructure, user roles, content, and system health. It is available to authenticated users with the `admin` role.
 
 ## Accessing the dashboard
 
@@ -81,10 +81,9 @@ All admin XRPC endpoints follow the same pattern:
 4. If the user is not an admin, the handler throws `AuthorizationError`
 5. If the required service (e.g., `AdminService`, `BackfillManager`) is not configured, the handler throws `ServiceUnavailableError`
 
-## Related documentation
+## Next steps
 
-- [Admin API Reference](../api-reference/admin-endpoints.md): all admin XRPC endpoints
-- [Backfill Operations](./backfill-operations.md): running and monitoring backfill tasks
-- [Observability & Metrics](./observability-metrics.md): Prometheus metrics reference
-- [Roles & Access Control](./roles-and-access.md): role system and admin provisioning
-- [Admin Architecture](../development/admin-architecture.md): implementation details
+- [Admin API reference](../api-reference/admin-endpoints): All admin XRPC endpoints
+- [Backfill operations](./backfill-operations): Running and monitoring backfill tasks
+- [Observability and metrics](./observability-metrics): Prometheus metrics reference
+- [Roles and access control](./roles-and-access): Role system and admin provisioning

@@ -11,7 +11,7 @@ The ClaimingService enables authors to claim ownership of papers by creating rec
 1. **External claims** (from arXiv, Semantic Scholar, etc.): Works like submitting a new eprint, but with prefilled data from the external source
 2. **Co-author claims** (on existing PDS records): A request/approval flow where the PDS owner decides whether to add the claimant as co-author
 
-## External Claims
+## External claims
 
 External claims work by prefilling the submission wizard with data from external sources. The user then creates a record in their own PDS.
 
@@ -39,7 +39,7 @@ const prefilled = await claiming.getSubmissionData('arxiv', '2401.12345');
 // in their own PDS (handled by the frontend)
 ```
 
-### Search with Duplicate Detection
+### Search with duplicate detection
 
 When searching for papers to claim, the service checks if papers already exist on Chive:
 
@@ -59,11 +59,11 @@ for (const eprint of results.eprints) {
 }
 ```
 
-## Co-Author Claims
+## Co-author claims
 
 Co-author claims allow users to request being added to papers already in another user's PDS. The PDS owner must approve the request.
 
-### Requesting Co-Authorship
+### Requesting co-authorship
 
 ```typescript
 // User requests to be added as co-author
@@ -77,7 +77,7 @@ const request = await claiming.requestCoauthorship(
 );
 ```
 
-### Viewing Requests (PDS Owner)
+### Viewing requests (PDS owner)
 
 ```typescript
 // PDS owner gets pending requests for their papers
@@ -88,7 +88,7 @@ for (const req of requests) {
 }
 ```
 
-### Approving/Rejecting Requests
+### Approving/rejecting requests
 
 ```typescript
 // Approve a request
@@ -102,7 +102,7 @@ await claiming.rejectCoauthorRequest(
 );
 ```
 
-### Data Sovereignty
+### Data sovereignty
 
 When a co-author request is approved:
 
@@ -112,9 +112,9 @@ When a co-author request is approved:
 4. The firehose propagates the update
 5. Chive re-indexes the updated record
 
-This respects ATProto's data sovereignty principle: users control their own PDS writes.
+This respects AT Protocol's data sovereignty principle: users control their own PDS writes.
 
-## Claim States
+## Claim states
 
 ```typescript
 type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'expired';
@@ -122,9 +122,9 @@ type ClaimStatus = 'pending' | 'approved' | 'rejected' | 'expired';
 type CoauthorClaimStatus = 'pending' | 'approved' | 'rejected';
 ```
 
-## Database Schema
+## Database schema
 
-### External Claims
+### External claims
 
 External claims are tracked in the `claim_requests` table:
 
@@ -141,7 +141,7 @@ External claims are tracked in the `claim_requests` table:
 | created_at       | timestamptz | When request created              |
 | expires_at       | timestamptz | Expiration time                   |
 
-### Co-Author Claims
+### Co-author claims
 
 Co-author claims are tracked in the `coauthor_claim_requests` table:
 
@@ -160,7 +160,7 @@ Co-author claims are tracked in the `coauthor_claim_requests` table:
 | created_at       | timestamptz | When request created            |
 | reviewed_at      | timestamptz | When reviewed                   |
 
-## Multi-Signal Matching
+## Multi-signal matching
 
 The `getSuggestedPapers` method finds papers a user likely authored by combining multiple scoring signals. Each paper is scored by `scorePaperMatch`, which produces a value from 0 to 100. Papers scoring below 10 are excluded from results.
 
@@ -245,7 +245,7 @@ for (const paper of suggestions.papers) {
 }
 ```
 
-## Chive-Internal Suggestions
+## Chive-internal suggestions
 
 The `searchInternalPapers` method queries the `eprints_index` table for papers that match the user's name variants in the `authors` JSONB array. These results represent papers already on Chive that the user has not yet claimed.
 
@@ -279,7 +279,7 @@ LIMIT $3
 
 Internal results are merged into `getSuggestedPapers` automatically. Callers do not invoke `searchInternalPapers` directly; it runs concurrently with external source searches and its results appear in the same sorted output.
 
-## Dismiss Suggestions
+## Dismiss suggestions
 
 Users can dismiss paper suggestions so they do not reappear. Dismissed papers are filtered out in `getSuggestedPapers` before results are returned.
 
@@ -331,7 +331,7 @@ await claimingService.dismissSuggestion(userDid, 'arxiv', '2401.12345');
 const suggestions = await claimingService.getSuggestedPapers(userDid);
 ```
 
-## Error Tracking
+## Error tracking
 
 The `searchAllSources` method tracks per-source errors so the frontend can display partial-failure warnings instead of silently dropping results.
 
@@ -380,16 +380,17 @@ for (const error of sourceErrors) {
 }
 ```
 
-## ATProto Compliance
+## AT Protocol compliance
 
-The claiming service follows ATProto principles:
+The claiming service follows AT Protocol principles:
 
 - **Never writes to user PDSes**: Chive only reads and indexes
 - **All user data in PDSes**: Claim records are created by users in their PDSes
 - **Indexes are rebuildable**: Claim metadata can be reconstructed from firehose
 - **No gatekeeping**: Anyone can create any record in their PDS
 
-## See Also
+## Next steps
 
-- [Discovery Service](./discovery.md): Recommendations and suggestions
-- [Indexing Service](./indexing.md): Firehose indexing pipeline
+- [Discovery service](./discovery.md): Recommendations and paper suggestions
+- [Indexing service](./indexing.md): Firehose indexing pipeline
+- [Collections service](./collections.md): How claimed papers relate to user collections

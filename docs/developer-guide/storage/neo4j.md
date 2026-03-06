@@ -428,8 +428,8 @@ RETURN type(r) AS type, count(*) AS count
 ORDER BY count DESC;
 ```
 
-## Related documentation
+## Next steps
 
-- [Knowledge Graph Concepts](../../concepts/knowledge-graph.md): Taxonomy design
-- [Governance](../../governance/overview.md): Proposal workflow
-- [PostgreSQL Storage](./postgresql.md): Primary metadata storage
+- [Knowledge graph concepts](../../concepts/knowledge-graph.md): Taxonomy design and classification principles
+- [Governance](../../governance/overview.md): Proposal workflow for graph changes
+- [PostgreSQL storage](./postgresql.md): Primary metadata storage that complements Neo4j

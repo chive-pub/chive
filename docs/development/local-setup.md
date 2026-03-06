@@ -1,4 +1,4 @@
-# Local Development Setup
+# Local development setup
 
 Quick start guide for running Chive locally with full OAuth support.
 
@@ -9,7 +9,7 @@ Quick start guide for running Chive locally with full OAuth support.
 - **Docker Desktop** (for databases)
 - **ngrok** or **localtunnel** (optional, for OAuth testing)
 
-## First-Time Setup
+## First-time setup
 
 Before running for the first time:
 
@@ -26,9 +26,9 @@ open -a "Docker Desktop"  # macOS
 
 That's it! The dev script handles everything else (databases, environment generation).
 
-## Quick Start
+## Quick start
 
-### Loopback Mode (Default)
+### Loopback mode (default)
 
 For UI development and API testing without real OAuth:
 
@@ -42,7 +42,7 @@ This starts:
 - Backend at `http://127.0.0.1:3001`
 - PostgreSQL, Redis, Elasticsearch, Neo4j via Docker
 
-### Tunnel Mode (OAuth Testing)
+### Tunnel mode (OAuth testing)
 
 For testing OAuth with a real Bluesky account:
 
@@ -52,9 +52,9 @@ pnpm dev:tunnel
 
 Requires ngrok or localtunnel installed. See [Tunnel Setup](#tunnel-setup).
 
-## Development Modes
+## Development modes
 
-### Loopback Mode
+### Loopback mode
 
 | Component | URL                     | Notes                               |
 | --------- | ----------------------- | ----------------------------------- |
@@ -64,7 +64,7 @@ Requires ngrok or localtunnel installed. See [Tunnel Setup](#tunnel-setup).
 
 **Use for**: UI development, API testing, component work.
 
-### Tunnel Mode
+### Tunnel mode
 
 | Component | URL                            | Notes                             |
 | --------- | ------------------------------ | --------------------------------- |
@@ -74,7 +74,7 @@ Requires ngrok or localtunnel installed. See [Tunnel Setup](#tunnel-setup).
 
 **Use for**: Testing OAuth flows, integration testing with Bluesky.
 
-## Available Scripts
+## Available scripts
 
 | Command             | Description                                 |
 | ------------------- | ------------------------------------------- |
@@ -86,9 +86,9 @@ Requires ngrok or localtunnel installed. See [Tunnel Setup](#tunnel-setup).
 | `pnpm dev:stop`     | Stop dev servers (keeps databases running)  |
 | `pnpm dev:stop:all` | Stop everything including Docker containers |
 
-## Tunnel Setup
+## Tunnel setup
 
-### Option 1: ngrok (Recommended)
+### Option 1: ngrok (recommended)
 
 1. Install ngrok:
 
@@ -118,9 +118,9 @@ pnpm dev:tunnel
 
 The script auto-detects available tunnel tools.
 
-## Environment Variables
+## Environment variables
 
-### Auto-Generated (web/.env.local)
+### Auto-generated (web/.env.local)
 
 The dev scripts automatically generate this file:
 
@@ -142,13 +142,13 @@ Default values work for local development.
 
 ## Troubleshooting
 
-### OAuth "Invalid loopback client ID" Error
+### OAuth "Invalid loopback client ID" error
 
 **Cause**: ATProto requires `http://127.0.0.1:<port>` (not `http://localhost`).
 
 **Fix**: Ensure `NEXT_PUBLIC_OAUTH_BASE_URL` uses `127.0.0.1`, not `localhost`.
 
-### CORS Errors
+### CORS errors
 
 **Cause**: Origin mismatch between frontend and backend.
 
@@ -158,7 +158,7 @@ Default values work for local development.
 2. Check `CORS_ORIGINS` in backend includes frontend origin
 3. For tunnel mode, ensure tunnel URL is in CORS_ORIGINS
 
-### Databases Not Starting
+### Databases not starting
 
 **Cause**: Docker Desktop not running or port conflicts.
 
@@ -168,14 +168,14 @@ Default values work for local development.
 2. Check for port conflicts: `lsof -i :5432 -i :6379 -i :9200 -i :7474`
 3. Stop conflicting services or change ports in docker-compose
 
-### Hot Reload Not Working
+### Hot reload not working
 
 **Backend**: Ensure running via `pnpm dev:api` (uses tsx watch)
 **Frontend**: Ensure running via `pnpm dev` in web/ directory
 
-## Stopping the Environment
+## Stopping the environment
 
-### Quick Stop (Keep Databases)
+### Quick stop (keep databases)
 
 Stop dev servers but keep Docker databases running for faster restart:
 
@@ -183,7 +183,7 @@ Stop dev servers but keep Docker databases running for faster restart:
 pnpm dev:stop
 ```
 
-### Full Stop (Everything)
+### Full stop (everything)
 
 Stop all processes including Docker containers:
 
@@ -191,7 +191,7 @@ Stop all processes including Docker containers:
 pnpm dev:stop:all
 ```
 
-### Manual Stop
+### Manual stop
 
 If scripts aren't working, you can stop processes manually:
 
@@ -219,15 +219,15 @@ flowchart TB
     Backend --> Docker2["Docker<br/>Redis<br/>Elasticsearch"]
 ```
 
-## Security Notes
+## Security notes
 
 - Development secrets contain `-not-for-production` suffix
 - Production validates secrets don't contain this suffix
 - Never commit `.env.local` or `scripts/ngrok.yml`
 - Tunnel URLs are temporary and should not be shared
 
-## See also
+## Next steps
 
-- [ATProto OAuth Specification](https://atproto.com/specs/oauth)
-- [Deployment Guide](../operations/deployment.md)
-- [Configuration Reference](../reference/configuration.md)
+- [Configuration reference](../reference/configuration): configuration file reference
+- [Environment variables](../reference/environment-variables): env var reference
+- [Deployment](../operations/deployment): production setup

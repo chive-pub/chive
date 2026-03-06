@@ -17,7 +17,7 @@ Claiming links imported eprints to your Chive identity:
 
 After you complete your profile (especially ORCID linking), Chive suggests papers that may be yours:
 
-1. Go to **Dashboard** → **Import Your Papers**
+1. Go to **Dashboard** > **Import Your Papers**
 2. Review the **Suggested For You** tab
 
 Suggestions are ranked by a multi-signal scoring system. Each paper receives a score from 0 to 100; only papers scoring 10 or above appear in your suggestions.
@@ -162,8 +162,8 @@ If someone has incorrectly claimed your paper, contact the Chive team at [admin@
 - You can withdraw a pending claim at any time
 - Verified claims are public (the paper shows on your profile)
 
-## Related topics
+## Next steps
 
-- [Profiles](./profiles.md): Setting up your profile
-- [Submitting Eprints](./submitting-eprints.md): Adding new papers
-- [Endorsements](./endorsements.md): Endorsing claimed papers
+- [Profiles](./profiles): Setting up your academic profile
+- [Submitting eprints](./submitting-eprints): Adding new papers directly
+- [Endorsements](./endorsements): Endorsing claimed papers

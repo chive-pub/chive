@@ -1,0 +1,64 @@
+name: Deploy Staging Docs
+
+on:
+  push:
+    branches: [staging]
+    paths:
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and pnpm
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build documentation
+        run: pnpm --filter @chive/docs build
+
+      - name: Deploy to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docs/build/*"
+          target: "/tmp/staging-docs-deploy"
+          strip_components: 2
+
+      - name: Deploy and restart staging docs container
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+
+            # Replace old docs with new build
+            sudo rm -rf /opt/chive/docs/build
+            sudo mkdir -p /opt/chive/docs
+            sudo mv /tmp/staging-docs-deploy /opt/chive/docs/build
+            sudo chown -R root:root /opt/chive/docs/build
+            sudo chmod -R 755 /opt/chive/docs/build
+
+            # Start or recreate the staging docs container
+            # Uses the existing chive-network and Traefik from docker-compose.prod.yml
+            cd /opt/chive/docker
+            DOMAIN="${{ vars.STAGING_DOMAIN }}" docker compose -f docker-compose.staging-docs.yml up -d --force-recreate chive-staging-docs
+
+            echo "Staging docs deployed successfully!"
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          curl -sf https://docs.${{ vars.STAGING_DOMAIN }}/ || echo "Staging docs health check failed"

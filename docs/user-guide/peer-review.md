@@ -1,10 +1,10 @@
-# Peer Review
+# Peer review
 
 Chive supports open peer review through threaded comments on eprints.
 
-## Review Types
+## Review types
 
-### Inline Annotations
+### Inline annotations
 
 Readers can annotate specific text in an eprint's PDF:
 
@@ -18,7 +18,7 @@ The system captures the exact position of your selection using W3C Web Annotatio
 
 Annotations are stored as `pub.chive.annotation.comment` records in your AT Protocol PDS and indexed by Chive.
 
-### Document-Level Reviews
+### Document-level reviews
 
 For broader feedback not tied to a specific passage:
 
@@ -30,7 +30,7 @@ For broader feedback not tied to a specific passage:
 
 Reviews are stored as `pub.chive.review.comment` records and appear in the discussion section below the eprint.
 
-## Threaded Discussions
+## Threaded discussions
 
 Comments support unlimited-depth threading:
 
@@ -38,7 +38,7 @@ Comments support unlimited-depth threading:
 - Threads can be collapsed/expanded
 - Authors and reviewers can have back-and-forth discussions
 
-## Writing a Review
+## Writing a review
 
 1. Open an eprint
 2. Click "Add Comment" or select text for inline comments
@@ -47,7 +47,7 @@ Comments support unlimited-depth threading:
 
 Your comment is stored in your PDS and indexed by Chive.
 
-## Responding to Comments
+## Responding to comments
 
 Authors can respond to comments:
 
@@ -58,29 +58,29 @@ Authors can respond to comments:
 
 Responses appear threaded under the original comment.
 
-## Review Guidelines
+## Review guidelines
 
-### Be Constructive
+### Be constructive
 
 Focus on how the work can be improved. Avoid personal attacks.
 
-### Be Specific
+### Be specific
 
 Reference specific sections, figures, or claims. Use inline comments to point to exact text.
 
-### Be Timely
+### Be timely
 
 Engage promptly when authors respond to your feedback.
 
-### Declare Conflicts
+### Declare conflicts
 
 Disclose any conflicts of interest in your comments.
 
-## Review Visibility
+## Review visibility
 
 All comments on Chive are public and signed with your AT Protocol identity. This promotes accountability and reduces anonymous attacks.
 
-## Deleting Your Reviews
+## Deleting your reviews
 
 You can delete reviews you have written:
 
@@ -90,7 +90,7 @@ You can delete reviews you have written:
 
 Deleted reviews are soft-deleted: they remain in the thread structure to preserve context, but their content is hidden. This maintains reply chain integrity while removing your content.
 
-## Document Location Context
+## Document location context
 
 When viewing inline annotations on PDF text, the system shows a document location card indicating:
 

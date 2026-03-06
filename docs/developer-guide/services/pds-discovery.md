@@ -1,6 +1,6 @@
-# PDS Discovery
+# PDS discovery
 
-The PDS Discovery system enables Chive to index records from Personal Data Servers (PDSes) that are not connected to the main relay firehose. This ensures comprehensive coverage of Chive records across the ATProto network.
+The PDS discovery system enables Chive to index records from Personal Data Servers (PDSes) that are not connected to the main relay firehose. This ensures full coverage of Chive records across the AT Protocol network.
 
 ## Problem
 

@@ -8,7 +8,7 @@ Chive exposes two API styles: XRPC (AT Protocol native) and REST (traditional HT
 
 XRPC (Cross-Server Remote Procedure Call) is the AT Protocol's native API style. Endpoints follow a namespaced pattern:
 
-```
+```text
 /xrpc/pub.chive.eprint.getSubmission?uri=at://did:plc:abc123.../pub.chive.eprint.submission/3k5...
 ```
 
@@ -25,7 +25,7 @@ XRPC characteristics:
 
 REST endpoints provide a familiar HTTP API for web clients:
 
-```
+```text
 GET /api/v1/eprints/at:did:plc:abc123.../pub.chive.eprint.submission/3k5...
 ```
 
@@ -58,7 +58,7 @@ Chive supports three authentication methods:
 
 Most read operations work without authentication. Write operations and user-specific data require a valid session.
 
-See [Authentication](./authentication.md) for details.
+See [Authentication](./authentication) for details.
 
 ## Rate limiting
 
@@ -147,7 +147,7 @@ Pagination parameters:
 
 Many endpoints accept or return AT URIs, which identify records in the AT Protocol:
 
-```
+```text
 at://did:plc:abc123.../pub.chive.eprint.submission/3k5xyzabc
      └──────┬───────┘  └───────────┬─────────────┘   └───┬────┘
           DID               Collection             Record Key
@@ -155,7 +155,7 @@ at://did:plc:abc123.../pub.chive.eprint.submission/3k5xyzabc
 
 When passing AT URIs as URL parameters, encode them:
 
-```
+```text
 /xrpc/pub.chive.eprint.getSubmission?uri=at%3A%2F%2Fdid%3Aplc%3Aabc123...
 ```
 
@@ -202,13 +202,13 @@ XRPC endpoints are organized by namespace:
 | `pub.chive.alpha.*`        | Alpha tester program                    | 2         |
 | `pub.chive.notification.*` | Notifications                           | 2         |
 
-See [XRPC endpoints](./xrpc-endpoints.md) for the complete reference.
+See [XRPC endpoints](./xrpc-endpoints) for the complete reference.
 
 ## OpenAPI specification
 
 The full OpenAPI 3.1 specification is available at:
 
-```
+```text
 https://api.chive.pub/openapi.json
 ```
 
@@ -237,7 +237,7 @@ import type { GetSubmissionResponse, EprintRecord, SearchResultsResponse } from 
 
 Frontend types flow from lexicons:
 
-```
+```text
 lexicons/pub/chive/*.json          # Lexicon definitions
     ↓ (pnpm lexicon:generate)
 src/lexicons/generated/types/*     # Generated TypeScript types
@@ -304,7 +304,7 @@ For detailed endpoint documentation with request/response examples and schemas, 
 
 ## Next steps
 
-- [Authentication](./authentication.md): Session management and tokens
-- [XRPC endpoints](./xrpc-endpoints.md): Endpoint overview by namespace
-- [REST endpoints](./rest-endpoints.md): HTTP API patterns
-- [Interactive API Reference](/api-docs/chive-api): Full endpoint details
+- [Authentication](./authentication): Session management and tokens
+- [XRPC endpoints](./xrpc-endpoints): Endpoint overview by namespace
+- [REST endpoints](./rest-endpoints): HTTP API patterns
+- [Interactive API reference](/api-docs/chive-api): Full endpoint details

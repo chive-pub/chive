@@ -689,7 +689,7 @@ User-curated related paper link between eprints. Both eprints must exist in Chiv
 | `pub.chive.eprint.updateSubmission`  | Procedure | Authorize and prepare an eprint update |
 | `pub.chive.eprint.deleteSubmission`  | Procedure | Authorize an eprint deletion           |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Annotation lexicons
 
@@ -876,7 +876,7 @@ interface EprintLink {
 | `pub.chive.annotation.getThread`     | Query | Get annotation thread with all replies                 |
 | `pub.chive.annotation.listByAuthor`  | Query | List annotations by a specific author                  |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Review lexicons
 
@@ -993,7 +993,7 @@ The `TextSpanTarget` and `LinkedEntity` union types use the same structure as `p
 | `pub.chive.review.getThread`     | Query | Get a review thread with all replies |
 | `pub.chive.review.listForAuthor` | Query | List reviews by a specific author    |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Endorsement lexicons
 
@@ -1009,7 +1009,7 @@ Endorsement queries aggregate data from `pub.chive.review.endorsement` records. 
 | `pub.chive.endorsement.listForUser`         | Query | List all endorsements by a user                  |
 | `pub.chive.endorsement.listForAuthorPapers` | Query | List endorsements across an author's papers      |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Graph lexicons
 
@@ -1187,7 +1187,7 @@ Entity reconciliation record linking local knowledge graph entities to external 
 | `pub.chive.graph.getSubkinds`    | Query | List available subkind type nodes         |
 | `pub.chive.graph.browseFaceted`  | Query | Browse nodes using faceted classification |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Actor lexicons
 
@@ -1244,7 +1244,7 @@ Discovery preferences for personalized recommendations.
 | `pub.chive.actor.autocompleteOpenReview`  | Query | Autocomplete OpenReview profiles            |
 | `pub.chive.actor.discoverAuthorIds`       | Query | Discover author identifiers from ORCID/name |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Author lexicons
 
@@ -1257,7 +1257,7 @@ Author queries provide read-only access to author profile data aggregated from t
 | `pub.chive.author.getProfile`    | Query | Get an author profile by DID    |
 | `pub.chive.author.searchAuthors` | Query | Search authors by name or ORCID |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Tag lexicons
 
@@ -1274,7 +1274,7 @@ Tag queries provide search and discovery over user-generated tags from `pub.chiv
 | `pub.chive.tag.getSuggestions` | Query | Get tag suggestions for an eprint |
 | `pub.chive.tag.getTrending`    | Query | Get trending tags                 |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Sync lexicons
 
@@ -1291,7 +1291,7 @@ Sync endpoints manage PDS synchronization and staleness detection for the AppVie
 | `pub.chive.sync.deleteRecord`   | Procedure | Remove an indexed record                |
 | `pub.chive.sync.registerPDS`    | Procedure | Register a PDS for firehose consumption |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Notification lexicons
 
@@ -1304,7 +1304,7 @@ Notification queries return aggregated notifications for the authenticated user.
 | `pub.chive.notification.listReviewsOnMyPapers`      | Query | List reviews on the user's papers      |
 | `pub.chive.notification.listEndorsementsOnMyPapers` | Query | List endorsements on the user's papers |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Activity lexicons
 
@@ -1319,7 +1319,7 @@ Activity endpoints provide feed data and correlation metrics for user activity.
 | `pub.chive.activity.log`                   | Procedure | Log a user activity event            |
 | `pub.chive.activity.markFailed`            | Procedure | Mark an activity log entry as failed |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Backlink lexicons
 
@@ -1334,7 +1334,7 @@ Backlinks track cross-references between eprints and external resources.
 | `pub.chive.backlink.create`    | Procedure | Create a backlink                  |
 | `pub.chive.backlink.delete`    | Procedure | Delete a backlink                  |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Claiming lexicons
 
@@ -1364,7 +1364,7 @@ Claiming endpoints handle eprint ownership claims, coauthorship requests, and ex
 | `pub.chive.claiming.rejectCoauthor`         | Procedure | Reject a coauthorship request                      |
 | `pub.chive.claiming.fetchExternalPdf`       | Procedure | Fetch a PDF from an external source                |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Discovery lexicons
 
@@ -1381,7 +1381,7 @@ Discovery endpoints provide personalized recommendations, citation networks, and
 | `pub.chive.discovery.getEnrichment`      | Query     | Get enrichment data for an eprint             |
 | `pub.chive.discovery.recordInteraction`  | Procedure | Record a user interaction for recommendations |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Import lexicons
 
@@ -1395,7 +1395,7 @@ Import queries search external academic databases for eprints that can be claime
 | `pub.chive.import.exists` | Query | Check if an external eprint is already indexed |
 | `pub.chive.import.get`    | Query | Get metadata for an external eprint            |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Metrics lexicons
 
@@ -1414,7 +1414,7 @@ Metrics endpoints track and report usage statistics for eprints.
 | `pub.chive.metrics.recordSearchClick`    | Procedure | Record a click-through from search    |
 | `pub.chive.metrics.recordSearchDownload` | Procedure | Record a download from search results |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Governance lexicons
 
@@ -1440,7 +1440,7 @@ Governance endpoints manage the community moderation system: proposals, votes, t
 | `pub.chive.governance.revokeDelegation`      | Procedure | Revoke a role delegation          |
 | `pub.chive.governance.revokeRole`            | Procedure | Revoke an editor role             |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Alpha lexicons
 
@@ -1453,7 +1453,7 @@ Alpha endpoints manage enrollment in the Chive alpha program.
 | `pub.chive.alpha.checkStatus` | Query     | Check the user's alpha program status |
 | `pub.chive.alpha.apply`       | Procedure | Apply for the alpha program           |
 
-See [XRPC endpoints](../api-reference/xrpc-endpoints.md) for parameter and response details.
+See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
 ## Common types
 
@@ -1545,9 +1545,8 @@ Current versions:
 | `pub.chive.richtext.*`   | 1.0.0   |
 | `pub.chive.discovery.*`  | 1.0.0   |
 
-## Related documentation
+## Next steps
 
-- [AT Protocol Concepts](../concepts/at-protocol.md): Protocol fundamentals
-- [API Reference](../api-reference/xrpc-endpoints.md): XRPC endpoints with parameters and responses
-- [Data Sovereignty](../concepts/data-sovereignty.md): Where data lives
-- [W3C Web Annotation Model](https://www.w3.org/TR/annotation-model/): Annotation selector specification
+- [AT Protocol concepts](../concepts/at-protocol): protocol fundamentals
+- [XRPC endpoints](../api-reference/xrpc-endpoints): endpoints with parameters and responses
+- [Data sovereignty](../concepts/data-sovereignty): where data lives

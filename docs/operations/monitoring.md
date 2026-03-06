@@ -200,7 +200,7 @@ OpenTelemetry traces are exported via the OTLP protocol. Trace context propagate
 
 ### Log aggregation
 
-```yaml
+```ini
 # fluent-bit config
 [INPUT]
     Name              tail
@@ -237,7 +237,7 @@ logger.info('Eprint indexed', {
 
 ## SLOs and SLIs
 
-### Service Level Indicators
+### Service level indicators
 
 | SLI          | Measurement                                                                      |
 | ------------ | -------------------------------------------------------------------------------- |
@@ -245,7 +245,7 @@ logger.info('Eprint indexed', {
 | Latency      | `histogram_quantile(0.95, rate(http_request_duration_seconds_bucket))`           |
 | Throughput   | `sum(rate(http_requests_total))`                                                 |
 
-### Service Level Objectives
+### Service level objectives
 
 | SLO              | Target      |
 | ---------------- | ----------- |
@@ -285,9 +285,9 @@ cypher-shell "CALL dbms.queryJmx('org.neo4j:*');"
 redis-cli INFO
 ```
 
-## Related documentation
+## Next steps
 
-- [Deployment](./deployment.md): Production setup
-- [Scaling](./scaling.md): Performance tuning
-- [Troubleshooting](./troubleshooting.md): Common issues
-- [Observability Guide](../developer-guide/observability-monitoring.md): Developer reference
+- [Deployment](./deployment): Production setup and configuration
+- [Scaling](./scaling): Performance tuning and capacity planning
+- [Troubleshooting](./troubleshooting): Common issues and recovery
+- [Observability guide](../developer-guide/observability-monitoring): Developer reference for instrumentation

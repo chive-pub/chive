@@ -1,10 +1,10 @@
-# Author Profiles
+# Author profiles
 
 Your Chive profile displays your scholarly identity and work.
 
-## Profile Components
+## Profile components
 
-### Basic Information
+### Basic information
 
 - Display name
 - Bio (Markdown supported)
@@ -20,18 +20,18 @@ Link external identifiers to verify your identity:
 | ------------------- | ------------------------------------ |
 | ORCID               | Connects to your ORCID profile       |
 | AT Protocol DID     | Your unique decentralized identifier |
-| Institutional Email | Verifies affiliation                 |
+| Institutional email | Verifies affiliation                 |
 
-### Activity Summary
+### Activity summary
 
 - Eprints authored
 - Reviews written
 - Endorsements given
 - Fields of expertise
 
-## Setting Up Your Profile
+## Setting up your profile
 
-### Initial Setup
+### Initial setup
 
 Your profile is created automatically when you sign in. Basic information is pulled from your PDS profile.
 
@@ -44,7 +44,7 @@ Your profile is created automatically when you sign in. Basic information is pul
 
 ORCID linking is optional but recommended for identity verification.
 
-### Updating Information
+### Updating information
 
 1. Go to Settings > Profile
 2. Edit fields as needed
@@ -52,7 +52,7 @@ ORCID linking is optional but recommended for identity verification.
 
 Changes sync to your PDS and appear immediately on Chive.
 
-## Profile Visibility
+## Profile visibility
 
 Profiles are public by default. The following information is always visible:
 
@@ -67,7 +67,7 @@ The following can be hidden in settings:
 - Location
 - Activity statistics
 
-## Claiming Eprints
+## Claiming eprints
 
 If eprints were imported from external sources (e.g., arXiv) before you joined Chive, you can claim them:
 
@@ -76,9 +76,9 @@ If eprints were imported from external sources (e.g., arXiv) before you joined C
 3. Click **Start Claim** to begin the import process
 4. Your Chive client creates a record in your PDS
 
-Claims with strong evidence (e.g., ORCID match) are processed automatically. Others may require co-author confirmation. See [Claiming Authorship](./claiming-authorship.md) for details.
+Claims with strong evidence (e.g., ORCID match) are processed automatically. Others may require co-author confirmation. See [Claiming authorship](./claiming-authorship) for details.
 
-## Deleting Your Profile
+## Deleting your profile
 
 You can delete your Chive profile at any time:
 

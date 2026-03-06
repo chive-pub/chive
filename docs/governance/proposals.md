@@ -33,7 +33,7 @@ The `kind` and `subkind` fields determine what type of node is being proposed:
 
 Certain events trigger automatic proposal creation through the `AutomaticProposalService`:
 
-| Trigger                 | Proposal Type    | Description                                          |
+| Trigger                 | Proposal type    | Description                                          |
 | ----------------------- | ---------------- | ---------------------------------------------------- |
 | First eprint submission | Author node      | Creates proposal for authors with ATProto identities |
 | Eprint submission       | Eprint node      | Creates proposal immediately upon submission         |
@@ -158,7 +158,7 @@ flowchart LR
 
 ### Phase 2: Discussion
 
-**Duration**: 7 days (14 for controversial)
+**Duration**: 7 days
 
 Activities:
 
@@ -175,7 +175,7 @@ Revisions during discussion:
 
 ### Phase 3: Voting
 
-**Duration**: 5 days (plus extensions if needed)
+**Duration**: 5 days
 
 - No further changes to proposal
 - Votes cast by eligible users
@@ -245,9 +245,9 @@ For related changes that should be decided together:
   "type": "batch",
   "title": "Reorganize Computational Biology subfields",
   "proposals": [
-    { "type": "create_field", ... },
-    { "type": "update_field", ... },
-    { "type": "merge_fields", ... }
+    { "type": "create_field", "...": "..." },
+    { "type": "update_field", "...": "..." },
+    { "type": "merge_fields", "...": "..." }
   ],
   "rationale": "These changes are interdependent and should be evaluated as a whole"
 }
@@ -290,7 +290,7 @@ POST /xrpc/pub.chive.governance.createProposal
   "type": "create_field",
   "title": "...",
   "description": "...",
-  "changes": { ... }
+  "changes": { }
 }
 ```
 
@@ -320,6 +320,6 @@ POST /xrpc/pub.chive.governance.castVote
 
 ## Next steps
 
-- [Voting system](./voting-system.md): How votes are weighted and tallied
-- [Authority control](./authority-control.md): Special rules for authority records
-- [Governance overview](./overview.md): The governance model
+- [Voting system](voting-system): How votes are weighted and tallied
+- [Authority control](authority-control): Special rules for authority records
+- [Governance overview](overview): The governance model

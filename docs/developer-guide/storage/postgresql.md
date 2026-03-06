@@ -2,7 +2,7 @@
 
 PostgreSQL serves as Chive's primary index storage for eprints, reviews, and metadata. All tables store **indexes only**, never source data.
 
-## ATProto compliance
+## AT Protocol compliance
 
 ### Index semantics
 
@@ -138,7 +138,7 @@ CREATE INDEX idx_eprints_keywords ON eprints_index USING GIN(keywords);
 
 ### Firehose cursor
 
-Tracks current position in the ATProto firehose:
+Tracks current position in the AT Protocol firehose:
 
 ```sql
 CREATE TABLE firehose_cursor (
@@ -388,8 +388,8 @@ pnpm test tests/integration/storage/postgresql-schema.test.ts
 pnpm test:compliance tests/compliance/database-compliance.test.ts
 ```
 
-## Related documentation
+## Next steps
 
-- [Elasticsearch Storage](./elasticsearch.md): Full-text search
-- [Neo4j Storage](./neo4j.md): Knowledge graph
-- [Core Services](../core-business-services.md): Service layer
+- [Elasticsearch storage](./elasticsearch.md): Full-text search index configuration
+- [Neo4j storage](./neo4j.md): Knowledge graph schema and queries
+- [Core services](../core-business-services.md): Service layer that queries these tables

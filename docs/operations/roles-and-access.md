@@ -6,17 +6,17 @@ Chive uses a role-based access control (RBAC) system backed by Redis. Roles dete
 
 Roles are stored in Redis as sets keyed by DID:
 
-```
+```text
 chive:authz:roles:{did} -> SET { "admin", "alpha-tester", ... }
 ```
 
 Each role assignment also stores metadata:
 
-```
+```text
 chive:authz:assignments:{did}:{role} -> JSON { role, assignedAt, assignedBy }
 ```
 
-The auth middleware reads a user's roles from Redis on every authenticated request and sets boolean flags (`isAdmin`, `isAlphaTester`, `isPremium`) on the user context object.
+The auth middleware reads a user's roles from Redis on every authenticated request and sets boolean flags (`isAdmin`, `isAlphaTester`) on the user context object.
 
 ## Available roles
 
@@ -28,9 +28,8 @@ The auth middleware reads a user's roles from Redis on every authenticated reque
 | `author`       | Eprint submission permissions                                   |
 | `reader`       | Standard read access                                            |
 | `alpha-tester` | Access to alpha features during the testing phase               |
-| `premium`      | Premium tier features                                           |
 
-Admin users implicitly have `alpha-tester` and `premium` access regardless of explicit role assignment. This is enforced in the `pub.chive.actor.getMyRoles` handler.
+Admin users implicitly have `alpha-tester` access regardless of explicit role assignment. This is enforced in the `pub.chive.actor.getMyRoles` handler.
 
 ## Bootstrapping admin access
 
@@ -75,7 +74,7 @@ The admin check happens at two levels:
 ### Frontend (role context)
 
 1. After OAuth login, the frontend calls `pub.chive.actor.getMyRoles`
-2. The response includes `isAdmin`, `isAlphaTester`, `isPremium` booleans
+2. The response includes `isAdmin`, `isAlphaTester` booleans
 3. These are stored in the auth context (React context provider)
 4. Components access them via `useAuth()` hook
 5. `AdminGuard` component checks `user.isAdmin` and redirects non-admins
@@ -88,8 +87,7 @@ The `pub.chive.actor.getMyRoles` endpoint returns the authenticated user's roles
 {
   "roles": ["admin", "alpha-tester"],
   "isAdmin": true,
-  "isAlphaTester": true,
-  "isPremium": true
+  "isAlphaTester": true
 }
 ```
 
@@ -98,7 +96,6 @@ This endpoint:
 - Is available to any authenticated user (not restricted to admins)
 - Reads fresh roles from Redis (not relying on cached middleware state)
 - Computes `isAlphaTester` as `roles.includes('alpha-tester') || isAdmin`
-- Computes `isPremium` as `roles.includes('premium') || isAdmin`
 
 ## AdminGuard component
 
@@ -129,7 +126,7 @@ The component must be nested inside `AuthGuard`, which ensures the user is authe
 
 **Assign a role:**
 
-```
+```text
 POST /xrpc/pub.chive.admin.assignRole
 {
   "did": "did:plc:target-user",
@@ -139,7 +136,7 @@ POST /xrpc/pub.chive.admin.assignRole
 
 **Revoke a role:**
 
-```
+```text
 POST /xrpc/pub.chive.admin.revokeRole
 {
   "did": "did:plc:target-user",
@@ -173,8 +170,8 @@ Role changes made through the admin dashboard are tracked in multiple ways:
 4. **Redis pub/sub**: Content deletions publish events to `chive:admin:content-deleted`
 5. **Audit log**: The `pub.chive.admin.getAuditLog` endpoint returns a paginated list of all admin actions
 
-## Related documentation
+## Next steps
 
-- [Admin Dashboard](./admin-dashboard.md): accessing and navigating the admin UI
-- [Admin API Reference](../api-reference/admin-endpoints.md): `assignRole`, `revokeRole`, `getMyRoles` endpoints
-- [Admin Architecture](../development/admin-architecture.md): implementation details
+- [Admin dashboard](./admin-dashboard): Accessing and navigating the admin UI
+- [Admin API reference](../api-reference/admin-endpoints): `assignRole`, `revokeRole`, and `getMyRoles` endpoints
+- [Admin architecture](../development/admin-architecture): Implementation details

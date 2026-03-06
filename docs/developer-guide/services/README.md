@@ -1,6 +1,6 @@
 # Services overview
 
-Chive's backend is organized into 18 specialized services that handle distinct responsibilities. All services follow ATProto compliance principles: they index data from the firehose but never write to user PDSes.
+Chive's backend is organized into 18 specialized services that handle distinct responsibilities. All services follow AT Protocol compliance principles: they index data from the firehose but never write to user PDSes.
 
 ## Service architecture
 
@@ -68,7 +68,7 @@ All services return `Result<T, Error>` types for explicit error handling.
 
 Services are initialized in dependency order:
 
-```
+```text
 1. Storage adapters (PostgreSQL, Redis, Elasticsearch, Neo4j)
 2. Infrastructure services (BlobProxy, GovernancePDS)
 3. Core indexing services (Eprint, Review)
@@ -178,9 +178,7 @@ describe('EprintService', () => {
 
 ## Next steps
 
-- [IndexingService](./indexing.md): Firehose consumption pipeline
+- [IndexingService](./indexing.md): Firehose consumption and event processing pipeline
 - [CollectionService](./collections.md): User-curated collection management
-- [DiscoveryService](./discovery.md): Recommendation engine
-- [ClaimingService](./claiming.md): Authorship verification
-- [PDSDiscoveryService](./pds-discovery.md): PDS registration and scanning
-- [SchemaCompatibilityService](./schema-compatibility.md): Schema evolution and migration hints
+- [DiscoveryService](./discovery.md): Personalized recommendation engine
+- [ClaimingService](./claiming.md): Authorship verification and paper claiming

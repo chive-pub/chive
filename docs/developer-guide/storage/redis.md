@@ -387,8 +387,8 @@ redis-cli INFO keyspace
 redis-cli SLOWLOG GET 10
 ```
 
-## Related documentation
+## Next steps
 
-- [Core Services](../core-business-services.md): Service layer caching
-- [BlobProxyService](../core-business-services.md#blobproxyservice): L1 blob cache
-- [MetricsService](../core-business-services.md#metricsservice): Metrics storage
+- [Core services](../core-business-services.md): Service layer caching patterns that use Redis
+- [BlobProxyService](../core-business-services.md#blobproxyservice): L1 blob cache implementation
+- [PostgreSQL storage](./postgresql.md): Primary index storage that Redis caches accelerate

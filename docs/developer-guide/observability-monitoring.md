@@ -1,10 +1,4 @@
-# Observability and Monitoring Developer Guide
-
-**Version:** 1.0.0
-**Phase:** 15 - Observability & Monitoring
-**Last Updated:** December 2025
-
----
+# Observability and monitoring developer guide
 
 ## Overview
 
@@ -247,7 +241,7 @@ curl http://localhost:3000/metrics | grep chive_
 
 Expected output:
 
-```
+```text
 # HELP chive_http_requests_total Total HTTP requests
 # TYPE chive_http_requests_total counter
 chive_http_requests_total{method="GET",route="/api/v1/eprints",status="200"} 1
@@ -555,7 +549,7 @@ The following metrics are registered automatically:
 
 Default histogram buckets (in seconds):
 
-```
+```text
 [0.01, 0.05, 0.1, 0.5, 1, 5, 10]
 ```
 
@@ -690,7 +684,7 @@ Logs are JSON objects with these fields:
 
 3. Verify Promtail labels match your Loki queries:
 
-   ```
+   ```text
    {app="chive-appview"}
    ```
 
@@ -704,10 +698,8 @@ If you see "Cardinality limit reached for metric":
 
 3. Use histograms instead of per-request metrics.
 
----
+## Next steps
 
-## Related documentation
-
-- [API Layer Developer Guide](./api-layer.md)
-- [AT Protocol Concepts](../concepts/at-protocol.md)
-- [Deployment Guide](../operations/deployment.md)
+- [API layer developer guide](./api-layer.md): Instrument HTTP endpoints with metrics and traces
+- [AT Protocol concepts](../concepts/at-protocol.md): Understand the data flow that telemetry monitors
+- [Deployment guide](../operations/deployment.md): Configure monitoring infrastructure in production

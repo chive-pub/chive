@@ -40,7 +40,7 @@ When you add an item to a subcollection, it is automatically propagated to all a
 
 A subcollection belongs to a parent collection. You can nest collections to build reading lists, topic groups, or multi-level curricula.
 
-```
+```text
 Machine Learning Reading List
   |-- NLP Papers
   |-- Computer Vision
@@ -60,8 +60,8 @@ The collection detail page shows:
 
 When a collection has subcollections, a toggle lets you switch between:
 
-- **All items** -- items from this collection plus all subcollections
-- **Direct only** -- only items directly in this collection, excluding subcollection items
+- **All items**: items from this collection plus all subcollections
+- **Direct only**: only items directly in this collection, excluding subcollection items
 
 ## Managing collection items
 
@@ -104,8 +104,8 @@ Subcollections of a deleted collection are re-linked to the deleted collection's
 
 Since all collections are AT Protocol records in your PDS, they are always technically accessible to anyone who resolves the AT-URI directly. The visibility setting controls what Chive's AppView surfaces, not what exists.
 
-## Related topics
+## Next steps
 
-- [Tags and classification](./tags-and-classification.md): Organizing eprints with fields and tags
-- [Endorsements](./endorsements.md): Public signals of support for eprints
-- [Searching](./searching.md): Full search guide
+- [Tags and classification](./tags-and-classification): Organizing eprints with fields and tags
+- [Endorsements](./endorsements): Public signals of support for eprints
+- [Searching](./searching): Finding eprints, collections, and authors

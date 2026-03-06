@@ -1,12 +1,12 @@
-# Searching for Eprints
+# Searching for eprints
 
 Chive provides full-text search and faceted filtering to help you discover relevant eprints.
 
-## Basic Search
+## Basic search
 
 Enter keywords in the search box on any page. Results are ranked by relevance using text matching, citation count, and recency.
 
-### Search Syntax
+### Search syntax
 
 | Operator     | Example                | Description           |
 | ------------ | ---------------------- | --------------------- |
@@ -15,7 +15,7 @@ Enter keywords in the search box on any page. Results are ranked by relevance us
 | Minus        | `neural -network`      | Exclude term          |
 | Field prefix | `author:Smith`         | Search specific field |
 
-### Searchable Fields
+### Searchable fields
 
 - `title:` - Eprint title
 - `abstract:` - Eprint abstract
@@ -23,21 +23,21 @@ Enter keywords in the search box on any page. Results are ranked by relevance us
 - `keyword:` - Author-provided keywords
 - `field:` - Knowledge graph field
 
-## Faceted Filtering
+## Faceted filtering
 
 Click "Filters" to open the facet panel. Facets narrow results without changing the search query.
 
-### Available Facets
+### Available facets
 
 **Field**: Select one or more fields from the knowledge graph hierarchy.
 
-**Date Range**: Filter by submission date (e.g., last week, last month, custom range).
+**Date range**: Filter by submission date (e.g., last week, last month, custom range).
 
-**Publication Status**: Filter by lifecycle stage (eprint, under review, accepted, in press, published).
+**Publication status**: Filter by lifecycle stage (eprint, under review, accepted, in press, published).
 
-**Author Affiliation**: Filter by institutional affiliation when available.
+**Author affiliation**: Filter by institutional affiliation when available.
 
-## Sorting Results
+## Sorting results
 
 Results can be sorted by:
 
@@ -47,14 +47,14 @@ Results can be sorted by:
 
 The API accepts a `sort` parameter with values `relevance` (default) or `recent`.
 
-## Search Tips
+## Search tips
 
 1. Start broad, then narrow with facets
 2. Use field prefixes for precise queries
 3. Check spelling; the search suggests corrections
 4. Browse related fields for serendipitous discovery
 
-## Author Search
+## Author search
 
 Find researchers who have eprints on Chive:
 
@@ -62,7 +62,7 @@ Find researchers who have eprints on Chive:
 2. Enter a researcher's name or DID
 3. Results show authors with Chive presence
 
-### Author Results Include
+### Author results include
 
 - Display name and handle
 - Avatar (from Bluesky profile)
@@ -73,17 +73,17 @@ Find researchers who have eprints on Chive:
 
 You can search directly by AT Protocol DID:
 
-```
+```text
 did:plc:abc123xyz
 ```
 
 This is useful when you know someone's identifier but not their handle.
 
-## API Access
+## API access
 
-Developers can access search via the REST API. See the [API Reference](../api-reference/rest-endpoints) for endpoint documentation.
+Developers can access search via the REST API. See the [API reference](../api-reference/rest-endpoints) for endpoint documentation.
 
-### Author Search API
+### Author search API
 
 ```http
 GET /xrpc/pub.chive.author.searchAuthors?query=Smith&limit=10

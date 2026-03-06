@@ -15,7 +15,7 @@ The frontend is a React 19 application using:
 
 ## Project structure
 
-```
+```text
 web/
 ├── app/                      # Next.js App Router pages
 │   ├── layout.tsx            # Root layout with providers
@@ -390,7 +390,7 @@ Located in `components/editor/`:
 | `RichTextRenderer`        | Renders rich text items with entity references              |
 | `CrossReferenceExtension` | TipTap extension for `[[` autocomplete of entity references |
 
-See [Frontend Rich Text](./frontend-rich-text.md) for detailed documentation on the rich text system.
+See [Frontend rich text](./frontend-rich-text) for detailed documentation on the rich text system.
 
 ### Adding new components
 
@@ -866,7 +866,7 @@ pnpm test:coverage  # With coverage report
 
 Test files are co-located with components:
 
-```
+```text
 components/ui/button.tsx
 components/ui/button.test.tsx
 ```
@@ -893,7 +893,7 @@ Opens at http://localhost:6006.
 
 Story files are co-located:
 
-```
+```text
 components/ui/button.tsx
 components/ui/button.stories.tsx
 ```
@@ -966,16 +966,8 @@ export function Counter() {
 | `pnpm storybook`        | Start Storybook          |
 | `pnpm openapi:generate` | Regenerate API types     |
 
-## Related documentation
+## Next steps
 
-**Chive frontend guides:**
-
-- [Rich Text System](./frontend-rich-text.md): RichTextRenderer, type definitions, schema migration
-- [Eprint Lifecycle](./frontend-eprint-lifecycle.md): Edit, version, and delete components
-
-**External resources:**
-
-- [ATProto Specification](https://atproto.com/specs)
-- [Next.js Documentation](https://nextjs.org/docs)
-- [TanStack Query](https://tanstack.com/query)
-- [shadcn/ui](https://ui.shadcn.com)
+- [Rich text system](./frontend-rich-text): RichTextRenderer, type definitions, and schema migration
+- [Eprint lifecycle](./frontend-eprint-lifecycle): edit, version, and delete components
+- [API layer](./api-layer): backend endpoints the frontend calls

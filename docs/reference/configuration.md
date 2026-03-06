@@ -236,8 +236,8 @@ if (config.rateLimit.anonymous < 1) {
 }
 ```
 
-## Related documentation
+## Next steps
 
-- [Environment Variables](./environment-variables.md): Complete env var list
-- [Deployment](../operations/deployment.md): Production configuration
-- [CLI Commands](./cli-commands.md): Configuration commands
+- [Environment variables](./environment-variables): complete env var list
+- [CLI commands](./cli-commands): configuration commands
+- [Deployment](../operations/deployment): production configuration

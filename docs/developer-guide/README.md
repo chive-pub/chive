@@ -63,18 +63,18 @@ Plugins extend functionality through a hybrid DI + EventEmitter2 architecture. P
 
 ## Guide sections
 
-| Section                                                     | Description                               |
-| ----------------------------------------------------------- | ----------------------------------------- |
-| [API layer](./api-layer.md)                                 | XRPC and REST endpoint implementation     |
-| [Authentication](./authentication-authorization.md)         | OAuth, sessions, and authorization        |
-| [Core services](./core-business-services.md)                | Business logic services                   |
-| [Lexicon type validation](./lexicon-type-validation.md)     | Generated types and runtime validation    |
-| [Frontend](./frontend.md)                                   | Next.js architecture and components       |
-| [Frontend rich text](./frontend-rich-text.md)               | Rich text rendering and schema migrations |
-| [Frontend eprint lifecycle](./frontend-eprint-lifecycle.md) | Edit, version, and delete components      |
-| [Plugin system](./plugin-system.md)                         | Creating and managing plugins             |
-| [Advanced features](./advanced-features.md)                 | Knowledge graph, discovery, and more      |
-| [Observability](./observability-monitoring.md)              | Logging, metrics, and tracing             |
+| Section                                                  | Description                               |
+| -------------------------------------------------------- | ----------------------------------------- |
+| [API layer](./api-layer)                                 | XRPC and REST endpoint implementation     |
+| [Authentication](./authentication-authorization)         | OAuth, sessions, and authorization        |
+| [Core services](./core-business-services)                | Business logic services                   |
+| [Lexicon type validation](./lexicon-type-validation)     | Generated types and runtime validation    |
+| [Frontend](./frontend)                                   | Next.js architecture and components       |
+| [Frontend rich text](./frontend-rich-text)               | Rich text rendering and schema migrations |
+| [Frontend eprint lifecycle](./frontend-eprint-lifecycle) | Edit, version, and delete components      |
+| [Plugin system](./plugin-system)                         | Creating and managing plugins             |
+| [Advanced features](./advanced-features)                 | Knowledge graph, discovery, and more      |
+| [Observability](./observability-monitoring)              | Logging, metrics, and tracing             |
 
 ### Subdirectories
 
@@ -118,7 +118,7 @@ pnpm test
 
 ## Directory structure
 
-```
+```text
 src/
 ├── api/           # Hono XRPC + REST handlers
 ├── atproto/       # AT Protocol client, firehose consumer
@@ -137,4 +137,6 @@ src/
 
 ## Next steps
 
-Start with [API layer](./api-layer.md) to understand how requests are handled, then explore [Core services](./core-business-services.md) for the business logic.
+- [API layer](./api-layer): how requests are handled through XRPC and REST endpoints
+- [Core services](./core-business-services): business logic for indexing, caching, and search
+- [Authentication](./authentication-authorization): OAuth, sessions, and authorization

@@ -60,7 +60,7 @@ The blob proxy fetches PDFs and images from user PDSes, caching them locally.
 
 ### Request flow
 
-```
+```text
 Client → Chive AppView → L1 Redis → L2 R2 → User PDS
                            ↓ miss      ↓ miss    ↓ fetch
                            cache       cache     blob

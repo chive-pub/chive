@@ -378,7 +378,7 @@ Assigns a role to a user. Stores the assignment in Redis with metadata (timestam
 | `did`  | string | Yes      | DID of the target user |
 | `role` | string | Yes      | Role to assign         |
 
-Valid roles: `admin`, `moderator`, `graph-editor`, `author`, `reader`, `alpha-tester`, `premium`.
+Valid roles: `admin`, `moderator`, `graph-editor`, `author`, `reader`, `alpha-tester`.
 
 #### Response
 
@@ -1423,9 +1423,14 @@ None.
 {
   "roles": ["admin", "alpha-tester"],
   "isAdmin": true,
-  "isAlphaTester": true,
-  "isPremium": true
+  "isAlphaTester": true
 }
 ```
 
-Reads roles from Redis (`chive:authz:roles:{did}`). The `isAlphaTester` and `isPremium` flags are true for admins regardless of explicit role assignment.
+Reads roles from Redis (`chive:authz:roles:{did}`). The `isAlphaTester` flag is true for admins regardless of explicit role assignment.
+
+## Next steps
+
+- [XRPC endpoints](./xrpc-endpoints): Full endpoint reference for non-admin namespaces
+- [Authentication](./authentication): Auth flows and service auth JWT details
+- [API overview](./overview): Base URLs, rate limits, and error handling

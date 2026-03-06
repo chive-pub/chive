@@ -1,8 +1,8 @@
-# Frontend Rich Text System
+# Frontend rich text system
 
 This guide covers the unified rich text rendering system for Chive's frontend.
 
-## Lexicon Schemas
+## Lexicon schemas
 
 The rich text system implements three lexicon schemas:
 
@@ -14,7 +14,7 @@ The rich text system implements three lexicon schemas:
 | `pub.chive.review.comment`     | `body`      | Rich comment body                         |
 | `pub.chive.annotation.comment` | `body`      | Rich annotation body with formatting      |
 
-See [Lexicons Reference](/reference/lexicons#rich-text-system) for complete schema documentation.
+See [Lexicons reference](/reference/lexicons#rich-text-system) for complete schema documentation.
 
 ## Overview
 
@@ -27,11 +27,11 @@ The rich text system provides consistent rendering of formatted content across t
 
 ## Architecture
 
-### Type Hierarchy
+### Type hierarchy
 
 All rich text types are defined in `web/lib/types/rich-text.ts`:
 
-```
+```text
 RichTextItem (union type)
 ├── TextItem           # Plain text with optional formatting
 ├── MentionItem        # @handle ATProto mentions
@@ -48,9 +48,9 @@ RichTextItem (union type)
 └── CodeItem           # Code blocks and inline code
 ```
 
-### Data Flow
+### Data flow
 
-```
+```text
 Record from PDS              RichTextRenderer
       │                            │
       ▼                            ▼
@@ -69,11 +69,11 @@ RichTextItem[] ────────────────►   │
                            Rendered output
 ```
 
-## RichTextRenderer Component
+## RichTextRenderer component
 
 The main rendering component is located at `web/components/editor/rich-text-renderer.tsx`.
 
-### Basic Usage
+### Basic usage
 
 ```tsx
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
@@ -100,7 +100,7 @@ const items: RichTextItem[] = [
 | className | string                                   | undefined   | Additional CSS classes              |
 | testId    | string                                   | 'rich-text' | data-testid attribute               |
 
-### Input Formats
+### Input formats
 
 The component accepts three input formats:
 
@@ -140,7 +140,7 @@ The component accepts three input formats:
 />
 ```
 
-### Render Modes
+### Render modes
 
 **Inline mode (default):** Items flow inline. Use for titles and short text.
 
@@ -154,7 +154,7 @@ The component accepts three input formats:
 <RichTextRenderer items={items} mode="block" />
 ```
 
-## Supported Item Types
+## Supported item types
 
 ### TextItem
 
@@ -361,7 +361,7 @@ interface CodeItem {
 }
 ```
 
-## Integration with Eprint Components
+## Integration with eprint components
 
 ### EprintAbstract
 
@@ -392,11 +392,11 @@ import { StaticAbstract } from '@/components/eprints/eprint-abstract';
 <StaticAbstract abstractItems={eprint.abstractItems} maxLines={3} />;
 ```
 
-## Schema Migration Utilities
+## Schema migration utilities
 
 When working with records that may use older field formats, use the migration utilities.
 
-### Detecting Migration Needs
+### Detecting migration needs
 
 Located in `web/lib/api/schema-migration.ts`:
 
@@ -409,7 +409,7 @@ if (needsSchemaMigration(record)) {
 }
 ```
 
-### Migrating Records
+### Migrating records
 
 ```typescript
 import { transformToCurrentSchema } from '@/lib/api/schema-migration';
@@ -422,7 +422,7 @@ if (result.success && result.record) {
 }
 ```
 
-### Field-Specific Migrations
+### Field-specific migrations
 
 **Abstract migration:** Converts plain string to RichTextBodyItem array.
 
@@ -456,7 +456,7 @@ const license = migrateLicenseToNode('CC-BY-4.0');
 // }
 ```
 
-## useSchemaMigration Hook
+## useSchemaMigration hook
 
 Located in `web/lib/hooks/use-schema-migration.ts`.
 
@@ -503,9 +503,9 @@ class SchemaMigrationError extends Error {
 }
 ```
 
-## Utility Functions
+## Utility functions
 
-### Plain Text Extraction
+### Plain text extraction
 
 Extract plain text from rich text items (for search, truncation):
 
@@ -515,7 +515,7 @@ import { extractPlainText } from '@/lib/types/rich-text';
 const plainText = extractPlainText(items);
 ```
 
-### Creating Rich Text
+### Creating rich text
 
 ```typescript
 import { createFromPlainText, createEmptyRichText } from '@/lib/types/rich-text';
@@ -527,7 +527,7 @@ const richText = createFromPlainText('Hello world');
 const empty = createEmptyRichText();
 ```
 
-### Type Guards
+### Type guards
 
 ```typescript
 import {
@@ -547,7 +547,7 @@ if (isEntityRefItem(item)) {
 }
 ```
 
-### Legacy Format Conversion
+### Legacy format conversion
 
 ```typescript
 import { fromLegacyAnnotationItems, toLegacyAnnotationItems } from '@/lib/types/rich-text';
@@ -559,7 +559,7 @@ const unified = fromLegacyAnnotationItems(legacyItems);
 const legacy = toLegacyAnnotationItems(unifiedItems);
 ```
 
-### ATProto Facet Conversion
+### ATProto facet conversion
 
 ```typescript
 import { fromAtprotoRichText } from '@/lib/types/rich-text';
@@ -571,7 +571,7 @@ Note: ATProto facets use byte indices (UTF-8), which the function automatically 
 
 ## Styling
 
-### Badge Colors
+### Badge colors
 
 Node reference badges use subkind-specific colors defined in `@/lib/constants/subkind-colors`:
 
@@ -584,7 +584,7 @@ Node reference badges use subkind-specific colors defined in `@/lib/constants/su
 | dataset     | orange-100  | orange-800  |
 | default     | slate-100   | slate-800   |
 
-### CSS Classes
+### CSS classes
 
 The renderer applies these base classes:
 
@@ -630,7 +630,7 @@ Chive distinguishes two types of text-linked content:
 - **Inline annotations** (`pub.chive.annotation.comment`): Comments on specific text spans, with required W3C targets
 - **Document-level reviews** (`pub.chive.review.comment`): Broader feedback on the whole eprint, with optional targets
 
-### W3C Web Annotation targets
+### W3C web annotation targets
 
 Annotations use W3C selectors to identify text spans:
 
@@ -695,9 +695,8 @@ import { DocumentLocationCard } from '@/components/reviews/document-location-car
 />;
 ```
 
-## Related Documentation
+## Next steps
 
-- [Lexicons Reference](/reference/lexicons): Complete schema documentation for rich text types
-- [Frontend Development](./frontend.md): General frontend architecture
-- [Eprint Lifecycle Components](./frontend-eprint-lifecycle.md): Edit, version, delete components
-- [ATProto Facets](https://atproto.com/specs/richtext): ATProto rich text specification
+- [Lexicons reference](/reference/lexicons): complete schema documentation for rich text types
+- [Frontend](./frontend): general frontend architecture
+- [Eprint lifecycle](./frontend-eprint-lifecycle): edit, version, and delete components

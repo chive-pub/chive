@@ -176,7 +176,7 @@ const pool = new Pool({
 
 ### Multi-tier caching
 
-```
+```text
 Request → L1 (Memory) → L2 (Redis) → L3 (Database)
                 ↓              ↓
             ~1ms           ~5ms        ~50ms
@@ -338,8 +338,8 @@ thread_pool.write.queue_size: 1000
 | Blob cache | ~10 GB/day  |
 | Logs       | ~5 GB/day   |
 
-## Related documentation
+## Next steps
 
-- [Deployment](./deployment.md): Production setup
-- [Monitoring](./monitoring.md): Observability
-- [Troubleshooting](./troubleshooting.md): Common issues
+- [Deployment](./deployment): Production setup and configuration
+- [Monitoring](./monitoring): Observability and alerting
+- [Troubleshooting](./troubleshooting): Common issues and recovery procedures

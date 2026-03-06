@@ -1,10 +1,10 @@
 # REST endpoints
 
-The REST API provides a limited HTTP interface for web clients. Most functionality is available via [XRPC endpoints](./xrpc-endpoints.md).
+The REST API provides a limited HTTP interface for web clients. Most functionality is available via [XRPC endpoints](./xrpc-endpoints).
 
 ## Base URL
 
-```
+```text
 https://api.chive.pub/api/v1
 ```
 
@@ -233,7 +233,7 @@ Rate limits apply per IP or per user:
 
 ## Additional functionality
 
-For full API functionality including reviews, endorsements, governance, backlinks, and discovery, use the [XRPC endpoints](./xrpc-endpoints.md).
+For full API functionality including reviews, endorsements, governance, backlinks, and discovery, use the [XRPC endpoints](./xrpc-endpoints).
 
 ## Health endpoints
 
@@ -267,12 +267,12 @@ Returns the service DID document for ATProto identity verification.
 
 The complete OpenAPI 3.1 specification is available at:
 
-```
+```text
 https://api.chive.pub/openapi.json
 ```
 
 ## Next steps
 
-- [XRPC endpoints](./xrpc-endpoints.md): Full AT Protocol native API
-- [Authentication](./authentication.md): Auth flows and tokens
-- [API overview](./overview.md): General API information
+- [XRPC endpoints](./xrpc-endpoints): Full AT Protocol native API
+- [Authentication](./authentication): Auth flows and tokens
+- [API overview](./overview): General API information

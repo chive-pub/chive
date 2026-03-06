@@ -57,7 +57,7 @@ Extracts citation data from all indexed eprints using GROBID, Crossref, and Sema
 
 **Trigger:** `pub.chive.admin.triggerCitationExtraction`
 
-**Note:** This operation can be slow for large datasets because it makes external API calls for each eprint. Plan for extended runtimes.
+This operation can be slow for large datasets because it makes external API calls for each eprint. Plan for extended runtimes.
 
 ### Full reindex (Elasticsearch)
 
@@ -142,7 +142,7 @@ To cancel a running operation:
 
 Cancellation works by signaling the operation's `AbortController`. The background task checks this signal periodically and stops processing. The operation status changes to `cancelled`.
 
-Note: cancellation is cooperative. If the operation is in the middle of a network request or database write, it finishes that unit of work before stopping.
+Cancellation is cooperative. If the operation is in the middle of a network request or database write, it finishes that unit of work before stopping.
 
 ## Operation history
 
@@ -162,8 +162,8 @@ Backfill operations emit the following Prometheus metrics:
 | `chive_backfill_records_processed` | Counter   | `type`           | Total records processed across all backfills  |
 | `chive_backfill_duration_seconds`  | Histogram | `type`           | Operation duration (buckets: 1s to 1h)        |
 
-## Related documentation
+## Next steps
 
-- [Admin API Reference](../api-reference/admin-endpoints.md): full endpoint documentation for all backfill triggers
-- [Admin Dashboard](./admin-dashboard.md): dashboard navigation and page overview
-- [Observability & Metrics](./observability-metrics.md): all Prometheus metrics reference
+- [Admin API reference](../api-reference/admin-endpoints): Full endpoint documentation for all backfill triggers
+- [Admin dashboard](./admin-dashboard): Dashboard navigation and page overview
+- [Observability and metrics](./observability-metrics): All Prometheus metrics reference

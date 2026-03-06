@@ -1,9 +1,4 @@
-# ATProto Granular OAuth Scopes
-
-**Version:** 1.1.0
-**Last Updated:** March 2026
-
----
+# ATProto granular OAuth scopes
 
 ## Overview
 
@@ -20,9 +15,7 @@ Each scope string follows a typed prefix convention:
 
 The `atproto` base scope is always required and grants baseline protocol access (identity resolution, session management).
 
----
-
-## Permission Sets
+## Permission sets
 
 Permission sets bundle multiple granular scopes into a single `include:` reference. Chive defines four tiers in a strict hierarchy: each tier includes all permissions from the tiers below it.
 
@@ -72,9 +65,7 @@ Includes reviewerAccess permissions plus governance participation:
 - `repo:pub.chive.graph.node` (create personal graph nodes)
 - `repo:pub.chive.graph.edge` (create personal graph edges)
 
----
-
-## External Namespace Scopes
+## External namespace scopes
 
 Chive cross-posts to external ATProto namespaces for interoperability. These scopes are outside `pub.chive.*` and must be requested as individual `repo:` scopes alongside the Chive permission sets.
 
@@ -88,9 +79,7 @@ Chive cross-posts to external ATProto namespaces for interoperability. These sco
 
 These are automatically included for `submit`, `review`, and `full` intents (not for `browse`).
 
----
-
-## Intent-Based Login
+## Intent-based login
 
 The frontend maps user actions to permission levels via the `AuthIntent` type. When a user triggers login, the caller specifies an intent, and the OAuth flow requests only the necessary scopes.
 
@@ -106,7 +95,7 @@ const scope = getScopesForIntent('review');
 // => "atproto include:pub.chive.auth.reviewerAccess repo:app.bsky.feed.post ..."
 ```
 
-### Intent Mapping
+### Intent mapping
 
 | Intent   | Permission Set | External Scopes | Use Case                                |
 | -------- | -------------- | --------------- | --------------------------------------- |
@@ -115,7 +104,7 @@ const scope = getScopesForIntent('review');
 | `review` | reviewerAccess | All             | Write reviews or endorsements           |
 | `full`   | fullAccess     | All             | Full participation including governance |
 
-### Adding Intent to LoginOptions
+### Adding intent to LoginOptions
 
 Pass the intent when initiating the login flow:
 
@@ -132,11 +121,9 @@ await login(options);
 
 The `login` function calls `getScopesForIntent(options.intent ?? 'full')` to build the scope string for the OAuth authorization request.
 
----
+## Backward compatibility
 
-## Backward Compatibility
-
-### The transition:generic Scope
+### The transition:generic scope
 
 PDSes that predate the granular scopes specification do not understand `include:` or `repo:` scope strings. For these servers, Chive's client metadata includes `transition:generic`, which grants broad read/write access.
 
@@ -147,7 +134,7 @@ import { CLIENT_METADATA_SCOPE } from '@/auth/scopes/chive-scopes.js';
 // => "atproto transition:generic include:pub.chive.auth.fullAccess repo:app.bsky.feed.post ..."
 ```
 
-### Scope Checking with Legacy Support
+### Scope checking with legacy support
 
 The `hasScope` utility treats `transition:generic` as a superset of all Chive scopes:
 
@@ -164,13 +151,11 @@ hasScope(grantedScopes, PERMISSION_SETS.BASIC_READER);
 // => true
 ```
 
----
-
-## Service Auth and lxm Enforcement
+## Service auth and lxm enforcement
 
 When the frontend makes authenticated API calls, it requests a service auth JWT from the user's PDS via `com.atproto.server.getServiceAuth`. This JWT includes an optional `lxm` (lexicon method) claim that restricts the token to a single XRPC method.
 
-### How It Works
+### How it works
 
 1. Frontend determines the XRPC method to call (e.g., `pub.chive.sync.indexRecord`)
 2. Frontend requests a service auth JWT with `aud: "did:web:chive.pub"` and `lxm: "pub.chive.sync.indexRecord"`
@@ -179,9 +164,9 @@ When the frontend makes authenticated API calls, it requests a service auth JWT 
 5. Chive verifies the JWT signature against the user's DID document
 6. Chive checks that the `lxm` claim matches the XRPC endpoint being called
 
-### Token Flow
+### Token flow
 
-```
+```text
 Frontend                    User's PDS                 Chive Backend
    |                           |                           |
    |-- getServiceAuth(aud,lxm) |                           |
@@ -195,11 +180,9 @@ Frontend                    User's PDS                 Chive Backend
    |                           |                           |-- process request
 ```
 
----
+## Frontend scope utilities
 
-## Frontend Scope Utilities
-
-### Checking Scopes in Components
+### Checking scopes in components
 
 Use `hasScope` to conditionally render UI elements based on the user's granted permissions:
 
@@ -252,9 +235,7 @@ function ReviewPanel() {
 }
 ```
 
----
-
-## Backend Scope Constants
+## Backend scope constants
 
 The backend mirrors the frontend scope constants for validation:
 
@@ -288,11 +269,9 @@ buildScopeString([LEGACY_SCOPE, PERMISSION_SETS.AUTHOR_ACCESS]);
 CHIVE_SERVICE_DID; // "did:web:chive.pub"
 ```
 
----
-
 ## Testing
 
-### Running Scope Tests
+### Running scope tests
 
 ```bash
 # Backend scope tests
@@ -302,7 +281,7 @@ pnpm vitest run tests/unit/auth/scopes/chive-scopes.test.ts
 cd web && pnpm vitest run tests/unit/auth/scopes.test.ts
 ```
 
-### What the Tests Cover
+### What the tests cover
 
 - All scope strings use correct prefixes (`repo:`, `blob:`, `include:`)
 - All Chive scopes are within the `pub.chive.*` namespace

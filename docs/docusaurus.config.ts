@@ -142,7 +142,7 @@ const config: Config = {
       logo: {
         alt: 'Chive Logo',
         src: 'img/logo.svg',
-        href: '/getting-started/introduction',
+        href: '/introduction',
       },
       items: [
         {
@@ -174,7 +174,7 @@ const config: Config = {
         {
           title: 'Documentation',
           items: [
-            { label: 'Getting Started', to: '/getting-started/introduction' },
+            { label: 'Getting Started', to: '/introduction' },
             { label: 'User Guide', to: '/user-guide/searching' },
             { label: 'Developer Guide', to: '/developer-guide' },
             { label: 'API Reference', to: '/api-docs/chive-api' },
