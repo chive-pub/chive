@@ -7,12 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Changed
+## [0.3.0] - 2026-03-09
+
+### Added
+
+#### Authors Page and Mute Feature
+
+- Personalized authors page showing authors the user follows or has interacted with
+- Mute author feature allowing users to hide papers from specific authors in feeds and discovery
+- `pub.chive.actor.mute` lexicon record type for storing mute preferences in user PDSes
+
+#### Discovery
+
+- Configurable discovery weight settings allowing users to tune recommendation signal strengths (field affinity, citation overlap, recency, collaborative filtering)
+- XRPC array parameter parsing for multi-value query parameters
 
 #### Deployment
 
 - GHCR image registry for CI-built Docker images, eliminating on-server builds during staging deploys
-- Related papers discovery scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
+- Staging docs container added to CI/CD pipeline
+
+### Changed
+
+#### Frontend
+
+- Comprehensive mobile responsiveness overhaul across the entire frontend
+- Dashboard, admin, and governance sidebars collapse into Sheet drawers on mobile instead of stacking above content
+- Mobile hamburger menu now includes dashboard navigation items for authenticated users
+- Mobile search access via dedicated search icon button that opens a top Sheet
+- Admin tables wrapped in horizontal scroll containers to prevent page overflow on narrow screens
+- Grid layouts use progressive responsive breakpoints (`sm:grid-cols-2 md:grid-cols-3`) instead of jumping directly to multi-column
+- Tab lists hide scrollbars for cleaner horizontal scrolling on mobile
+- Popover widths constrained to viewport with `max-w-[calc(100vw-2rem)]`
+- PDF viewer minimum height reduced on mobile (`min-h-[400px] md:min-h-[600px]`)
+- New `useIsMobile` hook and shadcn Sheet component for consistent mobile patterns
+
+#### Discovery
+
+- Related papers scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
+- Removed For You feed in favor of configurable discovery weights
+
+### Fixed
+
+#### Admin Dashboard
+
+- Field name mismatches between admin API responses and frontend expectations
+- Role name references corrected from `moderator` to `admin` across admin endpoints
+- Silent auth failures in admin routes now surface proper error messages
+
+#### Authentication
+
+- Paper PDS auth wired through all edit and delete flows, fixing unauthorized errors when modifying papers
+- Unified auth error messages across all endpoints for consistent error handling
+
+#### Frontend
+
+- Removed broken "View all related papers" link pointing to nonexistent page
+- Flaky mention-popover arrow key navigation test stabilized by replacing `fireEvent.keyDown` with `userEvent.keyboard`
+
+#### Deployment
+
+- Split Docker build and push steps to fix GHCR authentication failure
+- Test expectations updated to match unified auth error messages
+- Discovery test expectations updated for new default weights and weight normalization
 
 ## [0.2.0] - 2026-03-06
 
@@ -327,6 +384,7 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/chive-pub/chive/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/chive-pub/chive/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/chive-pub/chive/releases/tag/v0.1.0

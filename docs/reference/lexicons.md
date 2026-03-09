@@ -1216,19 +1216,34 @@ Discovery preferences for personalized recommendations.
 {
   "$type": "pub.chive.discovery.settings",
   "enablePersonalization": boolean,
-  "enableForYouFeed": boolean,
-  "forYouSignals": {
-    "fields": boolean,
-    "citations": boolean,
-    "collaborators": boolean,
-    "trending": boolean
-  },
   "relatedPapersSignals": {
+    "semantic": boolean,
     "citations": boolean,
-    "topics": boolean
+    "topics": boolean,
+    "authors": boolean,
+    "coCitation": boolean,
+    "bibliographicCoupling": boolean,
+    "collaborative": boolean
+  },
+  "relatedPapersWeights": {
+    "semantic": number,
+    "coCitation": number,
+    "conceptOverlap": number,
+    "authorNetwork": number,
+    "collaborative": number
+  },
+  "relatedPapersThresholds": {
+    "minScore": number,
+    "minSignals": number
+  },
+  "trendingPreferences": {
+    "window": "24h" | "7d" | "30d",
+    "includeFields": boolean
   },
   "citationNetworkDisplay": "hidden" | "preview" | "expanded",
-  "showRecommendationReasons": boolean
+  "showRecommendationReasons": boolean,
+  "recommendationDiversity": "low" | "medium" | "high",
+  "minimumEndorsementThreshold": number
 }
 ```
 
@@ -1375,8 +1390,7 @@ Discovery endpoints provide personalized recommendations, citation networks, and
 | Lexicon                                  | Type      | Description                                   |
 | ---------------------------------------- | --------- | --------------------------------------------- |
 | `pub.chive.discovery.getRecommendations` | Query     | Get personalized eprint recommendations       |
-| `pub.chive.discovery.getForYou`          | Query     | Get the "For You" feed                        |
-| `pub.chive.discovery.getSimilar`         | Query     | Get similar eprints                           |
+| `pub.chive.discovery.getSimilar`         | Query     | Get similar eprints (supports custom weights) |
 | `pub.chive.discovery.getCitations`       | Query     | Get citation network for an eprint            |
 | `pub.chive.discovery.getEnrichment`      | Query     | Get enrichment data for an eprint             |
 | `pub.chive.discovery.recordInteraction`  | Procedure | Record a user interaction for recommendations |

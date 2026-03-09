@@ -67,6 +67,49 @@ The following can be hidden in settings:
 - Location
 - Activity statistics
 
+## Authors page
+
+The `/authors` page shows a personalized list of authors relevant to your research. What you see depends on your profile configuration:
+
+- **With research fields set**: Authors who recently posted eprints in your fields, sorted by activity. This helps you discover active researchers in your areas.
+- **Without research fields**: Authors from trending eprints across all fields.
+- **Anonymous visitors**: Authors from globally trending eprints.
+
+Muted authors (see below) are excluded from this page.
+
+## Muting authors
+
+You can mute authors to hide their papers from feeds, discovery, and the authors page.
+
+### How to mute
+
+1. Visit an author's profile page
+2. Click the **Mute** button (bell icon with a slash)
+3. The author's papers are hidden immediately
+
+### Where mutes apply
+
+Muted authors are filtered from:
+
+- The `/eprints` feed (New in Your Fields, trending)
+- Related paper suggestions on eprint pages
+- The `/authors` page
+- Trending feeds
+
+Mutes do not affect search results. Searching for a muted author or their papers still returns results.
+
+### How mutes are stored
+
+For authenticated users, mute records are stored in your PDS as `pub.chive.actor.mute` records. This makes your mute list portable across clients. A localStorage backup is maintained for offline access.
+
+For unauthenticated users, mutes are stored in localStorage only and do not persist across devices.
+
+### Unmuting
+
+1. Visit the muted author's profile page
+2. Click the **Unmute** button
+3. Their papers reappear in feeds immediately
+
 ## Claiming eprints
 
 If eprints were imported from external sources (e.g., arXiv) before you joined Chive, you can claim them:

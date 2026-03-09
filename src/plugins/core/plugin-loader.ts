@@ -339,7 +339,7 @@ export class PluginLoader implements IPluginLoader {
    * const result = await loader.validateManifest({
    *   id: 'pub.chive.plugin.github',
    *   name: 'GitHub Integration',
-   *   version: '0.2.0',
+   *   version: '0.3.0',
    *   // ...
    * });
    *

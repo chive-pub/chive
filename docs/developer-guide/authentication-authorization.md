@@ -608,6 +608,53 @@ if (decision.allow) {
 
 ---
 
+## Paper PDS authentication
+
+Eprints can be stored in two ways: in the submitter's personal PDS (traditional model) or in a dedicated paper account PDS (paper-centric model). Edit and delete operations must authenticate against whichever PDS holds the record.
+
+### How it works
+
+1. The frontend checks whether the eprint has a `paperDid` field
+2. If `paperDid` is set, the `PaperAuthGate` component prompts the user to authenticate as the paper account before allowing modifications
+3. If `paperDid` is not set, the user's normal session is used
+
+### PaperAuthGate component
+
+`PaperAuthGate` (`web/components/eprints/paper-auth-gate.tsx`) wraps edit and delete actions. It uses a render function pattern:
+
+```tsx
+import { PaperAuthGate } from '@/components/eprints/paper-auth-gate';
+
+<PaperAuthGate eprint={eprint}>
+  {(paperAgent) => <EditButton eprint={eprint} paperAgent={paperAgent} />}
+</PaperAuthGate>;
+```
+
+For traditional eprints, `paperAgent` is `null` and children render immediately. For paper-centric eprints, the auth prompt appears first.
+
+### Backend authorization
+
+The `updateSubmission` and `deleteSubmission` XRPC handlers validate authorization server-side. Authorization is granted to:
+
+- The original submitter (by DID)
+- The paper account (if paper-centric, by `paperDid`)
+- Any author whose DID appears in the eprint's authors array
+
+The handlers do not write to the PDS; they validate permissions and return the information the frontend needs to make the actual PDS call.
+
+### Auth error messages
+
+All authentication and authorization errors use a consistent format across the codebase. The error types from `src/auth/errors.ts` produce user-facing messages:
+
+| Error class           | User-facing message pattern                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `AuthenticationError` | "Authentication required" or "Invalid credentials"           |
+| `AuthorizationError`  | "You do not have permission to \{action\} this \{resource\}" |
+| `TokenExpiredError`   | "Your session has expired. Please sign in again."            |
+| `SessionRevokedError` | "Your session has been revoked."                             |
+
+For paper PDS operations, the auth prompt displays: "This paper is managed by a dedicated paper account. Please authenticate as that account to make changes."
+
 ## Error handling
 
 ### Error types

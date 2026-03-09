@@ -64,7 +64,7 @@ export interface SchemaStats {
  */
 @singleton()
 export class Neo4jSetupManager {
-  private static readonly SCHEMA_VERSION = '0.2.0';
+  private static readonly SCHEMA_VERSION = '0.3.0';
 
   constructor(private connection: Neo4jConnection) {}
 

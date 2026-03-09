@@ -161,7 +161,7 @@ export class OrcidLinkingPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.orcid',
     name: 'ORCID Linking',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Links and verifies author identities via ORCID',
     author: 'Aaron Steven White',
     license: 'MIT',

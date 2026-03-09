@@ -128,7 +128,7 @@ export class GitHubIntegrationPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.github',
     name: 'GitHub Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Links eprints to GitHub repositories for code and supplementary materials',
     author: 'Aaron Steven White',
     license: 'MIT',

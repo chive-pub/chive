@@ -297,7 +297,7 @@ export class SoftwareHeritagePlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.software-heritage',
     name: 'Software Heritage Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides code archival verification via Software Heritage',
     author: 'Aaron Steven White',
     license: 'MIT',

@@ -126,7 +126,7 @@ export class SemanticsArchivePlugin extends ImportingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.semanticsarchive',
     name: 'Semantics Archive Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Imports linguistics eprints from Semantics Archive with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',

@@ -212,7 +212,7 @@ export class DryadPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.dryad',
     name: 'Dryad Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides research data linking via Dryad',
     author: 'Aaron Steven White',
     license: 'MIT',

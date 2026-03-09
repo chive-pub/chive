@@ -21,11 +21,13 @@ const sidebars: SidebarsConfig = {
         'user-guide/peer-review',
         'user-guide/endorsements',
         'user-guide/profiles',
+        'user-guide/authors',
         'user-guide/claiming-authorship',
         'user-guide/tags-and-classification',
         'user-guide/collections',
         'user-guide/discovery-recommendations',
         'user-guide/sharing-to-bluesky',
+        'user-guide/mobile',
       ],
     },
     {

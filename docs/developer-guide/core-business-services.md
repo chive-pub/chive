@@ -671,9 +671,16 @@ const related = await service.findRelatedEprints(eprintUri, {
   minScore: 0.3,
 });
 
-// Get personalized For You feed
+// Get personalized recommendations using configurable weights
 const recommendations = await service.getRecommendationsForUser(userDid, {
   signals: ['fields', 'citations', 'semantic'],
+  weights: {
+    semantic: 30,
+    coCitation: 25,
+    conceptOverlap: 20,
+    authorNetwork: 15,
+    collaborative: 10,
+  },
   limit: 20,
 });
 

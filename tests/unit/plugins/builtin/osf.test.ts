@@ -274,7 +274,7 @@ describe('OsfPlugin', () => {
       expect(plugin.manifest).toMatchObject({
         id: 'pub.chive.plugin.osf',
         name: 'OSF Integration',
-        version: '0.2.0',
+        version: '0.3.0',
         description: 'Provides project and registration linking via OSF',
         author: 'Aaron Steven White',
         license: 'MIT',

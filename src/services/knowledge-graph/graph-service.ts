@@ -39,7 +39,7 @@ export interface KnowledgeGraphServiceOptions {
  * Source PDS information for faceted browse results.
  *
  * @public
- * @since 0.2.0
+ * @since 0.1.0
  */
 export interface FacetedSource {
   readonly pdsEndpoint: string;

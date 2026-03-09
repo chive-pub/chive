@@ -946,7 +946,7 @@ export interface ICitationGraph {
  * `pub.chive.eprint.relatedWork` records).
  *
  * @public
- * @since 0.2.0
+ * @since 0.1.0
  */
 export interface RelatedWorkInput {
   /**

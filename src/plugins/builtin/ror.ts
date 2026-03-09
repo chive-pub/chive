@@ -234,7 +234,7 @@ export class RorPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.ror',
     name: 'ROR Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides organization lookup and institutional verification via ROR',
     author: 'Aaron Steven White',
     license: 'MIT',
