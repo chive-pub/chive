@@ -8,6 +8,7 @@ import { useCurrentUser } from '@/lib/auth';
 import { useAuthorProfile } from '@/lib/hooks/use-author';
 import { useDiscoverySettings } from '@/lib/hooks/use-discovery';
 import { useTrending } from '@/lib/hooks/use-trending';
+import { useMutedAuthors, filterMutedContent } from '@/lib/hooks/use-muted-authors';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -155,12 +156,20 @@ export default function TrendingPage() {
     limit: defaultLimit,
     ...(hasActiveFields ? { fieldUris: activeFieldUris } : {}),
   });
+  const { mutedDids } = useMutedAuthors();
 
-  // Filter to only show entries matching the active fields
+  // Filter to only show entries matching the active fields, excluding muted authors
   const displayEntries = useMemo(() => {
-    if (!data?.trending || !hasActiveFields) return data?.trending ?? [];
-    return data.trending.filter((entry) => entry.inUserFields);
-  }, [data?.trending, hasActiveFields]);
+    let entries = data?.trending ?? [];
+    if (hasActiveFields) {
+      entries = entries.filter((entry) => entry.inUserFields);
+    }
+    return filterMutedContent(
+      entries,
+      mutedDids,
+      (entry) => entry.authors?.map((a) => a.did).filter((d): d is string => !!d) ?? []
+    );
+  }, [data?.trending, hasActiveFields, mutedDids]);
 
   const isAuthenticated = !!user;
 
