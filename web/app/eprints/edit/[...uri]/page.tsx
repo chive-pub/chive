@@ -22,6 +22,7 @@ import { useEprint } from '@/lib/hooks/use-eprint';
 import { useAgent, useIsAuthenticated, useCurrentUser } from '@/lib/auth';
 import { useEprintPermissions } from '@/lib/hooks';
 import { LoginPrompt } from '@/components/auth';
+import { PaperAuthGate } from '@/components/eprints';
 
 import { EprintEditSections } from '@/components/eprints/eprint-edit-sections';
 
@@ -152,14 +153,30 @@ export default function EprintEditPage() {
       <Separator className="mb-8" />
 
       {/* Edit sections */}
-      <EprintEditSections
-        eprint={eprint}
-        initialSection={initialSection}
-        onSaveSuccess={handleSaveSuccess}
-        onCancel={handleCancel}
-        isSaving={isSaving}
-        setIsSaving={setIsSaving}
-      />
+      {permissions.requiresPaperAuth ? (
+        <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
+          {(paperAgent) => (
+            <EprintEditSections
+              eprint={eprint}
+              paperAgent={paperAgent}
+              initialSection={initialSection}
+              onSaveSuccess={handleSaveSuccess}
+              onCancel={handleCancel}
+              isSaving={isSaving}
+              setIsSaving={setIsSaving}
+            />
+          )}
+        </PaperAuthGate>
+      ) : (
+        <EprintEditSections
+          eprint={eprint}
+          initialSection={initialSection}
+          onSaveSuccess={handleSaveSuccess}
+          onCancel={handleCancel}
+          isSaving={isSaving}
+          setIsSaving={setIsSaving}
+        />
+      )}
     </div>
   );
 }

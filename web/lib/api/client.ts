@@ -8,6 +8,8 @@
  * @packageDocumentation
  */
 
+import type { Agent } from '@atproto/api';
+
 import { AtpBaseClient } from './generated/index';
 import { APIError } from '@/lib/errors';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
@@ -358,6 +360,144 @@ export const authApi = new AtpBaseClient({
   service: getApiBaseUrl(),
   fetch: createFetchHandler({ authenticated: true }),
 });
+
+// =============================================================================
+// AGENT-SPECIFIC AUTHENTICATED CLIENTS
+// =============================================================================
+
+const agentClientCache = new Map<string, AtpBaseClient>();
+
+/**
+ * Creates a fetch handler that uses a specific agent for service auth.
+ *
+ * @param agent - the ATProto agent to use for service auth token requests
+ * @returns a fetch function with agent-specific authentication
+ */
+function createAgentFetchHandler(agent: Agent): typeof globalThis.fetch {
+  return async (input: URL | RequestInfo, init?: RequestInit): Promise<Response> => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const method = init?.method ?? 'GET';
+    const headers = new Headers(init?.headers);
+    const parsedUrl = new URL(url, 'http://localhost');
+    const endpoint = parsedUrl.pathname;
+
+    // Generate correlation IDs
+    const requestId = generateRequestId();
+    const trace = generateTraceparent();
+
+    // Add correlation headers
+    headers.set('X-Request-ID', requestId);
+    headers.set('traceparent', trace.traceparent);
+
+    if (isTunnelMode) {
+      headers.set('Bypass-Tunnel-Reminder', 'true');
+    }
+
+    // Use the provided agent for service auth (not getCurrentAgent)
+    try {
+      const lxm = parsedUrl.pathname.startsWith('/xrpc/') ? parsedUrl.pathname.slice(6) : undefined;
+      const token = await getServiceAuthToken(agent, lxm);
+      headers.set('Authorization', `Bearer ${token}`);
+    } catch (error) {
+      logger.error('Failed to get service auth token for agent', error as Error, {
+        component: 'api-client',
+        endpoint,
+      });
+    }
+
+    const requestLogger = logger.child({
+      requestId,
+      traceId: trace.traceId,
+      spanId: trace.spanId,
+      endpoint,
+      method,
+    });
+
+    requestLogger.debug('API request started');
+
+    const startTime = performance.now();
+
+    try {
+      const response = await fetch(input, {
+        ...init,
+        headers,
+      });
+
+      const durationMs = Math.round(performance.now() - startTime);
+      const status = response.status;
+
+      if (!response.ok) {
+        const responseBody = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        const errorMessage =
+          typeof responseBody.message === 'string'
+            ? responseBody.message
+            : 'An unknown error occurred';
+
+        if (status === 404) {
+          requestLogger.debug('Resource not found', { status, durationMs });
+        } else {
+          requestLogger.warn('API request failed', { status, durationMs, error: errorMessage });
+          const apiError = new APIError(errorMessage, status, endpoint);
+          reportErrorToFaro(apiError, {
+            endpoint,
+            method,
+            status: String(status),
+            requestId,
+            traceId: trace.traceId,
+          });
+        }
+
+        throw new APIError(errorMessage, status, endpoint);
+      }
+
+      requestLogger.debug('API request completed', { status, durationMs });
+      return response;
+    } catch (error) {
+      const durationMs = Math.round(performance.now() - startTime);
+      if (!(error instanceof APIError)) {
+        requestLogger.error('API request error', error as Error, { durationMs });
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        reportErrorToFaro(errorObj, {
+          endpoint,
+          method,
+          requestId,
+          traceId: trace.traceId,
+          errorType: errorObj.name || 'UnknownError',
+          durationMs: String(durationMs),
+        });
+      }
+      throw error;
+    }
+  };
+}
+
+/**
+ * Create an authenticated API client using a specific agent for service auth.
+ *
+ * For paper-centric eprints, the service auth JWT must be issued by
+ * the paper's PDS, not the user's PDS. This factory creates a client
+ * that uses the provided agent for all service auth token requests.
+ *
+ * @param agent - the ATProto agent whose PDS will issue service auth JWTs
+ * @returns a typed API client authenticated with the given agent
+ */
+export function createAuthenticatedClient(agent: Agent): AtpBaseClient {
+  const agentDid = agent.did ?? '';
+
+  const cached = agentClientCache.get(agentDid);
+  if (cached) return cached;
+
+  const client = new AtpBaseClient({
+    service: getApiBaseUrl(),
+    fetch: createAgentFetchHandler(agent),
+  });
+
+  if (agentDid) {
+    agentClientCache.set(agentDid, client);
+  }
+
+  return client;
+}
 
 /**
  * Create a server-side API client with Next.js caching.

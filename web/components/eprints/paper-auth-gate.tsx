@@ -10,7 +10,10 @@
  * @packageDocumentation
  */
 
+import type { Agent } from '@atproto/api';
 import { useState, type ReactNode } from 'react';
+
+import { getPaperSession } from '@/lib/auth/paper-session';
 
 import { PaperAuthPrompt } from './paper-auth-prompt';
 
@@ -28,8 +31,8 @@ interface EprintData {
 interface PaperAuthGateProps {
   /** Eprint data containing paperDid */
   eprint: EprintData;
-  /** Children to render when authenticated or not paper-centric */
-  children: ReactNode;
+  /** Render function that receives the paper agent (null if not paper-centric) */
+  children: (paperAgent: Agent | null) => ReactNode;
   /** Callback when paper authentication succeeds */
   onAuthenticated?: () => void;
 }
@@ -46,7 +49,7 @@ interface PaperAuthGateProps {
  *
  * @param props - component props
  * @param props.eprint - eprint data containing optional paperDid
- * @param props.children - content to render when authenticated or not paper-centric
+ * @param props.children - render function receiving the paper agent (null if not paper-centric)
  * @param props.onAuthenticated - callback invoked when paper authentication succeeds
  * @returns React element rendering either children or auth prompt
  *
@@ -54,18 +57,18 @@ interface PaperAuthGateProps {
  * ```tsx
  * <PaperAuthGate
  *   eprint={eprint}
- *   onAuthenticated={() => setPaperSession(session)}
+ *   onAuthenticated={() => console.log('authenticated')}
  * >
- *   <DeleteButton eprint={eprint} />
+ *   {(paperAgent) => <DeleteButton eprint={eprint} paperAgent={paperAgent} />}
  * </PaperAuthGate>
  * ```
  */
 export function PaperAuthGate({ eprint, children, onAuthenticated }: PaperAuthGateProps) {
   const [isPaperAuthenticated, setIsPaperAuthenticated] = useState(false);
 
-  // If not paper-centric, render children directly
+  // If not paper-centric, render children with no paper agent
   if (!eprint.paperDid) {
-    return <>{children}</>;
+    return <>{children(null)}</>;
   }
 
   // For paper-centric eprints, require paper auth
@@ -81,5 +84,7 @@ export function PaperAuthGate({ eprint, children, onAuthenticated }: PaperAuthGa
     );
   }
 
-  return <>{children}</>;
+  // After auth, pass the paper agent to children
+  const paperSession = getPaperSession(eprint.paperDid);
+  return <>{children(paperSession?.agent ?? null)}</>;
 }

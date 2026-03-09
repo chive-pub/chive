@@ -4,7 +4,9 @@
  * @remarks
  * Validates that the user is authorized to update the eprint and returns
  * the new version information for the frontend to use when making the
- * actual PDS update.
+ * actual PDS update. Authorization is granted to the original submitter,
+ * the paper account (if paper-centric), or any author whose DID appears
+ * in the eprint's authors array.
  *
  * **ATProto Architecture:**
  * Chive is an AppView and does not write to user PDSes. This handler validates
@@ -44,7 +46,8 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
  * Validates that the authenticated user has permission to update the eprint
  * and computes the new semantic version.
  *
- * For traditional eprints (no paperDid), only the submitter can update.
+ * For traditional eprints (no paperDid), the submitter or any author whose
+ * DID appears in the authors array can update.
  * For paper-centric eprints (paperDid is set), the user must be authenticated
  * as the paper account to update.
  *
@@ -166,15 +169,20 @@ export const updateSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
     // Determine the record owner (paper PDS or submitter PDS)
     const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
 
-    // Authorization: must be submitter or paper account
-    if (eprintData.submittedBy !== user.did && eprintData.paperDid !== user.did) {
-      throw new AuthorizationError('Can only edit your own eprints');
+    // Authorization: must be submitter, paper account, or listed author
+    const isSubmitter = eprintData.submittedBy === user.did;
+    const isPaperAccount = eprintData.paperDid === user.did;
+    const isAuthor = eprintData.authors?.some((a: { did?: string }) => a.did === user.did) ?? false;
+
+    if (!isSubmitter && !isPaperAccount && !isAuthor) {
+      throw new AuthorizationError('Not authorized to modify this eprint');
     }
 
     // For paper-centric eprints, must be authenticated as paper account
+    // (even authors must auth as paper account to write to paper's PDS)
     if (eprintData.paperDid && user.did !== eprintData.paperDid) {
       throw new AuthorizationError(
-        'Must authenticate as paper account to edit paper-centric eprints'
+        'Must authenticate as paper account to modify paper-centric eprints'
       );
     }
 
