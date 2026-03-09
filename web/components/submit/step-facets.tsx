@@ -149,7 +149,7 @@ function FacetSelector({
               <span className="text-muted-foreground">Add {facet.label.toLowerCase()}...</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
+          <PopoverContent className="w-[300px] max-w-[calc(100vw-2rem)] p-0" align="start">
             <Command shouldFilter={false}>
               <CommandInput
                 placeholder={`Search ${facet.label.toLowerCase()}...`}

@@ -251,88 +251,90 @@ export default function AdminFirehosePage() {
               <p className="text-muted-foreground">No dead letter queue entries</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Error Type</TableHead>
-                  <TableHead>Event URI</TableHead>
-                  <TableHead>DID</TableHead>
-                  <TableHead className="text-right">Retry Count</TableHead>
-                  <TableHead>Age</TableHead>
-                  <TableHead className="w-[70px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {dlqEntries.map(
-                  (
-                    entry: {
-                      id?: string;
-                      uri?: string;
-                      collection?: string;
-                      error?: string;
-                      attempts?: number;
-                      createdAt?: string;
-                      did?: string;
-                    },
-                    idx: number
-                  ) => {
-                    const did = entry.did ?? entry.uri?.split('/')[2] ?? '';
-                    return (
-                      <TableRow key={idx}>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {entry.collection ?? entry.error ?? 'Unknown'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs min-w-0 max-w-[200px]">
-                          <span className="truncate block" title={entry.uri}>
-                            {entry.uri ? truncateStr(entry.uri, 40) : 'N/A'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs min-w-0 max-w-[150px]">
-                          <span className="truncate block" title={did}>
-                            {did ? truncateStr(did, 24) : 'N/A'}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">{entry.attempts ?? 0}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {entry.createdAt
-                            ? formatDuration(Date.now() - new Date(entry.createdAt).getTime())
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => handleRetryEntry(idx)}
-                                disabled={retryEntry.isPending}
-                              >
-                                <RefreshCw className="mr-2 h-4 w-4" />
-                                Retry
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDismissEntry(idx)}
-                                disabled={dismissEntry.isPending}
-                                className="text-destructive"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Dismiss
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  }
-                )}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Error Type</TableHead>
+                    <TableHead>Event URI</TableHead>
+                    <TableHead>DID</TableHead>
+                    <TableHead className="text-right">Retry Count</TableHead>
+                    <TableHead>Age</TableHead>
+                    <TableHead className="w-[70px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dlqEntries.map(
+                    (
+                      entry: {
+                        id?: string;
+                        uri?: string;
+                        collection?: string;
+                        error?: string;
+                        attempts?: number;
+                        createdAt?: string;
+                        did?: string;
+                      },
+                      idx: number
+                    ) => {
+                      const did = entry.did ?? entry.uri?.split('/')[2] ?? '';
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {entry.collection ?? entry.error ?? 'Unknown'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs min-w-0 max-w-[200px]">
+                            <span className="truncate block" title={entry.uri}>
+                              {entry.uri ? truncateStr(entry.uri, 40) : 'N/A'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-mono text-xs min-w-0 max-w-[150px]">
+                            <span className="truncate block" title={did}>
+                              {did ? truncateStr(did, 24) : 'N/A'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">{entry.attempts ?? 0}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {entry.createdAt
+                              ? formatDuration(Date.now() - new Date(entry.createdAt).getTime())
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => handleRetryEntry(idx)}
+                                  disabled={retryEntry.isPending}
+                                >
+                                  <RefreshCw className="mr-2 h-4 w-4" />
+                                  Retry
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => handleDismissEntry(idx)}
+                                  disabled={dismissEntry.isPending}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Dismiss
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    }
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

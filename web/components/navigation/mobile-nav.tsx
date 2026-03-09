@@ -10,7 +10,9 @@ import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { mainNavItems, isNavGroup } from './nav-config';
+import { Separator } from '@/components/ui/separator';
+import { useCurrentUser } from '@/lib/auth';
+import { mainNavItems, dashboardNavItems, isNavGroup } from './nav-config';
 
 interface MobileNavProps {
   className?: string;
@@ -32,6 +34,7 @@ export function MobileNav({ className }: MobileNavProps) {
   const [open, setOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<string[]>(['Discover']);
   const pathname = usePathname();
+  const user = useCurrentUser();
 
   const toggleSection = (section: string) => {
     setExpandedSections((prev) =>
@@ -129,6 +132,54 @@ export function MobileNav({ className }: MobileNavProps) {
                 );
               })}
             </nav>
+
+            {/* Dashboard section for authenticated users */}
+            {user && (
+              <>
+                <Separator className="my-2" />
+                <nav className="flex flex-col space-y-1">
+                  <Collapsible
+                    open={expandedSections.includes('Dashboard')}
+                    onOpenChange={() => toggleSection('Dashboard')}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <button className="flex w-full items-center justify-between rounded-md p-3 text-lg font-medium hover:bg-accent">
+                        Dashboard
+                        <ChevronDown
+                          className={cn(
+                            'h-5 w-5 transition-transform duration-200',
+                            expandedSections.includes('Dashboard') && 'rotate-180'
+                          )}
+                        />
+                      </button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down">
+                      <div className="flex flex-col space-y-1 px-3 py-2">
+                        {dashboardNavItems.map((item) => {
+                          const Icon = item.icon;
+                          const isActive = pathname === item.href;
+
+                          return (
+                            <Link
+                              key={item.href}
+                              href={item.href}
+                              onClick={() => setOpen(false)}
+                              className={cn(
+                                'flex items-center gap-3 rounded-md p-3 transition-colors hover:bg-accent',
+                                isActive ? 'bg-accent/50 text-foreground' : 'text-muted-foreground'
+                              )}
+                            >
+                              {Icon && <Icon className="h-5 w-5" />}
+                              <span className="font-medium">{item.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </nav>
+              </>
+            )}
           </div>
         </ScrollArea>
       </DialogContent>

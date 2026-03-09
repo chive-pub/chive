@@ -219,95 +219,97 @@ export default function AdminContentPage() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Title</TableHead>
-                      <TableHead>Author</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Field</TableHead>
-                      <TableHead>Indexed At</TableHead>
-                      <TableHead className="w-[70px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {eprints.map(
-                      (eprint: {
-                        uri: string;
-                        title?: string;
-                        authorHandle?: string;
-                        authorDid?: string;
-                        status?: string;
-                        fieldUris?: string[];
-                        indexedAt?: string;
-                        createdAt?: string;
-                      }) => (
-                        <TableRow key={eprint.uri}>
-                          <TableCell className="font-medium min-w-0 max-w-[300px]">
-                            <Link
-                              href={`/eprints/${encodeURIComponent(eprint.uri)}`}
-                              className="text-primary hover:underline truncate block"
-                            >
-                              {truncate(eprint.title ?? 'Untitled', 60)}
-                            </Link>
-                          </TableCell>
-                          <TableCell>
-                            {eprint.authorHandle ?? eprint.authorDid ?? 'Unknown'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusBadgeClass(eprint.status ?? 'published')}>
-                              {eprint.status ?? 'published'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {eprint.fieldUris && eprint.fieldUris.length > 0
-                              ? `${eprint.fieldUris.length} field${eprint.fieldUris.length !== 1 ? 's' : ''}`
-                              : 'None'}
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {(eprint.indexedAt ?? eprint.createdAt)
-                              ? new Date(
-                                  (eprint.indexedAt ?? eprint.createdAt)!
-                                ).toLocaleDateString()
-                              : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/eprints/${encodeURIComponent(eprint.uri)}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() =>
-                                    setDeleteAction({
-                                      uri: eprint.uri,
-                                      collection: 'pub.chive.eprint.submission',
-                                      label: eprint.title ?? 'Untitled eprint',
-                                    })
-                                  }
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    )}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Author</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Field</TableHead>
+                        <TableHead>Indexed At</TableHead>
+                        <TableHead className="w-[70px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {eprints.map(
+                        (eprint: {
+                          uri: string;
+                          title?: string;
+                          authorHandle?: string;
+                          authorDid?: string;
+                          status?: string;
+                          fieldUris?: string[];
+                          indexedAt?: string;
+                          createdAt?: string;
+                        }) => (
+                          <TableRow key={eprint.uri}>
+                            <TableCell className="font-medium min-w-0 max-w-[300px]">
+                              <Link
+                                href={`/eprints/${encodeURIComponent(eprint.uri)}`}
+                                className="text-primary hover:underline truncate block"
+                              >
+                                {truncate(eprint.title ?? 'Untitled', 60)}
+                              </Link>
+                            </TableCell>
+                            <TableCell>
+                              {eprint.authorHandle ?? eprint.authorDid ?? 'Unknown'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={statusBadgeClass(eprint.status ?? 'published')}>
+                                {eprint.status ?? 'published'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {eprint.fieldUris && eprint.fieldUris.length > 0
+                                ? `${eprint.fieldUris.length} field${eprint.fieldUris.length !== 1 ? 's' : ''}`
+                                : 'None'}
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {(eprint.indexedAt ?? eprint.createdAt)
+                                ? new Date(
+                                    (eprint.indexedAt ?? eprint.createdAt)!
+                                  ).toLocaleDateString()
+                                : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Actions</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/eprints/${encodeURIComponent(eprint.uri)}`}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      View
+                                    </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() =>
+                                      setDeleteAction({
+                                        uri: eprint.uri,
+                                        collection: 'pub.chive.eprint.submission',
+                                        label: eprint.title ?? 'Untitled eprint',
+                                      })
+                                    }
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -353,86 +355,90 @@ export default function AdminContentPage() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Eprint</TableHead>
-                      <TableHead>Reviewer</TableHead>
-                      <TableHead>Motivation</TableHead>
-                      <TableHead>Created At</TableHead>
-                      <TableHead className="w-[70px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reviews.map((review) => (
-                      <TableRow key={review.uri}>
-                        <TableCell className="min-w-0 max-w-[350px]">
-                          {review.eprintUri ? (
-                            <Link
-                              href={`/eprints/${encodeURIComponent(review.eprintUri)}`}
-                              className="text-primary hover:underline truncate block"
-                            >
-                              {truncate(review.eprintTitle ?? 'Untitled', 60)}
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {truncate(review.reviewerDid, 20)}
-                        </TableCell>
-                        <TableCell>
-                          {review.motivation ? (
-                            <Badge variant="outline">{review.motivation}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {review.createdAt
-                            ? new Date(review.createdAt).toLocaleDateString()
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {review.eprintUri && (
-                                <>
-                                  <DropdownMenuItem asChild>
-                                    <Link href={`/eprints/${encodeURIComponent(review.eprintUri)}`}>
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      View Eprint
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() =>
-                                  setDeleteAction({
-                                    uri: review.uri,
-                                    collection: 'pub.chive.review.comment',
-                                    label: `Review by ${truncate(review.reviewerDid, 20)}`,
-                                  })
-                                }
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Eprint</TableHead>
+                        <TableHead>Reviewer</TableHead>
+                        <TableHead>Motivation</TableHead>
+                        <TableHead>Created At</TableHead>
+                        <TableHead className="w-[70px]">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {reviews.map((review) => (
+                        <TableRow key={review.uri}>
+                          <TableCell className="min-w-0 max-w-[350px]">
+                            {review.eprintUri ? (
+                              <Link
+                                href={`/eprints/${encodeURIComponent(review.eprintUri)}`}
+                                className="text-primary hover:underline truncate block"
+                              >
+                                {truncate(review.eprintTitle ?? 'Untitled', 60)}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {truncate(review.reviewerDid, 20)}
+                          </TableCell>
+                          <TableCell>
+                            {review.motivation ? (
+                              <Badge variant="outline">{review.motivation}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">N/A</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {review.createdAt
+                              ? new Date(review.createdAt).toLocaleDateString()
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {review.eprintUri && (
+                                  <>
+                                    <DropdownMenuItem asChild>
+                                      <Link
+                                        href={`/eprints/${encodeURIComponent(review.eprintUri)}`}
+                                      >
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Eprint
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() =>
+                                    setDeleteAction({
+                                      uri: review.uri,
+                                      collection: 'pub.chive.review.comment',
+                                      label: `Review by ${truncate(review.reviewerDid, 20)}`,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -478,88 +484,90 @@ export default function AdminContentPage() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Eprint</TableHead>
-                      <TableHead>Endorser</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Created At</TableHead>
-                      <TableHead className="w-[70px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {endorsements.map((endorsement) => (
-                      <TableRow key={endorsement.uri}>
-                        <TableCell className="min-w-0 max-w-[350px]">
-                          {endorsement.eprintUri ? (
-                            <Link
-                              href={`/eprints/${encodeURIComponent(endorsement.eprintUri)}`}
-                              className="text-primary hover:underline truncate block"
-                            >
-                              {truncate(endorsement.eprintTitle ?? 'Untitled', 60)}
-                            </Link>
-                          ) : (
-                            <span className="text-muted-foreground">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {truncate(endorsement.endorserDid, 20)}
-                        </TableCell>
-                        <TableCell>
-                          {endorsement.endorsementType ? (
-                            <Badge variant="outline">{endorsement.endorsementType}</Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">N/A</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          {endorsement.createdAt
-                            ? new Date(endorsement.createdAt).toLocaleDateString()
-                            : 'N/A'}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                                <span className="sr-only">Actions</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {endorsement.eprintUri && (
-                                <>
-                                  <DropdownMenuItem asChild>
-                                    <Link
-                                      href={`/eprints/${encodeURIComponent(endorsement.eprintUri)}`}
-                                    >
-                                      <Eye className="mr-2 h-4 w-4" />
-                                      View Eprint
-                                    </Link>
-                                  </DropdownMenuItem>
-                                  <DropdownMenuSeparator />
-                                </>
-                              )}
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                onClick={() =>
-                                  setDeleteAction({
-                                    uri: endorsement.uri,
-                                    collection: 'pub.chive.review.endorsement',
-                                    label: `Endorsement by ${truncate(endorsement.endorserDid, 20)}`,
-                                  })
-                                }
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Eprint</TableHead>
+                        <TableHead>Endorser</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Created At</TableHead>
+                        <TableHead className="w-[70px]">Actions</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {endorsements.map((endorsement) => (
+                        <TableRow key={endorsement.uri}>
+                          <TableCell className="min-w-0 max-w-[350px]">
+                            {endorsement.eprintUri ? (
+                              <Link
+                                href={`/eprints/${encodeURIComponent(endorsement.eprintUri)}`}
+                                className="text-primary hover:underline truncate block"
+                              >
+                                {truncate(endorsement.eprintTitle ?? 'Untitled', 60)}
+                              </Link>
+                            ) : (
+                              <span className="text-muted-foreground">N/A</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {truncate(endorsement.endorserDid, 20)}
+                          </TableCell>
+                          <TableCell>
+                            {endorsement.endorsementType ? (
+                              <Badge variant="outline">{endorsement.endorsementType}</Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">N/A</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">
+                            {endorsement.createdAt
+                              ? new Date(endorsement.createdAt).toLocaleDateString()
+                              : 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {endorsement.eprintUri && (
+                                  <>
+                                    <DropdownMenuItem asChild>
+                                      <Link
+                                        href={`/eprints/${encodeURIComponent(endorsement.eprintUri)}`}
+                                      >
+                                        <Eye className="mr-2 h-4 w-4" />
+                                        View Eprint
+                                      </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onClick={() =>
+                                    setDeleteAction({
+                                      uri: endorsement.uri,
+                                      collection: 'pub.chive.review.endorsement',
+                                      label: `Endorsement by ${truncate(endorsement.endorserDid, 20)}`,
+                                    })
+                                  }
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

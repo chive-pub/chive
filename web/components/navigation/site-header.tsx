@@ -3,6 +3,7 @@ import Link from 'next/link';
 
 import { MainNav } from './main-nav';
 import { MobileNav } from './mobile-nav';
+import { MobileSearch } from './mobile-search';
 import { ThemeToggle } from './theme-toggle';
 import { SearchBar } from './search-bar';
 import { AuthButton } from './auth-button';
@@ -27,6 +28,7 @@ export function SiteHeader() {
         {/* Right side: Search, Auth, Theme Toggle, Mobile Nav */}
         <div className="flex flex-1 items-center justify-end space-x-4">
           <SearchBar className="hidden sm:flex" />
+          <MobileSearch />
           <AuthButton />
           <ThemeToggle />
           <MobileNav className="md:hidden" />

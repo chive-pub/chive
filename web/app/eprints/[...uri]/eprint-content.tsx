@@ -909,18 +909,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   onAddReview={handleAddInlineReview}
                   onLinkEntity={handleLinkEntity}
                   scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
-                  className="min-h-[600px]"
+                  className="min-h-[400px] md:min-h-[600px]"
                 />
               ) : (
-                <div className="flex min-h-[600px] items-center justify-center rounded-lg border border-dashed">
+                <div className="flex min-h-[400px] md:min-h-[600px] items-center justify-center rounded-lg border border-dashed">
                   <p className="text-muted-foreground">No PDF document available</p>
                 </div>
               )}
             </div>
 
-            {/* Annotation sidebar */}
+            {/* Annotation sidebar - hidden on mobile, visible on desktop */}
             {showAnnotationSidebar && (
-              <div className="w-80 shrink-0">
+              <div className="hidden md:block w-80 shrink-0">
                 <AnnotationSidebar
                   eprintUri={uri}
                   selectedUri={selectedAnnotationUri ?? undefined}
@@ -930,6 +930,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </div>
             )}
           </div>
+
+          {/* Annotation sidebar on mobile - shown below PDF */}
+          {showAnnotationSidebar && (
+            <div className="mt-4 md:hidden">
+              <AnnotationSidebar
+                eprintUri={uri}
+                selectedUri={selectedAnnotationUri ?? undefined}
+                onAnnotationClick={handleSidebarAnnotationClick}
+                className="max-h-[50vh] overflow-y-auto"
+              />
+            </div>
+          )}
 
           {/* Inline review form (shown when creating inline annotation) */}
           {inlineReviewTarget && showReviewForm && (
