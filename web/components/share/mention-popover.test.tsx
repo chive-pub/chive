@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MentionPopover, type ActorSuggestion } from './mention-popover';
 import type { AutocompleteTrigger } from './bluesky-composer';
@@ -124,6 +124,8 @@ describe('MentionPopover', () => {
   });
 
   it('navigates with arrow keys', async () => {
+    const user = userEvent.setup();
+
     render(<MentionPopover trigger={baseTrigger} onSelect={() => {}} onClose={() => {}} />);
 
     await waitFor(() => {
@@ -134,18 +136,13 @@ describe('MentionPopover', () => {
     const firstItem = screen.getByRole('option', { selected: true });
     expect(firstItem).toHaveTextContent('Alice');
 
-    // Press arrow down - wrap in act for proper React state update scheduling
-    await act(async () => {
-      fireEvent.keyDown(document, { key: 'ArrowDown' });
-    });
+    // Press arrow down using userEvent for proper React state scheduling
+    await user.keyboard('{ArrowDown}');
 
-    await waitFor(
-      () => {
-        const selectedItem = screen.getByRole('option', { selected: true });
-        expect(selectedItem).toHaveTextContent('Bob');
-      },
-      { timeout: 3000 }
-    );
+    await waitFor(() => {
+      const selectedItem = screen.getByRole('option', { selected: true });
+      expect(selectedItem).toHaveTextContent('Bob');
+    });
   });
 
   it('selects with Enter key', async () => {
