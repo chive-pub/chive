@@ -1,0 +1,26 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.mute",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Mute an author to hide their content from feeds",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subjectDid", "createdAt"],
+        "properties": {
+          "subjectDid": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the muted author"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}
