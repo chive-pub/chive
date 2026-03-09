@@ -242,7 +242,7 @@ export default function AdminAlphaPage() {
                         email?: string;
                         sector?: string;
                         careerStage?: string;
-                        appliedAt?: string;
+                        createdAt?: string;
                         status?: string;
                       }) => (
                         <TableRow key={app.did}>
@@ -267,7 +267,7 @@ export default function AdminAlphaPage() {
                           <TableCell>{app.sector ?? 'N/A'}</TableCell>
                           <TableCell>{app.careerStage ?? 'N/A'}</TableCell>
                           <TableCell>
-                            {app.appliedAt ? new Date(app.appliedAt).toLocaleDateString() : 'N/A'}
+                            {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'N/A'}
                           </TableCell>
                           <TableCell>
                             <Badge className={statusBadgeClass(app.status ?? 'pending')}>

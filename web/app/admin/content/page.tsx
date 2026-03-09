@@ -156,7 +156,14 @@ export default function AdminContentPage() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => {
+          setActiveTab(v);
+          setSearchInput('');
+          setDebouncedQuery('');
+        }}
+      >
         <TabsList>
           <TabsTrigger value="eprints" className="flex items-center gap-1.5">
             <FileText className="h-4 w-4" />

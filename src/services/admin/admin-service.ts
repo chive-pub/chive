@@ -188,9 +188,12 @@ export interface SearchAnalytics {
 export interface AuditLogRow {
   readonly id: string;
   readonly actorDid: string;
+  readonly actorHandle?: string;
   readonly action: string;
   readonly collection?: string;
-  readonly uri?: string;
+  readonly targetUri?: string;
+  readonly targetDid?: string;
+  readonly ipAddress?: string;
   readonly details?: Record<string, unknown>;
   readonly timestamp: string;
 }
@@ -201,6 +204,7 @@ export interface AuditLogRow {
 export interface WarningRow {
   readonly id: string;
   readonly targetDid: string;
+  readonly targetHandle?: string;
   readonly reason: string;
   readonly issuedBy: string;
   readonly issuedAt: string;
@@ -214,10 +218,14 @@ export interface WarningRow {
 export interface ViolationRow {
   readonly id: string;
   readonly targetDid: string;
+  readonly targetHandle?: string;
   readonly type: string;
+  readonly severity: string;
   readonly description: string;
   readonly targetUri?: string;
   readonly detectedAt: string;
+  readonly resolvedAt?: string;
+  readonly resolution?: string;
 }
 
 /**
@@ -1157,7 +1165,7 @@ export class AdminService {
       let paramIdx = 1;
 
       if (actorDid) {
-        conditions.push(`editor_did = $${paramIdx++}`);
+        conditions.push(`g.editor_did = $${paramIdx++}`);
         params.push(actorDid);
       }
 
@@ -1172,13 +1180,21 @@ export class AdminService {
           collection: string;
           uri: string;
           editor_did: string;
+          actor_handle: string | null;
+          target_did: string | null;
+          ip_address: string | null;
           record_snapshot: unknown;
           created_at: Date | string;
         }>(
-          `SELECT id, action, collection, uri, editor_did, record_snapshot, created_at
-           FROM governance_audit_log
+          `SELECT g.id, g.action, g.collection, g.uri, g.editor_did,
+                  a.handle AS actor_handle,
+                  g.target_did,
+                  g.ip_address,
+                  g.record_snapshot, g.created_at
+           FROM governance_audit_log g
+           LEFT JOIN authors_index a ON a.did = g.editor_did
            ${whereClause}
-           ORDER BY created_at DESC
+           ORDER BY g.created_at DESC
            LIMIT $${paramIdx++} OFFSET $${paramIdx}`,
           dataParams
         ),
@@ -1192,8 +1208,11 @@ export class AdminService {
         id: row.id,
         action: row.action,
         collection: row.collection,
-        uri: row.uri,
+        targetUri: row.uri,
         actorDid: row.editor_did,
+        actorHandle: row.actor_handle ?? undefined,
+        targetDid: row.target_did ?? undefined,
+        ipAddress: row.ip_address ?? undefined,
         details: row.record_snapshot as Record<string, unknown>,
         timestamp: toISOString(row.created_at),
       }));
@@ -1219,7 +1238,7 @@ export class AdminService {
       let paramIdx = 1;
 
       if (did) {
-        conditions.push(`user_did = $${paramIdx++}`);
+        conditions.push(`w.user_did = $${paramIdx++}`);
         params.push(did);
       }
 
@@ -1230,6 +1249,7 @@ export class AdminService {
       const result = await this.pool.query<{
         id: string;
         user_did: string;
+        target_handle: string | null;
         reason: string;
         issued_by: string;
         issued_at: Date | string;
@@ -1238,10 +1258,13 @@ export class AdminService {
         resolved_at: Date | string | null;
         resolved_by: string | null;
       }>(
-        `SELECT id, user_did, reason, issued_by, issued_at, expires_at, active, resolved_at, resolved_by
-         FROM user_warnings
+        `SELECT w.id, w.user_did, a.handle AS target_handle,
+                w.reason, w.issued_by, w.issued_at, w.expires_at,
+                w.active, w.resolved_at, w.resolved_by
+         FROM user_warnings w
+         LEFT JOIN authors_index a ON a.did = w.user_did
          ${whereClause}
-         ORDER BY issued_at DESC
+         ORDER BY w.issued_at DESC
          LIMIT $${paramIdx}`,
         params
       );
@@ -1249,6 +1272,7 @@ export class AdminService {
       const warnings: WarningRow[] = result.rows.map((row) => ({
         id: row.id,
         targetDid: row.user_did,
+        targetHandle: row.target_handle ?? undefined,
         reason: row.reason,
         issuedBy: row.issued_by,
         issuedAt: toISOString(row.issued_at),
@@ -1277,7 +1301,7 @@ export class AdminService {
       let paramIdx = 1;
 
       if (did) {
-        conditions.push(`user_did = $${paramIdx++}`);
+        conditions.push(`v.user_did = $${paramIdx++}`);
         params.push(did);
       }
 
@@ -1288,16 +1312,25 @@ export class AdminService {
       const result = await this.pool.query<{
         id: string;
         user_did: string;
+        target_handle: string | null;
         violation_type: string;
+        severity: string | null;
         description: string;
         issued_by: string;
         issued_at: Date | string;
         related_uri: string | null;
+        resolved_at: Date | string | null;
+        resolution: string | null;
       }>(
-        `SELECT id, user_did, violation_type, description, issued_by, issued_at, related_uri
-         FROM user_violations
+        `SELECT v.id, v.user_did, a.handle AS target_handle,
+                v.violation_type,
+                COALESCE(v.severity, 'medium') AS severity,
+                v.description, v.issued_by, v.issued_at, v.related_uri,
+                v.resolved_at, v.resolution
+         FROM user_violations v
+         LEFT JOIN authors_index a ON a.did = v.user_did
          ${whereClause}
-         ORDER BY issued_at DESC
+         ORDER BY v.issued_at DESC
          LIMIT $${paramIdx}`,
         params
       );
@@ -1305,10 +1338,14 @@ export class AdminService {
       const violations: ViolationRow[] = result.rows.map((row) => ({
         id: row.id,
         targetDid: row.user_did,
+        targetHandle: row.target_handle ?? undefined,
         type: row.violation_type,
+        severity: row.severity ?? 'medium',
         description: row.description,
         targetUri: row.related_uri ?? undefined,
         detectedAt: toISOString(row.issued_at),
+        resolvedAt: row.resolved_at ? toISOString(row.resolved_at) : undefined,
+        resolution: row.resolution ?? undefined,
       }));
 
       return { violations };
