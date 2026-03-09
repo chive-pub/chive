@@ -365,19 +365,26 @@ jobs:
             type=sha
             type=ref,event=branch
 
-      - name: Build and push backend image
+      - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: docker/Dockerfile
           target: production
-          push: ${{ github.event_name != 'pull_request' }}
+          push: false
           load: true
           tags: |
             ${{ steps.meta-api.outputs.tags }}
             chive:ci
           cache-from: type=gha,scope=backend
           cache-to: type=gha,mode=max,scope=backend
+
+      - name: Push backend image to GHCR
+        if: github.event_name != 'pull_request'
+        run: |
+          for tag in $(echo "${{ steps.meta-api.outputs.tags }}" | tr '\n' ' '); do
+            docker push "$tag"
+          done
 
       - name: Save Docker image as artifact
         run: docker save chive:ci | gzip > /tmp/chive-image.tar.gz
