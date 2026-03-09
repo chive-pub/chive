@@ -23,6 +23,7 @@ import { useProfileConfig, type ProfileSection } from '@/lib/hooks/use-profile-c
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
+import { MuteButton } from '@/components/authors/mute-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
 
@@ -246,6 +247,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
               size="sm"
             />
           )}
+          <MuteButton did={did} />
           <AddToCollectionButton
             itemUri={did}
             itemType="author"
