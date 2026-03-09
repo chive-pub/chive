@@ -10,6 +10,11 @@ vi.mock('@/lib/auth', () => ({
   authenticatePaperInPopup: vi.fn(),
 }));
 
+// Mock the paper session module
+vi.mock('@/lib/auth/paper-session', () => ({
+  getPaperSession: vi.fn(() => null),
+}));
+
 // Mock the observability logger
 vi.mock('@/lib/observability', () => ({
   logger: {
@@ -43,21 +48,26 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: undefined };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     expect(screen.getByRole('button', { name: /edit eprint/i })).toBeInTheDocument();
+  });
+
+  it('passes null paperAgent when eprint has no paperDid', () => {
+    const eprint = { paperDid: undefined };
+    const renderFn = vi.fn(() => <button>Edit Eprint</button>);
+
+    render(<PaperAuthGate eprint={eprint}>{renderFn}</PaperAuthGate>);
+
+    expect(renderFn).toHaveBeenCalledWith(null);
   });
 
   it('does not show PaperAuthPrompt when eprint has no paperDid', () => {
     const eprint = { paperDid: undefined };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     expect(screen.queryByText(/Paper Account Authentication Required/i)).not.toBeInTheDocument();
@@ -67,9 +77,7 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: 'did:plc:paper123' };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     expect(screen.getByText(/Paper Account Authentication Required/i)).toBeInTheDocument();
@@ -79,9 +87,7 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: 'did:plc:paper123' };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     expect(screen.queryByRole('button', { name: /edit eprint/i })).not.toBeInTheDocument();
@@ -91,9 +97,7 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: 'did:plc:paper123' };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     expect(screen.getByText('did:plc:paper123')).toBeInTheDocument();
@@ -104,9 +108,7 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: 'did:plc:paper123' };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     // Initially, children should not be visible
@@ -132,7 +134,7 @@ describe('PaperAuthGate', () => {
 
     render(
       <PaperAuthGate eprint={eprint} onAuthenticated={onAuthenticated}>
-        <button>Edit Eprint</button>
+        {(paperAgent) => <button>Edit Eprint</button>}
       </PaperAuthGate>
     );
 
@@ -153,9 +155,7 @@ describe('PaperAuthGate', () => {
     const eprint = { paperDid: 'did:plc:paper123' };
 
     render(
-      <PaperAuthGate eprint={eprint}>
-        <button>Edit Eprint</button>
-      </PaperAuthGate>
+      <PaperAuthGate eprint={eprint}>{(paperAgent) => <button>Edit Eprint</button>}</PaperAuthGate>
     );
 
     // Enter handle and click authenticate button

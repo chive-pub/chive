@@ -45,7 +45,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { MarkdownEditor } from '@/components/editor';
 import { useAgent } from '@/lib/auth/auth-context';
-import { authApi } from '@/lib/api/client';
+import { getPaperSession } from '@/lib/auth/paper-session';
+import { authApi, createAuthenticatedClient } from '@/lib/api/client';
 import { createChangelogRecord } from '@/lib/atproto/record-creator';
 import {
   formatVersion,
@@ -81,6 +82,8 @@ export interface EprintEditData {
   version?: SemanticVersion;
   /** DID of the repository owner */
   repo: string;
+  /** Paper account DID (if paper-centric) */
+  paperDid?: string;
 }
 
 /**
@@ -222,6 +225,17 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         return;
       }
 
+      // For paper-centric eprints, resolve the paper agent from session
+      let effectiveAgent = agent;
+      if (eprint.paperDid) {
+        const paperSession = getPaperSession(eprint.paperDid);
+        if (!paperSession?.agent) {
+          toast.error('Paper account authentication required. Please authenticate first.');
+          return;
+        }
+        effectiveAgent = paperSession.agent;
+      }
+
       setIsSubmitting(true);
 
       try {
@@ -264,6 +278,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
           title: values.title !== eprint.title ? values.title : undefined,
           keywords,
           changelog: changelogInput,
+          overrideAgent: eprint.paperDid ? effectiveAgent : undefined,
         });
 
         editLogger.info('Authorization successful', {
@@ -275,7 +290,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         let documentBlobRef = undefined;
         if (selectedFile) {
           const fileBytes = new Uint8Array(await selectedFile.arrayBuffer());
-          const uploadResult = await agent.uploadBlob(fileBytes, {
+          const uploadResult = await effectiveAgent.uploadBlob(fileBytes, {
             encoding: selectedFile.type || 'application/pdf',
           });
           documentBlobRef = uploadResult.data.blob;
@@ -283,7 +298,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         }
 
         // Step 3: Fetch current record to merge with updates
-        const currentRecord = await agent.com.atproto.repo.getRecord({
+        const currentRecord = await effectiveAgent.com.atproto.repo.getRecord({
           repo: eprint.repo,
           collection: eprint.collection,
           rkey: eprint.rkey,
@@ -301,7 +316,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         };
 
         // Step 5: Make PDS putRecord call with optimistic concurrency control
-        await agent.com.atproto.repo.putRecord({
+        await effectiveAgent.com.atproto.repo.putRecord({
           repo: eprint.repo,
           collection: eprint.collection,
           rkey: eprint.rkey,
@@ -312,7 +327,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         // Step 5.5: Create changelog record in PDS (if changelog provided)
         if (hasChangelog && changelogInput) {
           try {
-            const changelogResult = await createChangelogRecord(agent, {
+            const changelogResult = await createChangelogRecord(effectiveAgent, {
               eprintUri: eprint.uri,
               version: authResult.version,
               previousVersion: eprint.version || undefined,
@@ -332,7 +347,10 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
 
             // Request immediate indexing for the changelog record (best-effort)
             try {
-              await authApi.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
+              const apiClient = eprint.paperDid
+                ? createAuthenticatedClient(effectiveAgent)
+                : authApi;
+              await apiClient.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
             } catch {
               editLogger.warn('Immediate changelog indexing failed; firehose will handle', {
                 uri: changelogResult.uri,
@@ -352,7 +370,8 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         // The firehose is the primary indexing mechanism, but there may be latency.
         // This call ensures the record appears immediately in Chive's index.
         try {
-          await authApi.pub.chive.sync.indexRecord({ uri: eprint.uri });
+          const apiClient = eprint.paperDid ? createAuthenticatedClient(effectiveAgent) : authApi;
+          await apiClient.pub.chive.sync.indexRecord({ uri: eprint.uri });
         } catch {
           editLogger.warn('Immediate re-indexing failed; firehose will handle', {
             uri: eprint.uri,
@@ -407,7 +426,7 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
         <DialogHeader>
           <DialogTitle>Edit Eprint</DialogTitle>
           <DialogDescription>
-            Update the metadata for this eprint. Changes will be saved to your PDS and propagated to
+            Update the metadata for this eprint. Changes will be saved to the PDS and propagated to
             all indexers.
           </DialogDescription>
         </DialogHeader>
