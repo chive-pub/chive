@@ -1452,7 +1452,7 @@ describe('DiscoveryService', () => {
   // ==========================================================================
 
   describe('weighted scoring', () => {
-    it('uses correct default weights: SPECTER2 0.30, co-citation 0.25, concepts 0.20, authors 0.15', async () => {
+    it('uses correct default weights: SPECTER2 0.25, co-citation 0.20, concepts 0.15, authors 0.30', async () => {
       // Create a service with the recommendation engine for full signal coverage
       const mockRecommendationEngine = createMockRecommendationEngine();
 
@@ -1533,13 +1533,16 @@ describe('DiscoveryService', () => {
         expect(scores.concepts).toBeDefined();
         expect(scores.authors).toBeDefined();
 
-        // Verify the combined score uses weights:
-        // citations (normalized 5/(5+5)=0.5) * 0.25 + concepts (0.9) * 0.20 + authors (0.7) * 0.15
-        // = 0.125 + 0.18 + 0.105 = 0.41
+        // Only citations, concepts, authors active (raw weights: 0.20, 0.15, 0.30).
+        // Normalized: 0.20/0.65, 0.15/0.65, 0.30/0.65
         const citationsScore = scores.citations ?? 0;
         const conceptsScore = scores.concepts ?? 0;
         const authorsScore = scores.authors ?? 0;
-        const expectedScore = citationsScore * 0.25 + conceptsScore * 0.2 + authorsScore * 0.15;
+        const weightSum = 0.2 + 0.15 + 0.3;
+        const expectedScore =
+          citationsScore * (0.2 / weightSum) +
+          conceptsScore * (0.15 / weightSum) +
+          authorsScore * (0.3 / weightSum);
 
         expect(paper.score).toBeCloseTo(expectedScore, 2);
       }

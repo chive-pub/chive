@@ -302,7 +302,7 @@ describe('DiscoveryService MLT fallback', () => {
         minTermFreq: 1,
         minDocFreq: 1,
         maxQueryTerms: 25,
-        minimumShouldMatch: '30%',
+        minimumShouldMatch: '25%',
       });
 
       expect(results.length).toBeGreaterThan(0);
@@ -377,9 +377,8 @@ describe('DiscoveryService MLT fallback', () => {
       // MLT per-signal score = raw_score * 0.85 (scores already 0-1 via ES saturation)
       // 0.85 * 0.85 = 0.7225
       const semanticScore = 0.85 * 0.85;
-      // Combined score applies discovery weight (specter2 = 0.30)
-      const expectedCombinedScore = semanticScore * 0.3;
-      expect(result?.score).toBeCloseTo(expectedCombinedScore, 5);
+      // With only semantic signal active, weight normalizes to 1.0
+      expect(result?.score).toBeCloseTo(semanticScore, 5);
       expect(result?.signalScores?.semantic).toBeCloseTo(semanticScore, 5);
     });
 
@@ -403,8 +402,8 @@ describe('DiscoveryService MLT fallback', () => {
 
       expect(results).toHaveLength(1);
       // MLT per-signal score: 0.98 * 0.85 = 0.833
-      // Combined score with discovery weight: 0.833 * 0.30 = 0.2499
-      expect(results[0]?.score).toBeCloseTo(0.98 * 0.85 * 0.3, 5);
+      // With only semantic signal active, weight normalizes to 1.0
+      expect(results[0]?.score).toBeCloseTo(0.98 * 0.85, 5);
     });
 
     it('handles MLT returning no results gracefully', async () => {
