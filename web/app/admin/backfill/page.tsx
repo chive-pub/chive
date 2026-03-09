@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   useBackfillStatus,
+  useBackfillHistory,
   useTriggerPDSScan,
   useTriggerFreshnessScan,
   useTriggerCitationExtraction,
@@ -136,6 +137,7 @@ function operationTypeClass(type: string): string {
  */
 export default function AdminBackfillPage() {
   const { data: backfillStatus, isLoading } = useBackfillStatus();
+  const { data: historyData, isLoading: isHistoryLoading } = useBackfillHistory();
   const triggerPDSScan = useTriggerPDSScan();
   const triggerFreshnessScan = useTriggerFreshnessScan();
   const triggerCitationExtraction = useTriggerCitationExtraction();
@@ -155,7 +157,7 @@ export default function AdminBackfillPage() {
 
   const operations = backfillStatus?.operations ?? [];
   const activeOps = operations.filter((op) => op.status === 'running');
-  const completedOps = operations.filter((op) => op.status !== 'running');
+  const completedOps = historyData?.operations ?? [];
 
   const handleTriggerPDSScan = () => {
     const input = pdsUrl.trim() ? { pdsUrl: pdsUrl.trim() } : {};
@@ -498,7 +500,7 @@ export default function AdminBackfillPage() {
           <CardDescription>Previously completed backfill operations</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {isHistoryLoading ? (
             <div className="p-6 space-y-3">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />

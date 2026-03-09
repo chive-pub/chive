@@ -34,12 +34,8 @@ async function adminFetch<T>(nsid: string, params?: Record<string, string>): Pro
   const agent = getCurrentAgent();
 
   if (agent) {
-    try {
-      const token = await getServiceAuthToken(agent, nsid);
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch {
-      // Continue without auth
-    }
+    const token = await getServiceAuthToken(agent, nsid);
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const url = new URL(`${apiBase}/xrpc/${nsid}`);
@@ -75,12 +71,8 @@ async function adminPost<T>(nsid: string, body: unknown): Promise<T> {
   const agent = getCurrentAgent();
 
   if (agent) {
-    try {
-      const token = await getServiceAuthToken(agent, nsid);
-      headers['Authorization'] = `Bearer ${token}`;
-    } catch {
-      // Continue without auth
-    }
+    const token = await getServiceAuthToken(agent, nsid);
+    headers['Authorization'] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${apiBase}/xrpc/${nsid}`, {
@@ -238,10 +230,10 @@ export interface AlphaApplication {
   sector?: string;
   careerStage?: string;
   affiliations?: string[];
-  keywords?: string[];
+  researchKeywords?: string[];
   status: 'pending' | 'approved' | 'rejected' | 'revoked';
   motivation?: string;
-  appliedAt: string;
+  createdAt: string;
   reviewedAt?: string;
   reviewedBy?: string;
 }

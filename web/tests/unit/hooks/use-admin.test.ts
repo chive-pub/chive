@@ -313,20 +313,16 @@ describe('adminFetch (via query hooks)', () => {
     expect(result.current.error?.message).toBe('Request failed');
   });
 
-  it('continues without auth when getServiceAuthToken throws', async () => {
+  it('propagates error when getServiceAuthToken throws', async () => {
     const { getServiceAuthToken } = await import('@/lib/auth/service-auth');
     vi.mocked(getServiceAuthToken).mockRejectedValueOnce(new Error('auth failed'));
-    mockFetchResponse({ status: 'healthy', databases: [], uptime: 1000, timestamp: '' });
 
     const { result } = renderHook(() => useSystemHealth(), {
       wrapper: createWrapper(queryClient),
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const [, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string, RequestInit];
-    const headers = options.headers as Record<string, string>;
-    expect(headers['Authorization']).toBeUndefined();
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe('auth failed');
   });
 
   it('continues without auth when no agent is available', async () => {

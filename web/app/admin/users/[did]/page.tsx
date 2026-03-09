@@ -56,9 +56,9 @@ function roleBadgeClass(role: string): string {
       return 'bg-purple-500/15 text-purple-700 border-purple-200';
     case 'moderator':
       return 'bg-blue-500/15 text-blue-700 border-blue-200';
-    case 'trusted_editor':
+    case 'graph-editor':
       return 'bg-green-500/15 text-green-700 border-green-200';
-    case 'alpha':
+    case 'alpha-tester':
       return 'bg-yellow-500/15 text-yellow-700 border-yellow-200';
     default:
       return 'bg-gray-500/15 text-gray-700 border-gray-200';
@@ -374,8 +374,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ did:
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
-                <SelectItem value="trusted_editor">Trusted Editor</SelectItem>
-                <SelectItem value="alpha">Alpha</SelectItem>
+                <SelectItem value="graph-editor">Graph Editor</SelectItem>
+                <SelectItem value="author">Author</SelectItem>
+                <SelectItem value="reader">Reader</SelectItem>
+                <SelectItem value="alpha-tester">Alpha Tester</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
               </SelectContent>
             </Select>
           </div>
