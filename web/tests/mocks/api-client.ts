@@ -21,7 +21,6 @@ import type {
   SearchNodesResponse,
   EprintTagsResponse,
   TrendingTagsResponse,
-  GetForYouResponse,
   GetSimilarResponse,
   GetCitationsResponse,
   GetEnrichmentResponse,
@@ -191,15 +190,6 @@ export function mockTrendingTagsResponse(
 }
 
 /**
- * Type-safe factory for discovery recommendations responses.
- */
-export function mockDiscoveryForYouResponse(
-  data: GetForYouResponse
-): XRPCResponse<GetForYouResponse> {
-  return mockXRPCSuccess(data);
-}
-
-/**
  * Type-safe factory for similar papers responses.
  */
 export function mockSimilarPapersResponse(
@@ -308,11 +298,9 @@ export function createMockApiClient() {
           search: createNamespaceMocks(),
         },
         discovery: {
-          getForYou: createNamespaceMocks(),
           getSimilar: createNamespaceMocks(),
           getCitations: createNamespaceMocks(),
           getEnrichment: createNamespaceMocks(),
-          getRecommendations: createNamespaceMocks(),
         },
         metrics: {
           getTrending: createNamespaceMocks(),

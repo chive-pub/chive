@@ -5,7 +5,7 @@
  * Authenticated users with fields set in their profile see recent papers
  * in those fields, sorted chronologically. Anonymous users or users
  * without fields fall back to the global trending feed.
- * Respects the user's discovery settings (enablePersonalization, forYouSignals).
+ * Respects the user's discovery settings (enablePersonalization).
  *
  * @packageDocumentation
  */
@@ -70,8 +70,8 @@ type SearchHitOrTrending = Record<string, unknown> & { uri: string };
  * Authenticated users with fields: returns recent papers in their fields.
  * Authenticated users without fields: signals that profile setup is needed.
  * Anonymous users: falls back to trending.
- * Respects discovery settings: if personalization is disabled or the fields
- * signal is turned off, falls back to trending.
+ * Respects discovery settings: if personalization is disabled, falls back
+ * to trending.
  *
  * @param options - optional configuration
  * @param options.limit - maximum number of results (default: 20)
@@ -85,11 +85,10 @@ export function usePersonalizedFeed(options: { limit?: number } = {}): Personali
 
   // Check if personalization is enabled in discovery settings
   const personalizationEnabled = discoverySettings?.enablePersonalization !== false;
-  const fieldsSignalEnabled = discoverySettings?.forYouSignals?.fields !== false;
 
   // Extract field URIs from the author profile
   const fieldUris = profile?.fields ?? [];
-  const hasFields = !!user && fieldUris.length > 0 && personalizationEnabled && fieldsSignalEnabled;
+  const hasFields = !!user && fieldUris.length > 0 && personalizationEnabled;
   const isAuthenticated = !!user;
 
   // Personalized feed: search for recent papers in the user's fields

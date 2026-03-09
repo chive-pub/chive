@@ -301,7 +301,7 @@ export interface RelatedEprintOptions {
   /**
    * Minimum similarity score (0-1).
    *
-   * @defaultValue 0.3
+   * @defaultValue 0.05
    */
   readonly minScore?: number;
 
@@ -309,6 +309,18 @@ export interface RelatedEprintOptions {
    * User DID for personalization context.
    */
   readonly userDid?: DID;
+
+  /**
+   * Custom weights for related paper signals (0-1, auto-normalized).
+   * Overrides the default weights when provided.
+   */
+  readonly weights?: {
+    readonly semantic?: number;
+    readonly coCitation?: number;
+    readonly conceptOverlap?: number;
+    readonly authorNetwork?: number;
+    readonly collaborative?: number;
+  };
 }
 
 /**
@@ -322,7 +334,8 @@ export type RelatedEprintSignal =
   | 'concepts' // OpenAlex concept overlap
   | 'semantic' // SPECTER2 embedding similarity
   | 'authors' // Co-author network
-  | 'topics'; // OpenAlex topic overlap
+  | 'topics' // OpenAlex topic overlap
+  | 'collaborative'; // Collaborative filtering from user interactions
 
 /**
  * Related eprint with relationship metadata.
@@ -359,6 +372,7 @@ export interface RelatedEprint extends RankableItem {
     readonly concepts?: number;
     readonly semantic?: number;
     readonly authors?: number;
+    readonly collaborative?: number;
     readonly topics?: number;
   };
 }
@@ -376,7 +390,8 @@ export type RelatedEprintRelationship =
   | 'bibliographic-coupling' // Share references (cite same papers)
   | 'same-author' // Share an author
   | 'similar-topics' // Similar OpenAlex topics
-  | 'semantically-similar'; // High SPECTER2 similarity
+  | 'semantically-similar' // High SPECTER2 similarity
+  | 'collaborative-filtering'; // Users with similar interests also read
 
 /**
  * Options for personalized recommendations.

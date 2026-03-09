@@ -105,20 +105,29 @@ function TrendingCard({
  * If the user has no fields set, shows a prompt to configure their profile.
  */
 export default function TrendingPage() {
-  const [window, setWindow] = useState<TimeWindow>('7d');
-  const [fieldTab, setFieldTab] = useState<FieldTab>('my-fields');
-
   const user = useCurrentUser();
   const { data: profile } = useAuthorProfile(user?.did ?? '');
   const { data: discoverySettings } = useDiscoverySettings();
 
+  const defaultWindow = (discoverySettings?.trendingPreferences?.defaultWindow ??
+    '7d') as TimeWindow;
+  const defaultLimit = discoverySettings?.trendingPreferences?.defaultLimit ?? 20;
+
+  const [window, setWindow] = useState<TimeWindow>(defaultWindow);
+  const [fieldTab, setFieldTab] = useState<FieldTab>('my-fields');
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync initial window from settings once loaded
+  if (discoverySettings && !initialized) {
+    setWindow(defaultWindow);
+    setInitialized(true);
+  }
+
   const personalizationEnabled = discoverySettings?.enablePersonalization !== false;
-  const trendingSignalEnabled = discoverySettings?.forYouSignals?.trending !== false;
 
   // Work fields from profile
   const workFieldUris = profile?.fields;
-  const hasWorkFields =
-    !!workFieldUris && workFieldUris.length > 0 && personalizationEnabled && trendingSignalEnabled;
+  const hasWorkFields = !!workFieldUris && workFieldUris.length > 0 && personalizationEnabled;
 
   // Followed fields from discovery settings
   const followedFieldUris = discoverySettings?.followedFieldUris;
@@ -143,7 +152,7 @@ export default function TrendingPage() {
 
   const { data, isLoading, error } = useTrending({
     window,
-    limit: 25,
+    limit: defaultLimit,
     ...(hasActiveFields ? { fieldUris: activeFieldUris } : {}),
   });
 
@@ -167,7 +176,7 @@ export default function TrendingPage() {
       </div>
 
       {/* Field Tab Selector (only for authenticated users with personalization on) */}
-      {isAuthenticated && personalizationEnabled && trendingSignalEnabled && (
+      {isAuthenticated && personalizationEnabled && (
         <Tabs value={fieldTab} onValueChange={(v) => setFieldTab(v as FieldTab)}>
           <TabsList>
             <TabsTrigger value="my-fields" className="gap-2">
