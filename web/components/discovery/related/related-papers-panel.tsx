@@ -167,14 +167,6 @@ export function RelatedPapersPanel({
                 {suggestedPapers.map((paper) => (
                   <RelatedPaperCard key={paper.uri} paper={paper} />
                 ))}
-                {suggestedPapers.length >= limit && (
-                  <Button variant="ghost" size="sm" className="w-full" asChild>
-                    <Link href={`/eprints/${encodeURIComponent(eprintUri)}/related`}>
-                      View all related papers
-                      <ExternalLink className="ml-2 h-3 w-3" />
-                    </Link>
-                  </Button>
-                )}
               </div>
             )}
 
