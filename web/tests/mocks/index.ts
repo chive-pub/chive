@@ -46,7 +46,6 @@ export {
   mockNodeSearchResponse,
   mockTagListResponse,
   mockTrendingTagsResponse,
-  mockDiscoveryForYouResponse,
   mockSimilarPapersResponse,
   mockCitationsResponse,
   mockEnrichmentResponse,

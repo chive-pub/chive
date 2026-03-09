@@ -13,8 +13,10 @@ import { DIDResolver } from '../../../../auth/did/did-resolver.js';
 import type {
   QueryParams,
   OutputSchema,
-  ForYouSignals,
   RelatedPapersSignals,
+  RelatedPapersWeights,
+  RelatedPapersThresholds,
+  TrendingPreferences,
 } from '../../../../lexicons/generated/types/pub/chive/actor/getDiscoverySettings.js';
 import type { DID } from '../../../../types/atproto.js';
 import { AuthenticationError, NotFoundError } from '../../../../types/errors.js';
@@ -22,21 +24,49 @@ import type { ILogger } from '../../../../types/interfaces/logger.interface.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
+ * Default related papers weights matching DEFAULT_DISCOVERY_WEIGHTS in the ranking service.
+ */
+const DEFAULT_RELATED_PAPERS_WEIGHTS: Omit<Required<RelatedPapersWeights>, '$type'> = {
+  semantic: 25,
+  coCitation: 20,
+  conceptOverlap: 15,
+  authorNetwork: 30,
+  collaborative: 10,
+};
+
+/**
+ * Default related papers thresholds.
+ */
+const DEFAULT_RELATED_PAPERS_THRESHOLDS: Omit<Required<RelatedPapersThresholds>, '$type'> = {
+  minScore: 5,
+  maxResults: 10,
+};
+
+/**
+ * Default trending preferences.
+ */
+const DEFAULT_TRENDING_PREFERENCES: Omit<Required<TrendingPreferences>, '$type'> = {
+  defaultWindow: '7d',
+  defaultLimit: 20,
+};
+
+/**
  * Default discovery settings when user has none saved.
  */
 const DEFAULT_DISCOVERY_SETTINGS: OutputSchema = {
   enablePersonalization: true,
-  enableForYouFeed: true,
-  forYouSignals: {
-    fields: true,
-    citations: true,
-    collaborators: true,
-    trending: true,
-  },
   relatedPapersSignals: {
+    semantic: true,
     citations: true,
     topics: true,
+    authors: true,
+    coCitation: false,
+    bibliographicCoupling: false,
+    collaborative: false,
   },
+  relatedPapersWeights: DEFAULT_RELATED_PAPERS_WEIGHTS,
+  relatedPapersThresholds: DEFAULT_RELATED_PAPERS_THRESHOLDS,
+  trendingPreferences: DEFAULT_TRENDING_PREFERENCES,
   citationNetworkDisplay: 'preview',
   showRecommendationReasons: true,
   recommendationDiversity: 'medium',
@@ -50,16 +80,29 @@ const DEFAULT_DISCOVERY_SETTINGS: OutputSchema = {
  */
 interface RawPDSSettings {
   enablePersonalization?: boolean;
-  enableForYouFeed?: boolean;
-  forYouSignals?: {
-    fields?: boolean;
-    citations?: boolean;
-    collaborators?: boolean;
-    trending?: boolean;
-  };
   relatedPapersSignals?: {
+    semantic?: boolean;
     citations?: boolean;
     topics?: boolean;
+    authors?: boolean;
+    coCitation?: boolean;
+    bibliographicCoupling?: boolean;
+    collaborative?: boolean;
+  };
+  relatedPapersWeights?: {
+    semantic?: number;
+    coCitation?: number;
+    conceptOverlap?: number;
+    authorNetwork?: number;
+    collaborative?: number;
+  };
+  relatedPapersThresholds?: {
+    minScore?: number;
+    maxResults?: number;
+  };
+  trendingPreferences?: {
+    defaultWindow?: string;
+    defaultLimit?: number;
   };
   citationNetworkDisplay?: 'hidden' | 'preview' | 'expanded';
   showRecommendationReasons?: boolean;
@@ -70,31 +113,99 @@ interface RawPDSSettings {
 }
 
 /**
+ * Clamps a weight value to the valid range.
+ */
+function clampWeight(value: number | undefined, fallback: number): number {
+  if (value === undefined) return fallback;
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+/**
  * Normalizes raw PDS settings to the expected schema format.
  */
 function normalizeSettings(raw: RawPDSSettings): OutputSchema {
-  const forYouSignals: ForYouSignals = {
-    fields: raw.forYouSignals?.fields ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.fields,
-    citations: raw.forYouSignals?.citations ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.citations,
-    collaborators:
-      raw.forYouSignals?.collaborators ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.collaborators,
-    trending: raw.forYouSignals?.trending ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.trending,
-  };
-
   const relatedPapersSignals: RelatedPapersSignals = {
+    semantic:
+      raw.relatedPapersSignals?.semantic ??
+      DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.semantic,
     citations:
       raw.relatedPapersSignals?.citations ??
       DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.citations,
     topics:
       raw.relatedPapersSignals?.topics ?? DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.topics,
+    authors:
+      raw.relatedPapersSignals?.authors ?? DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.authors,
+    coCitation:
+      raw.relatedPapersSignals?.coCitation ??
+      DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.coCitation,
+    bibliographicCoupling:
+      raw.relatedPapersSignals?.bibliographicCoupling ??
+      DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.bibliographicCoupling,
+    collaborative:
+      raw.relatedPapersSignals?.collaborative ??
+      DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.collaborative,
+  };
+
+  const relatedPapersWeights: RelatedPapersWeights = {
+    semantic: clampWeight(
+      raw.relatedPapersWeights?.semantic,
+      DEFAULT_RELATED_PAPERS_WEIGHTS.semantic
+    ),
+    coCitation: clampWeight(
+      raw.relatedPapersWeights?.coCitation,
+      DEFAULT_RELATED_PAPERS_WEIGHTS.coCitation
+    ),
+    conceptOverlap: clampWeight(
+      raw.relatedPapersWeights?.conceptOverlap,
+      DEFAULT_RELATED_PAPERS_WEIGHTS.conceptOverlap
+    ),
+    authorNetwork: clampWeight(
+      raw.relatedPapersWeights?.authorNetwork,
+      DEFAULT_RELATED_PAPERS_WEIGHTS.authorNetwork
+    ),
+    collaborative: clampWeight(
+      raw.relatedPapersWeights?.collaborative,
+      DEFAULT_RELATED_PAPERS_WEIGHTS.collaborative
+    ),
+  };
+
+  const relatedPapersThresholds: RelatedPapersThresholds = {
+    minScore: clampWeight(
+      raw.relatedPapersThresholds?.minScore,
+      DEFAULT_RELATED_PAPERS_THRESHOLDS.minScore
+    ),
+    maxResults: Math.max(
+      1,
+      Math.min(
+        50,
+        raw.relatedPapersThresholds?.maxResults ?? DEFAULT_RELATED_PAPERS_THRESHOLDS.maxResults
+      )
+    ),
+  };
+
+  const validWindows = ['24h', '7d', '30d'];
+  const rawWindow = raw.trendingPreferences?.defaultWindow;
+  const trendingPreferences: TrendingPreferences = {
+    defaultWindow:
+      rawWindow && validWindows.includes(rawWindow)
+        ? rawWindow
+        : DEFAULT_TRENDING_PREFERENCES.defaultWindow,
+    defaultLimit: Math.max(
+      5,
+      Math.min(
+        100,
+        raw.trendingPreferences?.defaultLimit ?? DEFAULT_TRENDING_PREFERENCES.defaultLimit
+      )
+    ),
   };
 
   return {
     enablePersonalization:
       raw.enablePersonalization ?? DEFAULT_DISCOVERY_SETTINGS.enablePersonalization,
-    enableForYouFeed: raw.enableForYouFeed ?? DEFAULT_DISCOVERY_SETTINGS.enableForYouFeed,
-    forYouSignals,
     relatedPapersSignals,
+    relatedPapersWeights,
+    relatedPapersThresholds,
+    trendingPreferences,
     citationNetworkDisplay:
       raw.citationNetworkDisplay ?? DEFAULT_DISCOVERY_SETTINGS.citationNetworkDisplay,
     showRecommendationReasons:

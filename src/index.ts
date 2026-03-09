@@ -24,6 +24,7 @@ import { AuthorizationService } from './auth/authorization/authorization-service
 import { DIDResolver } from './auth/did/did-resolver.js';
 import { getGrobidConfig } from './config/grobid.js';
 import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
+import { CollaborativeFilteringSyncJob } from './jobs/collaborative-filtering-sync.js';
 import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
@@ -79,6 +80,7 @@ import { ElasticsearchAdapter } from './storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.js';
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
 import { CitationGraph } from './storage/neo4j/citation-graph.js';
+import { CollaborativeFilteringStore } from './storage/neo4j/collaborative-filtering.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
@@ -247,6 +249,7 @@ interface AppState {
   eventBus?: EventEmitter2Type;
   indexRetryWorker?: IndexRetryWorker;
   citationExtractionJob?: CitationExtractionJob;
+  collaborativeFilteringSyncJob?: CollaborativeFilteringSyncJob;
 }
 
 /**
@@ -309,7 +312,10 @@ function createServices(
   esPool: ElasticsearchConnectionPool,
   neo4jConnection: Neo4jConnection,
   logger: PinoLogger
-): ServerConfig & { readonly citationExtractionService: CitationExtractionService } {
+): ServerConfig & {
+  readonly citationExtractionService: CitationExtractionService;
+  readonly collaborativeFilteringStore: CollaborativeFilteringStore;
+} {
   // Create adapters
   const storageAdapter = new PostgreSQLAdapter(pgPool);
   const searchAdapter = new ElasticsearchAdapter(esPool);
@@ -510,6 +516,13 @@ function createServices(
     recommendationEngine
   );
 
+  // Wire collaborative filtering store for user interaction-based signals
+  const collaborativeFilteringStore = new CollaborativeFilteringStore({
+    connection: neo4jConnection,
+    logger,
+  });
+  discoveryService.setCollaborativeStore(collaborativeFilteringStore);
+
   // Create authorization service for role-based access control
   const authzService = new AuthorizationService({
     redis,
@@ -608,6 +621,8 @@ function createServices(
     indexRetryWorker,
     identityResolver,
     citationExtractionService,
+    collaborativeFilteringStore,
+    recommendationService: recommendationEngine,
     personalGraphService,
     collectionService,
     adminService,
@@ -720,6 +735,12 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   if (state.tagSyncJob) {
     state.logger.info('Stopping tag sync job...');
     state.tagSyncJob.stop();
+  }
+
+  // Stop collaborative filtering sync job
+  if (state.collaborativeFilteringSyncJob) {
+    state.logger.info('Stopping collaborative filtering sync job...');
+    state.collaborativeFilteringSyncJob.stop();
   }
 
   // Close freshness worker
@@ -1274,6 +1295,16 @@ async function main(): Promise<void> {
     });
     await state.tagSyncJob.start();
     logger.info('Tag sync job initialized');
+
+    // Initialize collaborative filtering sync job
+    logger.info('Initializing collaborative filtering sync job...');
+    state.collaborativeFilteringSyncJob = new CollaborativeFilteringSyncJob({
+      db: pgPool,
+      collaborativeFilteringStore: serverConfig.collaborativeFilteringStore,
+      logger,
+    });
+    await state.collaborativeFilteringSyncJob.start();
+    logger.info('Collaborative filtering sync job initialized');
   } catch (error) {
     logger.error('Failed to start server', error instanceof Error ? error : undefined);
     process.exit(1);

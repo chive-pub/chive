@@ -56,6 +56,7 @@ function mapRelationshipType(
     'same-author': 'same-author',
     'similar-topics': 'same-topic',
     'semantically-similar': 'semantically-similar',
+    'collaborative-filtering': 'collaborative-filtering',
   };
   return typeMap[interfaceType];
 }
@@ -94,20 +95,28 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
     const logger = c.get('logger');
     const { discovery, eprint, recommendationService } = c.get('services');
 
-    // Cast to array type - lexicon allows single value but handler expects array
-    const includeTypes = (params.includeTypes ?? []) as (
+    // Lexicon codegen produces a union of string | string[] for array query params.
+    // When a single value is sent, the XRPC parser passes a plain string, not an array.
+    type IncludeType =
       | 'semantic'
       | 'citation'
       | 'topic'
       | 'author'
       | 'co-citation'
       | 'bibliographic-coupling'
-    )[];
+      | 'collaborative';
+    const rawIncludeTypes = params.includeTypes;
+    const includeTypes: IncludeType[] = Array.isArray(rawIncludeTypes)
+      ? (rawIncludeTypes as IncludeType[])
+      : rawIncludeTypes
+        ? [rawIncludeTypes as IncludeType]
+        : [];
     const includeGraphTypes = includeTypes.some(
       (t) => t === 'co-citation' || t === 'bibliographic-coupling'
     );
+    const includeCollaborative = includeTypes.includes('collaborative');
     const standardTypes = includeTypes.filter(
-      (t) => t !== 'co-citation' && t !== 'bibliographic-coupling'
+      (t) => t !== 'co-citation' && t !== 'bibliographic-coupling' && t !== 'collaborative'
     );
 
     logger.debug('Getting similar papers', {
@@ -131,9 +140,35 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
     // Use defensive error handling - return empty array if discovery fails
     let related: Awaited<ReturnType<typeof discovery.findRelatedEprints>> = [];
     try {
+      // Build signals array from standard types + collaborative
+      const mappedSignals = mapIncludeTypesToSignals(
+        standardTypes.length > 0 ? standardTypes : undefined
+      );
+      let signals: RelatedEprintSignal[] | undefined = mappedSignals;
+      if (includeCollaborative) {
+        signals = signals ? [...signals, 'collaborative'] : ['collaborative'];
+      }
+      // Build weights from params if any are provided
+      const hasWeights =
+        params.weightSemantic !== undefined ||
+        params.weightCoCitation !== undefined ||
+        params.weightConceptOverlap !== undefined ||
+        params.weightAuthorNetwork !== undefined ||
+        params.weightCollaborative !== undefined;
+      const weights = hasWeights
+        ? {
+            semantic: params.weightSemantic,
+            coCitation: params.weightCoCitation,
+            conceptOverlap: params.weightConceptOverlap,
+            authorNetwork: params.weightAuthorNetwork,
+            collaborative: params.weightCollaborative,
+          }
+        : undefined;
+
       related = await discovery.findRelatedEprints(params.uri as AtUri, {
         limit: params.limit,
-        signals: mapIncludeTypesToSignals(standardTypes.length > 0 ? standardTypes : undefined),
+        signals,
+        weights,
       });
     } catch (error) {
       logger.warn('Discovery service failed, returning empty related papers', {

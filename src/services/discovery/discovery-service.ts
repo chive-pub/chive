@@ -50,6 +50,7 @@
 
 import type { OpenAlexPlugin } from '../../plugins/builtin/openalex.js';
 import type { SemanticScholarPlugin } from '../../plugins/builtin/semantic-scholar.js';
+import type { CollaborativeFilteringStore } from '../../storage/neo4j/collaborative-filtering.js';
 import type { RecommendationService, SimilarPaper } from '../../storage/neo4j/recommendations.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, ValidationError } from '../../types/errors.js';
@@ -147,16 +148,41 @@ interface EprintRow {
  * Default discovery signal weights matching RankingService.
  *
  * @remarks
- * SPECTER2: 0.30, co-citation: 0.25, concept overlap: 0.20,
- * author network: 0.15, collaborative: 0.10.
+ * SPECTER2: 0.25, co-citation: 0.20, concept overlap: 0.15,
+ * author network: 0.30, collaborative: 0.10.
  */
 const DEFAULT_DISCOVERY_WEIGHTS: Required<DiscoverySignalWeights> = {
-  specter2: 0.3,
-  coCitation: 0.25,
-  conceptOverlap: 0.2,
-  authorNetwork: 0.15,
+  specter2: 0.25,
+  coCitation: 0.2,
+  conceptOverlap: 0.15,
+  authorNetwork: 0.3,
   collaborative: 0.1,
 };
+
+/**
+ * Normalizes weight values so they sum to 1.0.
+ * If all weights are zero, returns equal weights.
+ */
+function normalizeWeights(raw: Required<DiscoverySignalWeights>): Required<DiscoverySignalWeights> {
+  const sum =
+    raw.specter2 + raw.coCitation + raw.conceptOverlap + raw.authorNetwork + raw.collaborative;
+  if (sum <= 0) {
+    return {
+      specter2: 0.2,
+      coCitation: 0.2,
+      conceptOverlap: 0.2,
+      authorNetwork: 0.2,
+      collaborative: 0.2,
+    };
+  }
+  return {
+    specter2: raw.specter2 / sum,
+    coCitation: raw.coCitation / sum,
+    conceptOverlap: raw.conceptOverlap / sum,
+    authorNetwork: raw.authorNetwork / sum,
+    collaborative: raw.collaborative / sum,
+  };
+}
 
 /**
  * Entry in the signal accumulator map, tracking per-signal scores for each candidate.
@@ -173,6 +199,7 @@ interface SignalAccumulatorEntry {
     concepts?: number;
     semantic?: number;
     authors?: number;
+    collaborative?: number;
   };
 }
 
@@ -208,6 +235,16 @@ export class DiscoveryService implements IDiscoveryService {
   private pluginManager?: IPluginManager;
 
   /**
+   * Optional collaborative filtering store for user interaction-based signals.
+   *
+   * @remarks
+   * If provided, enables the collaborative filtering signal in
+   * {@link findRelatedEprints}. Service works without it using the
+   * remaining four signal types.
+   */
+  private collaborativeStore?: CollaborativeFilteringStore;
+
+  /**
    * Creates a new DiscoveryService instance.
    *
    * @param logger - Logger instance
@@ -238,6 +275,21 @@ export class DiscoveryService implements IDiscoveryService {
   setPluginManager(manager: IPluginManager): void {
     this.pluginManager = manager;
     this.logger.info('Plugin manager configured for discovery service');
+  }
+
+  /**
+   * Sets the collaborative filtering store for user interaction-based signals.
+   *
+   * @param store - Collaborative filtering store instance
+   *
+   * @remarks
+   * Call this after construction to enable the collaborative filtering signal
+   * in {@link findRelatedEprints}. The service works without it; the
+   * collaborative weight is redistributed to other signals.
+   */
+  setCollaborativeStore(store: CollaborativeFilteringStore): void {
+    this.collaborativeStore = store;
+    this.logger.info('Collaborative filtering store configured for discovery service');
   }
 
   /**
@@ -520,6 +572,7 @@ export class DiscoveryService implements IDiscoveryService {
           concepts?: number;
           semantic?: number;
           authors?: number;
+          collaborative?: number;
         };
       }
     >();
@@ -536,7 +589,8 @@ export class DiscoveryService implements IDiscoveryService {
     }
 
     // Signal 2: Concept overlap (OpenAlex topics and concepts)
-    if (signals.includes('concepts')) {
+    // Accept both 'concepts' (internal) and 'topics' (mapped from frontend API)
+    if (signals.includes('concepts') || signals.includes('topics')) {
       await this.collectConceptSignals(eprintUri, signalAccumulator);
     }
 
@@ -550,8 +604,61 @@ export class DiscoveryService implements IDiscoveryService {
       await this.collectAuthorSignals(eprintUri, eprint, signalAccumulator);
     }
 
+    // Signal 5: Collaborative filtering (users who interacted with this also interacted with...)
+    if (signals.includes('collaborative')) {
+      await this.collectCollaborativeSignals(eprintUri, signalAccumulator);
+    }
+
     // Compute weighted combined scores and build RelatedEprint results
-    const weights = DEFAULT_DISCOVERY_WEIGHTS;
+    // Use user-provided weights if available, otherwise fall back to defaults.
+    // Zero out weights for disabled signals so enabled signals share the full budget.
+    const userWeights = options?.weights;
+    const rawWeights = userWeights
+      ? {
+          specter2: userWeights.semantic ?? DEFAULT_DISCOVERY_WEIGHTS.specter2 * 100,
+          coCitation: userWeights.coCitation ?? DEFAULT_DISCOVERY_WEIGHTS.coCitation * 100,
+          conceptOverlap:
+            userWeights.conceptOverlap ?? DEFAULT_DISCOVERY_WEIGHTS.conceptOverlap * 100,
+          authorNetwork: userWeights.authorNetwork ?? DEFAULT_DISCOVERY_WEIGHTS.authorNetwork * 100,
+          collaborative: userWeights.collaborative ?? DEFAULT_DISCOVERY_WEIGHTS.collaborative * 100,
+        }
+      : {
+          specter2: DEFAULT_DISCOVERY_WEIGHTS.specter2,
+          coCitation: DEFAULT_DISCOVERY_WEIGHTS.coCitation,
+          conceptOverlap: DEFAULT_DISCOVERY_WEIGHTS.conceptOverlap,
+          authorNetwork: DEFAULT_DISCOVERY_WEIGHTS.authorNetwork,
+          collaborative: DEFAULT_DISCOVERY_WEIGHTS.collaborative,
+        };
+
+    // Zero out weights for signals not in the active set
+    if (!signals.includes('semantic')) rawWeights.specter2 = 0;
+    if (!signals.includes('citations')) rawWeights.coCitation = 0;
+    if (!signals.includes('concepts') && !signals.includes('topics')) rawWeights.conceptOverlap = 0;
+    if (!signals.includes('authors')) rawWeights.authorNetwork = 0;
+    if (!signals.includes('collaborative')) rawWeights.collaborative = 0;
+
+    // Also zero out weights for signals that produced no results at all.
+    // This prevents dead weight allocation (e.g., citations weight eating into
+    // the budget when no citation data exists for any paper in the corpus).
+    let hasSemanticResults = false;
+    let hasCitationResults = false;
+    let hasConceptResults = false;
+    let hasAuthorResults = false;
+    let hasCollaborativeResults = false;
+    for (const entry of signalAccumulator.values()) {
+      if (entry.scores.semantic !== undefined) hasSemanticResults = true;
+      if (entry.scores.citations !== undefined) hasCitationResults = true;
+      if (entry.scores.concepts !== undefined) hasConceptResults = true;
+      if (entry.scores.authors !== undefined) hasAuthorResults = true;
+      if (entry.scores.collaborative !== undefined) hasCollaborativeResults = true;
+    }
+    if (!hasSemanticResults) rawWeights.specter2 = 0;
+    if (!hasCitationResults) rawWeights.coCitation = 0;
+    if (!hasConceptResults) rawWeights.conceptOverlap = 0;
+    if (!hasAuthorResults) rawWeights.authorNetwork = 0;
+    if (!hasCollaborativeResults) rawWeights.collaborative = 0;
+
+    const weights = normalizeWeights(rawWeights);
     const related: RelatedEprint[] = [];
 
     for (const [uri, entry] of signalAccumulator) {
@@ -562,7 +669,8 @@ export class DiscoveryService implements IDiscoveryService {
         (entry.scores.semantic ?? 0) * weights.specter2 +
         (entry.scores.citations ?? 0) * weights.coCitation +
         (entry.scores.concepts ?? 0) * weights.conceptOverlap +
-        (entry.scores.authors ?? 0) * weights.authorNetwork;
+        (entry.scores.authors ?? 0) * weights.authorNetwork +
+        (entry.scores.collaborative ?? 0) * weights.collaborative;
 
       if (combinedScore < minScore) continue;
 
@@ -580,6 +688,7 @@ export class DiscoveryService implements IDiscoveryService {
           concepts: entry.scores.concepts,
           semantic: entry.scores.semantic,
           authors: entry.scores.authors,
+          collaborative: entry.scores.collaborative,
         },
       });
     }
@@ -843,7 +952,7 @@ export class DiscoveryService implements IDiscoveryService {
           minTermFreq: 1,
           minDocFreq: 1,
           maxQueryTerms: 25,
-          minimumShouldMatch: '30%',
+          minimumShouldMatch: '25%',
         });
 
         for (const mltResult of mltResults) {
@@ -949,6 +1058,59 @@ export class DiscoveryService implements IDiscoveryService {
       }
     } catch (error) {
       this.logger.debug('Author network signals unavailable', {
+        uri: eprintUri,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Collects collaborative filtering signals from pre-computed CF_SIMILAR edges.
+   *
+   * @param eprintUri - Source eprint URI
+   * @param accumulator - Signal accumulator map
+   *
+   * @remarks
+   * Queries the {@link CollaborativeFilteringStore} for papers that share
+   * user interaction patterns with the source eprint. Runs unconditionally
+   * when the store is available; the weight controls its contribution to
+   * the final score.
+   *
+   * Gracefully degrades: if the store is not configured or the query fails,
+   * this method returns without affecting other signals.
+   */
+  private async collectCollaborativeSignals(
+    eprintUri: AtUri,
+    accumulator: Map<string, SignalAccumulatorEntry>
+  ): Promise<void> {
+    if (!this.collaborativeStore) return;
+
+    try {
+      const cfResults = await this.collaborativeStore.getSimilarPapers(eprintUri, 30);
+
+      // Look up titles for URIs not already in the accumulator
+      const newUris = cfResults.filter((r) => !accumulator.has(r.uri)).map((r) => r.uri);
+
+      let titleMap = new Map<string, string>();
+      if (newUris.length > 0) {
+        const titleQuery = await this.db.query<{ uri: string; title: string }>(
+          `SELECT uri, title FROM eprints_index WHERE uri = ANY($1)`,
+          [newUris]
+        );
+        titleMap = new Map(titleQuery.rows.map((r) => [r.uri, r.title]));
+      }
+
+      for (const result of cfResults) {
+        const title = titleMap.get(result.uri) ?? accumulator.get(result.uri)?.title ?? '';
+        this.mergeSignal(accumulator, result.uri, {
+          title,
+          relationshipType: 'collaborative-filtering',
+          explanation: 'Users who read this paper also read this one',
+          scores: { collaborative: result.score },
+        });
+      }
+    } catch (error) {
+      this.logger.debug('Collaborative filtering signals unavailable', {
         uri: eprintUri,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -1501,6 +1663,12 @@ export class DiscoveryService implements IDiscoveryService {
       }
       if (entry.scores.authors !== undefined) {
         existing.scores.authors = Math.max(existing.scores.authors ?? 0, entry.scores.authors);
+      }
+      if (entry.scores.collaborative !== undefined) {
+        existing.scores.collaborative = Math.max(
+          existing.scores.collaborative ?? 0,
+          entry.scores.collaborative
+        );
       }
     } else {
       accumulator.set(uri, {

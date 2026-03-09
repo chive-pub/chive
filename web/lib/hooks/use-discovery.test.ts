@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { createWrapper } from '@/tests/test-utils';
 import type {
-  GetRecommendationsResponse,
   GetSimilarResponse,
   GetCitationsResponse,
   GetEnrichmentResponse,
@@ -11,7 +10,6 @@ import type {
 
 import {
   discoveryKeys,
-  useForYouFeed,
   useSimilarPapers,
   useCitations,
   useEnrichment,
@@ -22,14 +20,11 @@ import {
 } from './use-discovery';
 
 // Mock functions using vi.hoisted for proper hoisting
-const { mockGetRecommendations, mockGetSimilar, mockGetCitations, mockGetEnrichment } = vi.hoisted(
-  () => ({
-    mockGetRecommendations: vi.fn(),
-    mockGetSimilar: vi.fn(),
-    mockGetCitations: vi.fn(),
-    mockGetEnrichment: vi.fn(),
-  })
-);
+const { mockGetSimilar, mockGetCitations, mockGetEnrichment } = vi.hoisted(() => ({
+  mockGetSimilar: vi.fn(),
+  mockGetCitations: vi.fn(),
+  mockGetEnrichment: vi.fn(),
+}));
 
 vi.mock('@/lib/api/client', () => ({
   api: {
@@ -46,9 +41,7 @@ vi.mock('@/lib/api/client', () => ({
   authApi: {
     pub: {
       chive: {
-        discovery: {
-          getRecommendations: mockGetRecommendations,
-        },
+        discovery: {},
       },
     },
   },
@@ -76,29 +69,6 @@ vi.stubGlobal('localStorage', {
 });
 
 // Test data factories
-function createMockRecommendationsResponse(
-  overrides: Partial<GetRecommendationsResponse> = {}
-): GetRecommendationsResponse {
-  return {
-    recommendations: [
-      {
-        uri: 'at://did:plc:test/pub.chive.eprint/1',
-        title: 'Test Eprint 1',
-        abstract: 'Abstract for test eprint',
-        score: 0.95,
-        explanation: {
-          type: 'semantic',
-          text: 'Based on your research interests',
-          weight: 0.8,
-        },
-      },
-    ],
-    hasMore: false,
-    cursor: undefined,
-    ...overrides,
-  };
-}
-
 function createMockSimilarResponse(
   overrides: Partial<GetSimilarResponse> = {}
 ): GetSimilarResponse {
@@ -167,10 +137,6 @@ describe('discoveryKeys', () => {
     expect(discoveryKeys.all).toEqual(['discovery']);
   });
 
-  it('generates forYou key with options', () => {
-    expect(discoveryKeys.forYou({ limit: 10 })).toEqual(['discovery', 'forYou', { limit: 10 }]);
-  });
-
   it('generates similar key with uri and options', () => {
     const uri = 'at://did:plc:test/pub.chive.eprint/1';
     expect(discoveryKeys.similar(uri, { limit: 5 })).toEqual([
@@ -197,60 +163,16 @@ describe('discoveryKeys', () => {
   });
 
   it('generates settings key', () => {
-    expect(discoveryKeys.settings()).toEqual(['discovery', 'settings']);
-  });
-});
-
-describe('useForYouFeed', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('fetches personalized recommendations', async () => {
-    const mockResponse = createMockRecommendationsResponse();
-    mockGetRecommendations.mockResolvedValueOnce({
-      data: mockResponse,
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useForYouFeed(), { wrapper: Wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(result.current.data?.pages[0]).toEqual(mockResponse);
-    expect(mockGetRecommendations).toHaveBeenCalledWith({
-      limit: 10,
-      cursor: undefined,
-    });
-  });
-
-  it('respects limit option', async () => {
-    const mockResponse = createMockRecommendationsResponse();
-    mockGetRecommendations.mockResolvedValueOnce({
-      data: mockResponse,
-    });
-
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useForYouFeed({ limit: 20 }), { wrapper: Wrapper });
-
-    await waitFor(() => {
-      expect(result.current.isSuccess).toBe(true);
-    });
-
-    expect(mockGetRecommendations).toHaveBeenCalledWith({
-      limit: 20,
-      cursor: undefined,
-    });
-  });
-
-  it('can be disabled', () => {
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useForYouFeed({ enabled: false }), { wrapper: Wrapper });
-
-    expect(result.current.isFetching).toBe(false);
-    expect(mockGetRecommendations).not.toHaveBeenCalled();
+    expect(discoveryKeys.settings()).toEqual([
+      'discovery',
+      'settings',
+      { authenticated: undefined },
+    ]);
+    expect(discoveryKeys.settings(true)).toEqual([
+      'discovery',
+      'settings',
+      { authenticated: true },
+    ]);
   });
 });
 
@@ -433,8 +355,7 @@ describe('useDiscoverySettings', () => {
 
   it('returns merged settings from localStorage', async () => {
     const storedSettings: Partial<DiscoverySettings> = {
-      enableForYouFeed: false,
-      forYouSignals: { ...DEFAULT_DISCOVERY_SETTINGS.forYouSignals, trending: false },
+      enablePersonalization: false,
     };
     // Set up mock before creating the wrapper
     mockLocalStorage['chive:discoverySettings'] = JSON.stringify(storedSettings);
@@ -448,12 +369,11 @@ describe('useDiscoverySettings', () => {
     // Wait for the actual data to be loaded (not just placeholderData)
     await waitFor(() => {
       expect(result.current.isFetched).toBe(true);
-      expect(result.current.data?.enableForYouFeed).toBe(false);
+      expect(result.current.data?.enablePersonalization).toBe(false);
     });
 
-    expect(result.current.data?.forYouSignals.trending).toBe(false);
     // Other defaults should be preserved
-    expect(result.current.data?.enablePersonalization).toBe(true);
+    expect(result.current.data?.showRecommendationReasons).toBe(true);
 
     // Clean up
     delete mockLocalStorage['chive:discoverySettings'];
@@ -471,7 +391,7 @@ describe('useUpdateDiscoverySettings', () => {
     const { result } = renderHook(() => useUpdateDiscoverySettings(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate({ enableForYouFeed: false });
+      result.current.mutate({ enablePersonalization: false });
     });
 
     await waitFor(() => {
@@ -481,17 +401,17 @@ describe('useUpdateDiscoverySettings', () => {
     expect(localStorage.setItem).toHaveBeenCalled();
     const savedValue = vi.mocked(localStorage.setItem).mock.calls[0][1];
     const parsed = JSON.parse(savedValue);
-    expect(parsed.enableForYouFeed).toBe(false);
+    expect(parsed.enablePersonalization).toBe(false);
   });
 
-  it('merges nested forYouSignals correctly', async () => {
+  it('merges nested relatedPapersSignals correctly', async () => {
     vi.mocked(localStorage.getItem).mockReturnValue(JSON.stringify(DEFAULT_DISCOVERY_SETTINGS));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useUpdateDiscoverySettings(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate({ forYouSignals: { trending: false } });
+      result.current.mutate({ relatedPapersSignals: { topics: false } });
     });
 
     await waitFor(() => {
@@ -501,10 +421,9 @@ describe('useUpdateDiscoverySettings', () => {
     expect(localStorage.setItem).toHaveBeenCalled();
     const savedValue = vi.mocked(localStorage.setItem).mock.calls[0][1];
     const parsed = JSON.parse(savedValue);
-    // Trending should be false
-    expect(parsed.forYouSignals.trending).toBe(false);
+    // Topics should be false
+    expect(parsed.relatedPapersSignals.topics).toBe(false);
     // Other signals should be preserved
-    expect(parsed.forYouSignals.fields).toBe(true);
-    expect(parsed.forYouSignals.citations).toBe(true);
+    expect(parsed.relatedPapersSignals.citations).toBe(true);
   });
 });

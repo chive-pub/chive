@@ -43,10 +43,6 @@ test.describe('Discovery Settings - Display', () => {
     const personalizationLabel = page.getByText(/enable personalization/i);
     await expect(personalizationLabel).toBeVisible();
 
-    // Should show for you feed toggle
-    const forYouLabel = page.getByText(/show for you feed/i);
-    await expect(forYouLabel).toBeVisible();
-
     // Should show recommendation reasons toggle
     const reasonsLabel = page.getByText(/show recommendation reasons/i);
     await expect(reasonsLabel).toBeVisible();
@@ -78,21 +74,6 @@ test.describe('Discovery Settings - Toggles', () => {
     await expect(personalizationSwitch).toBeChecked({ checked: !isChecked });
   });
 
-  test('show for you feed toggle is functional', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible({ timeout: 5000 });
-
-    const forYouSwitch = page.locator('#enableForYouFeed');
-    await expect(forYouSwitch).toBeVisible();
-
-    // Click to toggle
-    await forYouSwitch.click();
-
-    // Should trigger state change (we verify it's clickable)
-    await expect(forYouSwitch).toBeVisible();
-  });
-
   test('show recommendation reasons toggle is functional', async ({ page }) => {
     await page.goto('/dashboard/settings');
 
@@ -114,33 +95,6 @@ test.describe('Discovery Settings - Toggles', () => {
 // =============================================================================
 
 test.describe('Discovery Settings - Collapsible Sections', () => {
-  test('for you feed sources section is expandable', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible({ timeout: 5000 });
-
-    // Find and click the For You Feed Sources section
-    const sectionButton = page.getByRole('button', { name: /for you feed sources/i });
-    await expect(sectionButton).toBeVisible();
-
-    // Click to expand (it should be expanded by default based on defaultOpen)
-    // Check for content inside
-    const fieldsToggle = page.getByText(/research fields/i);
-    await expect(fieldsToggle).toBeVisible();
-  });
-
-  test('for you feed sources shows all signal toggles', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible({ timeout: 5000 });
-
-    // Should show all For You signal toggles (use first() for any duplicates)
-    await expect(page.getByText(/research fields/i).first()).toBeVisible();
-    await expect(page.getByText('Citations').first()).toBeVisible();
-    await expect(page.getByText(/collaborators/i).first()).toBeVisible();
-    await expect(page.getByText('Trending').first()).toBeVisible();
-  });
-
   test('related papers section is collapsible', async ({ page }) => {
     await page.goto('/dashboard/settings');
 
@@ -278,6 +232,12 @@ test.describe('Discovery Settings - Persistence', () => {
     // Wait for the switch state to change (confirms UI updated)
     await expect(reasonsSwitch).toBeChecked({ checked: !initialState });
 
+    // Save settings before reloading
+    await page.getByRole('button', { name: /save settings/i }).click();
+
+    // Wait for save confirmation
+    await expect(page.getByText(/saved/i)).toBeVisible({ timeout: 5000 });
+
     // Reload page
     await page.reload();
 
@@ -288,30 +248,6 @@ test.describe('Discovery Settings - Persistence', () => {
     await expect(page.locator('#showRecommendationReasons')).toBeChecked({
       checked: !initialState,
     });
-  });
-
-  test('for you feed signal changes persist', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible();
-
-    // Toggle trending signal
-    const trendingSwitch = page.locator('#forYou-trending');
-    await expect(trendingSwitch).toBeVisible();
-
-    const initialState = await trendingSwitch.isChecked();
-    await trendingSwitch.click();
-
-    // Wait for the switch state to change (confirms UI updated)
-    await expect(trendingSwitch).toBeChecked({ checked: !initialState });
-
-    // Reload
-    await page.reload();
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible();
-
-    // Verify state persisted using web-first assertion
-    await expect(page.locator('#forYou-trending')).toBeChecked({ checked: !initialState });
   });
 
   test('citation network display selection persists', async ({ page }) => {
@@ -328,6 +264,12 @@ test.describe('Discovery Settings - Persistence', () => {
     // Wait for the radio to be checked (confirms UI updated)
     await expect(expandedRadio).toBeChecked();
 
+    // Save settings before reloading
+    await page.getByRole('button', { name: /save settings/i }).click();
+
+    // Wait for save confirmation
+    await expect(page.getByText(/saved/i)).toBeVisible({ timeout: 5000 });
+
     // Reload
     await page.reload();
 
@@ -338,60 +280,6 @@ test.describe('Discovery Settings - Persistence', () => {
 
     // Verify expanded is still selected
     await expect(page.getByRole('radio', { name: /expanded/i })).toBeChecked();
-  });
-});
-
-// =============================================================================
-// DISABLED STATE TESTS
-// =============================================================================
-
-test.describe('Discovery Settings - Disabled States', () => {
-  test('for you signals are disabled when for you feed is disabled', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible();
-
-    // First ensure For You Feed is enabled
-    const forYouSwitch = page.locator('#enableForYouFeed');
-    if (!(await forYouSwitch.isChecked())) {
-      await forYouSwitch.click();
-      await expect(forYouSwitch).toBeChecked();
-    }
-
-    // Verify signals are enabled
-    const trendingSwitch = page.locator('#forYou-trending');
-    await expect(trendingSwitch).toBeEnabled();
-
-    // Now disable For You Feed
-    await forYouSwitch.click();
-    await expect(forYouSwitch).not.toBeChecked();
-
-    // Signals should be disabled
-    await expect(trendingSwitch).toBeDisabled();
-  });
-
-  test('for you feed is disabled when personalization is disabled', async ({ page }) => {
-    await page.goto('/dashboard/settings');
-
-    await expect(page.getByText('Discovery Settings')).toBeVisible();
-
-    // First ensure personalization is enabled
-    const personalizationSwitch = page.locator('#enablePersonalization');
-    if (!(await personalizationSwitch.isChecked())) {
-      await personalizationSwitch.click();
-      await expect(personalizationSwitch).toBeChecked();
-    }
-
-    // For You Feed should be enabled
-    const forYouSwitch = page.locator('#enableForYouFeed');
-    await expect(forYouSwitch).toBeEnabled();
-
-    // Disable personalization
-    await personalizationSwitch.click();
-    await expect(personalizationSwitch).not.toBeChecked();
-
-    // For You Feed should be disabled
-    await expect(forYouSwitch).toBeDisabled();
   });
 });
 

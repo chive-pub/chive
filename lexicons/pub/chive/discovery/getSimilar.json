@@ -31,10 +31,41 @@
                 "topic",
                 "author",
                 "co-citation",
-                "bibliographic-coupling"
+                "bibliographic-coupling",
+                "collaborative"
               ]
             },
-            "description": "Types of relationships to include. 'co-citation' and 'bibliographic-coupling' use graph analysis."
+            "description": "Types of relationships to include. 'co-citation' and 'bibliographic-coupling' use graph analysis. 'collaborative' uses collaborative filtering."
+          },
+          "weightSemantic": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weight for semantic similarity signal (0-100)"
+          },
+          "weightCoCitation": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weight for co-citation signal (0-100)"
+          },
+          "weightConceptOverlap": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weight for concept overlap signal (0-100)"
+          },
+          "weightAuthorNetwork": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weight for author network signal (0-100)"
+          },
+          "weightCollaborative": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Weight for collaborative filtering signal (0-100)"
           }
         }
       },
@@ -119,7 +150,8 @@
             "semantically-similar",
             "same-author",
             "same-topic",
-            "bibliographic-coupling"
+            "bibliographic-coupling",
+            "collaborative-filtering"
           ],
           "description": "Type of relationship to the source eprint"
         },

@@ -9,7 +9,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
-import { useSimilarPapers, usePrefetchSimilarPapers } from '@/lib/hooks/use-discovery';
+import {
+  useSimilarPapers,
+  usePrefetchSimilarPapers,
+  useDiscoverySettings,
+  buildIncludeTypes,
+} from '@/lib/hooks/use-discovery';
 import { useEprintRelatedWorks, useDeleteRelatedWork } from '@/lib/hooks/use-related-works';
 import { RelationshipBadge } from './relationship-badge';
 import { AddRelatedPaperDialog } from './add-related-paper-dialog';
@@ -58,6 +63,11 @@ export function RelatedPapersPanel({
 }: RelatedPapersPanelProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const currentUser = useCurrentUser();
+  const { data: discoverySettings } = useDiscoverySettings();
+  const includeTypes = discoverySettings
+    ? buildIncludeTypes(discoverySettings.relatedPapersSignals)
+    : undefined;
+  const weights = discoverySettings?.relatedPapersWeights;
 
   // Auto-discovered similar papers
   const {
@@ -65,7 +75,7 @@ export function RelatedPapersPanel({
     isLoading: similarLoading,
     isError: similarError,
     error: similarErrorObj,
-  } = useSimilarPapers(eprintUri, { limit });
+  } = useSimilarPapers(eprintUri, { limit, includeTypes, weights });
 
   // User-curated related works
   const {

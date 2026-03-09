@@ -60,20 +60,6 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Browse Trending')).toBeInTheDocument();
   });
 
-  it('does NOT render ForYouFeed component', () => {
-    renderWithProviders(<DashboardPage />);
-
-    // ForYouFeed should have been removed in WS2
-    expect(screen.queryByTestId('for-you-feed')).not.toBeInTheDocument();
-  });
-
-  it('does NOT contain "For You" text', () => {
-    renderWithProviders(<DashboardPage />);
-
-    expect(screen.queryByText('For You')).not.toBeInTheDocument();
-    expect(screen.queryByText(/for you/i)).not.toBeInTheDocument();
-  });
-
   it('shows loading skeleton for eprint count while loading', () => {
     mockUseEprintsByAuthor.mockReturnValue({
       data: undefined,

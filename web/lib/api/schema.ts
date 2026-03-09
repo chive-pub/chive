@@ -808,12 +808,6 @@ export type {
 // =============================================================================
 
 export type {
-  OutputSchema as GetRecommendationsResponse,
-  RecommendedEprint,
-  RecommendationExplanation,
-} from './generated/types/pub/chive/discovery/getRecommendations.js';
-
-export type {
   OutputSchema as GetSimilarResponse,
   RelatedEprint,
 } from './generated/types/pub/chive/discovery/getSimilar.js';
@@ -831,13 +825,13 @@ export type {
   Topic as EnrichmentTopic,
 } from './generated/types/pub/chive/discovery/getEnrichment.js';
 
-export type { OutputSchema as GetForYouResponse } from './generated/types/pub/chive/discovery/getForYou.js';
-
 // Discovery settings record
 export type { Main as DiscoverySettingsRecord } from './generated/types/pub/chive/discovery/settings.js';
 export type {
-  ForYouSignals,
   RelatedPapersSignals,
+  RelatedPapersWeights,
+  RelatedPapersThresholds,
+  TrendingPreferences,
 } from './generated/types/pub/chive/discovery/settings.js';
 
 // CitationNetworkDisplay is a literal type from the settings

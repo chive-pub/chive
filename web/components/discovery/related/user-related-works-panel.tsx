@@ -10,7 +10,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { useCurrentUser } from '@/lib/auth';
 import { useEprintRelatedWorks, useDeleteRelatedWork } from '@/lib/hooks/use-related-works';
-import { useSimilarPapers } from '@/lib/hooks/use-discovery';
+import {
+  useSimilarPapers,
+  useDiscoverySettings,
+  buildIncludeTypes,
+} from '@/lib/hooks/use-discovery';
 import { RelationshipBadge } from './relationship-badge';
 import { AddRelatedPaperDialog } from './add-related-paper-dialog';
 import { createLogger } from '@/lib/observability/logger';
@@ -55,6 +59,11 @@ export function UserRelatedWorksPanel({
   const currentUser = useCurrentUser();
 
   const { data: relatedWorksData, isLoading, isError, error } = useEprintRelatedWorks(eprintUri);
+  const { data: discoverySettings } = useDiscoverySettings();
+  const includeTypes = discoverySettings
+    ? buildIncludeTypes(discoverySettings.relatedPapersSignals)
+    : undefined;
+  const weights = discoverySettings?.relatedPapersWeights;
 
   const deleteRelatedWork = useDeleteRelatedWork();
 
@@ -62,6 +71,8 @@ export function UserRelatedWorksPanel({
   const { data: similarData } = useSimilarPapers(eprintUri, {
     limit: 3,
     enabled: !isLoading && (!relatedWorksData || relatedWorksData.relatedWorks.length === 0),
+    includeTypes,
+    weights,
   });
 
   const handleDelete = async (uri: string) => {
@@ -158,7 +169,7 @@ export function UserRelatedWorksPanel({
                             </Link>
                             <RelationshipBadge
                               type={paper.relationshipType}
-                              score={paper.score}
+                              score={paper.score / 1000}
                               className="shrink-0"
                             />
                           </div>
