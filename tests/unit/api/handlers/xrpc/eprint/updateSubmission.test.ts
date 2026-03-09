@@ -427,7 +427,7 @@ describe('XRPC updateSubmission Handler', () => {
             c: mockContext,
           })
         )
-      ).rejects.toThrow('Can only edit your own eprints');
+      ).rejects.toThrow('Not authorized to modify this eprint');
     });
   });
 
@@ -486,7 +486,7 @@ describe('XRPC updateSubmission Handler', () => {
             c: mockContext,
           })
         )
-      ).rejects.toThrow('Must authenticate as paper account to edit paper-centric eprints');
+      ).rejects.toThrow('Must authenticate as paper account to modify paper-centric eprints');
     });
 
     it('throws AuthorizationError when third party tries to update paper-centric eprint', async () => {
@@ -517,7 +517,7 @@ describe('XRPC updateSubmission Handler', () => {
             c: mockContext,
           })
         )
-      ).rejects.toThrow('Can only edit your own eprints');
+      ).rejects.toThrow('Not authorized to modify this eprint');
     });
   });
 

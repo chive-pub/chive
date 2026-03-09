@@ -186,7 +186,7 @@ describe('XRPC deleteSubmission Handler', () => {
           auth: { did: OTHER_USER_DID, iss: 'https://bsky.social' } as AuthContext,
           c: mockContext as never,
         })
-      ).rejects.toThrow('Can only delete your own eprints');
+      ).rejects.toThrow('Not authorized to modify this eprint');
     });
   });
 
@@ -245,7 +245,7 @@ describe('XRPC deleteSubmission Handler', () => {
           auth: { did: SUBMITTER_DID, iss: 'https://bsky.social' } as AuthContext,
           c: mockContext as never,
         })
-      ).rejects.toThrow('Must authenticate as paper account to delete paper-centric eprints');
+      ).rejects.toThrow('Must authenticate as paper account to modify paper-centric eprints');
     });
 
     it('throws AuthorizationError when third party tries to delete paper-centric eprint', async () => {
@@ -275,7 +275,7 @@ describe('XRPC deleteSubmission Handler', () => {
           auth: { did: OTHER_USER_DID, iss: 'https://bsky.social' } as AuthContext,
           c: mockContext as never,
         })
-      ).rejects.toThrow('Can only delete your own eprints');
+      ).rejects.toThrow('Not authorized to modify this eprint');
     });
   });
 
