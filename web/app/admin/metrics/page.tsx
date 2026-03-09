@@ -128,52 +128,54 @@ export default function MetricsPage() {
               ))}
             </div>
           ) : trending?.items?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="text-right">Views</TableHead>
-                  <TableHead className="text-right">Downloads</TableHead>
-                  <TableHead className="text-right">Velocity</TableHead>
-                  <TableHead className="text-right">Trend</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {trending.items.map((item) => (
-                  <TableRow key={item.uri}>
-                    <TableCell className="max-w-[300px] truncate font-medium">
-                      {item.title}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {item.views.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {item.downloads.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {item.velocity.toFixed(1)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <TrendIcon trend={item.trend} />
-                        <Badge
-                          variant="outline"
-                          className={
-                            item.trend === 'rising'
-                              ? 'text-green-700 border-green-200'
-                              : item.trend === 'falling'
-                                ? 'text-red-700 border-red-200'
-                                : ''
-                          }
-                        >
-                          {item.trend}
-                        </Badge>
-                      </div>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead className="text-right">Views</TableHead>
+                    <TableHead className="text-right">Downloads</TableHead>
+                    <TableHead className="text-right">Velocity</TableHead>
+                    <TableHead className="text-right">Trend</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {trending.items.map((item) => (
+                    <TableRow key={item.uri}>
+                      <TableCell className="max-w-[300px] truncate font-medium">
+                        {item.title}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {item.views.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {item.downloads.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {item.velocity.toFixed(1)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <TrendIcon trend={item.trend} />
+                          <Badge
+                            variant="outline"
+                            className={
+                              item.trend === 'rising'
+                                ? 'text-green-700 border-green-200'
+                                : item.trend === 'falling'
+                                  ? 'text-red-700 border-red-200'
+                                  : ''
+                            }
+                          >
+                            {item.trend}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               No metrics data available yet

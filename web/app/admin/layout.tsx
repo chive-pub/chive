@@ -115,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AuthGuard>
       <AdminGuard>
-        <SidebarLayout sidebar={<AdminNav />} stickyNavigation>
+        <SidebarLayout sidebar={<AdminNav />} stickyNavigation sidebarTitle="Admin">
           {children}
         </SidebarLayout>
       </AdminGuard>

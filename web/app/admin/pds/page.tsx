@@ -180,53 +180,55 @@ export default function AdminPDSPage() {
               <p className="text-muted-foreground">No PDSes registered.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>PDS URL</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Last Scan</TableHead>
-                  <TableHead className="text-right">Record Count</TableHead>
-                  <TableHead className="text-right">User Count</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => {
-                  const badge = statusBadge(entry.status);
-                  return (
-                    <TableRow key={entry.url}>
-                      <TableCell className="font-medium font-mono text-sm max-w-[300px] truncate">
-                        {entry.url}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={badge.className}>{badge.label}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {entry.lastScanAt ? formatRelativeDate(entry.lastScanAt) : 'Never'}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {entry.recordCount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {entry.userCount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRescan(entry.url)}
-                          disabled={rescanMutation.isPending}
-                        >
-                          <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
-                          Rescan
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>PDS URL</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Last Scan</TableHead>
+                    <TableHead className="text-right">Record Count</TableHead>
+                    <TableHead className="text-right">User Count</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => {
+                    const badge = statusBadge(entry.status);
+                    return (
+                      <TableRow key={entry.url}>
+                        <TableCell className="font-medium font-mono text-sm max-w-[300px] truncate">
+                          {entry.url}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={badge.className}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {entry.lastScanAt ? formatRelativeDate(entry.lastScanAt) : 'Never'}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {entry.recordCount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {entry.userCount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleRescan(entry.url)}
+                            disabled={rescanMutation.isPending}
+                          >
+                            <RefreshCw className="h-3.5 w-3.5 mr-1.5" />
+                            Rescan
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

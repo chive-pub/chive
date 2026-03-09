@@ -73,7 +73,11 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3" role="region" aria-label="Your statistics">
+      <div
+        className="grid gap-4 sm:grid-cols-2 md:grid-cols-3"
+        role="region"
+        aria-label="Your statistics"
+      >
         <StatsCard
           title="Eprints"
           value={eprintsLoading ? null : eprintCount}
@@ -124,7 +128,11 @@ export default function DashboardPage() {
           <CardTitle>Quick Actions</CardTitle>
           <CardDescription>Common tasks and shortcuts</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-4" role="group" aria-label="Quick actions">
+        <CardContent
+          className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap"
+          role="group"
+          aria-label="Quick actions"
+        >
           <Button asChild>
             <Link href="/submit">
               <Plus className="mr-2 h-4 w-4" />

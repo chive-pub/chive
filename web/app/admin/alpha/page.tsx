@@ -221,125 +221,127 @@ export default function AdminAlphaPage() {
                   </p>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Handle</TableHead>
-                      <TableHead>DID</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Sector</TableHead>
-                      <TableHead>Career Stage</TableHead>
-                      <TableHead>Applied</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="w-[70px]">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applicationList.map(
-                      (app: {
-                        did: string;
-                        handle?: string;
-                        email?: string;
-                        sector?: string;
-                        careerStage?: string;
-                        createdAt?: string;
-                        status?: string;
-                      }) => (
-                        <TableRow key={app.did}>
-                          <TableCell className="font-medium">
-                            <Link
-                              href={`/admin/alpha/${encodeURIComponent(app.did)}`}
-                              className="text-primary hover:underline"
-                            >
-                              {app.handle ?? 'N/A'}
-                            </Link>
-                          </TableCell>
-                          <TableCell className="min-w-0">
-                            <span className="truncate block max-w-[200px] font-mono text-xs">
-                              {app.did}
-                            </span>
-                          </TableCell>
-                          <TableCell className="min-w-0">
-                            <span className="truncate block max-w-[200px]">
-                              {app.email ?? 'N/A'}
-                            </span>
-                          </TableCell>
-                          <TableCell>{app.sector ?? 'N/A'}</TableCell>
-                          <TableCell>{app.careerStage ?? 'N/A'}</TableCell>
-                          <TableCell>
-                            {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'N/A'}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={statusBadgeClass(app.status ?? 'pending')}>
-                              {app.status ?? 'pending'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin/alpha/${encodeURIComponent(app.did)}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View Detail
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                {app.status !== 'approved' && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      setConfirmAction({
-                                        type: 'approve',
-                                        did: app.did,
-                                        handle: app.handle ?? app.did,
-                                      })
-                                    }
-                                  >
-                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                    Approve
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Handle</TableHead>
+                        <TableHead>DID</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Sector</TableHead>
+                        <TableHead>Career Stage</TableHead>
+                        <TableHead>Applied</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-[70px]">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {applicationList.map(
+                        (app: {
+                          did: string;
+                          handle?: string;
+                          email?: string;
+                          sector?: string;
+                          careerStage?: string;
+                          createdAt?: string;
+                          status?: string;
+                        }) => (
+                          <TableRow key={app.did}>
+                            <TableCell className="font-medium">
+                              <Link
+                                href={`/admin/alpha/${encodeURIComponent(app.did)}`}
+                                className="text-primary hover:underline"
+                              >
+                                {app.handle ?? 'N/A'}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="min-w-0">
+                              <span className="truncate block max-w-[200px] font-mono text-xs">
+                                {app.did}
+                              </span>
+                            </TableCell>
+                            <TableCell className="min-w-0">
+                              <span className="truncate block max-w-[200px]">
+                                {app.email ?? 'N/A'}
+                              </span>
+                            </TableCell>
+                            <TableCell>{app.sector ?? 'N/A'}</TableCell>
+                            <TableCell>{app.careerStage ?? 'N/A'}</TableCell>
+                            <TableCell>
+                              {app.createdAt ? new Date(app.createdAt).toLocaleDateString() : 'N/A'}
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={statusBadgeClass(app.status ?? 'pending')}>
+                                {app.status ?? 'pending'}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                    <span className="sr-only">Actions</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                    <Link href={`/admin/alpha/${encodeURIComponent(app.did)}`}>
+                                      <Eye className="mr-2 h-4 w-4" />
+                                      View Detail
+                                    </Link>
                                   </DropdownMenuItem>
-                                )}
-                                {app.status !== 'rejected' && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      setConfirmAction({
-                                        type: 'reject',
-                                        did: app.did,
-                                        handle: app.handle ?? app.did,
-                                      })
-                                    }
-                                  >
-                                    <XCircle className="mr-2 h-4 w-4" />
-                                    Reject
-                                  </DropdownMenuItem>
-                                )}
-                                {app.status === 'approved' && (
-                                  <DropdownMenuItem
-                                    onClick={() =>
-                                      setConfirmAction({
-                                        type: 'revoke',
-                                        did: app.did,
-                                        handle: app.handle ?? app.did,
-                                      })
-                                    }
-                                  >
-                                    <Ban className="mr-2 h-4 w-4" />
-                                    Revoke
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    )}
-                  </TableBody>
-                </Table>
+                                  <DropdownMenuSeparator />
+                                  {app.status !== 'approved' && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setConfirmAction({
+                                          type: 'approve',
+                                          did: app.did,
+                                          handle: app.handle ?? app.did,
+                                        })
+                                      }
+                                    >
+                                      <CheckCircle className="mr-2 h-4 w-4" />
+                                      Approve
+                                    </DropdownMenuItem>
+                                  )}
+                                  {app.status !== 'rejected' && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setConfirmAction({
+                                          type: 'reject',
+                                          did: app.did,
+                                          handle: app.handle ?? app.did,
+                                        })
+                                      }
+                                    >
+                                      <XCircle className="mr-2 h-4 w-4" />
+                                      Reject
+                                    </DropdownMenuItem>
+                                  )}
+                                  {app.status === 'approved' && (
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        setConfirmAction({
+                                          type: 'revoke',
+                                          did: app.did,
+                                          handle: app.handle ?? app.did,
+                                        })
+                                      }
+                                    >
+                                      <Ban className="mr-2 h-4 w-4" />
+                                      Revoke
+                                    </DropdownMenuItem>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               )}
             </CardContent>
           </Card>

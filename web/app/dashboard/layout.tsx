@@ -76,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthGuard>
       <AlphaGate>
-        <SidebarLayout sidebar={<DashboardNav />} stickyNavigation>
+        <SidebarLayout sidebar={<DashboardNav />} stickyNavigation sidebarTitle="Dashboard">
           {children}
         </SidebarLayout>
       </AlphaGate>

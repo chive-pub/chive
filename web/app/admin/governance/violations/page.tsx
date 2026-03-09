@@ -111,41 +111,43 @@ export default function AdminViolationsPage() {
               <p className="text-muted-foreground">No violations recorded.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Created At</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {violations.map((violation) => {
-                  const badge = severityBadge(violation.severity);
-                  return (
-                    <TableRow key={violation.id}>
-                      <TableCell className="font-mono text-xs">
-                        {violation.targetHandle ?? truncateDid(violation.targetDid)}
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">{violation.type}</TableCell>
-                      <TableCell>
-                        <Badge className={badge.className}>{badge.label}</Badge>
-                      </TableCell>
-                      <TableCell className="max-w-[300px]">
-                        <span className="text-sm text-muted-foreground line-clamp-2">
-                          {truncateText(violation.description, 80)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                        {new Date(violation.detectedAt).toLocaleDateString()}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Created At</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {violations.map((violation) => {
+                    const badge = severityBadge(violation.severity);
+                    return (
+                      <TableRow key={violation.id}>
+                        <TableCell className="font-mono text-xs">
+                          {violation.targetHandle ?? truncateDid(violation.targetDid)}
+                        </TableCell>
+                        <TableCell className="font-medium text-sm">{violation.type}</TableCell>
+                        <TableCell>
+                          <Badge className={badge.className}>{badge.label}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[300px]">
+                          <span className="text-sm text-muted-foreground line-clamp-2">
+                            {truncateText(violation.description, 80)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                          {new Date(violation.detectedAt).toLocaleDateString()}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

@@ -512,54 +512,56 @@ export default function AdminBackfillPage() {
               <p className="text-muted-foreground">No completed operations</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Started</TableHead>
-                  <TableHead>Duration</TableHead>
-                  <TableHead className="text-right">Records</TableHead>
-                  <TableHead>Result</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {completedOps.map((op: BackfillOperation) => (
-                  <TableRow key={op.id}>
-                    <TableCell>
-                      <Badge className={operationTypeClass(op.type)}>{op.type}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={operationStatusClass(op.status)}>{op.status}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(op.startedAt).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {op.completedAt
-                        ? formatCompletedDuration(op.startedAt, op.completedAt)
-                        : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(op.recordsProcessed ?? 0).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground min-w-0 max-w-[200px]">
-                      {op.error ? (
-                        <span className="text-red-600 truncate block" title={op.error}>
-                          {op.error}
-                        </span>
-                      ) : op.status === 'completed' ? (
-                        <span className="text-green-600">Success</span>
-                      ) : op.status === 'cancelled' ? (
-                        <span className="text-gray-500">Cancelled</span>
-                      ) : (
-                        'N/A'
-                      )}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Started</TableHead>
+                    <TableHead>Duration</TableHead>
+                    <TableHead className="text-right">Records</TableHead>
+                    <TableHead>Result</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {completedOps.map((op: BackfillOperation) => (
+                    <TableRow key={op.id}>
+                      <TableCell>
+                        <Badge className={operationTypeClass(op.type)}>{op.type}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={operationStatusClass(op.status)}>{op.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(op.startedAt).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {op.completedAt
+                          ? formatCompletedDuration(op.startedAt, op.completedAt)
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {(op.recordsProcessed ?? 0).toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground min-w-0 max-w-[200px]">
+                        {op.error ? (
+                          <span className="text-red-600 truncate block" title={op.error}>
+                            {op.error}
+                          </span>
+                        ) : op.status === 'completed' ? (
+                          <span className="text-green-600">Success</span>
+                        ) : op.status === 'cancelled' ? (
+                          <span className="text-gray-500">Cancelled</span>
+                        ) : (
+                          'N/A'
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

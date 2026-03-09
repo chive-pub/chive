@@ -64,7 +64,7 @@ export default function GovernanceLayout({ children }: { children: React.ReactNo
   return (
     <AuthGuard>
       <AlphaGate>
-        <SidebarLayout sidebar={<GovernanceNav />} stickyNavigation>
+        <SidebarLayout sidebar={<GovernanceNav />} stickyNavigation sidebarTitle="Governance">
           {children}
         </SidebarLayout>
       </AlphaGate>
