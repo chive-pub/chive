@@ -3,7 +3,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 import { APIError } from '@/lib/errors';
-import type { Eprint, EprintSummary, EprintAuthorView, ApiSchemaHints } from '@/lib/api/schema';
+import type {
+  Eprint,
+  EprintAuthorView,
+  ApiSchemaHints,
+  ListByAuthorResponse,
+} from '@/lib/api/schema';
 
 /**
  * Extended eprint with optional schema hints.
@@ -75,13 +80,9 @@ function transformAuthor(author: {
 }
 
 /**
- * Response from the listByAuthor endpoint.
+ * Response from the listByAuthor endpoint, extended with derived hasMore flag.
  */
-interface EprintsByAuthorResponse {
-  eprints: EprintSummary[];
-  cursor?: string;
-  hasMore: boolean;
-}
+type EprintsByAuthorResponse = ListByAuthorResponse & { hasMore: boolean };
 
 /**
  * Query key factory for eprint queries.

@@ -1064,6 +1064,19 @@ export type EprintAuthor = EprintAuthorView;
 // Re-export GraphNode for field badges
 export type { GraphNode } from './generated/types/pub/chive/graph/listNodes.js';
 
+// backlink types
+export type {
+  OutputSchema as ListBacklinksResponse,
+  Backlink,
+} from './generated/types/pub/chive/backlink/list.js';
+export type { OutputSchema as BacklinkCounts } from './generated/types/pub/chive/backlink/getCounts.js';
+
+// changelog types
+export type {
+  OutputSchema as ListChangelogsResponse,
+  ChangelogView,
+} from './generated/types/pub/chive/eprint/listChangelogs.js';
+
 // Import types for EprintCardData union
 import type { TrendingEntry as _TrendingEntry } from './generated/types/pub/chive/metrics/getTrending.js';
 import type { EprintSummary as _EprintSummary } from './generated/types/pub/chive/eprint/listByAuthor.js';
