@@ -101,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### Deployment
 
 - Staging deploy workflow now builds web frontend image in CI and pins both API and web images to the exact commit SHA, preventing frontend-backend version skew
+- Production deploy fixed to build web image with `docker build` instead of silent no-op `docker compose build` (compose file had no `build:` section for chive-web)
 - Split Docker build and push steps to fix GHCR authentication failure
 - Test expectations updated to match unified auth error messages
 - Discovery test expectations updated for new default weights and weight normalization
