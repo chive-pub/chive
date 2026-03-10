@@ -43,6 +43,7 @@ function createRichAbstract(): AnnotationBody {
         type: 'nodeRef',
         uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d6e7f8a9-b0c1-2345-6789-0abcdef12345` as AtUri,
         label: 'quantum',
+        subkind: 'field',
       },
       { type: 'text', content: ' computing advances.' },
     ],
@@ -205,12 +206,12 @@ describe('XRPC getSubmission Handler', () => {
 
       expect(abstractItems).toHaveLength(3);
       expect(abstractItems[0]).toEqual({
-        $type: 'pub.chive.eprint.submission#textItem',
+        $type: 'pub.chive.richtext.defs#textItem',
         type: 'text',
         content: 'This paper explores ',
       });
       expect(abstractItems[1]).toEqual({
-        $type: 'pub.chive.eprint.submission#nodeRefItem',
+        $type: 'pub.chive.richtext.defs#nodeRefItem',
         type: 'nodeRef',
         uri: `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.node/d6e7f8a9-b0c1-2345-6789-0abcdef12345`,
         label: 'quantum',

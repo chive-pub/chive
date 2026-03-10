@@ -44,7 +44,7 @@ describe('LexiconValidator', () => {
         title: 'Frequency, acceptability, and selection: A case study of clause-embedding',
         abstract: [
           {
-            $type: 'pub.chive.eprint.submission#textItem',
+            $type: 'pub.chive.richtext.defs#textItem',
             type: 'text',
             content:
               'We investigate the relationship between distributional frequency and acceptability for clause-embedding verbs using the MegaAcceptability dataset.',
@@ -101,7 +101,7 @@ describe('LexiconValidator', () => {
         eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
         body: [
           {
-            $type: 'pub.chive.review.comment#textItem',
+            $type: 'pub.chive.richtext.defs#textItem',
             type: 'text',
             content:
               'The analysis of factive predicates is particularly compelling. Consider extending to non-factive belief verbs.',
@@ -121,7 +121,7 @@ describe('LexiconValidator', () => {
         eprintUri: 'at://did:plc:abc123/pub.chive.eprint.submission/abc123',
         body: [
           {
-            $type: 'pub.chive.review.comment#textItem',
+            $type: 'pub.chive.richtext.defs#textItem',
             type: 'text',
             content: 'Well-motivated theoretical framework for semantic selection.',
           },

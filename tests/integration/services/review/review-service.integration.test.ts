@@ -69,7 +69,7 @@ function createTestReviewComment(overrides: Record<string, unknown> = {}): Recor
     eprintUri: TEST_EPRINT_URI,
     body: [
       {
-        $type: 'pub.chive.review.comment#textItem',
+        $type: 'pub.chive.richtext.defs#textItem',
         type: 'text',
         content: 'This is a test review comment.',
       },

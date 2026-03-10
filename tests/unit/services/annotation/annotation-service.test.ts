@@ -71,7 +71,7 @@ const createMockAnnotationComment = (
   },
   body: [
     {
-      $type: 'pub.chive.annotation.comment#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: 'This passage needs clarification.',
     },

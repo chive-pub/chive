@@ -177,7 +177,7 @@ const abstractStringToRichTextMigration: SchemaMigration = {
   migrate: (old: unknown): unknown => {
     const record = old as LegacyAbstractEprint;
     const textItem: TextItem = {
-      $type: 'pub.chive.eprint.submission#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: record.abstract,
     };
@@ -266,7 +266,7 @@ function parseTitleToRichText(title: string): RichTextItem[] {
       const textContent = title.slice(lastIndex, match.index);
       if (textContent) {
         result.push({
-          $type: 'pub.chive.eprint.submission#textItem',
+          $type: 'pub.chive.richtext.defs#textItem',
           type: 'text',
           content: textContent,
         });
@@ -279,7 +279,7 @@ function parseTitleToRichText(title: string): RichTextItem[] {
 
     if (latexContent) {
       result.push({
-        $type: 'pub.chive.eprint.submission#latexItem',
+        $type: 'pub.chive.richtext.defs#latexItem',
         type: 'latex',
         content: latexContent,
         displayMode: isDisplayMode,
@@ -294,7 +294,7 @@ function parseTitleToRichText(title: string): RichTextItem[] {
     const textContent = title.slice(lastIndex);
     if (textContent) {
       result.push({
-        $type: 'pub.chive.eprint.submission#textItem',
+        $type: 'pub.chive.richtext.defs#textItem',
         type: 'text',
         content: textContent,
       });
@@ -304,7 +304,7 @@ function parseTitleToRichText(title: string): RichTextItem[] {
   // If no LaTeX was found, return a single text item
   if (result.length === 0) {
     result.push({
-      $type: 'pub.chive.eprint.submission#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: title,
     });
