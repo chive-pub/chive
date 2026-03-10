@@ -135,6 +135,49 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
       });
     }
 
+    // Collect author DIDs for avatar fetching
+    const allAuthorDids = new Set<string>();
+    for (const p of results.eprints) {
+      for (const a of p.authors) {
+        if (a.did && !a.avatarUrl) {
+          allAuthorDids.add(a.did);
+        }
+      }
+    }
+
+    // Fetch avatars from Bluesky API
+    const avatarMap = new Map<string, { handle?: string; avatar?: string }>();
+    if (allAuthorDids.size > 0) {
+      const dids = Array.from(allAuthorDids);
+      const batchSize = 25;
+      for (let i = 0; i < dids.length; i += batchSize) {
+        const batch = dids.slice(i, i + batchSize);
+        try {
+          const urlParams = new URLSearchParams();
+          for (const did of batch) {
+            urlParams.append('actors', did);
+          }
+          const profileResponse = await fetch(
+            `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${urlParams.toString()}`,
+            {
+              headers: { Accept: 'application/json' },
+              signal: AbortSignal.timeout(5000),
+            }
+          );
+          if (profileResponse.ok) {
+            const profileData = (await profileResponse.json()) as {
+              profiles: { did: string; handle?: string; avatar?: string }[];
+            };
+            for (const profile of profileData.profiles) {
+              avatarMap.set(profile.did, { handle: profile.handle, avatar: profile.avatar });
+            }
+          }
+        } catch {
+          // Silently ignore avatar fetch failures
+        }
+      }
+    }
+
     // Map service response to API response format
     const response: OutputSchema = {
       hits: results.eprints.map((p) => ({
@@ -142,29 +185,32 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
         cid: p.cid,
         title: p.title,
         abstract: toWireFormat(p.abstract) ?? [],
-        authors: p.authors.map((a) => ({
-          // Only include did if it's a valid DID (not empty string)
-          ...(a.did ? { did: a.did } : {}),
-          name: a.name,
-          orcid: a.orcid,
-          email: a.email,
-          order: a.order,
-          affiliations: (a.affiliations ?? []).map((af) => ({
-            name: af.name,
-            rorId: af.rorId,
-            department: af.department,
-          })),
-          contributions: (a.contributions ?? []).map((contrib) => ({
-            typeUri: contrib.typeUri as string,
-            typeId: contrib.typeId ?? '',
-            typeLabel: contrib.typeLabel ?? '',
-            degree: contrib.degree,
-          })),
-          isCorrespondingAuthor: a.isCorrespondingAuthor,
-          isHighlighted: a.isHighlighted,
-          handle: a.handle,
-          avatarUrl: a.avatarUrl,
-        })),
+        authors: p.authors.map((a) => {
+          const profile = a.did ? avatarMap.get(a.did) : undefined;
+          return {
+            // Only include did if it's a valid DID (not empty string)
+            ...(a.did ? { did: a.did } : {}),
+            name: a.name,
+            orcid: a.orcid,
+            email: a.email,
+            order: a.order,
+            affiliations: (a.affiliations ?? []).map((af) => ({
+              name: af.name,
+              rorId: af.rorId,
+              department: af.department,
+            })),
+            contributions: (a.contributions ?? []).map((contrib) => ({
+              typeUri: contrib.typeUri as string,
+              typeId: contrib.typeId ?? '',
+              typeLabel: contrib.typeLabel ?? '',
+              degree: contrib.degree,
+            })),
+            isCorrespondingAuthor: a.isCorrespondingAuthor,
+            isHighlighted: a.isHighlighted,
+            handle: a.handle ?? profile?.handle,
+            avatarUrl: a.avatarUrl ?? profile?.avatar,
+          };
+        }),
         submittedBy: p.submittedBy,
         paperDid: p.paperDid,
         fields: p.fields?.map((f) => ({
