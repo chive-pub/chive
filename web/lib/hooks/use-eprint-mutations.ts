@@ -23,7 +23,10 @@ import type {
 import type { ChangelogSection } from '@/lib/api/generated/types/pub/chive/eprint/changelog';
 import type { OutputSchema as DeleteOutput } from '@/lib/api/generated/types/pub/chive/eprint/deleteSubmission';
 import type { OutputSchema as GetChangelogOutput } from '@/lib/api/generated/types/pub/chive/eprint/getChangelog';
-import type { ChangelogView } from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
+import type {
+  OutputSchema as ListChangelogsOutput,
+  ChangelogView,
+} from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
 import type {
   OutputSchema as UpdateOutput,
   ChangelogInput,
@@ -382,16 +385,9 @@ interface UseEprintChangelogsOptions {
 }
 
 /**
- * Response from the useEprintChangelogs hook.
+ * Response from the useEprintChangelogs hook, extended with derived hasMore flag.
  */
-interface EprintChangelogsResponse {
-  /** List of changelog entries, newest first */
-  changelogs: ChangelogView[];
-  /** Pagination cursor for next page (undefined if no more pages) */
-  cursor?: string;
-  /** Whether there are more changelogs to fetch */
-  hasMore: boolean;
-}
+type EprintChangelogsResponse = ListChangelogsOutput & { hasMore: boolean };
 
 /**
  * Fetches paginated changelogs for an eprint.

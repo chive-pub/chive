@@ -31,6 +31,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Types
 
+- Consolidated rich text `$type` references to use `pub.chive.richtext.defs` namespace across all tests, lexicons, and frontend code
+- Replaced `EprintsByAuthorResponse` with `ListByAuthorResponse` from generated types in `use-eprint.ts`
+- Replaced `EprintChangelogsResponse` with `ListChangelogsOutput` from generated types in `use-eprint-mutations.ts`
+- Replaced manual `Backlink`, `BacklinkCounts`, and `ListBacklinksResponse` with generated types in `use-backlinks.ts`
+- Added backlink and changelog type re-exports to `schema.ts` from generated lexicon types
 - Replaced `EdgesResponse` in `use-edges.ts` with generated `OutputSchema` from `pub.chive.graph.listEdges`
 - Replaced `AuthorEprintsResponse` in `use-author.ts` with `ListByAuthorResponse` from generated types
 - Derived `ProposalStatus` and `ProposalType` from generated `ProposalView` instead of manual string unions
@@ -49,6 +54,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Popover widths constrained to viewport with `max-w-[calc(100vw-2rem)]`
 - PDF viewer minimum height reduced on mobile (`min-h-[400px] md:min-h-[600px]`)
 - New `useIsMobile` hook and shadcn Sheet component for consistent mobile patterns
+
+#### Types
+
+- Replace redundant annotation hook types (`AnnotationView`, `EntityLinkView`, `ListAnnotationsResponse`, `AnnotationThread`) with generated lexicon types from `pub.chive.annotation`
+- Replace `ListUserEndorsementsResponse` with generated `OutputSchema` from `pub.chive.endorsement.listForUser`
+- Derive `AnnotationMotivation` from generated `AnnotationView['motivation']` instead of manual string union
+- Derive `ContributionType` from generated `EndorsementView['contributions'][number]` instead of manual string union
 
 #### Discovery
 
