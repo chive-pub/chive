@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-03-09
+## [0.3.0] - 2026-03-10
 
 ### Added
 
@@ -100,6 +100,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 #### Deployment
 
+- Staging deploy workflow now builds web frontend image in CI and pins both API and web images to the exact commit SHA, preventing frontend-backend version skew
 - Split Docker build and push steps to fix GHCR authentication failure
 - Test expectations updated to match unified auth error messages
 - Discovery test expectations updated for new default weights and weight normalization
