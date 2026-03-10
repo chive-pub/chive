@@ -497,20 +497,19 @@ export type RichTextFacet = UnifiedRichTextFacet;
 // getThread response
 export type { OutputSchema as ReviewThread } from './generated/types/pub/chive/review/getThread.js';
 
-// W3C Web Annotation motivation type
-export type AnnotationMotivation =
-  | 'commenting'
-  | 'highlighting'
-  | 'questioning'
-  | 'replying'
-  | 'assessing'
-  | 'bookmarking'
-  | 'classifying'
-  | 'describing'
-  | 'editing'
-  | 'linking'
-  | 'moderating'
-  | 'tagging';
+// Annotation types from generated lexicon types
+export type {
+  OutputSchema as ListAnnotationsResponse,
+  AnnotationView,
+  EntityLinkView,
+  AuthorRef as AnnotationAuthorRef,
+  TextSpanTarget as AnnotationTextSpanTarget,
+} from './generated/types/pub/chive/annotation/listForEprint.js';
+export type { OutputSchema as AnnotationThread } from './generated/types/pub/chive/annotation/getThread.js';
+
+// W3C Web Annotation motivation type, derived from generated AnnotationView.
+import type { AnnotationView as GeneratedAnnotationView } from './generated/types/pub/chive/annotation/listForEprint.js';
+export type AnnotationMotivation = GeneratedAnnotationView['motivation'];
 
 // Rich annotation body types for annotation editor
 export interface RichAnnotationItem {
@@ -551,29 +550,15 @@ export type RichAnnotationBody = RichAnnotationBodyObject | RichAnnotationItem[]
 export type { Main as EndorsementRecord } from './generated/types/pub/chive/review/endorsement.js';
 
 /**
- * Contribution type for endorsements.
+ * Contribution type for endorsements, derived from generated EndorsementView.
  *
  * @remarks
  * Union of known contribution types that align with CRediT taxonomy.
- * The lexicon also allows `(string & {})` for forward compatibility
- * with new types added to the knowledge graph.
+ * Includes `(string & {})` for forward compatibility with new types
+ * added to the knowledge graph.
  */
-export type ContributionType =
-  | 'methodological'
-  | 'analytical'
-  | 'theoretical'
-  | 'empirical'
-  | 'conceptual'
-  | 'technical'
-  | 'data'
-  | 'replication'
-  | 'reproducibility'
-  | 'synthesis'
-  | 'interdisciplinary'
-  | 'pedagogical'
-  | 'visualization'
-  | 'societal-impact'
-  | 'clinical';
+import type { EndorsementView as GeneratedEndorsementView } from './generated/types/pub/chive/endorsement/listForEprint.js';
+export type ContributionType = GeneratedEndorsementView['contributions'][number];
 
 export type {
   OutputSchema as ListEndorsementsResponse,

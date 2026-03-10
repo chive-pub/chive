@@ -53,6 +53,8 @@ import type {
   ListEndorsementsResponse,
   EndorsementSummaryResponse,
 } from '@/lib/api/schema';
+import type { OutputSchema as ListForUserOutput } from '@/lib/api/generated/types/pub/chive/endorsement/listForUser';
+import type { OutputSchema as ListForAuthorPapersOutput } from '@/lib/api/generated/types/pub/chive/endorsement/listForAuthorPapers';
 
 const logger = createLogger({ context: { component: 'use-endorsement' } });
 
@@ -564,7 +566,13 @@ export interface UseMyEndorsementsOptions {
 }
 
 /**
- * Endorsement view with eprint title for display.
+ * Endorsement view with eprint title.
+ *
+ * @remarks
+ * Unification type compatible with both `listForUser` and `listForAuthorPapers`
+ * endpoints, which share the same structure but have different `$type`
+ * discriminator literals on nested objects (endorser, etc.).
+ * Structurally matches generated `EndorsementView` from both endpoints.
  */
 export interface EndorsementWithEprint {
   uri: string;
@@ -582,15 +590,8 @@ export interface EndorsementWithEprint {
   createdAt: string;
 }
 
-/**
- * Response type for listing endorsements.
- */
-export interface ListUserEndorsementsResponse {
-  endorsements: EndorsementWithEprint[];
-  cursor?: string;
-  hasMore: boolean;
-  total?: number;
-}
+/** Response from the listForUser endorsement endpoint. */
+export type ListUserEndorsementsResponse = ListForUserOutput;
 
 /**
  * Fetches endorsements given by a specific user.
@@ -629,7 +630,7 @@ export function useMyEndorsements(endorserDid: string, options: UseMyEndorsement
           limit,
           cursor,
         });
-        return response.data as unknown as ListUserEndorsementsResponse;
+        return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
@@ -694,14 +695,14 @@ export function useAuthorPaperEndorsements(
 
   return useQuery({
     queryKey: [...endorsementKeys.forAuthorPapers(authorDid), { limit, cursor }],
-    queryFn: async (): Promise<ListUserEndorsementsResponse> => {
+    queryFn: async (): Promise<ListForAuthorPapersOutput> => {
       try {
         const response = await api.pub.chive.endorsement.listForAuthorPapers({
           authorDid,
           limit,
           cursor,
         });
-        return response.data as unknown as ListUserEndorsementsResponse;
+        return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
