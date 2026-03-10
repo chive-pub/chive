@@ -197,8 +197,15 @@ jobs:
             }
 
             # Build web container (--no-cache ensures lexicons are regenerated)
-            echo "Building chive-web container..."
-            docker compose -f docker-compose.prod.yml build --no-cache chive-web || {
+            echo "Building chive-web image..."
+            DEPLOY_SHA=$(cd .. && git rev-parse HEAD)
+            source .env
+            docker build --no-cache -t chive-web:latest -f ../web/Dockerfile \
+              --build-arg NEXT_PUBLIC_API_URL=https://${DOMAIN}/api \
+              --build-arg NEXT_PUBLIC_FARO_URL=https://faro.${DOMAIN}/collect \
+              --build-arg NEXT_PUBLIC_APP_VERSION=${DEPLOY_SHA} \
+              --build-arg NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${DOMAIN} \
+              .. || {
               echo "::error::Failed to build chive-web image"
               exit 1
             }
