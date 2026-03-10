@@ -212,10 +212,13 @@ jobs:
 
             # Note: chive-docs is deployed separately via deploy-docs.yml workflow
 
-            # Clean up any stale containers from failed deployments
-            echo "Cleaning up stale containers..."
+            # Stop all compose services (both default and observability profile)
+            echo "Stopping all services..."
             docker compose -f docker-compose.prod.yml --profile observability down --remove-orphans 2>/dev/null || true
-            docker container prune -f 2>/dev/null || true
+
+            # Force-remove any leftover chive containers (catches orphans from profile changes or failed deploys)
+            echo "Removing any leftover chive containers..."
+            docker ps -a --filter "name=chive-" -q | xargs docker rm -f 2>/dev/null || true
 
             # Start all services including observability stack
             # --force-recreate ensures containers use the newly built images

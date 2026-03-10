@@ -18,7 +18,10 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: >-
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'staging') ||
+      github.event_name == 'workflow_dispatch'
     environment: staging
     env:
       # Pin to the exact commit that passed CI to prevent version skew.
@@ -142,6 +145,34 @@ jobs:
           cache-from: type=gha,scope=web-staging
           cache-to: type=gha,mode=max,scope=web-staging
 
+      - name: Setup Node.js and pnpm for docs build
+        uses: ./.github/actions/setup-node-pnpm
+
+      - name: Build documentation
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --filter @chive/docs build
+
+      - name: Copy docs build to staging server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docs/build/*"
+          target: "/tmp/staging-docs-deploy"
+          strip_components: 2
+
+      - name: Copy nginx config for docs
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          source: "docker/nginx-docs.conf,docker/docker-compose.staging-docs.yml"
+          target: "/tmp/staging-docs-config"
+          strip_components: 1
+
       - name: Copy env files to staging server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -227,15 +258,35 @@ jobs:
             echo "Pulling infrastructure images..."
             docker compose -f docker-compose.prod.yml pull postgres redis elasticsearch neo4j grobid traefik || true
 
-            echo "Cleaning up stale containers..."
+            # Stop all compose services
+            echo "Stopping all services..."
             docker compose -f docker-compose.prod.yml down --remove-orphans 2>/dev/null || true
-            docker container prune -f 2>/dev/null || true
+            docker compose -f docker-compose.staging-docs.yml down --remove-orphans 2>/dev/null || true
+
+            # Force-remove any leftover chive containers (catches orphans from failed deploys)
+            echo "Removing any leftover chive containers..."
+            docker ps -a --filter "name=chive-" -q | xargs docker rm -f 2>/dev/null || true
+
+            # Deploy docs build
+            echo "Deploying docs build..."
+            sudo rm -rf /opt/chive/docs/build
+            sudo mkdir -p /opt/chive/docs
+            if [ -d /tmp/staging-docs-deploy ]; then
+              sudo mv /tmp/staging-docs-deploy /opt/chive/docs/build
+              sudo chown -R root:root /opt/chive/docs/build
+              sudo chmod -R 755 /opt/chive/docs/build
+            fi
+            if [ -d /tmp/staging-docs-config ]; then
+              cp /tmp/staging-docs-config/nginx-docs.conf /opt/chive/docker/nginx-docs.conf 2>/dev/null || true
+              cp /tmp/staging-docs-config/docker-compose.staging-docs.yml /opt/chive/docker/docker-compose.staging-docs.yml 2>/dev/null || true
+              rm -rf /tmp/staging-docs-config
+            fi
 
             echo "Starting services..."
             docker compose -f docker-compose.prod.yml up -d --force-recreate
 
             echo "Starting docs site..."
-            docker compose -f docker-compose.staging-docs.yml up -d --force-recreate
+            DOMAIN="${{ vars.STAGING_DOMAIN }}" docker compose -f docker-compose.staging-docs.yml up -d --force-recreate
 
             echo "Waiting for services to initialize..."
             sleep 30
@@ -296,6 +347,14 @@ jobs:
           else
             echo "Web health check failed"
             success=false
+          fi
+
+          echo ""
+          echo "Checking docs at https://docs.$domain/..."
+          if curl -sf --max-time 30 "https://docs.$domain/" > /dev/null; then
+            echo "Docs health check passed"
+          else
+            echo "::warning::Docs health check failed (may need cert provisioning)"
           fi
 
           if [ "$success" = "false" ]; then
