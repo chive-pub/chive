@@ -38,6 +38,61 @@ export function AuthorsPageContent() {
 
   const heading = isPersonalized ? 'Active in Your Fields' : 'Trending Authors';
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="max-w-md">
+          <DidAutocompleteInput
+            onSelect={handleAuthorSelect}
+            placeholder="Search by name or handle..."
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 9 }).map((_, i) => (
+            <AuthorDiscoveryCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="max-w-md">
+          <DidAutocompleteInput
+            onSelect={handleAuthorSelect}
+            placeholder="Search by name or handle..."
+          />
+        </div>
+        <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-8 text-center">
+          <p className="text-destructive">Failed to load authors</p>
+          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authors.length === 0 && !needsFieldSetup) {
+    return (
+      <div className="space-y-6">
+        <div className="max-w-md">
+          <DidAutocompleteInput
+            onSelect={handleAuthorSelect}
+            placeholder="Search by name or handle..."
+          />
+        </div>
+        <div className="rounded-lg border border-dashed p-12 text-center">
+          <h3 className="text-lg font-medium">No authors yet</h3>
+          <p className="mt-2 text-muted-foreground">Be the first to share your research on Chive</p>
+          <Button asChild className="mt-4">
+            <Link href="/submit">Submit an Eprint</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Author search */}
@@ -61,61 +116,27 @@ export function AuthorsPageContent() {
         </div>
       )}
 
-      {/* Loading state */}
-      {isLoading && (
-        <div className="space-y-4">
-          <div className="h-6 w-48 bg-muted animate-pulse rounded" />
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <AuthorDiscoveryCardSkeleton key={i} />
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Error state */}
-      {error && !isLoading && (
-        <div className="rounded-lg border border-destructive/50 bg-destructive/5 p-8 text-center">
-          <p className="text-destructive">Failed to load authors</p>
-          <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!isLoading && !error && authors.length === 0 && !needsFieldSetup && (
-        <div className="rounded-lg border border-dashed p-12 text-center">
-          <h3 className="text-lg font-medium">No authors yet</h3>
-          <p className="mt-2 text-muted-foreground">Be the first to share your research on Chive</p>
-          <Button asChild className="mt-4">
-            <Link href="/submit">Submit an Eprint</Link>
-          </Button>
-        </div>
-      )}
+      {/* Section header */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">{heading}</h2>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/browse">View All</Link>
+        </Button>
+      </div>
 
       {/* Author grid */}
-      {!isLoading && !error && authors.length > 0 && (
-        <>
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">{heading}</h2>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/browse">View All</Link>
-            </Button>
-          </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {authors.map((author) => (
+          <AuthorDiscoveryCard key={author.did} author={author} />
+        ))}
+      </div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {authors.map((author) => (
-              <AuthorDiscoveryCard key={author.did} author={author} />
-            ))}
-          </div>
-
-          {authors.length >= 20 && (
-            <div className="flex justify-center">
-              <Button asChild variant="outline">
-                <Link href="/browse">Browse All Authors</Link>
-              </Button>
-            </div>
-          )}
-        </>
+      {authors.length >= 20 && (
+        <div className="flex justify-center">
+          <Button asChild variant="outline">
+            <Link href="/browse">Browse All Authors</Link>
+          </Button>
+        </div>
       )}
     </div>
   );
