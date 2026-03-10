@@ -116,7 +116,30 @@
           "type": "string"
         },
         "abstract": {
-          "type": "string"
+          "type": "array",
+          "description": "Rich abstract with text, formatting, and entity references",
+          "items": {
+            "type": "union",
+            "refs": [
+              "pub.chive.eprint.submission#textItem",
+              "pub.chive.eprint.submission#nodeRefItem",
+              "pub.chive.eprint.submission#wikidataRefItem",
+              "pub.chive.eprint.submission#fieldRefItem",
+              "pub.chive.eprint.submission#facetRefItem",
+              "pub.chive.eprint.submission#eprintRefItem",
+              "pub.chive.eprint.submission#annotationRefItem",
+              "pub.chive.eprint.submission#authorRefItem",
+              "pub.chive.eprint.submission#mentionItem",
+              "pub.chive.eprint.submission#linkItem",
+              "pub.chive.eprint.submission#tagItem",
+              "pub.chive.eprint.submission#latexItem",
+              "pub.chive.eprint.submission#codeBlockItem",
+              "pub.chive.eprint.submission#headingItem",
+              "pub.chive.eprint.submission#listItem",
+              "pub.chive.eprint.submission#blockquoteItem"
+            ]
+          },
+          "maxLength": 500
         },
         "authors": {
           "type": "array",

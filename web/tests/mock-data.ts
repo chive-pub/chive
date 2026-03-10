@@ -385,8 +385,14 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
-    abstract:
-      'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+    abstract: [
+      {
+        $type: 'pub.chive.eprint.submission#textItem' as const,
+        type: 'text' as const,
+        content:
+          'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+      },
+    ],
     authors: [{ did: 'did:plc:test123', handle: 'testuser.bsky.social', displayName: 'Test User' }],
     fields: [
       {
@@ -408,8 +414,14 @@ export function createMockTrendingEprint(overrides: Partial<TrendingEprint> = {}
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
-    abstract:
-      'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+    abstract: [
+      {
+        $type: 'pub.chive.eprint.submission#textItem' as const,
+        type: 'text' as const,
+        content:
+          'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+      },
+    ],
     authors: [
       {
         did: 'did:plc:test123',

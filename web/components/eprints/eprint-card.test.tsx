@@ -81,7 +81,13 @@ describe('EprintCard', () => {
 
   it('shows truncated abstract', () => {
     const eprint = createMockEprintSummary({
-      abstract: 'This is a short abstract.',
+      abstract: [
+        {
+          $type: 'pub.chive.eprint.submission#textItem' as const,
+          type: 'text' as const,
+          content: 'This is a short abstract.',
+        },
+      ],
     });
     renderWithProviders(<EprintCard eprint={eprint} />);
     expect(screen.getByText('This is a short abstract.')).toBeInTheDocument();

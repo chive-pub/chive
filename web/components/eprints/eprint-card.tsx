@@ -9,6 +9,7 @@ import { FieldBadgeList } from './field-badge';
 import { StaticAbstract } from './eprint-abstract';
 import { EprintSource } from './eprint-source';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import type { RichTextItem } from '@/lib/types/rich-text';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils/format-date';
@@ -217,7 +218,10 @@ export function EprintCard({
       </CardHeader>
 
       <CardContent className="mt-auto space-y-3">
-        <StaticAbstract text={eprint.abstract} maxLines={3} />
+        <StaticAbstract
+          abstractItems={eprint.abstract as RichTextItem[] | undefined}
+          maxLines={3}
+        />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={3} />}
 
@@ -324,7 +328,10 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
       </CardHeader>
 
       <CardContent className="space-y-4">
-        <StaticAbstract text={eprint.abstract} maxLines={4} />
+        <StaticAbstract
+          abstractItems={eprint.abstract as RichTextItem[] | undefined}
+          maxLines={4}
+        />
 
         {fields.length > 0 && <FieldBadgeList fields={fields} max={5} />}
 

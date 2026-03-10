@@ -265,6 +265,67 @@ export function isValidRichTextBody(richBody: unknown): richBody is AnnotationBo
 }
 
 /**
+ * Lexicon-format abstract item with $type discriminator.
+ */
+export type LexiconAbstractItem =
+  | {
+      $type: 'pub.chive.eprint.submission#textItem';
+      type: 'text';
+      content: string;
+    }
+  | {
+      $type: 'pub.chive.eprint.submission#nodeRefItem';
+      type: 'nodeRef';
+      uri: string;
+      label: string;
+      subkind?: string;
+    };
+
+/**
+ * Convert an AnnotationBody to the lexicon-format abstract array.
+ *
+ * @remarks
+ * The lexicon schema defines abstract as a flat array of discriminated union
+ * items (with $type tags), while AnnotationBody wraps items in
+ * `{ type, items, format }`. This function extracts the items and adds the
+ * required $type discriminators for XRPC response validation.
+ *
+ * @param body - The rich text abstract body
+ * @returns Array of lexicon-format abstract items, or undefined if empty
+ */
+export function toLexiconAbstract(
+  body: AnnotationBody | null | undefined
+): LexiconAbstractItem[] | undefined {
+  if (!body?.items || body.items.length === 0) {
+    return undefined;
+  }
+
+  return body.items.map((item: AnnotationBodyItem): LexiconAbstractItem => {
+    if (item.type === 'text') {
+      return {
+        $type: 'pub.chive.eprint.submission#textItem' as const,
+        type: 'text' as const,
+        content: item.content,
+      };
+    } else if (item.type === 'fieldRef' || item.type === 'nodeRef') {
+      return {
+        $type: 'pub.chive.eprint.submission#nodeRefItem' as const,
+        type: 'nodeRef' as const,
+        uri: item.uri,
+        label: item.label ?? '',
+        subkind: item.type === 'nodeRef' ? item.subkind : 'field',
+      };
+    }
+    // For other ref types (wikidata, authority, etc.), convert to text with label
+    return {
+      $type: 'pub.chive.eprint.submission#textItem' as const,
+      type: 'text' as const,
+      content: 'label' in item ? String(item.label ?? '') : '',
+    };
+  });
+}
+
+/**
  * Migrate a plain text abstract to rich text format.
  *
  * @param plainText - The plain text abstract
