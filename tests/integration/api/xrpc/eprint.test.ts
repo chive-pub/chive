@@ -366,6 +366,13 @@ describe('XRPC Eprint Endpoints Integration', () => {
   });
 
   beforeEach(async () => {
+    // Clean up test data from PostgreSQL to prevent stale data from prior runs
+    try {
+      await pool.query('DELETE FROM eprints_index');
+    } catch {
+      // Table may not exist yet
+    }
+
     // Clean up test data from Elasticsearch
     try {
       await esClient.deleteByQuery({
