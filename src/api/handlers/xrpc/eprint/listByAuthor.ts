@@ -20,7 +20,7 @@ import type {
 import type { DID } from '../../../../types/atproto.js';
 import { ValidationError } from '../../../../types/errors.js';
 import { resolveFieldLabels } from '../../../../utils/field-label.js';
-import { toLexiconAbstract } from '../../../../utils/rich-text.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -120,7 +120,7 @@ export const listByAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
           uri: p.uri,
           cid: p.cid,
           title: p.title,
-          abstract: toLexiconAbstract(p.abstract),
+          abstract: toWireFormat(p.abstract),
           authors: (p.authors ?? []).map((author) => {
             const profile = author.did ? avatarMap.get(author.did) : undefined;
             return {

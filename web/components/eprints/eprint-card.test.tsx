@@ -83,7 +83,7 @@ describe('EprintCard', () => {
     const eprint = createMockEprintSummary({
       abstract: [
         {
-          $type: 'pub.chive.eprint.submission#textItem' as const,
+          $type: 'pub.chive.richtext.defs#textItem' as const,
           type: 'text' as const,
           content: 'This is a short abstract.',
         },

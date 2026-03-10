@@ -21,7 +21,7 @@ import type {
   RelatedEprintRelationship,
   RelatedEprintSignal,
 } from '../../../../types/interfaces/discovery.interface.js';
-import { toLexiconAbstract } from '../../../../utils/rich-text.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 // Use generated types from lexicons
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
@@ -184,7 +184,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
     const relatedPapers: SchemaRelatedEprint[] = related.map((r) => ({
       uri: r.uri as string,
       title: r.title,
-      abstract: toLexiconAbstract(
+      abstract: toWireFormat(
         r.abstract && typeof r.abstract === 'object' && 'items' in r.abstract
           ? r.abstract
           : undefined

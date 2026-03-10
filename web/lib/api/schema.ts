@@ -39,10 +39,14 @@ export type {
   Material,
   FundingSource,
   ConferencePresentation,
-  TextItem as EprintTextItem,
-  NodeRefItem as EprintNodeRefItem,
   SemanticVersion,
 } from './generated/types/pub/chive/eprint/submission.js';
+
+// Rich text item types (shared across all content types)
+export type {
+  TextItem as EprintTextItem,
+  NodeRefItem as EprintNodeRefItem,
+} from './generated/types/pub/chive/richtext/defs.js';
 
 // Eprint version record (raw lexicon record)
 export type { Main as EprintVersionRecord } from './generated/types/pub/chive/eprint/version.js';
@@ -331,40 +335,29 @@ export type {
   TextQuoteSelector as CommentTextQuoteSelector,
   TextPositionSelector as CommentTextPositionSelector,
   FragmentSelector,
+} from './generated/types/pub/chive/review/comment.js';
+
+// These types now come from richtext/defs (shared across all content types)
+export type {
   TextItem as ReviewTextItem,
   NodeRefItem as ReviewNodeRefItem,
   EprintRefItem,
-} from './generated/types/pub/chive/review/comment.js';
+} from './generated/types/pub/chive/richtext/defs.js';
 
-// listForEprint response - exports the view types (excluding types that have unified versions)
-export type {
-  OutputSchema as ListReviewsResponse,
-  ByteSlice,
-  MentionFacet,
-  LinkFacet,
-  TagFacet,
-} from './generated/types/pub/chive/review/listForEprint.js';
+// listForEprint response
+export type { OutputSchema as ListReviewsResponse } from './generated/types/pub/chive/review/listForEprint.js';
 
 /**
  * ReviewAuthorRef - alias for UnifiedAuthorRef.
  */
 export type ReviewAuthorRef = UnifiedAuthorRef;
 
-/**
- * AnnotationBody - alias for UnifiedAnnotationBody.
- */
-export type AnnotationBody = UnifiedAnnotationBody;
-
 // listForAuthor response
 export type { OutputSchema as ListAuthorReviewsResponse } from './generated/types/pub/chive/review/listForAuthor.js';
 
-// Import specific ReviewView types for unified type
+// Import specific ReviewView types for unified Review type
 import type { ReviewView as _EprintReviewView } from './generated/types/pub/chive/review/listForEprint.js';
 import type { ReviewView as _AuthorReviewView } from './generated/types/pub/chive/review/listForAuthor.js';
-import type { TextSpanTarget as _EprintTextSpanTarget } from './generated/types/pub/chive/review/listForEprint.js';
-import type { TextSpanTarget as _AuthorTextSpanTarget } from './generated/types/pub/chive/review/listForAuthor.js';
-import type { RichTextFacet as _EprintRichTextFacet } from './generated/types/pub/chive/review/listForEprint.js';
-import type { RichTextFacet as _AuthorRichTextFacet } from './generated/types/pub/chive/review/listForAuthor.js';
 
 /**
  * UnifiedAuthorRef - structural type for AuthorRef across endpoints.
@@ -378,20 +371,16 @@ export interface UnifiedAuthorRef {
 }
 
 /**
- * UnifiedAnnotationBody - structural type for AnnotationBody.
- */
-export interface UnifiedAnnotationBody {
-  $type?: string;
-  text: string;
-  facets?: UnifiedRichTextFacet[];
-}
-
-/**
- * Review - unified structural type for review views across different endpoints.
+ * Review - cross-endpoint structural type for review views.
  *
  * @remarks
- * Uses structural typing with `$type?: string` to be compatible with any endpoint's
- * ReviewView type, regardless of the specific $type discriminator value.
+ * Structural type compatible with ReviewView from listForEprint, listForAuthor,
+ * and getThread. The `body` field uses the exact generated body union type from
+ * the review endpoints for strict rich text typing.
+ *
+ * The `$type` fields are relaxed to `string?` because different endpoints emit
+ * different discriminator values (e.g. `pub.chive.review.listForEprint#authorRef`
+ * vs `pub.chive.review.listForAuthor#authorRef`).
  */
 export interface Review {
   $type?: string;
@@ -399,28 +388,16 @@ export interface Review {
   cid: string;
   author: UnifiedAuthorRef;
   eprintUri: string;
+  eprintTitle?: string;
   content: string;
-  body?: UnifiedAnnotationBody;
+  body?: _EprintReviewView['body'];
+  bodyPlainText?: string;
   target?: UnifiedTextSpanTarget;
-  motivation:
-    | 'commenting'
-    | 'highlighting'
-    | 'questioning'
-    | 'replying'
-    | 'assessing'
-    | 'bookmarking'
-    | 'classifying'
-    | 'describing'
-    | 'editing'
-    | 'linking'
-    | 'moderating'
-    | 'tagging'
-    | (string & {});
+  motivation: _EprintReviewView['motivation'];
   parentReviewUri?: string;
   replyCount: number;
   createdAt: string;
   indexedAt: string;
-  /** Whether this review has been deleted (soft-delete tombstone) */
   deleted?: boolean;
 }
 
@@ -551,18 +528,12 @@ export interface RichAnnotationItem {
   label?: string;
   kind?: 'type' | 'object';
   subkind?: string;
-  title?: string;
   // For wikidataRef
   qid?: string;
   url?: string;
-  // For facetRef
-  dimension?: string;
-  value?: string;
-  // For annotationRef
-  excerpt?: string;
   // For authorRef
   did?: string;
-  displayName?: string;
+  handle?: string;
 }
 
 export interface RichAnnotationBodyObject {
@@ -1316,7 +1287,7 @@ export type EntityLinkType =
   | { type: 'wikidata'; qid: string; label: string; url: string }
   | { type: 'nodeRef'; uri: string; label: string; subkind?: string }
   | { type: 'field'; uri: string; label: string }
-  | { type: 'author'; did: string; displayName?: string }
-  | { type: 'eprint'; uri: string; title: string }
+  | { type: 'author'; did: string; label?: string; handle?: string }
+  | { type: 'eprint'; uri: string; label?: string }
   | { type: 'fast'; uri: string; label: string }
-  | { type: 'orcid'; did: string; displayName?: string };
+  | { type: 'orcid'; did: string; label?: string; handle?: string };

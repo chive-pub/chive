@@ -25,7 +25,7 @@ import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import { resolveFieldLabels } from '../../../../utils/field-label.js';
-import { toLexiconAbstract } from '../../../../utils/rich-text.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -88,7 +88,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
       return new BlobRef(CID.parse(ref.ref), ref.mimeType, ref.size);
     };
 
-    const abstractItems = toLexiconAbstract(result.abstract) ?? [];
+    const abstractItems = toWireFormat(result.abstract) ?? [];
 
     // Fetch avatars for authors who don't have one
     const authorsNeedingAvatars = result.authors.filter((a) => a.did && !a.avatarUrl);

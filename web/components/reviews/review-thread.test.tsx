@@ -65,6 +65,7 @@ describe('ReviewThreadComponent', () => {
       uri: `at://review-d${depth}`,
       content: `Review at depth ${depth}`,
       body: undefined, // Use plain text content, not rich body
+      bodyPlainText: undefined,
       author: createMockReviewAuthor({ displayName: `Author ${depth}` }),
     });
 
@@ -75,6 +76,7 @@ describe('ReviewThreadComponent', () => {
           uri: `at://reply-${i}`,
           content: `Reply ${i}`,
           body: undefined, // Use plain text content, not rich body
+          bodyPlainText: undefined,
           parentReviewUri: parent.uri,
           author: createMockReviewAuthor({ displayName: `Replier ${i}` }),
         }),
@@ -139,6 +141,7 @@ describe('ReviewThreadComponent', () => {
           uri: 'at://parent',
           content: 'Parent content',
           body: undefined, // Use plain text
+          bodyPlainText: undefined,
         }),
         replies: [
           {
@@ -146,6 +149,7 @@ describe('ReviewThreadComponent', () => {
               uri: 'at://child',
               content: 'Child content',
               body: undefined, // Use plain text
+              bodyPlainText: undefined,
             }),
             replies: [
               {
@@ -153,6 +157,7 @@ describe('ReviewThreadComponent', () => {
                   uri: 'at://grandchild',
                   content: 'Grandchild content',
                   body: undefined, // Use plain text
+                  bodyPlainText: undefined,
                 }),
                 replies: [],
                 totalReplies: 0,

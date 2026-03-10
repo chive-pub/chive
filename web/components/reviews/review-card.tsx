@@ -54,6 +54,7 @@ import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
 import { AddToCollectionDialog } from '@/components/collection/add-to-collection-dialog';
 import { useIsAuthenticated } from '@/lib/auth';
 import type { Review, AnnotationMotivation } from '@/lib/api/schema';
+import { isRichTextItem } from '@/lib/types/rich-text';
 
 // =============================================================================
 // TYPES
@@ -338,8 +339,10 @@ export function ReviewCard({
         )}
       >
         <RichTextRenderer
-          text={review.body?.text ?? review.content}
-          facets={review.body?.facets}
+          items={
+            review.body && review.body.length > 0 ? review.body.filter(isRichTextItem) : undefined
+          }
+          text={review.bodyPlainText ?? review.content}
           mode="block"
         />
       </div>

@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
-import type { RichTextItem } from '@/lib/types/rich-text';
+import { isRichTextItem } from '@/lib/types/rich-text';
 import type { TrendingEntry } from '@/lib/api/schema';
 
 type TimeWindow = '24h' | '7d' | '30d';
@@ -69,7 +69,13 @@ function TrendingCard({
           </h3>
 
           <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-            <RichTextRenderer items={eprint.abstract as RichTextItem[]} mode="inline" />
+            <RichTextRenderer
+              items={
+                Array.isArray(eprint.abstract) ? eprint.abstract.filter(isRichTextItem) : undefined
+              }
+              text={typeof eprint.abstract === 'string' ? eprint.abstract : undefined}
+              mode="inline"
+            />
           </div>
 
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">

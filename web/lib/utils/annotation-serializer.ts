@@ -338,13 +338,13 @@ export function extractPlainText(body: RichAnnotationBody | null): string {
         case 'fieldRef':
           return item.label ?? '';
         case 'eprintRef':
-          return item.title ?? '';
+          return item.label ?? '';
         case 'facetRef':
-          return `${item.dimension ?? ''}: ${item.value ?? ''}`;
+          return item.label ?? '';
         case 'annotationRef':
-          return item.excerpt ?? '';
+          return item.label ?? '';
         case 'authorRef':
-          return item.displayName ?? '';
+          return item.label ?? item.handle ?? item.did ?? '';
         default:
           return '';
       }

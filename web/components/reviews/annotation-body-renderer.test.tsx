@@ -206,26 +206,41 @@ describe('AnnotationBodyRenderer', () => {
     it('renders facet reference with browse link', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'facetRef', dimension: 'methodology', value: 'experimental' }],
+        items: [
+          {
+            type: 'facetRef',
+            uri: 'at://gov/pub.chive.graph.node/methodology-experimental',
+            label: 'Experimental',
+          },
+        ],
         format: 'application/x-chive-gloss+json',
       };
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const link = screen.getByRole('link', { name: /methodology: experimental/i });
-      expect(link).toHaveAttribute('href', '/browse?methodology=experimental');
+      const link = screen.getByRole('link', { name: /experimental/i });
+      expect(link).toHaveAttribute(
+        'href',
+        '/browse?facet=at%3A%2F%2Fgov%2Fpub.chive.graph.node%2Fmethodology-experimental'
+      );
     });
 
     it('applies facet chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'facetRef', dimension: 'time', value: '2024' }],
+        items: [
+          {
+            type: 'facetRef',
+            uri: 'at://gov/pub.chive.graph.node/time-2024',
+            label: 'Time: 2024',
+          },
+        ],
         format: 'application/x-chive-gloss+json',
       };
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText('time: 2024').closest('[class*="bg-"]');
+      const badge = screen.getByText('Time: 2024').closest('[class*="bg-"]');
       // facet subkind uses amber colors
       expect(badge).toHaveClass('bg-amber-100', 'text-amber-800');
     });
@@ -239,7 +254,7 @@ describe('AnnotationBodyRenderer', () => {
           {
             type: 'eprintRef',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
-            title: 'Novel Findings in ML',
+            label: 'Novel Findings in ML',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -257,7 +272,7 @@ describe('AnnotationBodyRenderer', () => {
     it('applies eprint chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'eprintRef', uri: 'at://eprint/123', title: 'Study Title' }],
+        items: [{ type: 'eprintRef', uri: 'at://eprint/123', label: 'Study Title' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -267,14 +282,14 @@ describe('AnnotationBodyRenderer', () => {
       expect(badge).toHaveClass('bg-slate-100', 'text-slate-800');
     });
 
-    it('truncates long eprint titles', () => {
+    it('truncates long eprint labels', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
             type: 'eprintRef',
             uri: 'at://eprint/123',
-            title: 'A Very Long Eprint Title That Should Be Truncated',
+            label: 'A Very Long Eprint Title That Should Be Truncated',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -289,14 +304,14 @@ describe('AnnotationBodyRenderer', () => {
   });
 
   describe('annotation reference chips', () => {
-    it('renders annotation reference with excerpt', () => {
+    it('renders annotation reference with label', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
             type: 'annotationRef',
             uri: 'at://annotation/123',
-            excerpt: 'Referenced text here',
+            label: 'Referenced text here',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -310,7 +325,7 @@ describe('AnnotationBodyRenderer', () => {
     it('applies annotation chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'annotationRef', uri: 'at://ann/1', excerpt: 'Excerpt' }],
+        items: [{ type: 'annotationRef', uri: 'at://ann/1', label: 'Excerpt' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -320,14 +335,14 @@ describe('AnnotationBodyRenderer', () => {
       expect(badge).toHaveClass('truncate', 'max-w-[150px]', 'cursor-pointer');
     });
 
-    it('shows full excerpt in title attribute', () => {
+    it('shows full label in title attribute', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
         items: [
           {
             type: 'annotationRef',
             uri: 'at://ann/1',
-            excerpt: 'This is a long excerpt that may be truncated',
+            label: 'This is a long label that may be truncated',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -335,8 +350,8 @@ describe('AnnotationBodyRenderer', () => {
 
       render(<AnnotationBodyRenderer body={body} />);
 
-      const badge = screen.getByText(/this is a long excerpt/i);
-      expect(badge).toHaveAttribute('title', 'This is a long excerpt that may be truncated');
+      const badge = screen.getByText(/this is a long label/i);
+      expect(badge).toHaveAttribute('title', 'This is a long label that may be truncated');
     });
   });
 
@@ -348,7 +363,7 @@ describe('AnnotationBodyRenderer', () => {
           {
             type: 'authorRef',
             did: 'did:plc:author123',
-            displayName: 'Dr. Jane Smith',
+            label: 'Dr. Jane Smith',
           },
         ],
         format: 'application/x-chive-gloss+json',
@@ -363,7 +378,7 @@ describe('AnnotationBodyRenderer', () => {
     it('applies author chip styling', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'authorRef', did: 'did:plc:123', displayName: 'Author Name' }],
+        items: [{ type: 'authorRef', did: 'did:plc:123', label: 'Author Name' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -377,7 +392,7 @@ describe('AnnotationBodyRenderer', () => {
     it('prefixes author name with @', () => {
       const body: RichAnnotationBody = {
         type: 'RichText',
-        items: [{ type: 'authorRef', did: 'did:plc:123', displayName: 'Researcher' }],
+        items: [{ type: 'authorRef', did: 'did:plc:123', label: 'Researcher' }],
         format: 'application/x-chive-gloss+json',
       };
 
@@ -395,7 +410,7 @@ describe('AnnotationBodyRenderer', () => {
           { type: 'text', content: 'This study on ' },
           { type: 'wikidataRef', qid: 'Q2539', label: 'Machine Learning' },
           { type: 'text', content: ' by ' },
-          { type: 'authorRef', did: 'did:plc:author1', displayName: 'Dr. Smith' },
+          { type: 'authorRef', did: 'did:plc:author1', label: 'Dr. Smith' },
           { type: 'text', content: ' is groundbreaking.' },
         ],
         format: 'application/x-chive-gloss+json',
