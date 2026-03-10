@@ -1,14 +1,19 @@
 name: Deploy App
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
     branches: [main]
+    types: [completed]
   workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    if: >-
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.head_branch == 'main') ||
+      github.event_name == 'workflow_dispatch'
     environment: production
 
     steps:
