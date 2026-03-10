@@ -53,7 +53,7 @@ Every plugin requires a `manifest.json`:
 {
   "id": "pub.chive.plugin.my-plugin",
   "name": "My Plugin",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Adds custom functionality to Chive",
   "author": "Your Name",
   "license": "MIT",

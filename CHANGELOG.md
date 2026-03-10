@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-03-10
+
+### Fixed
+
+#### Frontend
+
+- Eprint card abstracts not rendering when API returns plain text string instead of rich text array (eprints page, field pages)
+
+#### API
+
+- Browse page missing author avatars because `browseFaceted` handler did not fetch profiles from Bluesky API
+
 ## [0.3.0] - 2026-03-10
 
 ### Added
