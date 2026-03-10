@@ -43,96 +43,23 @@ import type * as PubChiveAnnotationListForPage from '@/lib/api/generated/types/p
 import type * as PubChiveAnnotationGetThread from '@/lib/api/generated/types/pub/chive/annotation/getThread';
 
 // =============================================================================
-// LOCAL TYPES (until OpenAPI types are regenerated)
+// TYPES (re-exported from generated lexicon types)
 // =============================================================================
 
-/**
- * Author reference in an annotation view.
- */
-interface AnnotationAuthorRef {
-  did: string;
-  handle?: string;
-  displayName?: string;
-  avatar?: string;
-}
+/** View of an annotation comment, from generated `pub.chive.annotation.listForEprint`. */
+export type AnnotationView = PubChiveAnnotationListForEprint.AnnotationView;
 
-/**
- * View of an annotation comment as returned by the API.
- *
- * @remarks
- * Matches the output schema of `pub.chive.annotation.listForEprint`
- * and related endpoints. These types will be replaced by generated
- * types after OpenAPI regeneration.
- */
-export interface AnnotationView {
-  uri: string;
-  cid: string;
-  author: AnnotationAuthorRef;
-  eprintUri: string;
-  content: string;
-  body?: Array<{
-    $type?: string;
-    type: string;
-    content?: string;
-    uri?: string;
-    label?: string;
-    subkind?: string;
-    qid?: string;
-    url?: string;
-    did?: string;
-    handle?: string;
-    tag?: string;
-    [key: string]: unknown;
-  }>;
-  bodyPlainText?: string;
-  target: UnifiedTextSpanTarget;
-  motivation: string;
-  parentAnnotationUri?: string;
-  replyCount: number;
-  createdAt: string;
-  indexedAt: string;
-  deleted?: boolean;
-}
+/** View of an entity link, from generated `pub.chive.annotation.listForEprint`. */
+export type EntityLinkView = PubChiveAnnotationListForEprint.EntityLinkView;
 
-/**
- * View of an entity link as returned by the API.
- */
-export interface EntityLinkView {
-  uri: string;
-  cid: string;
-  creator: AnnotationAuthorRef;
-  eprintUri: string;
-  target: UnifiedTextSpanTarget;
-  linkedEntity: unknown;
-  confidence?: number;
-  createdAt: string;
-  indexedAt: string;
-}
+/** Response from the listForEprint annotation endpoint. */
+export type ListAnnotationsResponse = PubChiveAnnotationListForEprint.OutputSchema;
 
-/**
- * Response from the listForEprint annotation endpoint.
- */
-export interface ListAnnotationsResponse {
-  annotations: AnnotationView[];
-  entityLinks?: EntityLinkView[];
-  cursor?: string;
-  hasMore: boolean;
-  total?: number;
-}
-
-/**
- * Response from the listForPage annotation endpoint.
- */
+/** Response from the listForPage annotation endpoint. */
 export type ListAnnotationsForPageResponse = PubChiveAnnotationListForPage.OutputSchema;
 
-/**
- * Annotation thread structure returned by getThread.
- */
-export interface AnnotationThread {
-  parent: AnnotationView;
-  replies: AnnotationView[];
-  totalReplies: number;
-}
+/** Annotation thread structure returned by getThread. */
+export type AnnotationThread = PubChiveAnnotationGetThread.OutputSchema;
 
 // =============================================================================
 // QUERY KEY FACTORY
@@ -496,7 +423,9 @@ export function useCreateAnnotation() {
         });
       }
 
-      // Return an AnnotationView-like object for cache management
+      // Return an AnnotationView-like object for cache management.
+      // Uses type assertion because the mutation constructs a partial view
+      // (e.g., author DID is not yet resolved, target uses UnifiedTextSpanTarget).
       return {
         uri: result.uri,
         cid: result.cid,
@@ -509,7 +438,8 @@ export function useCreateAnnotation() {
         replyCount: 0,
         createdAt: new Date().toISOString(),
         indexedAt: new Date().toISOString(),
-      };
+        deleted: false,
+      } as AnnotationView;
     },
     onSuccess: (data) => {
       // Invalidate annotations for the eprint
@@ -589,6 +519,8 @@ export function useCreateEntityLink() {
         });
       }
 
+      // Uses type assertion because the mutation constructs a partial view
+      // (e.g., creator DID is not yet resolved, target uses UnifiedTextSpanTarget).
       return {
         uri: result.uri,
         cid: result.cid,
@@ -599,7 +531,7 @@ export function useCreateEntityLink() {
         confidence: input.confidence,
         createdAt: new Date().toISOString(),
         indexedAt: new Date().toISOString(),
-      };
+      } as EntityLinkView;
     },
     onSuccess: (data) => {
       // Invalidate annotations and entity links for the eprint

@@ -42,6 +42,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PDF viewer minimum height reduced on mobile (`min-h-[400px] md:min-h-[600px]`)
 - New `useIsMobile` hook and shadcn Sheet component for consistent mobile patterns
 
+#### Types
+
+- Replace redundant annotation hook types (`AnnotationView`, `EntityLinkView`, `ListAnnotationsResponse`, `AnnotationThread`) with generated lexicon types from `pub.chive.annotation`
+- Replace `ListUserEndorsementsResponse` with generated `OutputSchema` from `pub.chive.endorsement.listForUser`
+- Derive `AnnotationMotivation` from generated `AnnotationView['motivation']` instead of manual string union
+- Derive `ContributionType` from generated `EndorsementView['contributions'][number]` instead of manual string union
+
 #### Discovery
 
 - Related papers scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
