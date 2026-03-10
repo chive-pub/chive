@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Types
+
+- Replaced `EdgesResponse` in `use-edges.ts` with generated `OutputSchema` from `pub.chive.graph.listEdges`
+- Replaced `AuthorEprintsResponse` in `use-author.ts` with `ListByAuthorResponse` from generated types
+- Derived `ProposalStatus` and `ProposalType` from generated `ProposalView` instead of manual string unions
+- Derived `VoteAction` from generated `VoteView['vote']` instead of manual string union
+- Derived `AlphaSector` and `AlphaCareerStage` from generated `alpha/apply` `InputSchema` instead of manual string unions
+
 #### Frontend
 
 - Comprehensive mobile responsiveness overhaul across the entire frontend

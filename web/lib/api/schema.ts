@@ -847,11 +847,12 @@ export type {
 import type { OutputSchema as _ProposalsResponse } from './generated/types/pub/chive/governance/listProposals.js';
 export type ProposalsResponse = _ProposalsResponse;
 
-// Proposal status type - includes legacy values for backwards compatibility
-export type ProposalStatus = 'open' | 'approved' | 'rejected' | 'withdrawn' | 'pending' | 'expired';
+// Proposal status type, derived from generated ProposalView.
+import type { ProposalView as _ProposalView } from './generated/types/pub/chive/governance/listProposals.js';
+export type ProposalStatus = _ProposalView['status'];
 
-// Proposal type
-export type ProposalType = 'create' | 'update' | 'merge' | 'deprecate';
+// Proposal type, derived from generated ProposalView.
+export type ProposalType = _ProposalView['type'];
 
 // Proposal category - node or edge for knowledge graph proposals
 export type ProposalCategory = 'node' | 'edge';
@@ -869,10 +870,9 @@ export type {
   VoteView as Vote,
 } from './generated/types/pub/chive/governance/listVotes.js';
 
-/**
- * Vote action types.
- */
-export type VoteAction = 'approve' | 'reject' | 'abstain' | 'request-changes';
+// Vote action types, derived from generated VoteView.
+import type { VoteView as _VoteView } from './generated/types/pub/chive/governance/listVotes.js';
+export type VoteAction = _VoteView['vote'];
 
 /**
  * Vote value is an alias for VoteAction.
@@ -997,35 +997,12 @@ export type {
   ResearchKeyword as AlphaResearchKeyword,
 } from './generated/types/pub/chive/alpha/apply.js';
 
-/**
- * Organization/sector type for alpha application.
- */
-export type AlphaSector =
-  | 'academia'
-  | 'industry'
-  | 'government'
-  | 'nonprofit'
-  | 'healthcare'
-  | 'independent'
-  | 'other';
+// Organization/sector type for alpha application, derived from generated InputSchema.
+import type { InputSchema as _AlphaApplyInput } from './generated/types/pub/chive/alpha/apply.js';
+export type AlphaSector = _AlphaApplyInput['sector'];
 
-/**
- * Career stage for alpha application.
- */
-export type AlphaCareerStage =
-  | 'undergraduate'
-  | 'graduate-masters'
-  | 'graduate-phd'
-  | 'postdoc'
-  | 'research-staff'
-  | 'junior-faculty'
-  | 'senior-faculty'
-  | 'research-admin'
-  | 'librarian'
-  | 'science-communicator'
-  | 'policy-professional'
-  | 'retired'
-  | 'other';
+// Career stage for alpha application, derived from generated InputSchema.
+export type AlphaCareerStage = _AlphaApplyInput['careerStage'];
 
 /**
  * Alpha application status.
