@@ -102,7 +102,7 @@ export const getHierarchy: XRPCMethod<QueryParams, void, OutputSchema> = {
     const response: OutputSchema = {
       roots: hierarchy.map(mapHierarchyToResponse),
       subkind: params.subkind,
-      relationSlug: params.relationSlug,
+      relationSlug: params.relationSlug ?? 'broader',
     };
 
     logger.info('Hierarchy retrieved', {

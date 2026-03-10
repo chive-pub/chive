@@ -67,7 +67,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Related papers scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
 - Removed For You feed in favor of configurable discovery weights
 
+#### API Validation
+
+- Enabled server-side XRPC output validation (`validateOutput: true`) to catch schema mismatches at the source before responses reach clients
+
 ### Fixed
+
+#### API
+
+- `getHierarchy` handler missing default `relationSlug` value, causing 500 when output validation is enabled
+- Authors page only showing search box instead of author grid due to incorrect conditional rendering
+
+#### Tests
+
+- Eprint integration tests failing due to stale PostgreSQL data from prior runs; added `beforeEach` cleanup
 
 #### Admin Dashboard
 

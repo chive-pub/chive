@@ -112,8 +112,8 @@ export const allXRPCMethods = {
  * @public
  */
 export function registerXRPCRoutes(app: Hono<ChiveEnv>): void {
-  // Create XRPC router with lexicon validation
-  const xrpc = createXRPCRouter(lexicons, { validateOutput: false });
+  // Create XRPC router with lexicon validation (output validation catches schema mismatches server-side)
+  const xrpc = createXRPCRouter(lexicons, { validateOutput: true });
 
   // Apply XRPC error handler to the router for ATProto-compliant error responses
   xrpc.router.onError(xrpcErrorHandler);
