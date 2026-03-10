@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+#### Types
+
+- Consolidated rich text `$type` references to use `pub.chive.richtext.defs` namespace across all tests, lexicons, and frontend code
+- Replaced `EprintsByAuthorResponse` with `ListByAuthorResponse` from generated types in `use-eprint.ts`
+- Replaced `EprintChangelogsResponse` with `ListChangelogsOutput` from generated types in `use-eprint-mutations.ts`
+- Replaced manual `Backlink`, `BacklinkCounts`, and `ListBacklinksResponse` with generated types in `use-backlinks.ts`
+- Added backlink and changelog type re-exports to `schema.ts` from generated lexicon types
+
 #### Frontend
 
 - Comprehensive mobile responsiveness overhaul across the entire frontend
