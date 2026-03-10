@@ -26,9 +26,15 @@
  */
 
 import type { AtUri, DID } from '../atproto.js';
+import type { AnnotationBody } from '../models/annotation.js';
 
 import type { IPluginManager } from './plugin.interface.js';
 import type { RankableItem } from './ranking.interface.js';
+
+/**
+ * RankableItem with abstract replaced by AnnotationBody for rich text.
+ */
+type RankableItemRichAbstract = Omit<RankableItem, 'abstract'>;
 
 // =============================================================================
 // DISCOVERY SERVICE INTERFACE
@@ -301,7 +307,7 @@ export interface RelatedEprintOptions {
   /**
    * Minimum similarity score (0-1).
    *
-   * @defaultValue 0.3
+   * @defaultValue 0.05
    */
   readonly minScore?: number;
 
@@ -309,6 +315,18 @@ export interface RelatedEprintOptions {
    * User DID for personalization context.
    */
   readonly userDid?: DID;
+
+  /**
+   * Custom weights for related paper signals (0-1, auto-normalized).
+   * Overrides the default weights when provided.
+   */
+  readonly weights?: {
+    readonly semantic?: number;
+    readonly coCitation?: number;
+    readonly conceptOverlap?: number;
+    readonly authorNetwork?: number;
+    readonly collaborative?: number;
+  };
 }
 
 /**
@@ -322,7 +340,8 @@ export type RelatedEprintSignal =
   | 'concepts' // OpenAlex concept overlap
   | 'semantic' // SPECTER2 embedding similarity
   | 'authors' // Co-author network
-  | 'topics'; // OpenAlex topic overlap
+  | 'topics' // OpenAlex topic overlap
+  | 'collaborative'; // Collaborative filtering from user interactions
 
 /**
  * Related eprint with relationship metadata.
@@ -330,11 +349,16 @@ export type RelatedEprintSignal =
  * @public
  * @since 0.1.0
  */
-export interface RelatedEprint extends RankableItem {
+export interface RelatedEprint extends RankableItemRichAbstract {
   /**
    * AT-URI of the related eprint.
    */
   readonly uri: AtUri;
+
+  /**
+   * Rich text abstract (AnnotationBody from PostgreSQL, string from Neo4j).
+   */
+  readonly abstract?: AnnotationBody | string | null;
 
   /**
    * Overall similarity score (0-1).
@@ -359,6 +383,7 @@ export interface RelatedEprint extends RankableItem {
     readonly concepts?: number;
     readonly semantic?: number;
     readonly authors?: number;
+    readonly collaborative?: number;
     readonly topics?: number;
   };
 }
@@ -376,7 +401,8 @@ export type RelatedEprintRelationship =
   | 'bibliographic-coupling' // Share references (cite same papers)
   | 'same-author' // Share an author
   | 'similar-topics' // Similar OpenAlex topics
-  | 'semantically-similar'; // High SPECTER2 similarity
+  | 'semantically-similar' // High SPECTER2 similarity
+  | 'collaborative-filtering'; // Users with similar interests also read
 
 /**
  * Options for personalized recommendations.
@@ -931,7 +957,7 @@ export interface ICitationGraph {
  * `pub.chive.eprint.relatedWork` records).
  *
  * @public
- * @since 0.2.0
+ * @since 0.1.0
  */
 export interface RelatedWorkInput {
   /**

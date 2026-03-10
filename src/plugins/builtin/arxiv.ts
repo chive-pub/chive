@@ -156,7 +156,7 @@ export class ArxivPlugin extends ImportingPlugin implements SearchablePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.arxiv',
     name: 'arXiv Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Imports eprints from arXiv via OAI-PMH protocol with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',

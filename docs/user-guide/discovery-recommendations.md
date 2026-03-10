@@ -24,15 +24,15 @@ Each eprint page shows related papers in the sidebar:
 
 ### How related papers are found
 
-Related papers are ranked using five weighted signals:
+Related papers are ranked using five weighted signals. You can customize these weights in your [discovery settings](#configurable-discovery-weights):
 
-| Signal                               | Weight | Source                      |
-| ------------------------------------ | ------ | --------------------------- |
-| SPECTER2 semantic similarity         | 30%    | Semantic Scholar embeddings |
-| Co-citation + bibliographic coupling | 25%    | Neo4j citation graph        |
-| OpenAlex concept/topic overlap       | 20%    | OpenAlex 4-level taxonomy   |
-| Author network                       | 15%    | Co-author overlap           |
-| Collaborative filtering              | 10%    | User engagement patterns    |
+| Signal                               | Default weight | Source                      |
+| ------------------------------------ | -------------- | --------------------------- |
+| SPECTER2 semantic similarity         | 30%            | Semantic Scholar embeddings |
+| Co-citation + bibliographic coupling | 25%            | Neo4j citation graph        |
+| OpenAlex concept/topic overlap       | 20%            | OpenAlex 4-level taxonomy   |
+| Author network                       | 15%            | Co-author overlap           |
+| Collaborative filtering              | 10%            | User engagement patterns    |
 
 **Auto-detected**: The system finds related papers using:
 
@@ -148,9 +148,7 @@ To dismiss a recommendation, click the **X** button on any suggested paper. Dism
 
 ## Discovery settings
 
-:::info
-This feature is planned and may not yet be available.
-:::
+### General preferences
 
 | Setting                       | Options                        | Default |
 | ----------------------------- | ------------------------------ | ------- |
@@ -158,6 +156,30 @@ This feature is planned and may not yet be available.
 | Include eprints from          | All sources / Selected sources | All     |
 | Show papers in languages      | Select languages               | English |
 | Minimum endorsement threshold | 0 / 1 / 3 / 5                  | 0       |
+
+### Configurable discovery weights
+
+You can tune how related papers are ranked by adjusting the weight of each signal in **Settings > Discovery > Related Papers Weights**. Each weight is a value from 0 to 100; the system normalizes them so they sum to 100%.
+
+| Weight                  | Controls                                                             | Default |
+| ----------------------- | -------------------------------------------------------------------- | ------- |
+| Field affinity          | How much shared research fields influence recommendations            | 30      |
+| Citation overlap        | How much co-citation and bibliographic coupling influence ranking    | 25      |
+| Recency                 | How strongly recently published papers are boosted                   | 20      |
+| Collaborative filtering | How much user engagement patterns (views, downloads) influence picks | 10      |
+
+Setting a weight to 0 disables that signal entirely. For example, setting collaborative filtering to 0 produces recommendations based only on content similarity, citation graphs, and field overlap.
+
+### Related papers scoring thresholds
+
+You can also adjust the minimum score for a paper to appear in the "Related Papers" panel:
+
+| Threshold       | Controls                                                | Default |
+| --------------- | ------------------------------------------------------- | ------- |
+| Minimum score   | Papers scoring below this are hidden (0.0 to 1.0 scale) | 0.3     |
+| Minimum signals | Number of signals that must contribute a nonzero score  | 1       |
+
+Lower the minimum score to see more results; raise it to see only high-confidence matches.
 
 ## Privacy
 

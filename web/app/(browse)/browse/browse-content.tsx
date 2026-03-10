@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Share2, Bookmark, BookmarkCheck, Check, Copy } from 'lucide-react';
 
@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useMutedAuthors, filterMutedContent } from '@/lib/hooks/use-muted-authors';
 
 /**
  * Initial params for the browse page.
@@ -175,7 +176,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
 
   // Fetch results with faceted search
   const {
-    data: searchResults,
+    data: rawSearchResults,
     isLoading,
     error,
     refetch,
@@ -184,6 +185,16 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
     facets: Object.keys(filters).length > 0 ? filters : undefined,
     limit: 20,
   });
+  const { mutedDids } = useMutedAuthors();
+
+  // Filter out eprints by muted authors
+  const searchResults = useMemo(() => {
+    if (!rawSearchResults || mutedDids.size === 0) return rawSearchResults;
+    const filteredHits = filterMutedContent(rawSearchResults.hits ?? [], mutedDids, (hit) =>
+      hit.authors.map((a) => a.did)
+    );
+    return { ...rawSearchResults, hits: filteredHits };
+  }, [rawSearchResults, mutedDids]);
 
   // Update URL when state changes
   const updateUrl = useCallback(

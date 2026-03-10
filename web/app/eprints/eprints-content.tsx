@@ -1,10 +1,12 @@
 'use client';
 
+import { useMemo } from 'react';
 import Link from 'next/link';
 
 import { EprintCard, EprintCardSkeleton } from '@/components/eprints';
 import { Button } from '@/components/ui/button';
 import { usePersonalizedFeed } from '@/lib/hooks/use-personalized-feed';
+import { useMutedAuthors, filterMutedContent } from '@/lib/hooks/use-muted-authors';
 import type { EprintCardData } from '@/lib/api/schema';
 
 /**
@@ -14,11 +16,30 @@ import type { EprintCardData } from '@/lib/api/schema';
  * Authenticated users with fields see recent papers in their fields.
  * Authenticated users without fields see a prompt to set up their profile,
  * with the global trending feed below. Anonymous users see global trending.
+ * Eprints by muted authors are filtered out.
  */
 export function EprintsPageContent() {
-  const { isPersonalized, needsFieldSetup, eprints, isLoading, error } = usePersonalizedFeed({
+  const {
+    isPersonalized,
+    needsFieldSetup,
+    eprints: rawEprints,
+    isLoading,
+    error,
+  } = usePersonalizedFeed({
     limit: 20,
   });
+  const { mutedDids } = useMutedAuthors();
+
+  const eprints = useMemo(
+    () =>
+      filterMutedContent(rawEprints, mutedDids, (eprint) => {
+        const authors = (eprint as Record<string, unknown>).authors as
+          | { did?: string }[]
+          | undefined;
+        return authors?.map((a) => a.did).filter((d): d is string => !!d) ?? [];
+      }),
+    [rawEprints, mutedDids]
+  );
 
   if (isLoading) {
     return (

@@ -6,7 +6,7 @@
  * Validates ATProto compliance (pdsUrl inclusion, BlobRef only).
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { getSubmission } from '@/api/handlers/xrpc/eprint/getSubmission.js';
 import { listByAuthor } from '@/api/handlers/xrpc/eprint/listByAuthor.js';
@@ -118,6 +118,17 @@ describe('XRPC Eprint Handlers', () => {
     mockEprintService = createMockEprintService();
     mockMetricsService = createMockMetricsService();
 
+    // Mock global fetch to prevent real HTTP calls (the handler fetches
+    // Bluesky profiles for author avatars with a 5s timeout that races
+    // against the test timeout in CI).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ profiles: [] }),
+      })
+    );
+
     mockContext = {
       get: vi.fn((key: string) => {
         switch (key) {
@@ -125,6 +136,9 @@ describe('XRPC Eprint Handlers', () => {
             return {
               eprint: mockEprintService,
               metrics: mockMetricsService,
+              nodeRepository: {
+                getNodesByIds: vi.fn().mockResolvedValue(new Map()),
+              },
             };
           case 'logger':
             return mockLogger;
@@ -136,6 +150,10 @@ describe('XRPC Eprint Handlers', () => {
       }),
       set: vi.fn(),
     };
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   /**
@@ -334,7 +352,9 @@ describe('XRPC Eprint Handlers', () => {
 
       const firstEprint = result.body.eprints[0];
       if (firstEprint?.abstract) {
-        expect(firstEprint.abstract.length).toBe(1000);
+        // abstract is a rich text array; check the text content is not truncated
+        expect(firstEprint.abstract).toHaveLength(1);
+        expect((firstEprint.abstract[0] as { content: string }).content).toHaveLength(1000);
       }
     });
   });

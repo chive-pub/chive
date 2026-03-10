@@ -122,15 +122,15 @@ const SAMPLE_RECORD_DECOMP = {
       },
     ],
     access_right: 'open',
-    version: 'v0.3.0',
+    version: 'v0.2.0',
   },
   files: [
     {
-      key: 'decomp-v0.3.0.tar.gz',
+      key: 'decomp-v0.2.0.tar.gz',
       size: 45678901,
       checksum: 'md5:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6',
       links: {
-        self: 'https://zenodo.org/api/files/abc123/decomp-v0.3.0.tar.gz',
+        self: 'https://zenodo.org/api/files/abc123/decomp-v0.2.0.tar.gz',
       },
     },
     {
@@ -416,7 +416,7 @@ describe('ZenodoIntegrationPlugin', () => {
 
     it('should have correct manifest metadata', () => {
       expect(plugin.manifest.name).toBe('Zenodo Integration');
-      expect(plugin.manifest.version).toBe('0.2.0');
+      expect(plugin.manifest.version).toBe('0.3.0');
       expect(plugin.manifest.author).toBe('Aaron Steven White');
       expect(plugin.manifest.license).toBe('MIT');
       expect(plugin.manifest.id).toBe('pub.chive.plugin.zenodo');
@@ -505,7 +505,7 @@ describe('ZenodoIntegrationPlugin', () => {
       expect(result?.resourceType.type).toBe('software');
       expect(result?.resourceType.subtype).toBe('code');
       expect(result?.publicationDate).toBe('2020-05-15');
-      expect(result?.version).toBe('v0.3.0');
+      expect(result?.version).toBe('v0.2.0');
       expect(result?.accessRight).toBe('open');
       expect(result?.state).toBe('done');
     });
@@ -594,7 +594,7 @@ describe('ZenodoIntegrationPlugin', () => {
       const result = await plugin.getRecord(5678901);
 
       expect(result?.files).toHaveLength(2);
-      expect(result?.files?.[0]?.key).toBe('decomp-v0.3.0.tar.gz');
+      expect(result?.files?.[0]?.key).toBe('decomp-v0.2.0.tar.gz');
       expect(result?.files?.[0]?.size).toBe(45678901);
       expect(result?.files?.[0]?.checksum).toBe('md5:a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6');
       expect(result?.files?.[0]?.links.self).toContain('zenodo.org/api/files');

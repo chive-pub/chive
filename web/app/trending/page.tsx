@@ -8,11 +8,13 @@ import { useCurrentUser } from '@/lib/auth';
 import { useAuthorProfile } from '@/lib/hooks/use-author';
 import { useDiscoverySettings } from '@/lib/hooks/use-discovery';
 import { useTrending } from '@/lib/hooks/use-trending';
+import { useMutedAuthors, filterMutedContent } from '@/lib/hooks/use-muted-authors';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RichTextRenderer } from '@/components/editor/rich-text-renderer';
+import { isRichTextItem } from '@/lib/types/rich-text';
 import type { TrendingEntry } from '@/lib/api/schema';
 
 type TimeWindow = '24h' | '7d' | '30d';
@@ -67,7 +69,13 @@ function TrendingCard({
           </h3>
 
           <div className="text-sm text-muted-foreground line-clamp-2 mt-1">
-            <RichTextRenderer text={eprint.abstract} mode="inline" />
+            <RichTextRenderer
+              items={
+                Array.isArray(eprint.abstract) ? eprint.abstract.filter(isRichTextItem) : undefined
+              }
+              text={typeof eprint.abstract === 'string' ? eprint.abstract : undefined}
+              mode="inline"
+            />
           </div>
 
           <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
@@ -105,20 +113,29 @@ function TrendingCard({
  * If the user has no fields set, shows a prompt to configure their profile.
  */
 export default function TrendingPage() {
-  const [window, setWindow] = useState<TimeWindow>('7d');
-  const [fieldTab, setFieldTab] = useState<FieldTab>('my-fields');
-
   const user = useCurrentUser();
   const { data: profile } = useAuthorProfile(user?.did ?? '');
   const { data: discoverySettings } = useDiscoverySettings();
 
+  const defaultWindow = (discoverySettings?.trendingPreferences?.defaultWindow ??
+    '7d') as TimeWindow;
+  const defaultLimit = discoverySettings?.trendingPreferences?.defaultLimit ?? 20;
+
+  const [window, setWindow] = useState<TimeWindow>(defaultWindow);
+  const [fieldTab, setFieldTab] = useState<FieldTab>('my-fields');
+  const [initialized, setInitialized] = useState(false);
+
+  // Sync initial window from settings once loaded
+  if (discoverySettings && !initialized) {
+    setWindow(defaultWindow);
+    setInitialized(true);
+  }
+
   const personalizationEnabled = discoverySettings?.enablePersonalization !== false;
-  const trendingSignalEnabled = discoverySettings?.forYouSignals?.trending !== false;
 
   // Work fields from profile
   const workFieldUris = profile?.fields;
-  const hasWorkFields =
-    !!workFieldUris && workFieldUris.length > 0 && personalizationEnabled && trendingSignalEnabled;
+  const hasWorkFields = !!workFieldUris && workFieldUris.length > 0 && personalizationEnabled;
 
   // Followed fields from discovery settings
   const followedFieldUris = discoverySettings?.followedFieldUris;
@@ -143,15 +160,23 @@ export default function TrendingPage() {
 
   const { data, isLoading, error } = useTrending({
     window,
-    limit: 25,
+    limit: defaultLimit,
     ...(hasActiveFields ? { fieldUris: activeFieldUris } : {}),
   });
+  const { mutedDids } = useMutedAuthors();
 
-  // Filter to only show entries matching the active fields
+  // Filter to only show entries matching the active fields, excluding muted authors
   const displayEntries = useMemo(() => {
-    if (!data?.trending || !hasActiveFields) return data?.trending ?? [];
-    return data.trending.filter((entry) => entry.inUserFields);
-  }, [data?.trending, hasActiveFields]);
+    let entries = data?.trending ?? [];
+    if (hasActiveFields) {
+      entries = entries.filter((entry) => entry.inUserFields);
+    }
+    return filterMutedContent(
+      entries,
+      mutedDids,
+      (entry) => entry.authors?.map((a) => a.did).filter((d): d is string => !!d) ?? []
+    );
+  }, [data?.trending, hasActiveFields, mutedDids]);
 
   const isAuthenticated = !!user;
 
@@ -167,7 +192,7 @@ export default function TrendingPage() {
       </div>
 
       {/* Field Tab Selector (only for authenticated users with personalization on) */}
-      {isAuthenticated && personalizationEnabled && trendingSignalEnabled && (
+      {isAuthenticated && personalizationEnabled && (
         <Tabs value={fieldTab} onValueChange={(v) => setFieldTab(v as FieldTab)}>
           <TabsList>
             <TabsTrigger value="my-fields" className="gap-2">

@@ -7,6 +7,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-03-10
+
+### Added
+
+#### Authors Page and Mute Feature
+
+- Personalized authors page showing authors the user follows or has interacted with
+- Mute author feature allowing users to hide papers from specific authors in feeds and discovery
+- `pub.chive.actor.mute` lexicon record type for storing mute preferences in user PDSes
+
+#### Discovery
+
+- Configurable discovery weight settings allowing users to tune recommendation signal strengths (field affinity, citation overlap, recency, collaborative filtering)
+- XRPC array parameter parsing for multi-value query parameters
+
+#### Deployment
+
+- GHCR image registry for CI-built Docker images, eliminating on-server builds during staging deploys
+- Staging docs container added to CI/CD pipeline
+
+### Changed
+
+#### Types
+
+- Consolidated rich text `$type` references to use `pub.chive.richtext.defs` namespace across all tests, lexicons, and frontend code
+- Replaced `EprintsByAuthorResponse` with `ListByAuthorResponse` from generated types in `use-eprint.ts`
+- Replaced `EprintChangelogsResponse` with `ListChangelogsOutput` from generated types in `use-eprint-mutations.ts`
+- Replaced manual `Backlink`, `BacklinkCounts`, and `ListBacklinksResponse` with generated types in `use-backlinks.ts`
+- Added backlink and changelog type re-exports to `schema.ts` from generated lexicon types
+- Replaced `EdgesResponse` in `use-edges.ts` with generated `OutputSchema` from `pub.chive.graph.listEdges`
+- Replaced `AuthorEprintsResponse` in `use-author.ts` with `ListByAuthorResponse` from generated types
+- Derived `ProposalStatus` and `ProposalType` from generated `ProposalView` instead of manual string unions
+- Derived `VoteAction` from generated `VoteView['vote']` instead of manual string union
+- Derived `AlphaSector` and `AlphaCareerStage` from generated `alpha/apply` `InputSchema` instead of manual string unions
+
+#### Frontend
+
+- Comprehensive mobile responsiveness overhaul across the entire frontend
+- Dashboard, admin, and governance sidebars collapse into Sheet drawers on mobile instead of stacking above content
+- Mobile hamburger menu now includes dashboard navigation items for authenticated users
+- Mobile search access via dedicated search icon button that opens a top Sheet
+- Admin tables wrapped in horizontal scroll containers to prevent page overflow on narrow screens
+- Grid layouts use progressive responsive breakpoints (`sm:grid-cols-2 md:grid-cols-3`) instead of jumping directly to multi-column
+- Tab lists hide scrollbars for cleaner horizontal scrolling on mobile
+- Popover widths constrained to viewport with `max-w-[calc(100vw-2rem)]`
+- PDF viewer minimum height reduced on mobile (`min-h-[400px] md:min-h-[600px]`)
+- New `useIsMobile` hook and shadcn Sheet component for consistent mobile patterns
+
+#### Types
+
+- Replace redundant annotation hook types (`AnnotationView`, `EntityLinkView`, `ListAnnotationsResponse`, `AnnotationThread`) with generated lexicon types from `pub.chive.annotation`
+- Replace `ListUserEndorsementsResponse` with generated `OutputSchema` from `pub.chive.endorsement.listForUser`
+- Derive `AnnotationMotivation` from generated `AnnotationView['motivation']` instead of manual string union
+- Derive `ContributionType` from generated `EndorsementView['contributions'][number]` instead of manual string union
+
+#### Discovery
+
+- Related papers scoring: lowered combined score threshold from 0.2 to 0.05, reduced ES MLT discount from 0.6 to 0.85, and added author overlap to default signals
+- Removed For You feed in favor of configurable discovery weights
+
+#### API Validation
+
+- Enabled server-side XRPC output validation (`validateOutput: true`) to catch schema mismatches at the source before responses reach clients
+
+### Fixed
+
+#### API
+
+- `getHierarchy` handler missing default `relationSlug` value, causing 500 when output validation is enabled
+- Authors page only showing search box instead of author grid due to incorrect conditional rendering
+
+#### Tests
+
+- Eprint integration tests failing due to stale PostgreSQL data from prior runs; added `beforeEach` cleanup
+
+#### Admin Dashboard
+
+- Field name mismatches between admin API responses and frontend expectations
+- Role name references corrected from `moderator` to `admin` across admin endpoints
+- Silent auth failures in admin routes now surface proper error messages
+
+#### Authentication
+
+- Paper PDS auth wired through all edit and delete flows, fixing unauthorized errors when modifying papers
+- Unified auth error messages across all endpoints for consistent error handling
+
+#### Frontend
+
+- Removed broken "View all related papers" link pointing to nonexistent page
+- Flaky mention-popover arrow key navigation test stabilized by replacing `fireEvent.keyDown` with `userEvent.keyboard`
+
+#### Deployment
+
+- Staging deploy workflow now builds web frontend image in CI and pins both API and web images to the exact commit SHA, preventing frontend-backend version skew
+- Split Docker build and push steps to fix GHCR authentication failure
+- Test expectations updated to match unified auth error messages
+- Discovery test expectations updated for new default weights and weight normalization
+
 ## [0.2.0] - 2026-03-06
 
 ### Added
@@ -320,6 +418,7 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/chive-pub/chive/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/chive-pub/chive/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/chive-pub/chive/releases/tag/v0.1.0

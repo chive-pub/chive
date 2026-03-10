@@ -31,10 +31,7 @@
               "description": "Updated rich abstract",
               "items": {
                 "type": "union",
-                "refs": [
-                  "pub.chive.eprint.submission#textItem",
-                  "pub.chive.eprint.submission#nodeRefItem"
-                ]
+                "refs": ["pub.chive.richtext.defs#textItem", "pub.chive.richtext.defs#nodeRefItem"]
               },
               "maxLength": 100
             },

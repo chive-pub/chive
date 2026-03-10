@@ -39,10 +39,14 @@ export type {
   Material,
   FundingSource,
   ConferencePresentation,
-  TextItem as EprintTextItem,
-  NodeRefItem as EprintNodeRefItem,
   SemanticVersion,
 } from './generated/types/pub/chive/eprint/submission.js';
+
+// Rich text item types (shared across all content types)
+export type {
+  TextItem as EprintTextItem,
+  NodeRefItem as EprintNodeRefItem,
+} from './generated/types/pub/chive/richtext/defs.js';
 
 // Eprint version record (raw lexicon record)
 export type { Main as EprintVersionRecord } from './generated/types/pub/chive/eprint/version.js';
@@ -331,40 +335,29 @@ export type {
   TextQuoteSelector as CommentTextQuoteSelector,
   TextPositionSelector as CommentTextPositionSelector,
   FragmentSelector,
+} from './generated/types/pub/chive/review/comment.js';
+
+// These types now come from richtext/defs (shared across all content types)
+export type {
   TextItem as ReviewTextItem,
   NodeRefItem as ReviewNodeRefItem,
   EprintRefItem,
-} from './generated/types/pub/chive/review/comment.js';
+} from './generated/types/pub/chive/richtext/defs.js';
 
-// listForEprint response - exports the view types (excluding types that have unified versions)
-export type {
-  OutputSchema as ListReviewsResponse,
-  ByteSlice,
-  MentionFacet,
-  LinkFacet,
-  TagFacet,
-} from './generated/types/pub/chive/review/listForEprint.js';
+// listForEprint response
+export type { OutputSchema as ListReviewsResponse } from './generated/types/pub/chive/review/listForEprint.js';
 
 /**
  * ReviewAuthorRef - alias for UnifiedAuthorRef.
  */
 export type ReviewAuthorRef = UnifiedAuthorRef;
 
-/**
- * AnnotationBody - alias for UnifiedAnnotationBody.
- */
-export type AnnotationBody = UnifiedAnnotationBody;
-
 // listForAuthor response
 export type { OutputSchema as ListAuthorReviewsResponse } from './generated/types/pub/chive/review/listForAuthor.js';
 
-// Import specific ReviewView types for unified type
+// Import specific ReviewView types for unified Review type
 import type { ReviewView as _EprintReviewView } from './generated/types/pub/chive/review/listForEprint.js';
 import type { ReviewView as _AuthorReviewView } from './generated/types/pub/chive/review/listForAuthor.js';
-import type { TextSpanTarget as _EprintTextSpanTarget } from './generated/types/pub/chive/review/listForEprint.js';
-import type { TextSpanTarget as _AuthorTextSpanTarget } from './generated/types/pub/chive/review/listForAuthor.js';
-import type { RichTextFacet as _EprintRichTextFacet } from './generated/types/pub/chive/review/listForEprint.js';
-import type { RichTextFacet as _AuthorRichTextFacet } from './generated/types/pub/chive/review/listForAuthor.js';
 
 /**
  * UnifiedAuthorRef - structural type for AuthorRef across endpoints.
@@ -378,20 +371,16 @@ export interface UnifiedAuthorRef {
 }
 
 /**
- * UnifiedAnnotationBody - structural type for AnnotationBody.
- */
-export interface UnifiedAnnotationBody {
-  $type?: string;
-  text: string;
-  facets?: UnifiedRichTextFacet[];
-}
-
-/**
- * Review - unified structural type for review views across different endpoints.
+ * Review - cross-endpoint structural type for review views.
  *
  * @remarks
- * Uses structural typing with `$type?: string` to be compatible with any endpoint's
- * ReviewView type, regardless of the specific $type discriminator value.
+ * Structural type compatible with ReviewView from listForEprint, listForAuthor,
+ * and getThread. The `body` field uses the exact generated body union type from
+ * the review endpoints for strict rich text typing.
+ *
+ * The `$type` fields are relaxed to `string?` because different endpoints emit
+ * different discriminator values (e.g. `pub.chive.review.listForEprint#authorRef`
+ * vs `pub.chive.review.listForAuthor#authorRef`).
  */
 export interface Review {
   $type?: string;
@@ -399,28 +388,16 @@ export interface Review {
   cid: string;
   author: UnifiedAuthorRef;
   eprintUri: string;
+  eprintTitle?: string;
   content: string;
-  body?: UnifiedAnnotationBody;
+  body?: _EprintReviewView['body'];
+  bodyPlainText?: string;
   target?: UnifiedTextSpanTarget;
-  motivation:
-    | 'commenting'
-    | 'highlighting'
-    | 'questioning'
-    | 'replying'
-    | 'assessing'
-    | 'bookmarking'
-    | 'classifying'
-    | 'describing'
-    | 'editing'
-    | 'linking'
-    | 'moderating'
-    | 'tagging'
-    | (string & {});
+  motivation: _EprintReviewView['motivation'];
   parentReviewUri?: string;
   replyCount: number;
   createdAt: string;
   indexedAt: string;
-  /** Whether this review has been deleted (soft-delete tombstone) */
   deleted?: boolean;
 }
 
@@ -520,20 +497,19 @@ export type RichTextFacet = UnifiedRichTextFacet;
 // getThread response
 export type { OutputSchema as ReviewThread } from './generated/types/pub/chive/review/getThread.js';
 
-// W3C Web Annotation motivation type
-export type AnnotationMotivation =
-  | 'commenting'
-  | 'highlighting'
-  | 'questioning'
-  | 'replying'
-  | 'assessing'
-  | 'bookmarking'
-  | 'classifying'
-  | 'describing'
-  | 'editing'
-  | 'linking'
-  | 'moderating'
-  | 'tagging';
+// Annotation types from generated lexicon types
+export type {
+  OutputSchema as ListAnnotationsResponse,
+  AnnotationView,
+  EntityLinkView,
+  AuthorRef as AnnotationAuthorRef,
+  TextSpanTarget as AnnotationTextSpanTarget,
+} from './generated/types/pub/chive/annotation/listForEprint.js';
+export type { OutputSchema as AnnotationThread } from './generated/types/pub/chive/annotation/getThread.js';
+
+// W3C Web Annotation motivation type, derived from generated AnnotationView.
+import type { AnnotationView as GeneratedAnnotationView } from './generated/types/pub/chive/annotation/listForEprint.js';
+export type AnnotationMotivation = GeneratedAnnotationView['motivation'];
 
 // Rich annotation body types for annotation editor
 export interface RichAnnotationItem {
@@ -551,18 +527,12 @@ export interface RichAnnotationItem {
   label?: string;
   kind?: 'type' | 'object';
   subkind?: string;
-  title?: string;
   // For wikidataRef
   qid?: string;
   url?: string;
-  // For facetRef
-  dimension?: string;
-  value?: string;
-  // For annotationRef
-  excerpt?: string;
   // For authorRef
   did?: string;
-  displayName?: string;
+  handle?: string;
 }
 
 export interface RichAnnotationBodyObject {
@@ -580,29 +550,15 @@ export type RichAnnotationBody = RichAnnotationBodyObject | RichAnnotationItem[]
 export type { Main as EndorsementRecord } from './generated/types/pub/chive/review/endorsement.js';
 
 /**
- * Contribution type for endorsements.
+ * Contribution type for endorsements, derived from generated EndorsementView.
  *
  * @remarks
  * Union of known contribution types that align with CRediT taxonomy.
- * The lexicon also allows `(string & {})` for forward compatibility
- * with new types added to the knowledge graph.
+ * Includes `(string & {})` for forward compatibility with new types
+ * added to the knowledge graph.
  */
-export type ContributionType =
-  | 'methodological'
-  | 'analytical'
-  | 'theoretical'
-  | 'empirical'
-  | 'conceptual'
-  | 'technical'
-  | 'data'
-  | 'replication'
-  | 'reproducibility'
-  | 'synthesis'
-  | 'interdisciplinary'
-  | 'pedagogical'
-  | 'visualization'
-  | 'societal-impact'
-  | 'clinical';
+import type { EndorsementView as GeneratedEndorsementView } from './generated/types/pub/chive/endorsement/listForEprint.js';
+export type ContributionType = GeneratedEndorsementView['contributions'][number];
 
 export type {
   OutputSchema as ListEndorsementsResponse,
@@ -808,12 +764,6 @@ export type {
 // =============================================================================
 
 export type {
-  OutputSchema as GetRecommendationsResponse,
-  RecommendedEprint,
-  RecommendationExplanation,
-} from './generated/types/pub/chive/discovery/getRecommendations.js';
-
-export type {
   OutputSchema as GetSimilarResponse,
   RelatedEprint,
 } from './generated/types/pub/chive/discovery/getSimilar.js';
@@ -831,13 +781,13 @@ export type {
   Topic as EnrichmentTopic,
 } from './generated/types/pub/chive/discovery/getEnrichment.js';
 
-export type { OutputSchema as GetForYouResponse } from './generated/types/pub/chive/discovery/getForYou.js';
-
 // Discovery settings record
 export type { Main as DiscoverySettingsRecord } from './generated/types/pub/chive/discovery/settings.js';
 export type {
-  ForYouSignals,
   RelatedPapersSignals,
+  RelatedPapersWeights,
+  RelatedPapersThresholds,
+  TrendingPreferences,
 } from './generated/types/pub/chive/discovery/settings.js';
 
 // CitationNetworkDisplay is a literal type from the settings
@@ -882,11 +832,12 @@ export type {
 import type { OutputSchema as _ProposalsResponse } from './generated/types/pub/chive/governance/listProposals.js';
 export type ProposalsResponse = _ProposalsResponse;
 
-// Proposal status type - includes legacy values for backwards compatibility
-export type ProposalStatus = 'open' | 'approved' | 'rejected' | 'withdrawn' | 'pending' | 'expired';
+// Proposal status type, derived from generated ProposalView.
+import type { ProposalView as _ProposalView } from './generated/types/pub/chive/governance/listProposals.js';
+export type ProposalStatus = _ProposalView['status'];
 
-// Proposal type
-export type ProposalType = 'create' | 'update' | 'merge' | 'deprecate';
+// Proposal type, derived from generated ProposalView.
+export type ProposalType = _ProposalView['type'];
 
 // Proposal category - node or edge for knowledge graph proposals
 export type ProposalCategory = 'node' | 'edge';
@@ -904,10 +855,9 @@ export type {
   VoteView as Vote,
 } from './generated/types/pub/chive/governance/listVotes.js';
 
-/**
- * Vote action types.
- */
-export type VoteAction = 'approve' | 'reject' | 'abstain' | 'request-changes';
+// Vote action types, derived from generated VoteView.
+import type { VoteView as _VoteView } from './generated/types/pub/chive/governance/listVotes.js';
+export type VoteAction = _VoteView['vote'];
 
 /**
  * Vote value is an alias for VoteAction.
@@ -1032,35 +982,12 @@ export type {
   ResearchKeyword as AlphaResearchKeyword,
 } from './generated/types/pub/chive/alpha/apply.js';
 
-/**
- * Organization/sector type for alpha application.
- */
-export type AlphaSector =
-  | 'academia'
-  | 'industry'
-  | 'government'
-  | 'nonprofit'
-  | 'healthcare'
-  | 'independent'
-  | 'other';
+// Organization/sector type for alpha application, derived from generated InputSchema.
+import type { InputSchema as _AlphaApplyInput } from './generated/types/pub/chive/alpha/apply.js';
+export type AlphaSector = _AlphaApplyInput['sector'];
 
-/**
- * Career stage for alpha application.
- */
-export type AlphaCareerStage =
-  | 'undergraduate'
-  | 'graduate-masters'
-  | 'graduate-phd'
-  | 'postdoc'
-  | 'research-staff'
-  | 'junior-faculty'
-  | 'senior-faculty'
-  | 'research-admin'
-  | 'librarian'
-  | 'science-communicator'
-  | 'policy-professional'
-  | 'retired'
-  | 'other';
+// Career stage for alpha application, derived from generated InputSchema.
+export type AlphaCareerStage = _AlphaApplyInput['careerStage'];
 
 /**
  * Alpha application status.
@@ -1113,6 +1040,19 @@ export type EprintAuthor = EprintAuthorView;
 
 // Re-export GraphNode for field badges
 export type { GraphNode } from './generated/types/pub/chive/graph/listNodes.js';
+
+// backlink types
+export type {
+  OutputSchema as ListBacklinksResponse,
+  Backlink,
+} from './generated/types/pub/chive/backlink/list.js';
+export type { OutputSchema as BacklinkCounts } from './generated/types/pub/chive/backlink/getCounts.js';
+
+// changelog types
+export type {
+  OutputSchema as ListChangelogsResponse,
+  ChangelogView,
+} from './generated/types/pub/chive/eprint/listChangelogs.js';
 
 // Import types for EprintCardData union
 import type { TrendingEntry as _TrendingEntry } from './generated/types/pub/chive/metrics/getTrending.js';
@@ -1322,7 +1262,7 @@ export type EntityLinkType =
   | { type: 'wikidata'; qid: string; label: string; url: string }
   | { type: 'nodeRef'; uri: string; label: string; subkind?: string }
   | { type: 'field'; uri: string; label: string }
-  | { type: 'author'; did: string; displayName?: string }
-  | { type: 'eprint'; uri: string; title: string }
+  | { type: 'author'; did: string; label?: string; handle?: string }
+  | { type: 'eprint'; uri: string; label?: string }
   | { type: 'fast'; uri: string; label: string }
-  | { type: 'orcid'; did: string; displayName?: string };
+  | { type: 'orcid'; did: string; label?: string; handle?: string };

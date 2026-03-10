@@ -16,7 +16,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/metrics/getTrending.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { expandFieldsWithNarrower } from '../../../../utils/field-expansion.js';
-import { extractPlainText } from '../../../../utils/rich-text.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
@@ -129,12 +129,11 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
           }
         }
 
-        const plainAbstract = eprintData.abstractPlainText ?? extractPlainText(eprintData.abstract);
         return {
           uri: eprintData.uri,
           cid: eprintData.cid,
           title: eprintData.title,
-          abstract: plainAbstract,
+          abstract: toWireFormat(eprintData.abstract) ?? [],
           authors: eprintData.authors.map((author) => {
             const profile = author.did ? avatarMap.get(author.did) : undefined;
             return {

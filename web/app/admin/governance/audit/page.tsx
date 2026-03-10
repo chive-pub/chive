@@ -92,36 +92,38 @@ export default function AdminAuditLogPage() {
               <p className="text-muted-foreground">No audit log entries.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Editor DID</TableHead>
-                  <TableHead>Target URI</TableHead>
-                  <TableHead>Timestamp</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entries.map((entry) => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">{entry.action}</TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {entry.actorHandle ?? truncateDid(entry.actorDid)}
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground max-w-[250px] truncate">
-                      {entry.targetUri
-                        ? truncateUri(entry.targetUri)
-                        : entry.targetDid
-                          ? truncateDid(entry.targetDid)
-                          : 'N/A'}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                      {new Date(entry.timestamp).toLocaleString()}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Action</TableHead>
+                    <TableHead>Editor DID</TableHead>
+                    <TableHead>Target URI</TableHead>
+                    <TableHead>Timestamp</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {entries.map((entry) => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">{entry.action}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {entry.actorHandle ?? truncateDid(entry.actorDid)}
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground max-w-[250px] truncate">
+                        {entry.targetUri
+                          ? truncateUri(entry.targetUri)
+                          : entry.targetDid
+                            ? truncateDid(entry.targetDid)
+                            : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

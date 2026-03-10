@@ -56,9 +56,9 @@ function roleBadgeClass(role: string): string {
       return 'bg-purple-500/15 text-purple-700 border-purple-200';
     case 'moderator':
       return 'bg-blue-500/15 text-blue-700 border-blue-200';
-    case 'trusted_editor':
+    case 'graph-editor':
       return 'bg-green-500/15 text-green-700 border-green-200';
-    case 'alpha':
+    case 'alpha-tester':
       return 'bg-yellow-500/15 text-yellow-700 border-yellow-200';
     default:
       return 'bg-gray-500/15 text-gray-700 border-gray-200';
@@ -235,7 +235,7 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ did:
         {/* Stats & Activity */}
         <div className="md:col-span-2 space-y-6">
           {/* Stats */}
-          <div className="grid gap-4 grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Eprints</CardTitle>
@@ -275,35 +275,37 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ did:
             </CardHeader>
             <CardContent>
               {user.warnings && user.warnings.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Reason</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {user.warnings.map(
-                      (
-                        warning: { type?: string; reason?: string; createdAt?: string },
-                        i: number
-                      ) => (
-                        <TableRow key={i}>
-                          <TableCell>
-                            <Badge variant="outline">{warning.type ?? 'Warning'}</Badge>
-                          </TableCell>
-                          <TableCell className="text-sm">{warning.reason ?? 'N/A'}</TableCell>
-                          <TableCell className="text-sm text-muted-foreground">
-                            {warning.createdAt
-                              ? new Date(warning.createdAt).toLocaleDateString()
-                              : 'N/A'}
-                          </TableCell>
-                        </TableRow>
-                      )
-                    )}
-                  </TableBody>
-                </Table>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {user.warnings.map(
+                        (
+                          warning: { type?: string; reason?: string; createdAt?: string },
+                          i: number
+                        ) => (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <Badge variant="outline">{warning.type ?? 'Warning'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{warning.reason ?? 'N/A'}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {warning.createdAt
+                                ? new Date(warning.createdAt).toLocaleDateString()
+                                : 'N/A'}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   No warnings or violations on record.
@@ -374,8 +376,11 @@ export default function AdminUserDetailPage({ params }: { params: Promise<{ did:
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
-                <SelectItem value="trusted_editor">Trusted Editor</SelectItem>
-                <SelectItem value="alpha">Alpha</SelectItem>
+                <SelectItem value="graph-editor">Graph Editor</SelectItem>
+                <SelectItem value="author">Author</SelectItem>
+                <SelectItem value="reader">Reader</SelectItem>
+                <SelectItem value="alpha-tester">Alpha Tester</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
               </SelectContent>
             </Select>
           </div>

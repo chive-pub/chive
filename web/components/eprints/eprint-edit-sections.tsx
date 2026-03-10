@@ -77,7 +77,8 @@ import { VersionSelector } from './version-selector';
 import { ChangelogForm, type ChangelogFormData } from './changelog-form';
 import { cn } from '@/lib/utils';
 import { useAgent } from '@/lib/auth/auth-context';
-import { authApi } from '@/lib/api/client';
+import { authApi, createAuthenticatedClient } from '@/lib/api/client';
+import type { Agent } from '@atproto/api';
 import { parseAtUri } from '@/lib/utils/atproto';
 import { createChangelogRecord } from '@/lib/atproto/record-creator';
 import { logger } from '@/lib/observability';
@@ -99,6 +100,8 @@ const editLogger = logger.child({ component: 'eprint-edit-sections' });
 export interface EprintEditSectionsProps {
   /** The eprint to edit */
   eprint: Eprint;
+  /** Paper agent for paper-centric eprints (from PaperAuthGate) */
+  paperAgent?: Agent | null;
   /** Section to auto-expand on load */
   initialSection?: string | null;
   /** Callback on successful save */
@@ -309,6 +312,7 @@ const EMPTY_CHANGELOG: ChangelogFormData = {
 
 export function EprintEditSections({
   eprint,
+  paperAgent,
   initialSection,
   onSaveSuccess,
   onCancel,
@@ -457,6 +461,7 @@ export function EprintEditSections({
   const { user } = useAuth();
 
   const agent = useAgent();
+  const effectiveAgent = paperAgent ?? agent;
   const { mutateAsync: updateEprint } = useUpdateEprint();
 
   // Helper to format slug to display label
@@ -843,7 +848,7 @@ export function EprintEditSections({
   // Handle form submission
   const onSubmit = useCallback(
     async (data: EditFormValues) => {
-      if (!agent) {
+      if (!effectiveAgent) {
         toast.error('You must be signed in to edit');
         return;
       }
@@ -1023,6 +1028,7 @@ export function EprintEditSections({
             | Record<string, unknown>
             | undefined,
           funding: fundingPayload as Record<string, unknown>[] | undefined,
+          overrideAgent: paperAgent ?? undefined,
         });
 
         editLogger.info('Authorization successful', {
@@ -1034,7 +1040,7 @@ export function EprintEditSections({
         let documentBlobRef = undefined;
         if (selectedFile) {
           const fileBytes = new Uint8Array(await selectedFile.arrayBuffer());
-          const uploadResult = await agent.uploadBlob(fileBytes, {
+          const uploadResult = await effectiveAgent.uploadBlob(fileBytes, {
             encoding: selectedFile.type || 'application/pdf',
           });
           documentBlobRef = uploadResult.data.blob;
@@ -1047,7 +1053,7 @@ export function EprintEditSections({
           throw new Error('Invalid AT-URI: ' + eprint.uri);
         }
 
-        const currentRecord = await agent.com.atproto.repo.getRecord({
+        const currentRecord = await effectiveAgent.com.atproto.repo.getRecord({
           repo: parsed.did,
           collection: parsed.collection,
           rkey: parsed.rkey,
@@ -1186,7 +1192,7 @@ export function EprintEditSections({
         };
 
         // Step 5: Make PDS putRecord call with optimistic concurrency control
-        await agent.com.atproto.repo.putRecord({
+        await effectiveAgent.com.atproto.repo.putRecord({
           repo: parsed.did,
           collection: parsed.collection,
           rkey: parsed.rkey,
@@ -1194,11 +1200,14 @@ export function EprintEditSections({
           swapRecord: authResult.expectedCid,
         });
 
+        // Build an API client that uses the paper agent for indexing when available
+        const apiClient = paperAgent ? createAuthenticatedClient(effectiveAgent) : authApi;
+
         // Step 5.5: Create changelog record in PDS (if changelog provided)
         const hasChangelog = changelog.summary || changelog.sections.length > 0;
         if (hasChangelog) {
           try {
-            const changelogResult = await createChangelogRecord(agent, {
+            const changelogResult = await createChangelogRecord(effectiveAgent, {
               eprintUri: eprint.uri,
               version: authResult.version,
               previousVersion: eprint.version || undefined,
@@ -1222,7 +1231,7 @@ export function EprintEditSections({
 
             // Request immediate indexing for the changelog record (best-effort)
             try {
-              await authApi.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
+              await apiClient.pub.chive.sync.indexRecord({ uri: changelogResult.uri });
             } catch {
               editLogger.warn('Immediate changelog indexing failed; firehose will handle', {
                 uri: changelogResult.uri,
@@ -1240,7 +1249,7 @@ export function EprintEditSections({
 
         // Step 6: Request immediate re-indexing (best-effort)
         try {
-          await authApi.pub.chive.sync.indexRecord({ uri: eprint.uri });
+          await apiClient.pub.chive.sync.indexRecord({ uri: eprint.uri });
           await new Promise((resolve) => setTimeout(resolve, 100));
         } catch {
           editLogger.warn('Immediate re-indexing failed; firehose will handle', {
@@ -1275,7 +1284,17 @@ export function EprintEditSections({
         setIsSaving(false);
       }
     },
-    [agent, eprint, changelog, updateEprint, onSaveSuccess, setIsSaving, authors, selectedFile]
+    [
+      effectiveAgent,
+      paperAgent,
+      eprint,
+      changelog,
+      updateEprint,
+      onSaveSuccess,
+      setIsSaving,
+      authors,
+      selectedFile,
+    ]
   );
 
   const currentVersion = formatVersion(eprint.version);

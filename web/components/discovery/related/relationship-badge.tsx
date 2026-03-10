@@ -1,7 +1,15 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { ArrowUpRight, ArrowDownRight, Users, Sparkles, BookOpen, Link2 } from 'lucide-react';
+import {
+  ArrowUpRight,
+  ArrowDownRight,
+  Users,
+  Sparkles,
+  BookOpen,
+  Link2,
+  Shuffle,
+} from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -14,7 +22,8 @@ type KnownRelationshipType =
   | 'bibliographic-coupling'
   | 'semantically-similar'
   | 'same-author'
-  | 'same-topic';
+  | 'same-topic'
+  | 'collaborative-filtering';
 
 /**
  * RelationshipType accepts known types plus any string for forward compatibility.
@@ -85,6 +94,12 @@ const relationshipConfig: Record<
     description: 'Shares similar topics/concepts',
     icon: BookOpen,
     color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  },
+  'collaborative-filtering': {
+    label: 'Collaborative',
+    description: 'Researchers with similar interests also read this',
+    icon: Shuffle,
+    color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
   },
 };
 

@@ -316,7 +316,7 @@ await discovery.recordInteraction(userDid, {
   eprintUri: 'at://did:plc:abc.../pub.chive.eprint.submission/3k5...',
   action: 'view',
   duration: 120,
-  context: 'for-you-feed',
+  context: 'related-papers',
 });
 ```
 

@@ -237,7 +237,7 @@ export class PsyArxivPlugin extends ImportingPlugin implements SearchablePlugin 
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.psyarxiv',
     name: 'PsyArXiv Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Imports psychology eprints from PsyArXiv with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',

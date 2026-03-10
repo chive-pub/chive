@@ -15,6 +15,7 @@ import type {
   FacetDefinition,
 } from '../../../../lexicons/generated/types/pub/chive/graph/browseFaceted.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -140,7 +141,7 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
         uri: p.uri as string,
         cid: p.cid,
         title: p.title,
-        abstract: p.abstract,
+        abstract: toWireFormat(p.abstract) ?? [],
         authors: p.authors.map((a) => ({
           // Only include did if it's a valid DID (not empty string)
           ...(a.did ? { did: a.did } : {}),

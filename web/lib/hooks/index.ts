@@ -164,14 +164,12 @@ export {
 } from './use-activity';
 
 export {
-  useForYouFeed,
   useSimilarPapers,
   useCitations,
   useEnrichment,
   useRecordInteraction,
   usePrefetchSimilarPapers,
   discoveryKeys,
-  type RecommendedEprint,
   type RelatedEprint,
 } from './use-discovery';
 

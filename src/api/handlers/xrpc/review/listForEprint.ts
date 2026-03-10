@@ -15,6 +15,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/review/listForEprint.js';
 import type { ReviewThread as ServiceReviewThread } from '../../../../services/review/review-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -44,59 +45,8 @@ function flattenThreads(
     // Resolve author info from map
     const authorInfo = authorMap.get(root.author);
 
-    // Build body object from stored body array
-    // The body is stored as: [{ type: 'text', content: '...', facets: [...] }, ...]
-    let body: ReviewView['body'] = undefined;
-    if (root.body && Array.isArray(root.body) && root.body.length > 0 && !root.deleted) {
-      // Concatenate all text items to get the full text
-      const textParts: string[] = [];
-      const allFacets: {
-        index: { byteStart: number; byteEnd: number };
-        features: { $type: string; uri?: string }[];
-      }[] = [];
-
-      let currentByteOffset = 0;
-      for (const item of root.body as {
-        type?: string;
-        content?: string;
-        facets?: {
-          index: { byteStart: number; byteEnd: number };
-          features: { $type: string; uri?: string }[];
-        }[];
-      }[]) {
-        if (item.type === 'text' && item.content) {
-          textParts.push(item.content);
-          // Adjust facet byte offsets if there are multiple text items
-          if (item.facets) {
-            for (const facet of item.facets) {
-              allFacets.push({
-                index: {
-                  byteStart: facet.index.byteStart + currentByteOffset,
-                  byteEnd: facet.index.byteEnd + currentByteOffset,
-                },
-                features: facet.features,
-              });
-            }
-          }
-          currentByteOffset += new TextEncoder().encode(item.content).length;
-        }
-      }
-
-      const fullText = textParts.join('');
-      if (fullText) {
-        // Use facets from body items OR from the separate facets field
-        const facetsToUse =
-          allFacets.length > 0
-            ? allFacets
-            : root.facets && Array.isArray(root.facets)
-              ? (root.facets as typeof allFacets)
-              : undefined;
-        body = {
-          text: fullText,
-          facets: facetsToUse,
-        };
-      }
-    }
+    const body = root.deleted ? undefined : toWireFormat(root.body);
+    const bodyPlainText = root.deleted ? '' : root.text;
 
     reviews.push({
       uri: root.uri,
@@ -110,6 +60,7 @@ function flattenThreads(
       eprintUri: root.subject,
       content: root.deleted ? '' : root.text,
       body,
+      bodyPlainText,
       target: undefined,
       motivation: 'commenting',
       parentReviewUri: root.parent ?? undefined,

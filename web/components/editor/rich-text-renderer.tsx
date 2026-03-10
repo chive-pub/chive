@@ -9,6 +9,7 @@
  * - ATProto-style facets (mentions, links, hashtags)
  * - Markdown formatting (bold, italic, strikethrough, code)
  * - LaTeX math expressions (inline and display)
+ * - Block content (headings, list items, blockquotes, code blocks)
  *
  * This component provides consistent rendering for titles, abstracts,
  * and reviews.
@@ -25,7 +26,7 @@
  */
 
 import Link from 'next/link';
-import { ExternalLink, FileText, MessageSquare } from 'lucide-react';
+import { ExternalLink } from 'lucide-react';
 import katex from 'katex';
 import { toHtml } from 'hast-util-to-html';
 
@@ -47,13 +48,14 @@ import type {
   EprintRefItem,
   AnnotationRefItem,
   AuthorRefItem,
-  CrossReferenceItem,
   LatexItem,
-  CodeItem,
-  LegacyAnnotationItem,
+  CodeBlockItem,
+  HeadingItem,
+  ListItem,
+  BlockquoteItem,
+  RichTextFacet,
 } from '@/lib/types/rich-text';
-import { fromLegacyAnnotationItems, fromAtprotoRichText } from '@/lib/types/rich-text';
-import type { RichTextFacet } from '@/lib/api/schema';
+import { fromAtprotoRichText } from '@/lib/types/rich-text';
 
 // =============================================================================
 // TYPES
@@ -63,14 +65,13 @@ import type { RichTextFacet } from '@/lib/api/schema';
  * Props for the RichTextRenderer component.
  *
  * @remarks
- * Supports three input formats:
- * 1. Item-based: Pass `items` array of rich text or legacy items
+ * Supports two input formats:
+ * 1. Item-based: Pass `items` array of rich text items
  * 2. ATProto facets: Pass `text` and optional `facets`
- * 3. Both: Items take precedence if provided
  */
 export interface RichTextRendererProps {
   /** Rich text items to render (item-based format) */
-  items?: RichTextItem[] | LegacyAnnotationItem[];
+  items?: RichTextItem[];
 
   /** Plain text content (ATProto text+facets format) */
   text?: string;
@@ -128,7 +129,7 @@ function WikidataRefChip({
   item: WikidataRefItem;
   disableLinks?: boolean;
 }) {
-  const href = item.url ?? `https://www.wikidata.org/wiki/${item.qid}`;
+  const href = `https://www.wikidata.org/wiki/${item.qid}`;
 
   const badge = (
     <Badge
@@ -173,7 +174,7 @@ function NodeRefChip({
   const badge = (
     <Badge variant="secondary" className={cn('gap-1', colorClasses)} title={item.subkind}>
       <Icon className="h-3 w-3" />
-      <span>{item.label}</span>
+      <span>{item.label ?? item.uri}</span>
     </Badge>
   );
 
@@ -201,7 +202,7 @@ function FieldRefChip({
   const badge = (
     <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
       <Icon className="h-3 w-3" />
-      <span>{item.label}</span>
+      <span>{item.label ?? item.uri}</span>
     </Badge>
   );
 
@@ -228,9 +229,7 @@ function FacetRefChip({
   const badge = (
     <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
       <Icon className="h-3 w-3" />
-      <span>
-        {item.dimension}: {item.value}
-      </span>
+      <span>{item.label ?? item.uri}</span>
     </Badge>
   );
 
@@ -238,7 +237,8 @@ function FacetRefChip({
     return badge;
   }
 
-  return <Link href={`/browse?${item.dimension}=${encodeURIComponent(item.value)}`}>{badge}</Link>;
+  const encodedUri = encodeURIComponent(item.uri);
+  return <Link href={`/browse?facet=${encodedUri}`}>{badge}</Link>;
 }
 
 /**
@@ -252,14 +252,15 @@ function EprintRefChip({
   disableLinks?: boolean;
 }) {
   const encodedUri = encodeURIComponent(item.uri.replace('at://', ''));
+  const displayLabel = item.label ?? item.uri;
 
   const badge = (
     <Badge
       variant="secondary"
       className="max-w-[200px] truncate bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-      title={item.title}
+      title={displayLabel}
     >
-      {item.title}
+      {displayLabel}
     </Badge>
   );
 
@@ -280,10 +281,11 @@ function AnnotationRefChip({
   item: AnnotationRefItem;
   disableLinks?: boolean;
 }) {
+  const displayLabel = item.label ?? '...';
   // AnnotationRefChip doesn't currently render as a link, but accept the prop for consistency
   return (
-    <Badge variant="outline" className="max-w-[150px] cursor-pointer truncate" title={item.excerpt}>
-      ^ {item.excerpt}
+    <Badge variant="outline" className="max-w-[150px] cursor-pointer truncate" title={displayLabel}>
+      ^ {displayLabel}
     </Badge>
   );
 }
@@ -304,7 +306,7 @@ function AuthorRefChip({
   const badge = (
     <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
       <Icon className="h-3 w-3" />
-      <span>@{item.displayName ?? item.handle ?? item.did.slice(0, 12)}</span>
+      <span>@{item.label ?? item.did.slice(0, 12)}</span>
     </Badge>
   );
 
@@ -325,7 +327,7 @@ function MentionRenderer({
   item: MentionItem;
   disableLinks?: boolean;
 }) {
-  const content = <>@{item.handle ?? item.displayName ?? item.did.slice(0, 12)}</>;
+  const content = <>@{item.handle ?? item.did.slice(0, 12)}</>;
 
   if (disableLinks) {
     return <span className="text-blue-600 dark:text-blue-400">{content}</span>;
@@ -438,91 +440,86 @@ function TagRenderer({ item, disableLinks = false }: { item: TagItem; disableLin
  * Renders a text item with optional formatting.
  */
 function TextRenderer({ item }: { item: TextItem }) {
-  let content: React.ReactNode = item.content;
-
-  if (item.format) {
-    if (item.format.bold) {
-      content = <strong>{content}</strong>;
-    }
-    if (item.format.italic) {
-      content = <em>{content}</em>;
-    }
-    if (item.format.strikethrough) {
-      content = <s>{content}</s>;
-    }
-    if (item.format.code) {
-      content = <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">{content}</code>;
-    }
-  }
-
-  return <span>{content}</span>;
+  return <span>{item.content}</span>;
 }
 
 /**
  * Renders a LaTeX item.
  */
 function LatexRenderer({ item }: { item: LatexItem }) {
+  const displayMode = item.displayMode ?? false;
   return (
     <span
-      className={item.displayMode ? 'block my-2 text-center' : 'inline'}
+      className={displayMode ? 'block my-2 text-center' : 'inline'}
       dangerouslySetInnerHTML={{
-        __html: renderLatex(item.content, item.displayMode),
+        __html: renderLatex(item.content, displayMode),
       }}
     />
   );
 }
 
 /**
- * Renders a code item with optional syntax highlighting.
+ * Renders a code block item with optional syntax highlighting.
  */
-function CodeRenderer({ item }: { item: CodeItem }) {
-  if (item.block) {
-    const tree = item.language
-      ? lowlight.highlight(item.language, item.content)
-      : lowlight.highlightAuto(item.content);
-    const html = toHtml(tree);
-    return (
-      <pre className="hljs rounded p-3 overflow-x-auto my-2">
-        <code className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: html }} />
-      </pre>
-    );
-  }
-
-  return <code className="rounded bg-muted px-1 py-0.5 font-mono text-sm">{item.content}</code>;
+function CodeBlockRenderer({ item }: { item: CodeBlockItem }) {
+  const tree = item.language
+    ? lowlight.highlight(item.language, item.content)
+    : lowlight.highlightAuto(item.content);
+  const html = toHtml(tree);
+  return (
+    <pre className="hljs rounded p-3 overflow-x-auto my-2">
+      <code className="font-mono text-sm" dangerouslySetInnerHTML={{ __html: html }} />
+    </pre>
+  );
 }
 
-// =============================================================================
-// CROSS-REFERENCE CHIP
-// =============================================================================
+/**
+ * Renders a heading item.
+ */
+function HeadingRenderer({ item }: { item: HeadingItem }) {
+  const level = Math.min(Math.max(item.level, 1), 6);
+  switch (level) {
+    case 1:
+      return <h1 className="font-bold my-2">{item.content}</h1>;
+    case 2:
+      return <h2 className="font-bold my-2">{item.content}</h2>;
+    case 3:
+      return <h3 className="font-bold my-2">{item.content}</h3>;
+    case 4:
+      return <h4 className="font-bold my-2">{item.content}</h4>;
+    case 5:
+      return <h5 className="font-bold my-2">{item.content}</h5>;
+    case 6:
+      return <h6 className="font-bold my-2">{item.content}</h6>;
+    default:
+      return <h3 className="font-bold my-2">{item.content}</h3>;
+  }
+}
 
 /**
- * Renders a cross-reference to a review or annotation as a clickable badge.
+ * Renders a list item.
  */
-function CrossReferenceChip({ item }: { item: CrossReferenceItem }) {
-  const Icon = item.refType === 'annotation' ? MessageSquare : FileText;
-
+function ListItemRenderer({ item }: { item: ListItem }) {
+  const prefix =
+    item.listType === 'ordered' ? `${item.ordinal ?? 1}. ` : '\u2022 '; /* bullet char */
   return (
-    <a
-      href={`#${item.uri}`}
-      className="inline-flex items-center"
-      onClick={(e) => {
-        e.preventDefault();
-        const target = document.querySelector(`[data-uri="${item.uri}"]`);
-        if (target) {
-          target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          target.classList.add('highlight-flash');
-          setTimeout(() => target.classList.remove('highlight-flash'), 1500);
-        }
-      }}
-    >
-      <Badge
-        variant="secondary"
-        className="gap-1 cursor-pointer bg-violet-100 text-violet-800 hover:bg-violet-200 dark:bg-violet-900/30 dark:text-violet-300"
-      >
-        <Icon className="h-3 w-3" />
-        <span>{item.label}</span>
-      </Badge>
-    </a>
+    <div className="my-0.5" style={{ paddingLeft: `${(item.depth ?? 0) * 1.5}rem` }}>
+      <span>
+        {prefix}
+        {item.content}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Renders a blockquote item.
+ */
+function BlockquoteRenderer({ item }: { item: BlockquoteItem }) {
+  return (
+    <blockquote className="border-l-4 border-muted-foreground/30 pl-4 italic my-2">
+      {item.content}
+    </blockquote>
   );
 }
 
@@ -565,46 +562,19 @@ function ItemRenderer({
       return <AnnotationRefChip key={index} item={item} disableLinks={disableLinks} />;
     case 'authorRef':
       return <AuthorRefChip key={index} item={item} disableLinks={disableLinks} />;
-    case 'crossReference':
-      return <CrossReferenceChip key={index} item={item} />;
     case 'latex':
       return <LatexRenderer key={index} item={item} />;
-    case 'code':
-      return <CodeRenderer key={index} item={item} />;
+    case 'codeBlock':
+      return <CodeBlockRenderer key={index} item={item} />;
+    case 'heading':
+      return <HeadingRenderer key={index} item={item} />;
+    case 'listItem':
+      return <ListItemRenderer key={index} item={item} />;
+    case 'blockquote':
+      return <BlockquoteRenderer key={index} item={item} />;
     default:
       return null;
   }
-}
-
-// =============================================================================
-// TYPE DETECTION
-// =============================================================================
-
-/**
- * Checks if an item is in legacy annotation format.
- */
-function isLegacyItem(item: RichTextItem | LegacyAnnotationItem): item is LegacyAnnotationItem {
-  // Legacy items may have undefined type or use optional typing
-  if (!item.type) return true;
-  // Check for legacy-specific properties
-  if ('content' in item && item.type === 'text') {
-    // Could be either, but RichTextItem TextItem always has content as required
-    return false;
-  }
-  // Legacy items have optional properties that RichTextItem types have as required
-  if (item.type === 'nodeRef' && (!('uri' in item) || !('label' in item))) {
-    return true;
-  }
-  return false;
-}
-
-/**
- * Checks if the items array contains legacy items.
- */
-function containsLegacyItems(items: (RichTextItem | LegacyAnnotationItem)[]): boolean {
-  if (items.length === 0) return false;
-  // Check the first few items for legacy format
-  return items.slice(0, 3).some(isLegacyItem);
 }
 
 // =============================================================================
@@ -630,10 +600,7 @@ export function RichTextRenderer({
   let richTextItems: RichTextItem[];
 
   if (items && items.length > 0) {
-    // Use items if provided
-    richTextItems = containsLegacyItems(items)
-      ? fromLegacyAnnotationItems(items as LegacyAnnotationItem[])
-      : (items as RichTextItem[]);
+    richTextItems = items;
   } else if (text !== undefined) {
     // Convert ATProto text+facets to rich text items
     richTextItems = fromAtprotoRichText(text, facets);

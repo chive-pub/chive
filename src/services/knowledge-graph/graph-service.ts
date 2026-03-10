@@ -17,10 +17,10 @@ import { DatabaseError } from '../../types/errors.js';
 import type { Facet, IGraphDatabase, GraphNode } from '../../types/interfaces/graph.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
+import type { AnnotationBody } from '../../types/models/annotation.js';
 import type { EprintAuthor } from '../../types/models/author.js';
 import type { Result } from '../../types/result.js';
 import { extractRkeyOrPassthrough, normalizeFieldUri } from '../../utils/at-uri.js';
-import { extractPlainText } from '../../utils/rich-text.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
 
 /**
@@ -39,7 +39,7 @@ export interface KnowledgeGraphServiceOptions {
  * Source PDS information for faceted browse results.
  *
  * @public
- * @since 0.2.0
+ * @since 0.1.0
  */
 export interface FacetedSource {
   readonly pdsEndpoint: string;
@@ -62,7 +62,7 @@ export interface FacetedEprintSummary {
   readonly uri: AtUri;
   readonly cid: string;
   readonly title: string;
-  readonly abstract: string;
+  readonly abstract: AnnotationBody;
   readonly authors: readonly EprintAuthor[];
   readonly submittedBy: DID;
   readonly paperDid?: DID;
@@ -512,7 +512,7 @@ export class KnowledgeGraphService {
             uri: eprint.uri,
             cid: eprint.cid,
             title: eprint.title,
-            abstract: eprint.abstractPlainText ?? extractPlainText(eprint.abstract),
+            abstract: eprint.abstract,
             authors: eprint.authors,
             submittedBy: eprint.submittedBy,
             paperDid: eprint.paperDid,

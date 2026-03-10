@@ -1,17 +1,17 @@
-import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { api, authApi } from '@/lib/api/client';
 import { useCurrentUser, useAgent } from '@/lib/auth';
 import { APIError } from '@/lib/errors';
 import type {
-  GetRecommendationsResponse,
   GetSimilarResponse,
   GetCitationsResponse,
   GetEnrichmentResponse,
-  RecommendedEprint,
   RelatedEprint,
-  ForYouSignals,
   RelatedPapersSignals,
+  RelatedPapersWeights,
+  RelatedPapersThresholds,
+  TrendingPreferences,
   CitationNetworkDisplay,
 } from '@/lib/api/schema';
 
@@ -25,12 +25,14 @@ import type {
 export interface DiscoverySettings {
   /** Enable personalized recommendations based on profile */
   enablePersonalization: boolean;
-  /** Show the For You personalized feed */
-  enableForYouFeed: boolean;
-  /** Configuration for For You feed signals */
-  forYouSignals: Omit<ForYouSignals, '$type'>;
   /** Configuration for related papers panel signals */
   relatedPapersSignals: Omit<RelatedPapersSignals, '$type'>;
+  /** Relative weights for related papers signals (0-100) */
+  relatedPapersWeights: Omit<RelatedPapersWeights, '$type'>;
+  /** Thresholds for related papers filtering */
+  relatedPapersThresholds: Omit<RelatedPapersThresholds, '$type'>;
+  /** Trending feed preferences */
+  trendingPreferences: Omit<TrendingPreferences, '$type'>;
   /** How to display citation network */
   citationNetworkDisplay: CitationNetworkDisplay;
   /** Show explanations for why papers are recommended */
@@ -53,9 +55,10 @@ export interface DiscoverySettings {
  */
 export interface UpdateDiscoverySettingsInput {
   enablePersonalization?: boolean;
-  enableForYouFeed?: boolean;
-  forYouSignals?: Partial<Omit<ForYouSignals, '$type'>>;
   relatedPapersSignals?: Partial<Omit<RelatedPapersSignals, '$type'>>;
+  relatedPapersWeights?: Partial<Omit<RelatedPapersWeights, '$type'>>;
+  relatedPapersThresholds?: Partial<Omit<RelatedPapersThresholds, '$type'>>;
+  trendingPreferences?: Partial<Omit<TrendingPreferences, '$type'>>;
   citationNetworkDisplay?: CitationNetworkDisplay;
   showRecommendationReasons?: boolean;
   recommendationDiversity?: 'low' | 'medium' | 'high';
@@ -74,18 +77,25 @@ export interface UpdateDiscoverySettingsInput {
 export const discoveryKeys = {
   /** Base key for all discovery queries */
   all: ['discovery'] as const,
-  /** Key for For You feed queries */
-  forYou: (options?: { limit?: number }) => [...discoveryKeys.all, 'forYou', options] as const,
   /** Key for similar papers queries */
-  similar: (uri: string, options?: { limit?: number }) =>
-    [...discoveryKeys.all, 'similar', uri, options] as const,
+  similar: (
+    uri: string,
+    options?: {
+      limit?: number;
+      includeTypes?: string[];
+      weights?: Record<string, number | undefined>;
+    }
+  ) => [...discoveryKeys.all, 'similar', uri, options] as const,
   /** Key for citations queries */
-  citations: (uri: string, options?: { direction?: string; limit?: number }) =>
-    [...discoveryKeys.all, 'citations', uri, options] as const,
+  citations: (
+    uri: string,
+    options?: { direction?: string; limit?: number; onlyInfluential?: boolean }
+  ) => [...discoveryKeys.all, 'citations', uri, options] as const,
   /** Key for enrichment queries */
   enrichment: (uri: string) => [...discoveryKeys.all, 'enrichment', uri] as const,
   /** Key for discovery settings */
-  settings: () => [...discoveryKeys.all, 'settings'] as const,
+  settings: (authenticated?: boolean) =>
+    [...discoveryKeys.all, 'settings', { authenticated }] as const,
 };
 
 const VALID_CITATION_DISPLAYS = ['hidden', 'preview', 'expanded'] as const;
@@ -103,62 +113,16 @@ function validateCitationNetworkDisplay(
   return fallback;
 }
 
-interface UseForYouFeedOptions {
-  /** Number of recommendations per page */
-  limit?: number;
-  /** Whether the query is enabled */
-  enabled?: boolean;
-}
+const VALID_RECOMMENDATION_DIVERSITY = ['low', 'medium', 'high'] as const;
 
 /**
- * Fetches personalized recommendations for the authenticated user.
- *
- * @remarks
- * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
- * Requires authentication; returns empty state for anonymous users.
- *
- * @example
- * ```tsx
- * const {
- *   data,
- *   isLoading,
- *   hasNextPage,
- *   fetchNextPage,
- *   isFetchingNextPage,
- * } = useForYouFeed();
- *
- * const allRecommendations = data?.pages.flatMap(p => p.recommendations) ?? [];
- * ```
- *
- * @param options - Query options
- * @returns Infinite query result with paginated recommendations
+ * Validates and narrows a recommendationDiversity value to the expected union.
  */
-export function useForYouFeed(options: UseForYouFeedOptions = {}) {
-  const { limit = 10, enabled = true } = options;
-
-  return useInfiniteQuery({
-    queryKey: discoveryKeys.forYou({ limit }),
-    queryFn: async ({ pageParam }): Promise<GetRecommendationsResponse> => {
-      try {
-        const response = await authApi.pub.chive.discovery.getRecommendations({
-          limit,
-          cursor: pageParam as string | undefined,
-        });
-        return response.data;
-      } catch (error) {
-        if (error instanceof APIError) throw error;
-        throw new APIError(
-          error instanceof Error ? error.message : 'Failed to fetch recommendations',
-          undefined,
-          'pub.chive.discovery.getRecommendations'
-        );
-      }
-    },
-    initialPageParam: undefined as string | undefined,
-    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
-    enabled,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-  });
+function validateRecommendationDiversity(value: string | undefined): 'low' | 'medium' | 'high' {
+  if (value && VALID_RECOMMENDATION_DIVERSITY.includes(value as 'low' | 'medium' | 'high')) {
+    return value as 'low' | 'medium' | 'high';
+  }
+  return 'medium';
 }
 
 interface UseSimilarPapersOptions {
@@ -166,6 +130,31 @@ interface UseSimilarPapersOptions {
   limit?: number;
   /** Whether the query is enabled */
   enabled?: boolean;
+  /** Relationship types to include (derived from user's discovery settings) */
+  includeTypes?: string[];
+  /** Signal weights (0-100 scale, derived from user's discovery settings) */
+  weights?: {
+    semantic?: number;
+    coCitation?: number;
+    conceptOverlap?: number;
+    authorNetwork?: number;
+    collaborative?: number;
+  };
+}
+
+/**
+ * Builds the includeTypes array from the user's relatedPapersSignals settings.
+ */
+export function buildIncludeTypes(signals: DiscoverySettings['relatedPapersSignals']): string[] {
+  const types: string[] = [];
+  if (signals.semantic) types.push('semantic');
+  if (signals.citations) types.push('citation');
+  if (signals.topics) types.push('topic');
+  if (signals.authors) types.push('author');
+  if (signals.coCitation) types.push('co-citation');
+  if (signals.bibliographicCoupling) types.push('bibliographic-coupling');
+  if (signals.collaborative) types.push('collaborative');
+  return types;
 }
 
 /**
@@ -173,7 +162,8 @@ interface UseSimilarPapersOptions {
  *
  * @remarks
  * Uses multiple signals (citations, concepts, semantic similarity)
- * to find related papers. Does not require authentication.
+ * to find related papers. Respects the user's discovery settings to
+ * determine which signal types to include. Does not require authentication.
  *
  * @example
  * ```tsx
@@ -189,13 +179,28 @@ interface UseSimilarPapersOptions {
  * @returns Query result with similar papers
  */
 export function useSimilarPapers(uri: string, options: UseSimilarPapersOptions = {}) {
-  const { limit = 5, enabled = true } = options;
+  const { limit = 5, enabled = true, includeTypes, weights } = options;
 
   return useQuery({
-    queryKey: discoveryKeys.similar(uri, { limit }),
+    queryKey: discoveryKeys.similar(uri, { limit, includeTypes, weights }),
     queryFn: async (): Promise<GetSimilarResponse> => {
       try {
-        const response = await api.pub.chive.discovery.getSimilar({ uri, limit });
+        const response = await api.pub.chive.discovery.getSimilar({
+          uri,
+          limit,
+          ...(includeTypes && includeTypes.length > 0 ? { includeTypes } : {}),
+          ...(weights?.semantic !== undefined ? { weightSemantic: weights.semantic } : {}),
+          ...(weights?.coCitation !== undefined ? { weightCoCitation: weights.coCitation } : {}),
+          ...(weights?.conceptOverlap !== undefined
+            ? { weightConceptOverlap: weights.conceptOverlap }
+            : {}),
+          ...(weights?.authorNetwork !== undefined
+            ? { weightAuthorNetwork: weights.authorNetwork }
+            : {}),
+          ...(weights?.collaborative !== undefined
+            ? { weightCollaborative: weights.collaborative }
+            : {}),
+        });
         return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;
@@ -246,7 +251,7 @@ export function useCitations(uri: string, options: UseCitationsOptions = {}) {
   const { direction = 'both', limit = 20, onlyInfluential = false, enabled = true } = options;
 
   return useQuery({
-    queryKey: discoveryKeys.citations(uri, { direction, limit }),
+    queryKey: discoveryKeys.citations(uri, { direction, limit, onlyInfluential }),
     queryFn: async (): Promise<GetCitationsResponse> => {
       try {
         const response = await api.pub.chive.discovery.getCitations({
@@ -363,11 +368,9 @@ export function useRecordInteraction() {
         );
       }
     },
-    onSuccess: (_, variables) => {
-      // If dismissed, invalidate the For You feed to remove it
-      if (variables.type === 'dismiss') {
-        queryClient.invalidateQueries({ queryKey: discoveryKeys.forYou() });
-      }
+    onSuccess: () => {
+      // Invalidate discovery queries after recording interaction
+      queryClient.invalidateQueries({ queryKey: discoveryKeys.all });
     },
   });
 }
@@ -418,21 +421,38 @@ export function usePrefetchSimilarPapers() {
 /**
  * Default discovery settings used when user has no saved settings.
  */
+export const DEFAULT_RELATED_PAPERS_WEIGHTS: Omit<RelatedPapersWeights, '$type'> = {
+  semantic: 25,
+  coCitation: 20,
+  conceptOverlap: 15,
+  authorNetwork: 30,
+  collaborative: 10,
+};
+
+export const DEFAULT_RELATED_PAPERS_THRESHOLDS: Omit<RelatedPapersThresholds, '$type'> = {
+  minScore: 5,
+  maxResults: 10,
+};
+
+export const DEFAULT_TRENDING_PREFERENCES: Omit<TrendingPreferences, '$type'> = {
+  defaultWindow: '7d',
+  defaultLimit: 20,
+};
+
 export const DEFAULT_DISCOVERY_SETTINGS: DiscoverySettings = {
   enablePersonalization: true,
-  enableForYouFeed: true,
-  forYouSignals: {
-    fields: true,
-    citations: true,
-    collaborators: true,
-    trending: true,
-  },
   relatedPapersSignals: {
+    semantic: true,
     citations: true,
     topics: true,
     authors: true,
+    coCitation: false,
     bibliographicCoupling: false,
+    collaborative: false,
   },
+  relatedPapersWeights: DEFAULT_RELATED_PAPERS_WEIGHTS,
+  relatedPapersThresholds: DEFAULT_RELATED_PAPERS_THRESHOLDS,
+  trendingPreferences: DEFAULT_TRENDING_PREFERENCES,
   citationNetworkDisplay: 'preview',
   showRecommendationReasons: true,
   recommendationDiversity: 'medium',
@@ -462,13 +482,21 @@ function getStoredSettings(): DiscoverySettings {
       return {
         ...DEFAULT_DISCOVERY_SETTINGS,
         ...parsed,
-        forYouSignals: {
-          ...DEFAULT_DISCOVERY_SETTINGS.forYouSignals,
-          ...parsed.forYouSignals,
-        },
         relatedPapersSignals: {
           ...DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals,
           ...parsed.relatedPapersSignals,
+        },
+        relatedPapersWeights: {
+          ...DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights,
+          ...parsed.relatedPapersWeights,
+        },
+        relatedPapersThresholds: {
+          ...DEFAULT_DISCOVERY_SETTINGS.relatedPapersThresholds,
+          ...parsed.relatedPapersThresholds,
+        },
+        trendingPreferences: {
+          ...DEFAULT_DISCOVERY_SETTINGS.trendingPreferences,
+          ...parsed.trendingPreferences,
         },
       };
     }
@@ -504,7 +532,7 @@ function saveStoredSettings(settings: DiscoverySettings): void {
  * const { data: settings, isLoading } = useDiscoverySettings();
  *
  * if (settings) {
- *   console.log('Show For You:', settings.enableForYouFeed);
+ *   console.log('Personalization:', settings.enablePersonalization);
  * }
  * ```
  */
@@ -514,7 +542,7 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
   const isAuthenticated = !!user?.did;
 
   return useQuery({
-    queryKey: discoveryKeys.settings(),
+    queryKey: discoveryKeys.settings(isAuthenticated),
     queryFn: async (): Promise<DiscoverySettings> => {
       // Authenticated users: fetch from API (reads from PDS)
       if (isAuthenticated) {
@@ -524,18 +552,10 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
           return {
             enablePersonalization:
               data.enablePersonalization ?? DEFAULT_DISCOVERY_SETTINGS.enablePersonalization,
-            enableForYouFeed: data.enableForYouFeed ?? DEFAULT_DISCOVERY_SETTINGS.enableForYouFeed,
-            forYouSignals: {
-              fields: data.forYouSignals?.fields ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.fields,
-              citations:
-                data.forYouSignals?.citations ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.citations,
-              collaborators:
-                data.forYouSignals?.collaborators ??
-                DEFAULT_DISCOVERY_SETTINGS.forYouSignals.collaborators,
-              trending:
-                data.forYouSignals?.trending ?? DEFAULT_DISCOVERY_SETTINGS.forYouSignals.trending,
-            },
             relatedPapersSignals: {
+              semantic:
+                data.relatedPapersSignals?.semantic ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.semantic,
               citations:
                 data.relatedPapersSignals?.citations ??
                 DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.citations,
@@ -545,9 +565,48 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
               authors:
                 data.relatedPapersSignals?.authors ??
                 DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.authors,
+              coCitation:
+                data.relatedPapersSignals?.coCitation ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.coCitation,
               bibliographicCoupling:
                 data.relatedPapersSignals?.bibliographicCoupling ??
                 DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.bibliographicCoupling,
+              collaborative:
+                data.relatedPapersSignals?.collaborative ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals.collaborative,
+            },
+            relatedPapersWeights: {
+              semantic:
+                data.relatedPapersWeights?.semantic ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights.semantic,
+              coCitation:
+                data.relatedPapersWeights?.coCitation ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights.coCitation,
+              conceptOverlap:
+                data.relatedPapersWeights?.conceptOverlap ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights.conceptOverlap,
+              authorNetwork:
+                data.relatedPapersWeights?.authorNetwork ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights.authorNetwork,
+              collaborative:
+                data.relatedPapersWeights?.collaborative ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersWeights.collaborative,
+            },
+            relatedPapersThresholds: {
+              minScore:
+                data.relatedPapersThresholds?.minScore ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersThresholds.minScore,
+              maxResults:
+                data.relatedPapersThresholds?.maxResults ??
+                DEFAULT_DISCOVERY_SETTINGS.relatedPapersThresholds.maxResults,
+            },
+            trendingPreferences: {
+              defaultWindow:
+                data.trendingPreferences?.defaultWindow ??
+                DEFAULT_DISCOVERY_SETTINGS.trendingPreferences.defaultWindow,
+              defaultLimit:
+                data.trendingPreferences?.defaultLimit ??
+                DEFAULT_DISCOVERY_SETTINGS.trendingPreferences.defaultLimit,
             },
             citationNetworkDisplay: validateCitationNetworkDisplay(
               data.citationNetworkDisplay,
@@ -556,16 +615,16 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
             showRecommendationReasons:
               data.showRecommendationReasons ??
               DEFAULT_DISCOVERY_SETTINGS.showRecommendationReasons,
-            recommendationDiversity:
-              (data.recommendationDiversity as DiscoverySettings['recommendationDiversity']) ??
-              DEFAULT_DISCOVERY_SETTINGS.recommendationDiversity,
+            recommendationDiversity: validateRecommendationDiversity(
+              data.recommendationDiversity ?? DEFAULT_DISCOVERY_SETTINGS.recommendationDiversity
+            ),
             minimumEndorsementThreshold:
-              (data.minimumEndorsementThreshold as number) ??
+              data.minimumEndorsementThreshold ??
               DEFAULT_DISCOVERY_SETTINGS.minimumEndorsementThreshold,
             followedFieldUris:
-              (data.followedFieldUris as string[]) ?? DEFAULT_DISCOVERY_SETTINGS.followedFieldUris,
+              data.followedFieldUris ?? DEFAULT_DISCOVERY_SETTINGS.followedFieldUris,
             followingTabIncludesWorkFields:
-              (data.followingTabIncludesWorkFields as boolean) ??
+              data.followingTabIncludesWorkFields ??
               DEFAULT_DISCOVERY_SETTINGS.followingTabIncludesWorkFields,
           };
         } catch {
@@ -596,14 +655,15 @@ export function useDiscoverySettings(options: UseDiscoverySettingsOptions = {}) 
  * const { mutate: updateSettings, isPending } = useUpdateDiscoverySettings();
  *
  * updateSettings({
- *   enableForYouFeed: false,
- *   forYouSignals: { trending: false },
+ *   enablePersonalization: false,
  * });
  * ```
  */
 export function useUpdateDiscoverySettings() {
   const queryClient = useQueryClient();
   const agent = useAgent();
+  const user = useCurrentUser();
+  const isAuthenticated = !!user?.did;
 
   return useMutation({
     mutationFn: async (input: UpdateDiscoverySettingsInput) => {
@@ -612,13 +672,21 @@ export function useUpdateDiscoverySettings() {
       const newSettings: DiscoverySettings = {
         ...currentSettings,
         ...input,
-        forYouSignals: {
-          ...currentSettings.forYouSignals,
-          ...input.forYouSignals,
-        },
         relatedPapersSignals: {
           ...currentSettings.relatedPapersSignals,
           ...input.relatedPapersSignals,
+        },
+        relatedPapersWeights: {
+          ...currentSettings.relatedPapersWeights,
+          ...input.relatedPapersWeights,
+        },
+        relatedPapersThresholds: {
+          ...currentSettings.relatedPapersThresholds,
+          ...input.relatedPapersThresholds,
+        },
+        trendingPreferences: {
+          ...currentSettings.trendingPreferences,
+          ...input.trendingPreferences,
         },
       };
 
@@ -635,9 +703,10 @@ export function useUpdateDiscoverySettings() {
             record: {
               $type: 'pub.chive.discovery.settings',
               enablePersonalization: newSettings.enablePersonalization,
-              enableForYouFeed: newSettings.enableForYouFeed,
-              forYouSignals: newSettings.forYouSignals,
               relatedPapersSignals: newSettings.relatedPapersSignals,
+              relatedPapersWeights: newSettings.relatedPapersWeights,
+              relatedPapersThresholds: newSettings.relatedPapersThresholds,
+              trendingPreferences: newSettings.trendingPreferences,
               citationNetworkDisplay: newSettings.citationNetworkDisplay,
               showRecommendationReasons: newSettings.showRecommendationReasons,
               recommendationDiversity: newSettings.recommendationDiversity,
@@ -656,11 +725,11 @@ export function useUpdateDiscoverySettings() {
     },
     onMutate: async (input) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: discoveryKeys.settings() });
+      await queryClient.cancelQueries({ queryKey: discoveryKeys.settings(isAuthenticated) });
 
       // Snapshot the previous value
       const previousSettings = queryClient.getQueryData<DiscoverySettings>(
-        discoveryKeys.settings()
+        discoveryKeys.settings(isAuthenticated)
       );
 
       // Optimistically update to the new value
@@ -668,16 +737,24 @@ export function useUpdateDiscoverySettings() {
         const newSettings: DiscoverySettings = {
           ...previousSettings,
           ...input,
-          forYouSignals: {
-            ...previousSettings.forYouSignals,
-            ...input.forYouSignals,
-          },
           relatedPapersSignals: {
             ...previousSettings.relatedPapersSignals,
             ...input.relatedPapersSignals,
           },
+          relatedPapersWeights: {
+            ...previousSettings.relatedPapersWeights,
+            ...input.relatedPapersWeights,
+          },
+          relatedPapersThresholds: {
+            ...previousSettings.relatedPapersThresholds,
+            ...input.relatedPapersThresholds,
+          },
+          trendingPreferences: {
+            ...previousSettings.trendingPreferences,
+            ...input.trendingPreferences,
+          },
         };
-        queryClient.setQueryData(discoveryKeys.settings(), newSettings);
+        queryClient.setQueryData(discoveryKeys.settings(isAuthenticated), newSettings);
       }
 
       return { previousSettings };
@@ -685,12 +762,12 @@ export function useUpdateDiscoverySettings() {
     onError: (_err, _input, context) => {
       // Roll back to previous value on error
       if (context?.previousSettings) {
-        queryClient.setQueryData(discoveryKeys.settings(), context.previousSettings);
+        queryClient.setQueryData(discoveryKeys.settings(isAuthenticated), context.previousSettings);
       }
     },
     onSuccess: () => {
       // Invalidate related queries that depend on settings
-      queryClient.invalidateQueries({ queryKey: discoveryKeys.forYou() });
+      queryClient.invalidateQueries({ queryKey: discoveryKeys.all });
     },
   });
 }
@@ -748,7 +825,7 @@ function getStoredUserProfile(): UserProfileState {
  * Hook for user profile state (linked accounts, claimed papers).
  *
  * @remarks
- * Used to determine which empty state to show in the For You feed.
+ * Used to determine which empty state to show in discovery features.
  * For authenticated users, fetches from getMyProfile API.
  * Falls back to localStorage for unauthenticated users.
  *
@@ -801,4 +878,4 @@ export function useUserProfileState(options: { enabled?: boolean } = {}) {
 }
 
 // Re-export types for convenience
-export type { RecommendedEprint, RelatedEprint };
+export type { RelatedEprint };

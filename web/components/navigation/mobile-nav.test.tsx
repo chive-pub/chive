@@ -10,9 +10,16 @@ vi.mock('next/navigation', () => ({
   usePathname: () => mockUsePathname(),
 }));
 
+// Mock auth context
+const mockUseCurrentUser = vi.fn();
+vi.mock('@/lib/auth', () => ({
+  useCurrentUser: () => mockUseCurrentUser(),
+}));
+
 describe('MobileNav', () => {
   beforeEach(() => {
     mockUsePathname.mockReturnValue('/');
+    mockUseCurrentUser.mockReturnValue(null);
   });
 
   it('renders menu toggle button', () => {

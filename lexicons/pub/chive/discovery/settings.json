@@ -2,36 +2,15 @@
   "lexicon": 1,
   "id": "pub.chive.discovery.settings",
   "defs": {
-    "forYouSignals": {
-      "type": "object",
-      "description": "Configuration for For You feed signals",
-      "properties": {
-        "fields": {
-          "type": "boolean",
-          "description": "Show papers from user's research fields",
-          "default": true
-        },
-        "citations": {
-          "type": "boolean",
-          "description": "Show papers citing user's work",
-          "default": true
-        },
-        "collaborators": {
-          "type": "boolean",
-          "description": "Show papers from collaborators",
-          "default": true
-        },
-        "trending": {
-          "type": "boolean",
-          "description": "Show trending papers in user's fields",
-          "default": true
-        }
-      }
-    },
     "relatedPapersSignals": {
       "type": "object",
       "description": "Configuration for related papers panel signals",
       "properties": {
+        "semantic": {
+          "type": "boolean",
+          "description": "Show semantically similar papers (SPECTER2 / MLT)",
+          "default": true
+        },
         "citations": {
           "type": "boolean",
           "description": "Show citation-based relationships",
@@ -47,10 +26,100 @@
           "description": "Show papers by overlapping authors",
           "default": true
         },
+        "coCitation": {
+          "type": "boolean",
+          "description": "Show papers frequently cited together",
+          "default": false
+        },
         "bibliographicCoupling": {
           "type": "boolean",
           "description": "Show papers that cite the same references",
-          "default": true
+          "default": false
+        },
+        "collaborative": {
+          "type": "boolean",
+          "description": "Show collaborative filtering recommendations",
+          "default": false
+        }
+      }
+    },
+    "relatedPapersWeights": {
+      "type": "object",
+      "description": "Relative importance of each related papers signal (0-100, auto-normalized)",
+      "properties": {
+        "semantic": {
+          "type": "integer",
+          "description": "Weight for SPECTER2 / MLT semantic similarity",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 30
+        },
+        "coCitation": {
+          "type": "integer",
+          "description": "Weight for co-citation and bibliographic coupling",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 25
+        },
+        "conceptOverlap": {
+          "type": "integer",
+          "description": "Weight for OpenAlex concept/topic overlap",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 20
+        },
+        "authorNetwork": {
+          "type": "integer",
+          "description": "Weight for co-author network proximity",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 15
+        },
+        "collaborative": {
+          "type": "integer",
+          "description": "Weight for collaborative filtering signal",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 10
+        }
+      }
+    },
+    "relatedPapersThresholds": {
+      "type": "object",
+      "description": "Thresholds for related papers filtering",
+      "properties": {
+        "minScore": {
+          "type": "integer",
+          "description": "Minimum combined score to include a paper (0-100, maps to 0.0-1.0)",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 5
+        },
+        "maxResults": {
+          "type": "integer",
+          "description": "Maximum number of related papers to show",
+          "minimum": 1,
+          "maximum": 50,
+          "default": 10
+        }
+      }
+    },
+    "trendingPreferences": {
+      "type": "object",
+      "description": "Preferences for the trending feed",
+      "properties": {
+        "defaultWindow": {
+          "type": "string",
+          "description": "Default time window for trending",
+          "knownValues": ["24h", "7d", "30d"],
+          "default": "7d"
+        },
+        "defaultLimit": {
+          "type": "integer",
+          "description": "Default number of trending results to show",
+          "minimum": 5,
+          "maximum": 100,
+          "default": 20
         }
       }
     },
@@ -66,20 +135,25 @@
             "description": "Enable personalized recommendations based on profile",
             "default": true
           },
-          "enableForYouFeed": {
-            "type": "boolean",
-            "description": "Show the For You personalized feed",
-            "default": true
-          },
-          "forYouSignals": {
-            "type": "ref",
-            "ref": "#forYouSignals",
-            "description": "Signals to use for For You recommendations"
-          },
           "relatedPapersSignals": {
             "type": "ref",
             "ref": "#relatedPapersSignals",
             "description": "Signals to use for related papers"
+          },
+          "relatedPapersWeights": {
+            "type": "ref",
+            "ref": "#relatedPapersWeights",
+            "description": "Relative weights for related papers signals"
+          },
+          "relatedPapersThresholds": {
+            "type": "ref",
+            "ref": "#relatedPapersThresholds",
+            "description": "Thresholds for related papers filtering"
+          },
+          "trendingPreferences": {
+            "type": "ref",
+            "ref": "#trendingPreferences",
+            "description": "Preferences for the trending feed"
           },
           "citationNetworkDisplay": {
             "type": "string",

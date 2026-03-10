@@ -22,6 +22,7 @@ import { useAuthorReviews } from '@/lib/hooks';
 import { cn } from '@/lib/utils';
 import { formatRelativeDate } from '@/lib/utils/format-date';
 import type { Review } from '@/lib/api/schema';
+import { isRichTextItem } from '@/lib/types/rich-text';
 
 // =============================================================================
 // TYPES
@@ -67,7 +68,13 @@ function AuthorReviewItem({ review }: { review: Review }) {
       <CardContent className="p-4">
         {/* Review content */}
         <div className="mb-3 text-sm text-foreground line-clamp-4">
-          <RichTextRenderer text={review.body?.text ?? review.content} mode="inline" />
+          <RichTextRenderer
+            items={
+              review.body && review.body.length > 0 ? review.body.filter(isRichTextItem) : undefined
+            }
+            text={review.bodyPlainText ?? review.content}
+            mode="inline"
+          />
         </div>
 
         {/* Target span excerpt */}

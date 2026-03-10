@@ -17,7 +17,7 @@ import type {
   TextItem as EprintTextItem,
   NodeRefItem as EprintNodeRefItem,
   LatexItem as EprintLatexItem,
-} from './generated/types/pub/chive/eprint/submission';
+} from './generated/types/pub/chive/richtext/defs';
 
 // =============================================================================
 // TYPES
@@ -166,7 +166,7 @@ export function migrateAbstractToRichText(abstract: string): RichTextBodyItem[] 
   }
 
   const textItem: EprintTextItem = {
-    $type: 'pub.chive.eprint.submission#textItem',
+    $type: 'pub.chive.richtext.defs#textItem',
     type: 'text',
     content: abstract,
   };
@@ -311,7 +311,7 @@ export function migrateTitleToRichText(title: string): TitleRichItem[] {
       const textContent = title.slice(lastIndex, match.index);
       if (textContent) {
         result.push({
-          $type: 'pub.chive.eprint.submission#textItem',
+          $type: 'pub.chive.richtext.defs#textItem',
           type: 'text',
           content: textContent,
         } as EprintTextItem);
@@ -324,7 +324,7 @@ export function migrateTitleToRichText(title: string): TitleRichItem[] {
 
     if (latexContent) {
       result.push({
-        $type: 'pub.chive.eprint.submission#latexItem',
+        $type: 'pub.chive.richtext.defs#latexItem',
         type: 'latex',
         content: latexContent,
         displayMode: isDisplayMode,
@@ -339,7 +339,7 @@ export function migrateTitleToRichText(title: string): TitleRichItem[] {
     const textContent = title.slice(lastIndex);
     if (textContent) {
       result.push({
-        $type: 'pub.chive.eprint.submission#textItem',
+        $type: 'pub.chive.richtext.defs#textItem',
         type: 'text',
         content: textContent,
       } as EprintTextItem);
@@ -349,7 +349,7 @@ export function migrateTitleToRichText(title: string): TitleRichItem[] {
   // If no LaTeX was found, return a single text item
   if (result.length === 0) {
     result.push({
-      $type: 'pub.chive.eprint.submission#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: title,
     } as EprintTextItem);

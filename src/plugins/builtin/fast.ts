@@ -145,7 +145,7 @@ export class FastPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.fast',
     name: 'FAST Subject Headings',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides subject heading lookup via OCLC FAST controlled vocabulary',
     author: 'Aaron Steven White',
     license: 'MIT',

@@ -11,8 +11,8 @@ import type {
   AuthorProfile,
   AuthorMetrics,
   AuthorProfileResponse,
-  EprintSummary,
   GetMyProfileResponse,
+  ListByAuthorResponse,
 } from '@/lib/api/schema';
 
 /**
@@ -296,14 +296,8 @@ export function formatOrcidUrl(orcid: string): string {
   return `https://orcid.org/${cleanOrcid}`;
 }
 
-/**
- * Response type for author eprints.
- */
-interface AuthorEprintsResponse {
-  eprints: EprintSummary[];
-  cursor?: string;
-  total?: number;
-}
+/** Response from listing author eprints, from generated `pub.chive.eprint.listByAuthor`. */
+type AuthorEprintsResponse = ListByAuthorResponse;
 
 interface UseAuthorEprintsOptions {
   /** Number of eprints per page */

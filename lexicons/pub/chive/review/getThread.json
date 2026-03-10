@@ -88,9 +88,34 @@
           "description": "Plain text content of the review"
         },
         "body": {
-          "type": "ref",
-          "ref": "#annotationBody",
-          "description": "Rich text body with facets"
+          "type": "array",
+          "description": "Rich text body items",
+          "items": {
+            "type": "union",
+            "refs": [
+              "pub.chive.richtext.defs#textItem",
+              "pub.chive.richtext.defs#nodeRefItem",
+              "pub.chive.richtext.defs#wikidataRefItem",
+              "pub.chive.richtext.defs#fieldRefItem",
+              "pub.chive.richtext.defs#facetRefItem",
+              "pub.chive.richtext.defs#eprintRefItem",
+              "pub.chive.richtext.defs#annotationRefItem",
+              "pub.chive.richtext.defs#authorRefItem",
+              "pub.chive.richtext.defs#mentionItem",
+              "pub.chive.richtext.defs#linkItem",
+              "pub.chive.richtext.defs#tagItem",
+              "pub.chive.richtext.defs#latexItem",
+              "pub.chive.richtext.defs#codeBlockItem",
+              "pub.chive.richtext.defs#headingItem",
+              "pub.chive.richtext.defs#listItem",
+              "pub.chive.richtext.defs#blockquoteItem"
+            ]
+          },
+          "maxLength": 500
+        },
+        "bodyPlainText": {
+          "type": "string",
+          "description": "Plain text body for search/preview"
         },
         "target": {
           "type": "ref",
@@ -154,99 +179,6 @@
         "avatar": {
           "type": "string",
           "format": "uri"
-        }
-      }
-    },
-    "annotationBody": {
-      "type": "object",
-      "description": "Rich text body with optional facets",
-      "required": ["text"],
-      "properties": {
-        "text": {
-          "type": "string",
-          "maxLength": 10000,
-          "description": "Plain text content"
-        },
-        "facets": {
-          "type": "array",
-          "items": {
-            "type": "ref",
-            "ref": "#richTextFacet"
-          },
-          "description": "Rich text facets for mentions, links, and tags"
-        }
-      }
-    },
-    "richTextFacet": {
-      "type": "object",
-      "required": ["index", "features"],
-      "properties": {
-        "index": {
-          "type": "ref",
-          "ref": "#byteSlice"
-        },
-        "features": {
-          "type": "array",
-          "items": {
-            "type": "union",
-            "refs": ["#mentionFacet", "#linkFacet", "#tagFacet"]
-          }
-        }
-      }
-    },
-    "byteSlice": {
-      "type": "object",
-      "description": "Byte slice for facet positioning",
-      "required": ["byteStart", "byteEnd"],
-      "properties": {
-        "byteStart": {
-          "type": "integer",
-          "minimum": 0
-        },
-        "byteEnd": {
-          "type": "integer",
-          "minimum": 0
-        }
-      }
-    },
-    "mentionFacet": {
-      "type": "object",
-      "required": ["did"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.bsky.richtext.facet#mention"
-        },
-        "did": {
-          "type": "string",
-          "format": "did"
-        }
-      }
-    },
-    "linkFacet": {
-      "type": "object",
-      "required": ["uri"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.bsky.richtext.facet#link"
-        },
-        "uri": {
-          "type": "string",
-          "format": "uri"
-        }
-      }
-    },
-    "tagFacet": {
-      "type": "object",
-      "required": ["tag"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.bsky.richtext.facet#tag"
-        },
-        "tag": {
-          "type": "string"
         }
       }
     },

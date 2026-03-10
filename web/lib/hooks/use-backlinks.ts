@@ -2,57 +2,21 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
+import type {
+  OutputSchema as ListBacklinksResponse,
+  Backlink,
+} from '@/lib/api/generated/types/pub/chive/backlink/list';
+import type { OutputSchema as BacklinkCounts } from '@/lib/api/generated/types/pub/chive/backlink/getCounts';
 
 /**
  * Backlink source type.
  *
  * @remarks
- * Uses open union pattern `(string & {})` to allow future source types
- * without breaking compatibility, matching the lexicon's knownValues pattern.
+ * Derived from the generated Backlink type's sourceType field.
  */
-export type BacklinkSourceType =
-  | 'cosmik.collection'
-  | 'leaflet.list'
-  | 'whitewind.blog'
-  | 'bluesky.post'
-  | 'bluesky.embed'
-  | 'other'
-  | (string & {});
+export type BacklinkSourceType = Backlink['sourceType'];
 
-/**
- * Backlink record.
- */
-export interface Backlink {
-  id: number;
-  sourceUri: string;
-  sourceType: BacklinkSourceType;
-  targetUri: string;
-  context?: string;
-  indexedAt: string;
-  deleted: boolean;
-}
-
-/**
- * Backlink counts by source type.
- */
-export interface BacklinkCounts {
-  cosmikCollections: number;
-  leafletLists: number;
-  whitewindBlogs: number;
-  blueskyPosts: number;
-  blueskyEmbeds: number;
-  other: number;
-  total: number;
-}
-
-/**
- * Response from backlink list endpoint.
- */
-interface ListBacklinksResponse {
-  backlinks: Backlink[];
-  cursor?: string;
-  hasMore: boolean;
-}
+export type { Backlink, BacklinkCounts, ListBacklinksResponse };
 
 /**
  * Query key factory for backlink-related queries.

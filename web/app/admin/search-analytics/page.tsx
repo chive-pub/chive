@@ -187,36 +187,40 @@ export default function SearchAnalyticsPage() {
               ))}
             </div>
           ) : data?.topQueries?.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Query</TableHead>
-                  <TableHead className="text-right">Impressions</TableHead>
-                  <TableHead className="text-right">Clicks</TableHead>
-                  <TableHead className="text-right">CTR %</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {data.topQueries.map((q: SearchAnalytics['topQueries'][number]) => {
-                  const queryCtr =
-                    q.impressionCount > 0 ? (q.clickCount / q.impressionCount) * 100 : 0;
-                  return (
-                    <TableRow key={q.query}>
-                      <TableCell className="max-w-[300px] truncate font-medium">
-                        {q.query}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {q.impressionCount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        {q.clickCount.toLocaleString()}
-                      </TableCell>
-                      <TableCell className="text-right font-mono">{queryCtr.toFixed(1)}%</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Query</TableHead>
+                    <TableHead className="text-right">Impressions</TableHead>
+                    <TableHead className="text-right">Clicks</TableHead>
+                    <TableHead className="text-right">CTR %</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data.topQueries.map((q: SearchAnalytics['topQueries'][number]) => {
+                    const queryCtr =
+                      q.impressionCount > 0 ? (q.clickCount / q.impressionCount) * 100 : 0;
+                    return (
+                      <TableRow key={q.query}>
+                        <TableCell className="max-w-[300px] truncate font-medium">
+                          {q.query}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {q.impressionCount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {q.clickCount.toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          {queryCtr.toFixed(1)}%
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               No search data available yet

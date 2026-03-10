@@ -153,8 +153,8 @@ export default function AdminAlphaDetailPage({ params }: { params: Promise<{ did
           <CardTitle>Application Information</CardTitle>
           <CardDescription>
             Submitted{' '}
-            {application.appliedAt
-              ? new Date(application.appliedAt).toLocaleDateString('en-US', {
+            {application.createdAt
+              ? new Date(application.createdAt).toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
@@ -223,9 +223,9 @@ export default function AdminAlphaDetailPage({ params }: { params: Promise<{ did
                 <Tag className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
                 <div>
                   <p className="text-sm font-medium">Keywords</p>
-                  {application.keywords && application.keywords.length > 0 ? (
+                  {application.researchKeywords && application.researchKeywords.length > 0 ? (
                     <div className="flex flex-wrap gap-1 mt-1">
-                      {application.keywords.map((kw: string, i: number) => (
+                      {application.researchKeywords.map((kw: string, i: number) => (
                         <Badge key={i} variant="outline" className="text-xs">
                           {kw}
                         </Badge>

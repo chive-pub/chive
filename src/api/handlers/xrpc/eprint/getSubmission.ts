@@ -25,6 +25,7 @@ import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError, ValidationError } from '../../../../types/errors.js';
 import { normalizeFieldUri } from '../../../../utils/at-uri.js';
 import { resolveFieldLabels } from '../../../../utils/field-label.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -87,31 +88,7 @@ export const getSubmission: XRPCMethod<QueryParams, void, OutputSchema> = {
       return new BlobRef(CID.parse(ref.ref), ref.mimeType, ref.size);
     };
 
-    // Convert abstract items to lexicon format
-    // result.abstract is an AnnotationBody with .items array
-    const abstractItems = result.abstract.items.map((item) => {
-      if (item.type === 'text') {
-        return {
-          $type: 'pub.chive.eprint.submission#textItem' as const,
-          type: 'text' as const,
-          content: item.content,
-        };
-      } else if (item.type === 'fieldRef' || item.type === 'nodeRef') {
-        return {
-          $type: 'pub.chive.eprint.submission#nodeRefItem' as const,
-          type: 'nodeRef' as const,
-          uri: item.uri,
-          label: item.label ?? '',
-          subkind: 'field',
-        };
-      }
-      // For other ref types (wikidata, authority, etc.), convert to text with label
-      return {
-        $type: 'pub.chive.eprint.submission#textItem' as const,
-        type: 'text' as const,
-        content: 'label' in item ? String(item.label ?? '') : '',
-      };
-    });
+    const abstractItems = toWireFormat(result.abstract) ?? [];
 
     // Fetch avatars for authors who don't have one
     const authorsNeedingAvatars = result.authors.filter((a) => a.did && !a.avatarUrl);

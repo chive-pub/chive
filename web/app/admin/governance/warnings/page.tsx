@@ -84,42 +84,44 @@ export default function AdminWarningsPage() {
               <p className="text-muted-foreground">No active warnings.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Reason</TableHead>
-                  <TableHead>Issued By</TableHead>
-                  <TableHead>Issued At</TableHead>
-                  <TableHead>Acknowledged</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {warnings.map((warning) => (
-                  <TableRow key={warning.id}>
-                    <TableCell className="font-mono text-xs">
-                      {warning.targetHandle ?? truncateDid(warning.targetDid)}
-                    </TableCell>
-                    <TableCell className="max-w-[300px]">
-                      <span className="line-clamp-2 text-sm">{warning.reason}</span>
-                    </TableCell>
-                    <TableCell className="font-mono text-xs text-muted-foreground">
-                      {truncateDid(warning.issuedBy)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                      {new Date(warning.issuedAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell>
-                      {warning.acknowledged ? (
-                        <span className="text-sm text-green-600">Yes</span>
-                      ) : (
-                        <span className="text-sm text-yellow-600">No</span>
-                      )}
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>User</TableHead>
+                    <TableHead>Reason</TableHead>
+                    <TableHead>Issued By</TableHead>
+                    <TableHead>Issued At</TableHead>
+                    <TableHead>Acknowledged</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {warnings.map((warning) => (
+                    <TableRow key={warning.id}>
+                      <TableCell className="font-mono text-xs">
+                        {warning.targetHandle ?? truncateDid(warning.targetDid)}
+                      </TableCell>
+                      <TableCell className="max-w-[300px]">
+                        <span className="line-clamp-2 text-sm">{warning.reason}</span>
+                      </TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">
+                        {truncateDid(warning.issuedBy)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(warning.issuedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {warning.acknowledged ? (
+                          <span className="text-sm text-green-600">Yes</span>
+                        ) : (
+                          <span className="text-sm text-yellow-600">No</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>

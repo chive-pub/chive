@@ -445,6 +445,69 @@ CSS variables in `styles/globals.css` define colors:
 }
 ```
 
+## Mobile responsiveness
+
+### useIsMobile hook
+
+The `useIsMobile` hook (`lib/hooks/use-mobile.ts`) detects viewport width using `window.matchMedia`. The breakpoint is 768px, matching Tailwind's `md` breakpoint.
+
+```tsx
+import { useIsMobile } from '@/lib/hooks/use-mobile';
+
+function MyComponent() {
+  const isMobile = useIsMobile();
+  return isMobile ? <MobileView /> : <DesktopView />;
+}
+```
+
+### SidebarLayout and Sheet drawers
+
+`SidebarLayout` (`components/layout/sidebar-layout.tsx`) provides a responsive sidebar used by the dashboard, admin, and governance pages. On desktop, it renders a fixed-width sidebar alongside the main content. On mobile, it converts the sidebar into a Sheet drawer triggered by a menu button.
+
+```tsx
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
+
+<SidebarLayout sidebar={<NavigationMenu />} sidebarWidth="md" sidebarTitle="Dashboard">
+  <DashboardContent />
+</SidebarLayout>;
+```
+
+Props:
+
+| Prop               | Type                   | Default        | Description                       |
+| ------------------ | ---------------------- | -------------- | --------------------------------- |
+| `sidebar`          | `ReactNode`            | (required)     | Sidebar content                   |
+| `sidebarWidth`     | `'sm' \| 'md' \| 'lg'` | `'md'`         | Desktop sidebar width             |
+| `sidebarPosition`  | `'left' \| 'right'`    | `'left'`       | Which side the sidebar appears on |
+| `stickyNavigation` | `boolean`              | `false`        | Sticky positioning on desktop     |
+| `sidebarTitle`     | `string`               | `'Navigation'` | Label on the mobile Sheet trigger |
+
+The Sheet automatically closes on route changes.
+
+### MobileSearch
+
+`MobileSearch` (`components/navigation/mobile-search.tsx`) provides a search trigger visible only below the `sm` breakpoint. It opens a top Sheet with a search input. The desktop `SearchBar` is hidden at the same breakpoint using `sm:hidden`.
+
+### Admin table overflow
+
+Admin tables (user management, proposal review) use `overflow-x-auto` on the table container to enable horizontal scrolling on narrow viewports:
+
+```tsx
+<div className="overflow-x-auto">
+  <Table>{/* columns */}</Table>
+</div>
+```
+
+### Responsive grid conventions
+
+Use these Tailwind breakpoint conventions for grid layouts:
+
+| Layout         | Classes                                          | Description                                   |
+| -------------- | ------------------------------------------------ | --------------------------------------------- |
+| Card grids     | `grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3` | 1 column on mobile, 2 on tablet, 3 on desktop |
+| Two-column     | `grid grid-cols-1 md:grid-cols-2`                | Stacks on mobile, side-by-side on desktop     |
+| Sidebar + main | Use `SidebarLayout` instead of manual grid       | Handles Sheet conversion automatically        |
+
 ## Hooks reference
 
 All TanStack Query hooks are organized by domain and exported from `lib/hooks/index.ts`.
@@ -494,25 +557,27 @@ const newFacets = addFacetValue(currentFacets, 'fields', 'cs.AI');
 
 ### Discovery hooks
 
-| Hook                           | Description                                    |
-| ------------------------------ | ---------------------------------------------- |
-| `useForYouFeed()`              | Personalized recommendations (infinite query)  |
-| `useSimilarPapers(uri)`        | Related papers by similarity                   |
-| `useCitations(uri)`            | Citation network (citing/cited-by)             |
-| `useEnrichment(uri)`           | External metadata (Semantic Scholar, OpenAlex) |
-| `useRecordInteraction()`       | Mutation to log user interactions              |
-| `usePrefetchSimilarPapers()`   | Prefetch similar papers on hover               |
-| `useDiscoverySettings()`       | User discovery preferences                     |
-| `useUpdateDiscoverySettings()` | Mutation to update preferences                 |
+| Hook                           | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
+| `useSimilarPapers(uri)`        | Related papers by similarity (supports weights) |
+| `useCitations(uri)`            | Citation network (citing/cited-by)              |
+| `useEnrichment(uri)`           | External metadata (Semantic Scholar, OpenAlex)  |
+| `useRecordInteraction()`       | Mutation to log user interactions               |
+| `usePrefetchSimilarPapers()`   | Prefetch similar papers on hover                |
+| `useDiscoverySettings()`       | User discovery preferences (including weights)  |
+| `useUpdateDiscoverySettings()` | Mutation to update preferences                  |
+| `useMutedAuthors()`            | Set of muted author DIDs                        |
+| `useMuteAuthor()`              | Mutation to mute an author                      |
+| `useUnmuteAuthor()`            | Mutation to unmute an author                    |
+| `usePersonalizedAuthors()`     | Personalized author discovery for /authors page |
 
 ```tsx
-import { useForYouFeed, useRecordInteraction } from '@/lib/hooks';
+import { useSimilarPapers, useRecordInteraction, useDiscoverySettings } from '@/lib/hooks';
 
-const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useForYouFeed({
-  limit: 10,
+const { data: settings } = useDiscoverySettings();
+const { data, isLoading } = useSimilarPapers(eprintUri, {
+  weights: settings?.relatedPapersWeights,
 });
-
-const allRecommendations = data?.pages.flatMap((p) => p.recommendations) ?? [];
 
 const { mutate: recordInteraction } = useRecordInteraction();
 recordInteraction({

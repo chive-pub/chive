@@ -11,9 +11,10 @@
  * @packageDocumentation
  */
 
+import type { Agent } from '@atproto/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api, authApi } from '@/lib/api/client';
+import { api, authApi, createAuthenticatedClient } from '@/lib/api/client';
 import type {
   Main as AuthorContribution,
   Affiliation as AuthorAffiliation,
@@ -22,7 +23,10 @@ import type {
 import type { ChangelogSection } from '@/lib/api/generated/types/pub/chive/eprint/changelog';
 import type { OutputSchema as DeleteOutput } from '@/lib/api/generated/types/pub/chive/eprint/deleteSubmission';
 import type { OutputSchema as GetChangelogOutput } from '@/lib/api/generated/types/pub/chive/eprint/getChangelog';
-import type { ChangelogView } from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
+import type {
+  OutputSchema as ListChangelogsOutput,
+  ChangelogView,
+} from '@/lib/api/generated/types/pub/chive/eprint/listChangelogs';
 import type {
   OutputSchema as UpdateOutput,
   ChangelogInput,
@@ -66,6 +70,8 @@ export type VersionBumpType = 'major' | 'minor' | 'patch';
 interface DeleteEprintParams {
   /** AT-URI of the eprint to delete */
   uri: string;
+  /** Agent to use for service auth (paper agent for paper-centric eprints) */
+  overrideAgent?: Agent;
 }
 
 /**
@@ -99,6 +105,8 @@ interface UpdateEprintParams {
   conferencePresentation?: Record<string, unknown>;
   /** Funding sources (optional) */
   funding?: Record<string, unknown>[];
+  /** Agent to use for service auth (paper agent for paper-centric eprints) */
+  overrideAgent?: Agent;
 }
 
 /**
@@ -131,9 +139,10 @@ export function useDeleteEprint() {
   const queryClient = useQueryClient();
 
   return useMutation<DeleteOutput, APIError, DeleteEprintParams>({
-    mutationFn: async ({ uri }) => {
+    mutationFn: async ({ overrideAgent, ...params }) => {
       try {
-        const response = await authApi.pub.chive.eprint.deleteSubmission({ uri });
+        const client = overrideAgent ? createAuthenticatedClient(overrideAgent) : authApi;
+        const response = await client.pub.chive.eprint.deleteSubmission({ uri: params.uri });
         return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;
@@ -145,9 +154,7 @@ export function useDeleteEprint() {
       }
     },
     onSuccess: (_, { uri }) => {
-      // Invalidate the specific eprint query
       queryClient.invalidateQueries({ queryKey: eprintKeys.detail(uri) });
-      // Invalidate all eprint list queries
       queryClient.invalidateQueries({ queryKey: eprintKeys.all });
     },
   });
@@ -187,34 +194,22 @@ export function useUpdateEprint() {
   const queryClient = useQueryClient();
 
   return useMutation<UpdateOutput, APIError, UpdateEprintParams>({
-    mutationFn: async ({
-      uri,
-      versionBump,
-      title,
-      keywords,
-      fieldUris,
-      authors,
-      changelog,
-      publishedVersion,
-      externalIds,
-      repositories,
-      conferencePresentation,
-      funding,
-    }) => {
+    mutationFn: async ({ overrideAgent, ...params }) => {
       try {
-        const response = await authApi.pub.chive.eprint.updateSubmission({
-          uri,
-          versionBump,
-          title,
-          keywords,
-          fieldUris,
-          authors,
-          changelog,
-          publishedVersion,
-          externalIds,
-          repositories,
-          conferencePresentation,
-          funding,
+        const client = overrideAgent ? createAuthenticatedClient(overrideAgent) : authApi;
+        const response = await client.pub.chive.eprint.updateSubmission({
+          uri: params.uri,
+          versionBump: params.versionBump,
+          title: params.title,
+          keywords: params.keywords,
+          fieldUris: params.fieldUris,
+          authors: params.authors,
+          changelog: params.changelog,
+          publishedVersion: params.publishedVersion,
+          externalIds: params.externalIds,
+          repositories: params.repositories,
+          conferencePresentation: params.conferencePresentation,
+          funding: params.funding,
         });
         return response.data;
       } catch (error) {
@@ -243,6 +238,8 @@ interface EprintData {
   submittedBy: string;
   /** DID of the paper account (if paper-centric) */
   paperDid?: string;
+  /** Authors with optional DIDs for permission checking */
+  authors?: Array<{ did?: string }>;
 }
 
 /**
@@ -294,27 +291,26 @@ export function useEprintPermissions(
 
   const isSubmitter = eprint.submittedBy === userDid;
   const isPaperOwner = eprint.paperDid === userDid;
+  const isAuthor = eprint.authors?.some((a) => a.did === userDid) ?? false;
   const isPaperCentric = !!eprint.paperDid;
 
   if (isPaperCentric) {
-    // Paper-centric: can only modify if authenticated as paper account
     return {
-      canModify: isSubmitter || isPaperOwner,
-      requiresPaperAuth: isSubmitter && !isPaperOwner,
+      canModify: isSubmitter || isPaperOwner || isAuthor,
+      requiresPaperAuth: (isSubmitter || isAuthor) && !isPaperOwner,
       reason:
-        isSubmitter && !isPaperOwner
+        (isSubmitter || isAuthor) && !isPaperOwner
           ? 'Paper authentication required'
-          : !isSubmitter && !isPaperOwner
+          : !isSubmitter && !isPaperOwner && !isAuthor
             ? 'Not authorized'
             : undefined,
     };
   }
 
-  // Traditional: submitter can modify
   return {
-    canModify: isSubmitter,
+    canModify: isSubmitter || isAuthor,
     requiresPaperAuth: false,
-    reason: !isSubmitter ? 'Not authorized' : undefined,
+    reason: !isSubmitter && !isAuthor ? 'Not authorized' : undefined,
   };
 }
 
@@ -389,16 +385,9 @@ interface UseEprintChangelogsOptions {
 }
 
 /**
- * Response from the useEprintChangelogs hook.
+ * Response from the useEprintChangelogs hook, extended with derived hasMore flag.
  */
-interface EprintChangelogsResponse {
-  /** List of changelog entries, newest first */
-  changelogs: ChangelogView[];
-  /** Pagination cursor for next page (undefined if no more pages) */
-  cursor?: string;
-  /** Whether there are more changelogs to fetch */
-  hasMore: boolean;
-}
+type EprintChangelogsResponse = ListChangelogsOutput & { hasMore: boolean };
 
 /**
  * Fetches paginated changelogs for an eprint.

@@ -203,7 +203,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     });
 
     it('should have correct version', () => {
-      expect(plugin.manifest.version).toBe('0.2.0');
+      expect(plugin.manifest.version).toBe('0.3.0');
     });
 
     it('should have correct description', () => {

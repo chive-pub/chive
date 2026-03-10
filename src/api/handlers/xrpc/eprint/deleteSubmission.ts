@@ -4,6 +4,9 @@
  * @remarks
  * Validates that the user is authorized to delete the eprint and returns
  * the information needed for the frontend to make the actual PDS deletion.
+ * Authorization is granted to the original submitter, the paper account
+ * (if paper-centric), or any author whose DID appears in the eprint's
+ * authors array.
  *
  * **ATProto Architecture:**
  * Chive is an AppView and does not write to user PDSes. This handler validates
@@ -32,7 +35,8 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
  * @remarks
  * Validates that the authenticated user has permission to delete the eprint.
  *
- * For traditional eprints (no paperDid), only the submitter can delete.
+ * For traditional eprints (no paperDid), the submitter or any author whose
+ * DID appears in the authors array can delete.
  * For paper-centric eprints (paperDid is set), the user must be authenticated
  * as the paper account to delete.
  *
@@ -90,15 +94,20 @@ export const deleteSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
     // Determine the record owner (paper PDS or submitter PDS)
     const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
 
-    // Authorization: must be submitter or paper account
-    if (eprintData.submittedBy !== user.did && eprintData.paperDid !== user.did) {
-      throw new AuthorizationError('Can only delete your own eprints');
+    // Authorization: must be submitter, paper account, or listed author
+    const isSubmitter = eprintData.submittedBy === user.did;
+    const isPaperAccount = eprintData.paperDid === user.did;
+    const isAuthor = eprintData.authors?.some((a: { did?: string }) => a.did === user.did) ?? false;
+
+    if (!isSubmitter && !isPaperAccount && !isAuthor) {
+      throw new AuthorizationError('Not authorized to modify this eprint');
     }
 
     // For paper-centric eprints, must be authenticated as paper account
+    // (even authors must auth as paper account to write to paper's PDS)
     if (eprintData.paperDid && user.did !== eprintData.paperDid) {
       throw new AuthorizationError(
-        'Must authenticate as paper account to delete paper-centric eprints'
+        'Must authenticate as paper account to modify paper-centric eprints'
       );
     }
 

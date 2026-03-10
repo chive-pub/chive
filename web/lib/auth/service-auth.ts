@@ -101,8 +101,9 @@ const TOKEN_REFRESH_MARGIN_MS = 10_000; // 10 seconds
  * ```
  */
 export async function getServiceAuthToken(agent: Agent, lxm?: string): Promise<string> {
-  // Check cache first
-  const cacheKey = lxm ?? '';
+  // Check cache first (key includes agent DID to avoid collisions between accounts)
+  const agentDid = agent.did ?? '';
+  const cacheKey = `${agentDid}:${lxm ?? ''}`;
   const cached = tokenCache.get(cacheKey);
 
   if (cached && cached.expiresAt - Date.now() > TOKEN_REFRESH_MARGIN_MS) {
@@ -143,8 +144,8 @@ export function clearServiceAuthTokens(): void {
  * @param lxm - Optional lexicon method
  * @returns True if a valid cached token exists
  */
-export function hasValidServiceAuthToken(lxm?: string): boolean {
-  const cacheKey = lxm ?? '';
+export function hasValidServiceAuthToken(lxm?: string, agentDid?: string): boolean {
+  const cacheKey = `${agentDid ?? ''}:${lxm ?? ''}`;
   const cached = tokenCache.get(cacheKey);
 
   if (!cached) return false;

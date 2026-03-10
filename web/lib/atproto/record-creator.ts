@@ -826,6 +826,90 @@ export async function createNodeProposalRecord(
 }
 
 // =============================================================================
+// MUTE RECORDS
+// =============================================================================
+
+/**
+ * Mute record as stored in ATProto.
+ */
+export interface MuteRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.actor.mute';
+  subjectDid: string;
+  createdAt: string;
+}
+
+/**
+ * Create a mute record in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param subjectDid - DID of the author to mute
+ * @returns Created record result
+ *
+ * @throws Error if agent is not authenticated
+ */
+export async function createMuteRecord(
+  agent: Agent,
+  subjectDid: string
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: MuteRecord = {
+    $type: 'pub.chive.actor.mute',
+    subjectDid,
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.actor.mute',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Find and delete a mute record for a given author DID.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param subjectDid - DID of the author to unmute
+ *
+ * @throws Error if agent is not authenticated
+ * @throws Error if no mute record is found
+ */
+export async function deleteMuteRecord(agent: Agent, subjectDid: string): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  // TODO: Only scans the first 100 mute records. Users with 100+ mutes
+  // would need cursor-based pagination to find the target record.
+  const response = await agent.com.atproto.repo.listRecords({
+    repo: did,
+    collection: 'pub.chive.actor.mute',
+    limit: 100,
+  });
+
+  const muteRecord = response.data.records.find(
+    (r) => (r.value as MuteRecord).subjectDid === subjectDid
+  );
+
+  if (!muteRecord) {
+    throw new Error(`No mute record found for ${subjectDid}`);
+  }
+
+  await deleteRecord(agent, muteRecord.uri);
+}
+
+// =============================================================================
 // RECORD DELETION
 // =============================================================================
 
@@ -1217,7 +1301,7 @@ export async function createReviewRecord(
       features: Array<{ $type: string; uri?: string }>;
     }>;
   } = {
-    $type: 'pub.chive.review.comment#textItem',
+    $type: 'pub.chive.richtext.defs#textItem',
     type: 'text',
     content: input.content,
   };
@@ -1329,7 +1413,7 @@ export async function updateReviewRecord(
   // Build the body array with the new content
   const body: ReviewCommentRecord['body'] = [
     {
-      $type: 'pub.chive.review.comment#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: input.content,
     },
@@ -1443,7 +1527,7 @@ export async function createAnnotationRecord(
       features: Array<{ $type: string; uri?: string }>;
     }>;
   } = {
-    $type: 'pub.chive.annotation.comment#textItem',
+    $type: 'pub.chive.richtext.defs#textItem',
     type: 'text',
     content: input.content,
   };

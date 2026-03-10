@@ -69,9 +69,9 @@ function roleBadgeClass(role: string): string {
       return 'bg-purple-500/15 text-purple-700 border-purple-200';
     case 'moderator':
       return 'bg-blue-500/15 text-blue-700 border-blue-200';
-    case 'trusted_editor':
+    case 'graph-editor':
       return 'bg-green-500/15 text-green-700 border-green-200';
-    case 'alpha':
+    case 'alpha-tester':
       return 'bg-yellow-500/15 text-yellow-700 border-yellow-200';
     default:
       return 'bg-gray-500/15 text-gray-700 border-gray-200';
@@ -190,118 +190,120 @@ export default function AdminUsersPage() {
               </p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Handle</TableHead>
-                  <TableHead>DID</TableHead>
-                  <TableHead>Roles</TableHead>
-                  <TableHead className="text-right">Eprints</TableHead>
-                  <TableHead className="text-right">Reviews</TableHead>
-                  <TableHead className="w-[70px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map(
-                  (user: {
-                    did: string;
-                    handle?: string;
-                    roles?: string[];
-                    eprintCount?: number;
-                    reviewCount?: number;
-                  }) => (
-                    <TableRow key={user.did}>
-                      <TableCell className="font-medium">
-                        <Link
-                          href={`/admin/users/${encodeURIComponent(user.did)}`}
-                          className="text-primary hover:underline"
-                        >
-                          {user.handle ?? 'Unknown'}
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {truncateDid(user.did)}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6"
-                            onClick={() => handleCopyDid(user.did)}
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Handle</TableHead>
+                    <TableHead>DID</TableHead>
+                    <TableHead>Roles</TableHead>
+                    <TableHead className="text-right">Eprints</TableHead>
+                    <TableHead className="text-right">Reviews</TableHead>
+                    <TableHead className="w-[70px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map(
+                    (user: {
+                      did: string;
+                      handle?: string;
+                      roles?: string[];
+                      eprintCount?: number;
+                      reviewCount?: number;
+                    }) => (
+                      <TableRow key={user.did}>
+                        <TableCell className="font-medium">
+                          <Link
+                            href={`/admin/users/${encodeURIComponent(user.did)}`}
+                            className="text-primary hover:underline"
                           >
-                            {copiedDid === user.did ? (
-                              <Check className="h-3 w-3 text-green-600" />
-                            ) : (
-                              <Copy className="h-3 w-3" />
-                            )}
-                            <span className="sr-only">Copy DID</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {user.roles && user.roles.length > 0 ? (
-                            user.roles.map((role) => (
-                              <Badge key={role} className={`text-xs ${roleBadgeClass(role)}`}>
-                                {role}
-                              </Badge>
-                            ))
-                          ) : (
-                            <span className="text-xs text-muted-foreground">No roles</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">{user.eprintCount ?? 0}</TableCell>
-                      <TableCell className="text-right">{user.reviewCount ?? 0}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
+                            {user.handle ?? 'Unknown'}
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {truncateDid(user.did)}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleCopyDid(user.did)}
+                            >
+                              {copiedDid === user.did ? (
+                                <Check className="h-3 w-3 text-green-600" />
+                              ) : (
+                                <Copy className="h-3 w-3" />
+                              )}
+                              <span className="sr-only">Copy DID</span>
                             </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/admin/users/${encodeURIComponent(user.did)}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                View Detail
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setRoleDialog({
-                                  type: 'assign',
-                                  did: user.did,
-                                  handle: user.handle ?? user.did,
-                                })
-                              }
-                            >
-                              <ShieldPlus className="mr-2 h-4 w-4" />
-                              Assign Role
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() =>
-                                setRoleDialog({
-                                  type: 'revoke',
-                                  did: user.did,
-                                  handle: user.handle ?? user.did,
-                                })
-                              }
-                            >
-                              <ShieldMinus className="mr-2 h-4 w-4" />
-                              Revoke Role
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  )
-                )}
-              </TableBody>
-            </Table>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {user.roles && user.roles.length > 0 ? (
+                              user.roles.map((role) => (
+                                <Badge key={role} className={`text-xs ${roleBadgeClass(role)}`}>
+                                  {role}
+                                </Badge>
+                              ))
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No roles</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{user.eprintCount ?? 0}</TableCell>
+                        <TableCell className="text-right">{user.reviewCount ?? 0}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin/users/${encodeURIComponent(user.did)}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Detail
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setRoleDialog({
+                                    type: 'assign',
+                                    did: user.did,
+                                    handle: user.handle ?? user.did,
+                                  })
+                                }
+                              >
+                                <ShieldPlus className="mr-2 h-4 w-4" />
+                                Assign Role
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  setRoleDialog({
+                                    type: 'revoke',
+                                    did: user.did,
+                                    handle: user.handle ?? user.did,
+                                  })
+                                }
+                              >
+                                <ShieldMinus className="mr-2 h-4 w-4" />
+                                Revoke Role
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -329,8 +331,11 @@ export default function AdminUsersPage() {
               <SelectContent>
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="moderator">Moderator</SelectItem>
-                <SelectItem value="trusted_editor">Trusted Editor</SelectItem>
-                <SelectItem value="alpha">Alpha</SelectItem>
+                <SelectItem value="graph-editor">Graph Editor</SelectItem>
+                <SelectItem value="author">Author</SelectItem>
+                <SelectItem value="reader">Reader</SelectItem>
+                <SelectItem value="alpha-tester">Alpha Tester</SelectItem>
+                <SelectItem value="premium">Premium</SelectItem>
               </SelectContent>
             </Select>
           </div>

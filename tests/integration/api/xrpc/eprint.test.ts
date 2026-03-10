@@ -366,6 +366,13 @@ describe('XRPC Eprint Endpoints Integration', () => {
   });
 
   beforeEach(async () => {
+    // Clean up test data from PostgreSQL to prevent stale data from prior runs
+    try {
+      await pool.query('DELETE FROM eprints_index');
+    } catch {
+      // Table may not exist yet
+    }
+
     // Clean up test data from Elasticsearch
     try {
       await esClient.deleteByQuery({
@@ -719,7 +726,9 @@ describe('XRPC Eprint Endpoints Integration', () => {
       const matchingEprint = body.eprints.find((p) => p.uri === uri);
       expect(matchingEprint).toBeDefined();
       if (matchingEprint?.abstract) {
-        expect(matchingEprint.abstract.length).toBe(1000);
+        // abstract is a rich text array; check the text content is not truncated
+        expect(matchingEprint.abstract).toHaveLength(1);
+        expect((matchingEprint.abstract[0] as { content: string }).content).toHaveLength(1000);
       }
     });
   });

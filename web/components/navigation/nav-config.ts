@@ -21,6 +21,13 @@ import {
   Tag,
   Vote,
   MessageCircle,
+  LayoutDashboard,
+  Upload,
+  MessageSquare,
+  ThumbsUp,
+  Library,
+  Bell,
+  Settings,
 } from 'lucide-react';
 
 /**
@@ -148,3 +155,18 @@ export const mainNavItems: NavEntry[] = [
 export const allNavItems: NavItem[] = mainNavItems.flatMap((entry) =>
   isNavGroup(entry) ? entry.children : [entry]
 );
+
+/**
+ * Dashboard navigation items shown in mobile nav for authenticated users.
+ */
+export const dashboardNavItems: NavItem[] = [
+  { label: 'Overview', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'My Eprints', href: '/dashboard/eprints', icon: FileText },
+  { label: 'Import Papers', href: '/dashboard/claims', icon: Upload },
+  { label: 'My Reviews', href: '/dashboard/reviews', icon: MessageSquare },
+  { label: 'My Endorsements', href: '/dashboard/endorsements', icon: ThumbsUp },
+  { label: 'My Collections', href: '/dashboard/collections', icon: Library },
+  { label: 'My Proposals', href: '/dashboard/proposals', icon: Vote },
+  { label: 'Notifications', href: '/dashboard/notifications', icon: Bell },
+  { label: 'Settings', href: '/dashboard/settings', icon: Settings },
+];

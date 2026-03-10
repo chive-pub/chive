@@ -506,9 +506,7 @@ describe('ATProto Core Services Compliance', () => {
       const review = {
         $type: 'pub.chive.review.comment',
         eprintUri: TEST_URI,
-        body: [
-          { $type: 'pub.chive.review.comment#textItem', type: 'text', content: 'Test review' },
-        ],
+        body: [{ $type: 'pub.chive.richtext.defs#textItem', type: 'text', content: 'Test review' }],
         createdAt: new Date().toISOString(),
       };
 

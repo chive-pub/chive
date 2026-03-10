@@ -71,7 +71,6 @@ export type {
 
 export type {
   OutputSchema as DiscoverySettings,
-  ForYouSignals,
   RelatedPapersSignals,
 } from '../../../../lexicons/generated/types/pub/chive/actor/getDiscoverySettings.js';
 

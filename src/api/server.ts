@@ -54,6 +54,7 @@ import type { SearchService } from '../services/search/search-service.js';
 import type { EdgeRepository } from '../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../storage/neo4j/facet-manager.js';
 import type { NodeRepository } from '../storage/neo4j/node-repository.js';
+import type { RecommendationService } from '../storage/neo4j/recommendations.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
 import type { IAuthorizationService } from '../types/interfaces/authorization.interface.js';
 import type { IIdentityResolver } from '../types/interfaces/identity.interface.js';
@@ -277,6 +278,11 @@ export interface ServerConfig {
    * Citation extraction service for extracting references from eprints (optional).
    */
   readonly citationExtractionService?: CitationExtractionService;
+
+  /**
+   * Recommendation service for graph-based similarity (optional).
+   */
+  readonly recommendationService?: RecommendationService;
 }
 
 /**
@@ -377,6 +383,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       admin: config.adminService,
       backfillManager: config.backfillManager,
       citationExtraction: config.citationExtractionService,
+      recommendationService: config.recommendationService,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);

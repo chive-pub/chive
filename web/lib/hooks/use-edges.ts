@@ -31,6 +31,7 @@ import {
   PubChiveGraphGetNode,
   PubChiveGraphListNodes,
 } from '@/lib/api/client';
+import type { OutputSchema as ListEdgesOutput } from '@/lib/api/generated/types/pub/chive/graph/listEdges';
 
 // =============================================================================
 // TYPES - Derived from API Schema
@@ -124,15 +125,8 @@ export interface EdgeWithNodes extends GraphEdge {
   targetNode?: GraphNode;
 }
 
-/**
- * Edges response from listEdges.
- */
-export interface EdgesResponse {
-  edges: GraphEdge[];
-  cursor?: string;
-  hasMore: boolean;
-  total: number;
-}
+/** Edges response from listEdges, from generated `pub.chive.graph.listEdges`. */
+export type EdgesResponse = ListEdgesOutput;
 
 /**
  * Hierarchy response from getHierarchy.
@@ -327,12 +321,7 @@ export function useEdges(params: EdgeListParams = {}, options: UseEdgeOptions = 
         status: params.status ?? 'established',
       });
 
-      return {
-        edges: response.data.edges,
-        cursor: response.data.cursor,
-        hasMore: response.data.hasMore,
-        total: response.data.total,
-      };
+      return response.data;
     },
     enabled: hasFilter && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,

@@ -16,6 +16,7 @@ import type {
 import type { ReviewView } from '../../../../services/review/review-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { NotFoundError } from '../../../../types/errors.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -33,7 +34,8 @@ function mapToApiReview(review: ReviewView): LexiconReviewView {
     },
     eprintUri: review.subject,
     content: review.text,
-    body: undefined,
+    body: toWireFormat(review.body),
+    bodyPlainText: review.text,
     target: undefined,
     motivation: 'commenting' as const,
     parentReviewUri: review.parent ?? undefined,

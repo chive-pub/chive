@@ -1,68 +1,43 @@
+'use client';
+
 /**
  * Sidebar layout component for dashboard-style pages.
  *
  * @remarks
  * Provides a responsive sidebar layout with:
+ * - Sheet drawer on mobile (triggered by menu button)
  * - Fixed-width sidebar on desktop
- * - Stacked layout on mobile
  * - Consistent spacing and gaps
  *
- * Used for dashboard and governance pages that need navigation sidebars.
- *
- * @example
- * ```tsx
- * <SidebarLayout sidebar={<DashboardNav />}>
- *   <DashboardContent />
- * </SidebarLayout>
- * ```
- *
- * @packageDocumentation
+ * Used for dashboard, admin, and governance pages that need navigation sidebars.
  */
 
+import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { PanelLeft } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-/**
- * Sidebar width options.
- */
 export type SidebarWidth = 'sm' | 'md' | 'lg';
 
-/**
- * Props for SidebarLayout component.
- */
 export interface SidebarLayoutProps {
-  /** Main content */
   children: React.ReactNode;
-
-  /** Sidebar content */
   sidebar: React.ReactNode;
-
-  /**
-   * Sidebar width on desktop.
-   *
-   * @remarks
-   * - `sm`: 200px (w-50)
-   * - `md`: 256px (w-64) - default
-   * - `lg`: 320px (w-80)
-   */
   sidebarWidth?: SidebarWidth;
-
-  /** Position of sidebar (default: 'left') */
   sidebarPosition?: 'left' | 'right';
-
-  /** Whether sidebar is sticky on scroll */
   stickyNavigation?: boolean;
-
-  /** Additional CSS classes for container */
+  /** Label shown on the mobile Sheet trigger button */
+  sidebarTitle?: string;
   className?: string;
-
-  /** Additional CSS classes for sidebar */
   sidebarClassName?: string;
-
-  /** Additional CSS classes for main content */
   contentClassName?: string;
 }
 
@@ -70,39 +45,63 @@ export interface SidebarLayoutProps {
 // STYLES
 // =============================================================================
 
-/**
- * Width classes for sidebar variants.
- */
 const widthStyles: Record<SidebarWidth, string> = {
-  sm: 'md:w-50', // 200px
-  md: 'md:w-64', // 256px
-  lg: 'md:w-80', // 320px
+  sm: 'md:w-50',
+  md: 'md:w-64',
+  lg: 'md:w-80',
 };
 
 // =============================================================================
 // COMPONENT
 // =============================================================================
 
-/**
- * Layout component with sidebar and main content area.
- *
- * @param props - Component props
- * @returns Layout element
- */
 export function SidebarLayout({
   children,
   sidebar,
   sidebarWidth = 'md',
   sidebarPosition = 'left',
   stickyNavigation = false,
+  sidebarTitle = 'Navigation',
   className,
   sidebarClassName,
   contentClassName,
 }: SidebarLayoutProps) {
+  const isMobile = useIsMobile();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close sheet on navigation
+  useEffect(() => {
+    setSheetOpen(false);
+  }, [pathname]);
+
+  if (isMobile) {
+    const side = sidebarPosition === 'left' ? 'left' : 'right';
+    return (
+      <div className={cn('container py-6', className)}>
+        <div className="mb-4">
+          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="sm">
+                <PanelLeft className="mr-2 h-4 w-4" />
+                {sidebarTitle}
+              </Button>
+            </SheetTrigger>
+            <SheetContent side={side} className="w-[280px] p-0">
+              <SheetTitle className="sr-only">{sidebarTitle}</SheetTitle>
+              <ScrollArea className="h-full px-4 py-6">{sidebar}</ScrollArea>
+            </SheetContent>
+          </Sheet>
+        </div>
+        <main className={cn('min-w-0', contentClassName)}>{children}</main>
+      </div>
+    );
+  }
+
   const sidebarElement = (
     <aside
       className={cn(
-        'w-full shrink-0',
+        'shrink-0',
         widthStyles[sidebarWidth],
         stickyNavigation && 'md:sticky md:top-20 md:self-start',
         sidebarClassName
@@ -112,45 +111,21 @@ export function SidebarLayout({
     </aside>
   );
 
-  const contentElement = <main className={cn('flex-1 min-w-0', contentClassName)}>{children}</main>;
-
   return (
-    <div className={cn('container flex flex-col gap-8 py-8 md:flex-row md:gap-12', className)}>
-      {sidebarPosition === 'left' ? (
-        <>
-          {sidebarElement}
-          {contentElement}
-        </>
-      ) : (
-        <>
-          {contentElement}
-          {sidebarElement}
-        </>
-      )}
+    <div className={cn('container flex gap-12 py-8', className)}>
+      {sidebarPosition === 'left' && sidebarElement}
+      <main className={cn('flex-1 min-w-0', contentClassName)}>{children}</main>
+      {sidebarPosition === 'right' && sidebarElement}
     </div>
   );
 }
 
 /**
  * Sidebar navigation section with title.
- *
- * @remarks
- * Use within a sidebar to group navigation items.
- *
- * @example
- * ```tsx
- * <SidebarSection title="Dashboard">
- *   <SidebarLink href="/dashboard">Overview</SidebarLink>
- *   <SidebarLink href="/dashboard/eprints">My Eprints</SidebarLink>
- * </SidebarSection>
- * ```
  */
 export interface SidebarSectionProps {
-  /** Section title */
   title?: string;
-  /** Child content (navigation links) */
   children: React.ReactNode;
-  /** Additional CSS classes */
   className?: string;
 }
 

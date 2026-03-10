@@ -334,7 +334,7 @@ export class CrossRefPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.crossref',
     name: 'CrossRef Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides DOI metadata lookup and citation tracking via CrossRef',
     author: 'Aaron Steven White',
     license: 'MIT',

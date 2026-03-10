@@ -17,6 +17,11 @@ import {
   UserCheck,
   Eye,
   Save,
+  SlidersHorizontal,
+  RotateCcw,
+  Brain,
+  Filter,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -27,10 +32,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
 import {
   useDiscoverySettings,
   useUpdateDiscoverySettings,
   DEFAULT_DISCOVERY_SETTINGS,
+  DEFAULT_RELATED_PAPERS_WEIGHTS,
+  DEFAULT_RELATED_PAPERS_THRESHOLDS,
+  DEFAULT_TRENDING_PREFERENCES,
 } from '@/lib/hooks/use-discovery';
 import type { DiscoverySettings } from '@/lib/hooks/use-discovery';
 import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
@@ -105,6 +114,46 @@ function SettingToggle({
 }
 
 /**
+ * Weight slider with label, value display, and optional icon.
+ */
+function WeightSlider({
+  label,
+  value,
+  onChange,
+  disabled,
+  icon: Icon,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="space-y-1.5 py-1">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground" />}
+          <Label className="text-sm">{label}</Label>
+        </div>
+        <span className="text-xs font-mono text-muted-foreground tabular-nums w-8 text-right">
+          {value}
+        </span>
+      </div>
+      <Slider
+        value={[value]}
+        onValueChange={([v]) => onChange(v ?? value)}
+        min={0}
+        max={100}
+        step={5}
+        disabled={disabled}
+        className="w-full"
+      />
+    </div>
+  );
+}
+
+/**
  * Loading skeleton for discovery settings.
  */
 function DiscoverySettingsSkeleton() {
@@ -128,7 +177,8 @@ function DiscoverySettingsSkeleton() {
  *
  * @remarks
  * Allows users to configure their discovery preferences including
- * For You feed settings, related papers signals, and citation network display.
+ * related papers signals, signal weights, thresholds, and trending
+ * preferences.
  * Changes are collected locally and saved with an explicit Save button.
  */
 export function DiscoverySettingsPanel() {
@@ -177,19 +227,42 @@ export function DiscoverySettingsPanel() {
     setDraft((prev) => ({ ...prev, ...partial }));
   }, []);
 
-  const updateDraftForYouSignal = useCallback((signal: string, value: boolean) => {
+  const updateDraftRelatedSignal = useCallback(
+    (signal: keyof DiscoverySettings['relatedPapersSignals'], value: boolean) => {
+      setDraft((prev) => ({
+        ...prev,
+        relatedPapersSignals: { ...prev.relatedPapersSignals, [signal]: value },
+      }));
+    },
+    []
+  );
+
+  const updateDraftRelatedWeight = useCallback(
+    (signal: keyof DiscoverySettings['relatedPapersWeights'], value: number) => {
+      setDraft((prev) => ({
+        ...prev,
+        relatedPapersWeights: { ...prev.relatedPapersWeights, [signal]: value },
+      }));
+    },
+    []
+  );
+
+  const updateDraftThreshold = useCallback((key: 'minScore' | 'maxResults', value: number) => {
     setDraft((prev) => ({
       ...prev,
-      forYouSignals: { ...prev.forYouSignals, [signal]: value },
+      relatedPapersThresholds: { ...prev.relatedPapersThresholds, [key]: value },
     }));
   }, []);
 
-  const updateDraftRelatedSignal = useCallback((signal: string, value: boolean) => {
-    setDraft((prev) => ({
-      ...prev,
-      relatedPapersSignals: { ...prev.relatedPapersSignals, [signal]: value },
-    }));
-  }, []);
+  const updateDraftTrending = useCallback(
+    (key: 'defaultWindow' | 'defaultLimit', value: string | number) => {
+      setDraft((prev) => ({
+        ...prev,
+        trendingPreferences: { ...prev.trendingPreferences, [key]: value },
+      }));
+    },
+    []
+  );
 
   const handleFollowedFieldAdd = useCallback(
     (field: FieldSelection) => {
@@ -250,15 +323,6 @@ export function DiscoverySettingsPanel() {
           />
 
           <SettingToggle
-            id="enableForYouFeed"
-            label="Show For You Feed"
-            description="Display personalized paper recommendations on your home page"
-            checked={draft.enableForYouFeed}
-            onCheckedChange={(checked) => updateDraft({ enableForYouFeed: checked })}
-            disabled={isPending || !draft.enablePersonalization}
-          />
-
-          <SettingToggle
             id="showRecommendationReasons"
             label="Show Recommendation Reasons"
             description="Display explanations for why papers are recommended"
@@ -268,55 +332,6 @@ export function DiscoverySettingsPanel() {
           />
         </div>
 
-        {/* For You Feed Signals */}
-        <CollapsibleSection title="For You Feed Sources" icon={Sparkles} defaultOpen>
-          <p className="text-sm text-muted-foreground mb-3">
-            Choose which signals to use for your personalized feed.
-          </p>
-
-          <div className="space-y-1">
-            <SettingToggle
-              id="forYou-fields"
-              label="Research Fields"
-              description="Papers in your research areas"
-              icon={Tag}
-              checked={draft.forYouSignals.fields ?? true}
-              onCheckedChange={(checked) => updateDraftForYouSignal('fields', checked)}
-              disabled={isPending || !draft.enableForYouFeed}
-            />
-
-            <SettingToggle
-              id="forYou-citations"
-              label="Citations"
-              description="Papers citing or related to your work"
-              icon={Quote}
-              checked={draft.forYouSignals.citations ?? true}
-              onCheckedChange={(checked) => updateDraftForYouSignal('citations', checked)}
-              disabled={isPending || !draft.enableForYouFeed}
-            />
-
-            <SettingToggle
-              id="forYou-collaborators"
-              label="Collaborators"
-              description="Papers from your co-authors and collaborators"
-              icon={Users}
-              checked={draft.forYouSignals.collaborators ?? true}
-              onCheckedChange={(checked) => updateDraftForYouSignal('collaborators', checked)}
-              disabled={isPending || !draft.enableForYouFeed}
-            />
-
-            <SettingToggle
-              id="forYou-trending"
-              label="Trending"
-              description="Popular papers in your fields"
-              icon={TrendingUp}
-              checked={draft.forYouSignals.trending ?? true}
-              onCheckedChange={(checked) => updateDraftForYouSignal('trending', checked)}
-              disabled={isPending || !draft.enableForYouFeed}
-            />
-          </div>
-        </CollapsibleSection>
-
         {/* Related Papers Signals */}
         <CollapsibleSection title="Related Papers" icon={FileText}>
           <p className="text-sm text-muted-foreground mb-3">
@@ -324,6 +339,16 @@ export function DiscoverySettingsPanel() {
           </p>
 
           <div className="space-y-1">
+            <SettingToggle
+              id="related-semantic"
+              label="Semantic Similarity"
+              description="Papers with similar meaning based on embeddings"
+              icon={Brain}
+              checked={draft.relatedPapersSignals.semantic ?? true}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('semantic', checked)}
+              disabled={isPending}
+            />
+
             <SettingToggle
               id="related-citations"
               label="Citation Relationships"
@@ -349,8 +374,18 @@ export function DiscoverySettingsPanel() {
               label="Author Overlap"
               description="Papers sharing one or more authors"
               icon={UserCheck}
-              checked={(draft.relatedPapersSignals as Record<string, boolean>).authors ?? true}
+              checked={draft.relatedPapersSignals.authors ?? true}
               onCheckedChange={(checked) => updateDraftRelatedSignal('authors', checked)}
+              disabled={isPending}
+            />
+
+            <SettingToggle
+              id="related-cocitation"
+              label="Co-Citation"
+              description="Papers frequently cited together by other works"
+              icon={Users}
+              checked={draft.relatedPapersSignals.coCitation ?? false}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('coCitation', checked)}
               disabled={isPending}
             />
 
@@ -359,15 +394,202 @@ export function DiscoverySettingsPanel() {
               label="Bibliographic Coupling"
               description="Papers that cite the same references"
               icon={GitBranch}
-              checked={
-                (draft.relatedPapersSignals as Record<string, boolean>).bibliographicCoupling ??
-                true
-              }
+              checked={draft.relatedPapersSignals.bibliographicCoupling ?? false}
               onCheckedChange={(checked) =>
                 updateDraftRelatedSignal('bibliographicCoupling', checked)
               }
               disabled={isPending}
             />
+
+            <SettingToggle
+              id="related-collaborative"
+              label="Collaborative Filtering"
+              description="Papers that other researchers with similar interests also read"
+              icon={Shuffle}
+              checked={draft.relatedPapersSignals.collaborative ?? false}
+              onCheckedChange={(checked) => updateDraftRelatedSignal('collaborative', checked)}
+              disabled={isPending}
+            />
+          </div>
+        </CollapsibleSection>
+
+        {/* Related Papers Weights */}
+        <CollapsibleSection title="Related Papers Signal Weights" icon={SlidersHorizontal}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Adjust the relative importance of each related papers signal.
+          </p>
+
+          <div className="space-y-2">
+            <WeightSlider
+              label="Semantic Similarity"
+              icon={Brain}
+              value={draft.relatedPapersWeights.semantic}
+              onChange={(v) => updateDraftRelatedWeight('semantic', v)}
+              disabled={isPending}
+            />
+            <WeightSlider
+              label="Co-citation"
+              icon={Quote}
+              value={draft.relatedPapersWeights.coCitation}
+              onChange={(v) => updateDraftRelatedWeight('coCitation', v)}
+              disabled={isPending}
+            />
+            <WeightSlider
+              label="Concept Overlap"
+              icon={Tag}
+              value={draft.relatedPapersWeights.conceptOverlap}
+              onChange={(v) => updateDraftRelatedWeight('conceptOverlap', v)}
+              disabled={isPending}
+            />
+            <WeightSlider
+              label="Author Network"
+              icon={Users}
+              value={draft.relatedPapersWeights.authorNetwork}
+              onChange={(v) => updateDraftRelatedWeight('authorNetwork', v)}
+              disabled={isPending}
+            />
+            <WeightSlider
+              label="Collaborative Filtering"
+              icon={Shuffle}
+              value={draft.relatedPapersWeights.collaborative}
+              onChange={(v) => updateDraftRelatedWeight('collaborative', v)}
+              disabled={isPending}
+            />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 text-xs"
+              onClick={() =>
+                updateDraft({ relatedPapersWeights: { ...DEFAULT_RELATED_PAPERS_WEIGHTS } })
+              }
+              disabled={isPending}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset to defaults
+            </Button>
+          </div>
+        </CollapsibleSection>
+
+        {/* Related Papers Thresholds */}
+        <CollapsibleSection title="Related Papers Thresholds" icon={Filter}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Control minimum quality and quantity for related papers.
+          </p>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Minimum Score</Label>
+                <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                  {draft.relatedPapersThresholds.minScore}%
+                </span>
+              </div>
+              <Slider
+                value={[draft.relatedPapersThresholds.minScore]}
+                onValueChange={([v]) => updateDraftThreshold('minScore', v ?? 5)}
+                min={0}
+                max={50}
+                step={1}
+                disabled={isPending}
+              />
+              <p className="text-xs text-muted-foreground">
+                Papers below this combined score are filtered out. Lower values show more results.
+              </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Max Results</Label>
+                <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                  {draft.relatedPapersThresholds.maxResults}
+                </span>
+              </div>
+              <Slider
+                value={[draft.relatedPapersThresholds.maxResults]}
+                onValueChange={([v]) => updateDraftThreshold('maxResults', v ?? 10)}
+                min={1}
+                max={50}
+                step={1}
+                disabled={isPending}
+              />
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() =>
+                updateDraft({
+                  relatedPapersThresholds: { ...DEFAULT_RELATED_PAPERS_THRESHOLDS },
+                })
+              }
+              disabled={isPending}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset to defaults
+            </Button>
+          </div>
+        </CollapsibleSection>
+
+        {/* Trending Preferences */}
+        <CollapsibleSection title="Trending Preferences" icon={TrendingUp}>
+          <p className="text-sm text-muted-foreground mb-3">
+            Configure defaults for the Trending page.
+          </p>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm flex items-center gap-2">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                Default Time Window
+              </Label>
+              <RadioGroup
+                value={draft.trendingPreferences.defaultWindow}
+                onValueChange={(value) => updateDraftTrending('defaultWindow', value)}
+                disabled={isPending}
+                className="flex gap-4"
+              >
+                {(['24h', '7d', '30d'] as const).map((window) => (
+                  <div key={window} className="flex items-center space-x-2">
+                    <RadioGroupItem value={window} id={`trending-window-${window}`} />
+                    <Label htmlFor={`trending-window-${window}`} className="cursor-pointer text-sm">
+                      {window === '24h' ? '24 Hours' : window === '7d' ? '7 Days' : '30 Days'}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">Default Results Count</Label>
+                <span className="text-xs font-mono text-muted-foreground tabular-nums">
+                  {draft.trendingPreferences.defaultLimit}
+                </span>
+              </div>
+              <Slider
+                value={[draft.trendingPreferences.defaultLimit]}
+                onValueChange={([v]) => updateDraftTrending('defaultLimit', v ?? 20)}
+                min={5}
+                max={100}
+                step={5}
+                disabled={isPending}
+              />
+            </div>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() =>
+                updateDraft({ trendingPreferences: { ...DEFAULT_TRENDING_PREFERENCES } })
+              }
+              disabled={isPending}
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Reset to defaults
+            </Button>
           </div>
         </CollapsibleSection>
 

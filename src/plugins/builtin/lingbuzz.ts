@@ -139,7 +139,7 @@ export class LingBuzzPlugin extends ImportingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.lingbuzz',
     name: 'LingBuzz Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Imports linguistics eprints from LingBuzz via RSS feed with claiming support',
     author: 'Aaron Steven White',
     license: 'MIT',

@@ -230,7 +230,7 @@ export class FigsharePlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.figshare',
     name: 'Figshare Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Provides research output linking via Figshare',
     author: 'Aaron Steven White',
     license: 'MIT',

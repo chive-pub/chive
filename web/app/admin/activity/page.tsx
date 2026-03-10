@@ -298,62 +298,64 @@ export default function ActivityPage() {
               ))}
             </div>
           ) : categoryRows.length ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                  <TableHead className="text-right">Confirmed</TableHead>
-                  <TableHead className="text-right">Failed</TableHead>
-                  <TableHead className="text-right">Timeout</TableHead>
-                  <TableHead className="text-right">Pending</TableHead>
-                  <TableHead className="text-right">Rate</TableHead>
-                  <TableHead className="text-right">Avg Latency</TableHead>
-                  <TableHead className="text-right">P95 Latency</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categoryRows.map((row) => (
-                  <TableRow key={row.category}>
-                    <TableCell>
-                      <Badge variant="outline">{row.category}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.total.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.confirmed.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.failed > 0 ? (
-                        <span className="text-red-600">{row.failed.toLocaleString()}</span>
-                      ) : (
-                        '0'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.timeout > 0 ? (
-                        <span className="text-yellow-600">{row.timeout.toLocaleString()}</span>
-                      ) : (
-                        '0'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.pending.toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.confirmationRatePct.toFixed(1)}%
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.avgLatencyMs.toFixed(0)}ms
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      {row.p95LatencyMs.toFixed(0)}ms
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Total</TableHead>
+                    <TableHead className="text-right">Confirmed</TableHead>
+                    <TableHead className="text-right">Failed</TableHead>
+                    <TableHead className="text-right">Timeout</TableHead>
+                    <TableHead className="text-right">Pending</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="text-right">Avg Latency</TableHead>
+                    <TableHead className="text-right">P95 Latency</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {categoryRows.map((row) => (
+                    <TableRow key={row.category}>
+                      <TableCell>
+                        <Badge variant="outline">{row.category}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.total.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.confirmed.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.failed > 0 ? (
+                          <span className="text-red-600">{row.failed.toLocaleString()}</span>
+                        ) : (
+                          '0'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.timeout > 0 ? (
+                          <span className="text-yellow-600">{row.timeout.toLocaleString()}</span>
+                        ) : (
+                          '0'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.pending.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.confirmationRatePct.toFixed(1)}%
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.avgLatencyMs.toFixed(0)}ms
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {row.p95LatencyMs.toFixed(0)}ms
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           ) : (
             <div className="flex h-[200px] items-center justify-center text-muted-foreground">
               No activity data available

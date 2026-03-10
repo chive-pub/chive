@@ -95,7 +95,7 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.leaflet-backlinks',
     name: 'Leaflet Backlinks',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Tracks references to Chive eprints from Leaflet reading lists',
     author: 'Aaron Steven White',
     license: 'MIT',

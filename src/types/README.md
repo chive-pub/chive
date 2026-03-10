@@ -231,7 +231,7 @@ export class GitHubPlugin implements IChivePlugin {
   readonly manifest = {
     id: 'com.example.github-integration',
     name: 'GitHub Integration',
-    version: '0.2.0',
+    version: '0.3.0',
     description: 'Links eprints to GitHub repositories',
     author: 'Example Org',
     license: 'MIT',

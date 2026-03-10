@@ -34,7 +34,13 @@ export interface FacetedSearchResponse {
     uri: string;
     cid: string;
     title: string;
-    abstract: string;
+    abstract: Array<{
+      type?: string;
+      content?: string;
+      uri?: string;
+      label?: string;
+      $type?: string;
+    }>;
     authors: Array<{
       did: string;
       name: string;

@@ -58,7 +58,7 @@ import { LoginPrompt } from '@/components/auth';
 import { TagManager } from '@/components/tags';
 import { IntegrationPanel } from '@/components/integrations';
 import { RelatedPapersPanel, CitationSummary, CitationListPanel } from '@/components/discovery';
-import type { RichTextItem } from '@/lib/types/rich-text';
+import { isRichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -86,6 +86,7 @@ import {
   useDeleteEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
+import { getPaperSession } from '@/lib/auth/paper-session';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
@@ -219,7 +220,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   // Eprint permissions and mutations
   const permissions = useEprintPermissions(
-    eprint ? { submittedBy: eprint.submittedBy, paperDid: eprint.paperDid } : undefined,
+    eprint
+      ? { submittedBy: eprint.submittedBy, paperDid: eprint.paperDid, authors: eprint.authors }
+      : undefined,
     currentUser?.did
   );
   const deleteEprint = useDeleteEprint();
@@ -347,19 +350,26 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
 
   const handleDeleteEprint = useCallback(async () => {
     try {
+      // For paper-centric eprints, resolve the paper agent from session
+      const paperSession = eprint?.paperDid ? getPaperSession(eprint.paperDid) : null;
+      const effectiveAgent = paperSession?.agent ?? agent;
+
       // Step 1: Validate authorization via backend
-      await deleteEprint.mutateAsync({ uri });
+      await deleteEprint.mutateAsync({
+        uri,
+        overrideAgent: paperSession?.agent ?? undefined,
+      });
 
       // Step 2: Delete record from PDS via ATProto client
       // The record lives in either the user's PDS or the paper's PDS
-      if (agent) {
+      if (effectiveAgent) {
         const uriParts = uri.split('/');
         const rkey = uriParts.pop() ?? '';
         const collection = uriParts.pop() ?? 'pub.chive.eprint.submission';
-        const repo = eprint?.paperDid ?? eprint?.submittedBy ?? agent.did;
+        const repo = eprint?.paperDid ?? eprint?.submittedBy ?? effectiveAgent.did;
 
         if (repo) {
-          await agent.com.atproto.repo.deleteRecord({
+          await effectiveAgent.com.atproto.repo.deleteRecord({
             repo,
             collection,
             rkey,
@@ -389,6 +399,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         keywords: eprint.keywords,
         version: eprint.version,
         repo: eprint.paperDid ?? eprint.submittedBy,
+        paperDid: eprint.paperDid,
       }
     : null;
 
@@ -578,11 +589,13 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     permissions.canModify && eprintEditData ? (
       permissions.requiresPaperAuth ? (
         <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
-          <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
-            <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Quick edit">
-              <Pencil className="h-4 w-4" />
-            </Button>
-          </EprintEditDialog>
+          {(_paperAgent) => (
+            <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" title="Quick edit">
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </EprintEditDialog>
+          )}
         </PaperAuthGate>
       ) : (
         <EprintEditDialog eprint={eprintEditData} canEdit={permissions.canModify}>
@@ -603,30 +616,32 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         <div className="flex items-center gap-2">
           {permissions.requiresPaperAuth ? (
             <PaperAuthGate eprint={{ paperDid: eprint.paperDid }}>
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Edit
-                  </Link>
-                </Button>
-                <DeleteEprintDialog
-                  title={eprint.title}
-                  uri={eprint.uri}
-                  canDelete={permissions.canModify}
-                  isPending={deleteEprint.isPending}
-                  onConfirm={handleDeleteEprint}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete
+              {(_paperAgent) => (
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/eprints/edit/${encodeURIComponent(uri)}`}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </Link>
                   </Button>
-                </DeleteEprintDialog>
-              </div>
+                  <DeleteEprintDialog
+                    title={eprint.title}
+                    uri={eprint.uri}
+                    canDelete={permissions.canModify}
+                    isPending={deleteEprint.isPending}
+                    onConfirm={handleDeleteEprint}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </Button>
+                  </DeleteEprintDialog>
+                </div>
+              )}
             </PaperAuthGate>
           ) : (
             <>
@@ -748,7 +763,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         {/* Abstract tab */}
         <TabsContent value="abstract" className="space-y-6">
           <EprintAbstract
-            abstractItems={(eprint.abstractItems ?? []) as RichTextItem[]}
+            abstractItems={(eprint.abstractItems ?? []).filter(isRichTextItem)}
             defaultExpanded
           />
 
@@ -894,18 +909,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   onAddReview={handleAddInlineReview}
                   onLinkEntity={handleLinkEntity}
                   scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
-                  className="min-h-[600px]"
+                  className="min-h-[400px] md:min-h-[600px]"
                 />
               ) : (
-                <div className="flex min-h-[600px] items-center justify-center rounded-lg border border-dashed">
+                <div className="flex min-h-[400px] md:min-h-[600px] items-center justify-center rounded-lg border border-dashed">
                   <p className="text-muted-foreground">No PDF document available</p>
                 </div>
               )}
             </div>
 
-            {/* Annotation sidebar */}
+            {/* Annotation sidebar - hidden on mobile, visible on desktop */}
             {showAnnotationSidebar && (
-              <div className="w-80 shrink-0">
+              <div className="hidden md:block w-80 shrink-0">
                 <AnnotationSidebar
                   eprintUri={uri}
                   selectedUri={selectedAnnotationUri ?? undefined}
@@ -915,6 +930,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </div>
             )}
           </div>
+
+          {/* Annotation sidebar on mobile - shown below PDF */}
+          {showAnnotationSidebar && (
+            <div className="mt-4 md:hidden">
+              <AnnotationSidebar
+                eprintUri={uri}
+                selectedUri={selectedAnnotationUri ?? undefined}
+                onAnnotationClick={handleSidebarAnnotationClick}
+                className="max-h-[50vh] overflow-y-auto"
+              />
+            </div>
+          )}
 
           {/* Inline review form (shown when creating inline annotation) */}
           {inlineReviewTarget && showReviewForm && (
@@ -991,7 +1018,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#authorLink',
                       type: 'author',
                       did: entity.did,
-                      displayName: entity.displayName ?? entity.did,
+                      displayName: entity.label ?? entity.did,
                     };
                     break;
                   case 'eprint':
@@ -999,7 +1026,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#eprintLink',
                       type: 'eprint',
                       uri: entity.uri,
-                      title: entity.title,
+                      title: entity.label,
                     };
                     break;
                   case 'fast':
@@ -1017,7 +1044,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#authorLink',
                       type: 'author',
                       did: entity.did,
-                      displayName: entity.displayName ?? entity.did,
+                      displayName: entity.label ?? entity.did,
                     };
                     break;
                   default: {

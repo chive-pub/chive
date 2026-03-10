@@ -232,7 +232,7 @@ export default function SettingsPage() {
 
           {/* Account Details */}
           <div className="grid gap-4 pt-4 border-t">
-            <div className="grid grid-cols-3 gap-4 items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center">
               <span className="text-sm font-medium text-muted-foreground">DID</span>
               <div className="col-span-2 flex items-center gap-2">
                 <code className="text-sm bg-muted px-2 py-1 rounded font-mono break-all">
@@ -241,11 +241,11 @@ export default function SettingsPage() {
                 {user?.did && <CopyButton value={user.did} />}
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-4 items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center">
               <span className="text-sm font-medium text-muted-foreground">Handle</span>
               <span className="col-span-2 text-sm">{user?.handle ?? 'Not available'}</span>
             </div>
-            <div className="grid grid-cols-3 gap-4 items-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center">
               <span className="text-sm font-medium text-muted-foreground">PDS</span>
               <span className="col-span-2 text-sm font-mono">
                 {user?.pdsEndpoint ?? 'Not available'}
