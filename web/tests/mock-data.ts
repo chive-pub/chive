@@ -385,8 +385,14 @@ export function createMockEprintSummary(overrides: Partial<EprintSummary> = {}):
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
-    abstract:
-      'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+    abstract: [
+      {
+        $type: 'pub.chive.richtext.defs#textItem' as const,
+        type: 'text' as const,
+        content:
+          'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+      },
+    ],
     authors: [{ did: 'did:plc:test123', handle: 'testuser.bsky.social', displayName: 'Test User' }],
     fields: [
       {
@@ -408,8 +414,14 @@ export function createMockTrendingEprint(overrides: Partial<TrendingEprint> = {}
     uri: 'at://did:plc:test123/pub.chive.eprint.submission/abc123',
     cid: 'bafybeigdyrzt5sfp7udm7hu76uh7y26nf3efuylqabf3oclgtqy55fbzdi',
     title: 'A Novel Approach to Machine Learning',
-    abstract:
-      'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+    abstract: [
+      {
+        $type: 'pub.chive.richtext.defs#textItem' as const,
+        type: 'text' as const,
+        content:
+          'This paper presents a novel approach to machine learning that improves efficiency by 50%.',
+      },
+    ],
     authors: [
       {
         did: 'did:plc:test123',
@@ -976,20 +988,25 @@ export function createMockReview(overrides: Partial<Review> = {}): Review {
     eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
     author: createMockReviewAuthor({ did: 'did:plc:reviewer', displayName: 'Dr. Reviewer' }),
     content: 'This is an excellent methodology. See also Machine Learning for background.',
-    body: {
-      text: 'This is an excellent methodology. See also Machine Learning for background.',
-      facets: [
-        {
-          index: { byteStart: 43, byteEnd: 59 }, // "Machine Learning"
-          features: [
-            {
-              $type: 'app.bsky.richtext.facet#link' as const,
-              uri: 'https://www.wikidata.org/wiki/Q2539',
-            } as const,
-          ],
-        },
-      ],
-    },
+    body: [
+      {
+        $type: 'pub.chive.richtext.defs#textItem',
+        type: 'text',
+        content: 'This is an excellent methodology. See also ',
+      },
+      {
+        $type: 'pub.chive.richtext.defs#linkItem',
+        type: 'link',
+        url: 'https://www.wikidata.org/wiki/Q2539',
+        label: 'Machine Learning',
+      },
+      {
+        $type: 'pub.chive.richtext.defs#textItem',
+        type: 'text',
+        content: ' for background.',
+      },
+    ],
+    bodyPlainText: 'This is an excellent methodology. See also Machine Learning for background.',
     motivation: 'commenting',
     replyCount: 0,
     createdAt: '2024-06-15T10:30:00Z',

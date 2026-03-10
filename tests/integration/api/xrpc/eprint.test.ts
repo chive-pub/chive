@@ -719,7 +719,9 @@ describe('XRPC Eprint Endpoints Integration', () => {
       const matchingEprint = body.eprints.find((p) => p.uri === uri);
       expect(matchingEprint).toBeDefined();
       if (matchingEprint?.abstract) {
-        expect(matchingEprint.abstract.length).toBe(1000);
+        // abstract is a rich text array; check the text content is not truncated
+        expect(matchingEprint.abstract).toHaveLength(1);
+        expect((matchingEprint.abstract[0] as { content: string }).content).toHaveLength(1000);
       }
     });
   });

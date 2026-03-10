@@ -1301,7 +1301,7 @@ export async function createReviewRecord(
       features: Array<{ $type: string; uri?: string }>;
     }>;
   } = {
-    $type: 'pub.chive.review.comment#textItem',
+    $type: 'pub.chive.richtext.defs#textItem',
     type: 'text',
     content: input.content,
   };
@@ -1413,7 +1413,7 @@ export async function updateReviewRecord(
   // Build the body array with the new content
   const body: ReviewCommentRecord['body'] = [
     {
-      $type: 'pub.chive.review.comment#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content: input.content,
     },
@@ -1527,7 +1527,7 @@ export async function createAnnotationRecord(
       features: Array<{ $type: string; uri?: string }>;
     }>;
   } = {
-    $type: 'pub.chive.annotation.comment#textItem',
+    $type: 'pub.chive.richtext.defs#textItem',
     type: 'text',
     content: input.content,
   };

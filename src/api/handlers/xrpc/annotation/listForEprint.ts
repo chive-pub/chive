@@ -14,6 +14,7 @@ import type {
   EntityLinkView as ServiceEntityLinkView,
 } from '../../../../services/annotation/annotation-service.js';
 import type { AtUri } from '../../../../types/atproto.js';
+import { toWireFormat, type WireRichTextItem } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -52,10 +53,8 @@ export interface AnnotationViewOutput {
   };
   eprintUri: string;
   content: string;
-  body?: {
-    text: string;
-    facets?: unknown[];
-  };
+  body?: WireRichTextItem[];
+  bodyPlainText?: string;
   target: {
     source: string;
     selector?: {
@@ -168,52 +167,8 @@ export function mapAnnotationView(
 ): AnnotationViewOutput {
   const authorInfo = authorMap.get(view.annotator);
 
-  // Build body from stored body array
-  let body: AnnotationViewOutput['body'] = undefined;
-  if (view.body && Array.isArray(view.body) && view.body.length > 0 && !view.deleted) {
-    const textParts: string[] = [];
-    const allFacets: unknown[] = [];
-
-    let currentByteOffset = 0;
-    for (const item of view.body as {
-      type?: string;
-      content?: string;
-      facets?: {
-        index: { byteStart: number; byteEnd: number };
-        features: unknown[];
-      }[];
-    }[]) {
-      if (item.type === 'text' && item.content) {
-        textParts.push(item.content);
-        if (item.facets) {
-          for (const facet of item.facets) {
-            allFacets.push({
-              index: {
-                byteStart: facet.index.byteStart + currentByteOffset,
-                byteEnd: facet.index.byteEnd + currentByteOffset,
-              },
-              features: facet.features,
-            });
-          }
-        }
-        currentByteOffset += new TextEncoder().encode(item.content).length;
-      }
-    }
-
-    const fullText = textParts.join('');
-    if (fullText) {
-      const facetsToUse =
-        allFacets.length > 0
-          ? allFacets
-          : view.facets && Array.isArray(view.facets)
-            ? (view.facets as unknown[])
-            : undefined;
-      body = {
-        text: fullText,
-        facets: facetsToUse,
-      };
-    }
-  }
+  const body = view.deleted ? undefined : toWireFormat(view.body);
+  const bodyPlainText = view.deleted ? '' : view.content;
 
   // Build refinedBy, stripping $type from boundingRect to avoid cross-lexicon
   // $type mismatches (stored data may reference comment#boundingRect)
@@ -253,6 +208,7 @@ export function mapAnnotationView(
     eprintUri: view.eprintUri,
     content: view.deleted ? '' : view.content,
     body,
+    bodyPlainText,
     target: {
       source: view.target.source,
       selector: view.target.selector?.exact

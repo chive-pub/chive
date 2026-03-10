@@ -55,7 +55,7 @@ describe('Eprint Migrations', () => {
       const result = parseTitleToRichText('Simple Title');
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
-        $type: 'pub.chive.eprint.submission#textItem',
+        $type: 'pub.chive.richtext.defs#textItem',
         type: 'text',
         content: 'Simple Title',
       });

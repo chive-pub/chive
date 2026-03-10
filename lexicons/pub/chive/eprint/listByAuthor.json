@@ -82,7 +82,30 @@
           }
         },
         "abstract": {
-          "type": "string"
+          "type": "array",
+          "description": "Rich abstract with text, formatting, and entity references",
+          "items": {
+            "type": "union",
+            "refs": [
+              "pub.chive.richtext.defs#textItem",
+              "pub.chive.richtext.defs#nodeRefItem",
+              "pub.chive.richtext.defs#wikidataRefItem",
+              "pub.chive.richtext.defs#fieldRefItem",
+              "pub.chive.richtext.defs#facetRefItem",
+              "pub.chive.richtext.defs#eprintRefItem",
+              "pub.chive.richtext.defs#annotationRefItem",
+              "pub.chive.richtext.defs#authorRefItem",
+              "pub.chive.richtext.defs#mentionItem",
+              "pub.chive.richtext.defs#linkItem",
+              "pub.chive.richtext.defs#tagItem",
+              "pub.chive.richtext.defs#latexItem",
+              "pub.chive.richtext.defs#codeBlockItem",
+              "pub.chive.richtext.defs#headingItem",
+              "pub.chive.richtext.defs#listItem",
+              "pub.chive.richtext.defs#blockquoteItem"
+            ]
+          },
+          "maxLength": 500
         },
         "fields": {
           "type": "array",

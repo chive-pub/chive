@@ -68,7 +68,7 @@ const createMockReviewComment = (overrides?: Record<string, unknown>): Record<st
   eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/abc123',
   body: [
     {
-      $type: 'pub.chive.review.comment#textItem',
+      $type: 'pub.chive.richtext.defs#textItem',
       type: 'text',
       content:
         'The treatment of clause-embedding predicates here is thorough, but consider how this analysis extends to control predicates like "try" and "persuade".',

@@ -41,6 +41,7 @@ describe('ReviewCard', () => {
     }),
     content: 'This is an excellent methodology.',
     body: undefined, // No rich body, use plain text
+    bodyPlainText: undefined,
     createdAt: '2024-06-15T10:30:00Z',
     motivation: 'commenting',
   });
@@ -66,14 +67,13 @@ describe('ReviewCard', () => {
       expect(screen.getByText('This is an excellent methodology.')).toBeInTheDocument();
     });
 
-    it('renders review card with rich text body', () => {
+    it('renders review card with rich text body items', () => {
       render(<ReviewCard review={richTextReview} />);
 
       expect(screen.getByTestId('review-card')).toBeInTheDocument();
       expect(screen.getByText('Dr. Reviewer')).toBeInTheDocument();
-      // Rich body is rendered via RichTextRenderer
+      // Rich body items are passed to RichTextRenderer
       expect(screen.getByTestId('rich-text')).toBeInTheDocument();
-      expect(screen.getByText('Machine Learning')).toBeInTheDocument();
     });
 
     it('renders reviewer avatar or fallback', () => {

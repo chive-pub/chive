@@ -14,6 +14,7 @@ import type {
   ReviewView,
 } from '../../../../lexicons/generated/types/pub/chive/review/listForAuthor.js';
 import type { DID } from '../../../../types/atproto.js';
+import { toWireFormat } from '../../../../utils/rich-text.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -52,7 +53,8 @@ export const listForAuthor: XRPCMethod<QueryParams, void, OutputSchema> = {
       eprintUri: item.subject as string,
       eprintTitle: item.eprintTitle,
       content: item.text,
-      body: undefined,
+      body: toWireFormat(item.body),
+      bodyPlainText: item.text,
       target: undefined,
       motivation: 'commenting' as const,
       parentReviewUri: item.parent ?? undefined,

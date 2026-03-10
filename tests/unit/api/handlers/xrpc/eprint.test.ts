@@ -352,7 +352,9 @@ describe('XRPC Eprint Handlers', () => {
 
       const firstEprint = result.body.eprints[0];
       if (firstEprint?.abstract) {
-        expect(firstEprint.abstract.length).toBe(1000);
+        // abstract is a rich text array; check the text content is not truncated
+        expect(firstEprint.abstract).toHaveLength(1);
+        expect((firstEprint.abstract[0] as { content: string }).content).toHaveLength(1000);
       }
     });
   });

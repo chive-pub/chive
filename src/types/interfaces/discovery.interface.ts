@@ -26,9 +26,15 @@
  */
 
 import type { AtUri, DID } from '../atproto.js';
+import type { AnnotationBody } from '../models/annotation.js';
 
 import type { IPluginManager } from './plugin.interface.js';
 import type { RankableItem } from './ranking.interface.js';
+
+/**
+ * RankableItem with abstract replaced by AnnotationBody for rich text.
+ */
+type RankableItemRichAbstract = Omit<RankableItem, 'abstract'>;
 
 // =============================================================================
 // DISCOVERY SERVICE INTERFACE
@@ -343,11 +349,16 @@ export type RelatedEprintSignal =
  * @public
  * @since 0.1.0
  */
-export interface RelatedEprint extends RankableItem {
+export interface RelatedEprint extends RankableItemRichAbstract {
   /**
    * AT-URI of the related eprint.
    */
   readonly uri: AtUri;
+
+  /**
+   * Rich text abstract (AnnotationBody from PostgreSQL, string from Neo4j).
+   */
+  readonly abstract?: AnnotationBody | string | null;
 
   /**
    * Overall similarity score (0-1).

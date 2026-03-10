@@ -70,7 +70,21 @@ export interface AnnotationView {
   author: AnnotationAuthorRef;
   eprintUri: string;
   content: string;
-  body?: { text: string; facets?: unknown[] };
+  body?: Array<{
+    $type?: string;
+    type: string;
+    content?: string;
+    uri?: string;
+    label?: string;
+    subkind?: string;
+    qid?: string;
+    url?: string;
+    did?: string;
+    handle?: string;
+    tag?: string;
+    [key: string]: unknown;
+  }>;
+  bodyPlainText?: string;
   target: UnifiedTextSpanTarget;
   motivation: string;
   parentAnnotationUri?: string;

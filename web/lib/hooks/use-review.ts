@@ -284,8 +284,7 @@ export function useCreateReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: CreateReviewInput): Promise<Review> => {
-      // Write directly to PDS from browser using the authenticated agent
+    mutationFn: async (input: CreateReviewInput) => {
       const agent = getCurrentAgent();
       if (!agent) {
         throw new APIError('Not authenticated. Please log in again.', 401, 'createReview');
@@ -298,10 +297,6 @@ export function useCreateReview() {
         facets: input.facets,
       } as RecordCreatorReviewInput);
 
-      // Request immediate indexing as a UX optimization.
-      // The firehose is the primary indexing mechanism, but there may be latency.
-      // This call ensures the record appears immediately in Chive's index.
-      // If this fails, the firehose will eventually index the record.
       try {
         const indexResult = await authApi.pub.chive.sync.indexRecord({ uri: result.uri });
         if (indexResult.data && !indexResult.data.indexed) {
@@ -312,37 +307,26 @@ export function useCreateReview() {
         } else {
           logger.info('Immediate indexing succeeded', { uri: result.uri });
         }
-        // Small delay to ensure the database transaction is fully committed
-        // before the query invalidation triggers a refetch
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch (indexError) {
-        // Log with details but don't throw; firehose will index eventually
         logger.warn('Immediate indexing failed; firehose will handle', {
           uri: result.uri,
           error: indexError instanceof Error ? indexError.message : String(indexError),
         });
       }
 
-      // Return a Review-like object for cache management
       return {
         uri: result.uri,
         cid: result.cid,
-        author: { did: '' },
         eprintUri: input.eprintUri,
-        content: input.content,
         parentReviewUri: input.parentReviewUri,
-        replyCount: 0,
-        createdAt: new Date().toISOString(),
-        indexedAt: new Date().toISOString(),
-      } as unknown as Review;
+      };
     },
     onSuccess: (data) => {
-      // Invalidate reviews for the eprint
       queryClient.invalidateQueries({
         queryKey: reviewKeys.forEprint(data.eprintUri),
       });
 
-      // If this is a reply, also invalidate the parent thread
       if (data.parentReviewUri) {
         queryClient.invalidateQueries({
           queryKey: reviewKeys.thread(data.parentReviewUri),
@@ -449,7 +433,7 @@ export function useUpdateReview() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (input: UpdateReviewInput): Promise<Review> => {
+    mutationFn: async (input: UpdateReviewInput) => {
       // Update directly in PDS using the authenticated agent
       const agent = getCurrentAgent();
       if (!agent) {
@@ -469,20 +453,13 @@ export function useUpdateReview() {
         logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
       }
 
-      // Return a Review-like object for cache management
       return {
         uri: result.uri,
         cid: result.cid,
-        author: { did: '' },
         eprintUri: input.eprintUri,
-        content: input.content,
-        replyCount: 0,
-        createdAt: new Date().toISOString(),
-        indexedAt: new Date().toISOString(),
-      } as unknown as Review;
+      };
     },
     onSuccess: (_, variables) => {
-      // Invalidate reviews for the eprint
       queryClient.invalidateQueries({
         queryKey: reviewKeys.forEprint(variables.eprintUri),
       });

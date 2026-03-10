@@ -58,7 +58,7 @@ import { LoginPrompt } from '@/components/auth';
 import { TagManager } from '@/components/tags';
 import { IntegrationPanel } from '@/components/integrations';
 import { RelatedPapersPanel, CitationSummary, CitationListPanel } from '@/components/discovery';
-import type { RichTextItem } from '@/lib/types/rich-text';
+import { isRichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
 import { Pencil, Trash2 } from 'lucide-react';
@@ -763,7 +763,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         {/* Abstract tab */}
         <TabsContent value="abstract" className="space-y-6">
           <EprintAbstract
-            abstractItems={(eprint.abstractItems ?? []) as RichTextItem[]}
+            abstractItems={(eprint.abstractItems ?? []).filter(isRichTextItem)}
             defaultExpanded
           />
 
@@ -1018,7 +1018,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#authorLink',
                       type: 'author',
                       did: entity.did,
-                      displayName: entity.displayName ?? entity.did,
+                      displayName: entity.label ?? entity.did,
                     };
                     break;
                   case 'eprint':
@@ -1026,7 +1026,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#eprintLink',
                       type: 'eprint',
                       uri: entity.uri,
-                      title: entity.title,
+                      title: entity.label,
                     };
                     break;
                   case 'fast':
@@ -1044,7 +1044,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       $type: 'pub.chive.annotation.entityLink#authorLink',
                       type: 'author',
                       did: entity.did,
-                      displayName: entity.displayName ?? entity.did,
+                      displayName: entity.label ?? entity.did,
                     };
                     break;
                   default: {

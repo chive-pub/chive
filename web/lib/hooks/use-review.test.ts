@@ -264,7 +264,7 @@ describe('useCreateReview', () => {
       facets: undefined,
     });
     expect(review.uri).toBe('at://did:plc:user123/pub.chive.review.comment/abc');
-    expect(review.content).toBe('Great paper!');
+    expect(review.eprintUri).toBe(eprintUri);
   });
 
   it('creates a reply to another review', async () => {

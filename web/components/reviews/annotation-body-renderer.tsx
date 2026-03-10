@@ -111,17 +111,15 @@ function FieldRefChip({ uri, label }: { uri: string; label: string }) {
 /**
  * Renders a facet reference as a chip.
  */
-function FacetRefChip({ dimension, value }: { dimension: string; value: string }) {
+function FacetRefChip({ uri, label }: { uri: string; label?: string }) {
   const colorClasses = getSubkindColorClasses('facet');
   const Icon = getSubkindIcon('facet');
 
   return (
-    <Link href={`/browse?${dimension}=${encodeURIComponent(value)}`}>
+    <Link href={`/browse?facet=${encodeURIComponent(uri)}`}>
       <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
         <Icon className="h-3 w-3" />
-        <span>
-          {dimension}: {value}
-        </span>
+        <span>{label ?? uri}</span>
       </Badge>
     </Link>
   );
@@ -130,18 +128,19 @@ function FacetRefChip({ dimension, value }: { dimension: string; value: string }
 /**
  * Renders an eprint reference as a chip.
  */
-function EprintRefChip({ uri, title }: { uri: string; title: string }) {
+function EprintRefChip({ uri, label }: { uri: string; label?: string }) {
   // Encode the AT-URI for use in the URL
   const encodedUri = encodeURIComponent(uri.replace('at://', ''));
+  const displayLabel = label ?? uri;
 
   return (
     <Link href={`/eprints/${encodedUri}`}>
       <Badge
         variant="secondary"
         className="max-w-[200px] truncate bg-slate-100 text-slate-800 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-        title={title}
+        title={displayLabel}
       >
-        {title}
+        {displayLabel}
       </Badge>
     </Link>
   );
@@ -150,10 +149,11 @@ function EprintRefChip({ uri, title }: { uri: string; title: string }) {
 /**
  * Renders an annotation reference as a chip.
  */
-function AnnotationRefChip({ uri: _uri, excerpt }: { uri: string; excerpt: string }) {
+function AnnotationRefChip({ uri: _uri, label }: { uri: string; label?: string }) {
+  const displayLabel = label ?? '...';
   return (
-    <Badge variant="outline" className="max-w-[150px] cursor-pointer truncate" title={excerpt}>
-      ^ {excerpt}
+    <Badge variant="outline" className="max-w-[150px] cursor-pointer truncate" title={displayLabel}>
+      ^ {displayLabel}
     </Badge>
   );
 }
@@ -161,7 +161,7 @@ function AnnotationRefChip({ uri: _uri, excerpt }: { uri: string; excerpt: strin
 /**
  * Renders an author reference as a chip.
  */
-function AuthorRefChip({ did, displayName }: { did: string; displayName: string }) {
+function AuthorRefChip({ did, label }: { did: string; label?: string }) {
   const colorClasses = getSubkindColorClasses('person');
   const Icon = getSubkindIcon('person');
 
@@ -169,7 +169,7 @@ function AuthorRefChip({ did, displayName }: { did: string; displayName: string 
     <Link href={`/authors/${encodeURIComponent(did)}`}>
       <Badge variant="secondary" className={cn('gap-1', colorClasses)}>
         <Icon className="h-3 w-3" />
-        <span>@{displayName}</span>
+        <span>@{label ?? did.slice(0, 12)}</span>
       </Badge>
     </Link>
   );
@@ -201,16 +201,16 @@ function BodyItemRenderer({ item }: { item: RichAnnotationItem }) {
       return <FieldRefChip uri={item.uri ?? ''} label={item.label ?? 'Unknown'} />;
 
     case 'facetRef':
-      return <FacetRefChip dimension={item.dimension ?? 'unknown'} value={item.value ?? ''} />;
+      return <FacetRefChip uri={item.uri ?? ''} label={item.label} />;
 
     case 'eprintRef':
-      return <EprintRefChip uri={item.uri ?? ''} title={item.title ?? 'Untitled'} />;
+      return <EprintRefChip uri={item.uri ?? ''} label={item.label} />;
 
     case 'annotationRef':
-      return <AnnotationRefChip uri={item.uri ?? ''} excerpt={item.excerpt ?? '...'} />;
+      return <AnnotationRefChip uri={item.uri ?? ''} label={item.label} />;
 
     case 'authorRef':
-      return <AuthorRefChip did={item.did ?? ''} displayName={item.displayName ?? 'Unknown'} />;
+      return <AuthorRefChip did={item.did ?? ''} label={item.label} />;
 
     default:
       return null;

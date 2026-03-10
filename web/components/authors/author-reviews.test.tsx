@@ -30,6 +30,7 @@ const mockReviews = [
     author: createMockReviewAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'This is an excellent paper with solid methodology.',
     body: undefined, // Use plain text content, not rich text body
+    bodyPlainText: undefined,
     eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint1',
     createdAt: '2024-06-15T10:00:00Z',
   }),
@@ -38,6 +39,7 @@ const mockReviews = [
     author: createMockReviewAuthor({ did: testDid, displayName: 'Test Author' }),
     content: 'The statistical analysis here needs more explanation.',
     body: undefined, // Use plain text content, not rich text body
+    bodyPlainText: undefined,
     eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint2',
     target: createMockTextSpanTarget({
       selector: {
@@ -54,6 +56,7 @@ const mockReviews = [
       3
     ),
     body: undefined, // Use plain text content, not rich text body
+    bodyPlainText: undefined,
     eprintUri: 'at://did:plc:other/pub.chive.eprint.submission/eprint3',
     createdAt: '2024-06-13T08:00:00Z',
   }),

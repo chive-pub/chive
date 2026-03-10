@@ -77,6 +77,8 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IPluginManager } from '../../types/interfaces/plugin.interface.js';
 import type { IRankingService, RankableItem } from '../../types/interfaces/ranking.interface.js';
 import type { ISearchEngine } from '../../types/interfaces/search.interface.js';
+import type { AnnotationBody } from '../../types/models/annotation.js';
+import { extractPlainText } from '../../utils/rich-text.js';
 import type { DiscoverySignalWeights } from '../search/ranking-service.js';
 
 /**
@@ -134,7 +136,7 @@ interface AuthorEntry {
 interface EprintRow {
   readonly uri: string;
   readonly title: string;
-  readonly abstract: string | null;
+  readonly abstract: AnnotationBody | null;
   readonly categories: string[] | null;
   readonly doi: string | null;
   readonly arxiv_id: string | null;
@@ -189,7 +191,7 @@ function normalizeWeights(raw: Required<DiscoverySignalWeights>): Required<Disco
  */
 interface SignalAccumulatorEntry {
   title: string;
-  abstract?: string;
+  abstract?: AnnotationBody | string | null;
   categories?: readonly string[];
   publicationDate?: Date;
   relationshipType: RelatedEprint['relationshipType'];
@@ -562,7 +564,7 @@ export class DiscoveryService implements IDiscoveryService {
       string,
       {
         title: string;
-        abstract?: string;
+        abstract?: AnnotationBody | string | null;
         categories?: readonly string[];
         publicationDate?: Date;
         relationshipType: RelatedEprint['relationshipType'];
@@ -1012,7 +1014,7 @@ export class DiscoveryService implements IDiscoveryService {
       const result = await this.db.query<{
         readonly uri: string;
         readonly title: string;
-        readonly abstract: string | null;
+        readonly abstract: AnnotationBody | null;
         readonly categories: string[] | null;
         readonly publication_date: Date | null;
         readonly overlap_count: number;
@@ -1169,7 +1171,7 @@ export class DiscoveryService implements IDiscoveryService {
           if (eprint) {
             candidateMap.set(hit.uri, {
               title: eprint.title,
-              abstract: eprint.abstract ?? undefined,
+              abstract: extractPlainText(eprint.abstract) || undefined,
               categories: eprint.categories ?? undefined,
               publicationDate: eprint.publication_date ?? undefined,
               explanation: `Matches your research fields`,
@@ -1191,7 +1193,7 @@ export class DiscoveryService implements IDiscoveryService {
             if (eprint) {
               candidateMap.set(citation.citingUri, {
                 title: eprint.title,
-                abstract: eprint.abstract ?? undefined,
+                abstract: extractPlainText(eprint.abstract) || undefined,
                 categories: eprint.categories ?? undefined,
                 publicationDate: eprint.publication_date ?? undefined,
                 explanation: 'Cites your work',
@@ -1227,7 +1229,7 @@ export class DiscoveryService implements IDiscoveryService {
               if (chiveEprint && !shouldExclude(chiveEprint.uri)) {
                 candidateMap.set(chiveEprint.uri, {
                   title: chiveEprint.title,
-                  abstract: chiveEprint.abstract ?? undefined,
+                  abstract: extractPlainText(chiveEprint.abstract) || undefined,
                   categories: chiveEprint.categories ?? undefined,
                   publicationDate: chiveEprint.publication_date ?? undefined,
                   explanation: 'Similar to your claimed papers',
@@ -1547,7 +1549,7 @@ export class DiscoveryService implements IDiscoveryService {
         if (eprint) {
           candidateMap.set(row.uri, {
             title: eprint.title,
-            abstract: eprint.abstract ?? undefined,
+            abstract: extractPlainText(eprint.abstract) || undefined,
             categories: eprint.categories ?? undefined,
             publicationDate: eprint.publication_date ?? undefined,
             explanation: 'Shares research topics with your papers',
@@ -1599,7 +1601,7 @@ export class DiscoveryService implements IDiscoveryService {
     const papersResult = await this.db.query<{
       readonly uri: string;
       readonly title: string;
-      readonly abstract: string | null;
+      readonly abstract: AnnotationBody | null;
       readonly categories: string[] | null;
       readonly publication_date: Date | null;
       readonly coauthor_name: string | null;
@@ -1622,7 +1624,7 @@ export class DiscoveryService implements IDiscoveryService {
 
       candidateMap.set(row.uri, {
         title: row.title,
-        abstract: row.abstract ?? undefined,
+        abstract: extractPlainText(row.abstract) || undefined,
         categories: row.categories ?? undefined,
         publicationDate: row.publication_date ?? undefined,
         explanation: row.coauthor_name
@@ -1783,7 +1785,7 @@ export class DiscoveryService implements IDiscoveryService {
    */
   private async getEprintByUri(uri: AtUri): Promise<EprintRow | null> {
     const result = await this.db.query<EprintRow>(
-      `SELECT uri, title, keywords, authors,
+      `SELECT uri, title, abstract, keywords, authors,
               external_ids->>'doi' AS doi,
               external_ids->>'arxivId' AS arxiv_id,
               created_at AS publication_date,
