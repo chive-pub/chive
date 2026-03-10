@@ -20,10 +20,16 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
     environment: staging
+    env:
+      # Pin to the exact commit that passed CI to prevent version skew.
+      # workflow_run provides the triggering CI run's commit; workflow_dispatch uses current HEAD.
+      DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout code at deploy commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.DEPLOY_SHA }}
 
       - name: Validate required secrets and variables
         run: |
@@ -127,11 +133,11 @@ jobs:
           push: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/web:staging
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/web:sha-${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/web:sha-${{ env.DEPLOY_SHA }}
           build-args: |
             NEXT_PUBLIC_API_URL=https://${{ vars.STAGING_DOMAIN }}/api
             NEXT_PUBLIC_FARO_URL=https://faro.${{ vars.STAGING_DOMAIN }}/collect
-            NEXT_PUBLIC_APP_VERSION=staging-${{ github.sha }}
+            NEXT_PUBLIC_APP_VERSION=staging-${{ env.DEPLOY_SHA }}
             NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${{ vars.STAGING_DOMAIN }}
           cache-from: type=gha,scope=web-staging
           cache-to: type=gha,mode=max,scope=web-staging
@@ -151,24 +157,31 @@ jobs:
         env:
           REGISTRY: ghcr.io
           REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          DEPLOY_SHA: ${{ env.DEPLOY_SHA }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.STAGING_HOST }}
           username: ${{ secrets.STAGING_SSH_USER }}
           key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
-          envs: REGISTRY,REPO,SHA,GH_TOKEN
+          envs: REGISTRY,REPO,DEPLOY_SHA,GH_TOKEN
           command_timeout: 30m
           script: |
             set -e
 
             DEPLOY_DIR="/opt/chive"
             REPO_URL="https://github.com/${REPO}.git"
-            API_IMAGE="${REGISTRY}/${REPO}:staging"
-            WEB_IMAGE="${REGISTRY}/${REPO}/web:staging"
+            # Pull images by exact commit SHA to prevent version skew between API and web.
+            # CI tags API images with sha-<7chars> via docker/metadata-action.
+            # Deploy tags web images with sha-<full_sha> for unambiguous pinning.
+            SHORT_SHA=$(echo "${DEPLOY_SHA}" | cut -c1-7)
+            API_IMAGE="${REGISTRY}/${REPO}:sha-${SHORT_SHA}"
+            WEB_IMAGE="${REGISTRY}/${REPO}/web:sha-${DEPLOY_SHA}"
 
             echo "=== Starting staging deployment ==="
             echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "Deploy SHA: ${DEPLOY_SHA}"
+            echo "API image: ${API_IMAGE}"
+            echo "Web image: ${WEB_IMAGE}"
 
             echo "Logging in to container registry..."
             echo "${GH_TOKEN}" | docker login "${REGISTRY}" -u github --password-stdin
@@ -198,7 +211,14 @@ jobs:
             echo "=== Pulling pre-built images ==="
             cd docker
 
-            docker pull "$API_IMAGE"
+            # Pull API image by SHA; fall back to :staging tag for workflow_dispatch
+            if docker pull "$API_IMAGE" 2>/dev/null; then
+              echo "Pulled API image by SHA: ${API_IMAGE}"
+            else
+              echo "SHA-tagged API image not found, falling back to :staging tag"
+              API_IMAGE="${REGISTRY}/${REPO}:staging"
+              docker pull "$API_IMAGE"
+            fi
             docker tag "$API_IMAGE" chive:latest
 
             docker pull "$WEB_IMAGE"
@@ -291,5 +311,5 @@ jobs:
           echo "## Staging Deployment" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Domain:** ${{ vars.STAGING_DOMAIN }}" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ env.DEPLOY_SHA }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
