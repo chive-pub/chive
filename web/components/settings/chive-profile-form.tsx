@@ -39,15 +39,13 @@ import { FieldSearch, type FieldSelection } from '@/components/forms/field-searc
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
  */
-function normalizeAffiliations(
-  input: Array<string | { name: string; rorId?: string }> | undefined
-): Affiliation[] {
+function normalizeAffiliations(input: Array<string | Affiliation> | undefined): Affiliation[] {
   if (!input) return [];
   return input.map((item) => {
     if (typeof item === 'string') {
       return { name: item };
     }
-    return { name: item.name, rorId: item.rorId };
+    return item;
   });
 }
 
@@ -71,7 +69,9 @@ function normalizeKeywords(
  */
 const affiliationSchema = z.object({
   name: z.string().max(200),
+  institutionUri: z.string().optional(),
   rorId: z.string().max(50).optional(),
+  children: z.array(z.any()).optional(),
 });
 
 /**
@@ -280,11 +280,11 @@ export function ChiveProfileForm() {
         displayName?: string;
         bio?: string;
         orcid?: string;
-        affiliations?: Array<string | { name: string; rorId?: string }>;
+        affiliations?: Array<string | Affiliation>;
         fieldUris?: string[];
         fields?: string[];
         nameVariants?: string[];
-        previousAffiliations?: Array<string | { name: string; rorId?: string }>;
+        previousAffiliations?: Array<string | Affiliation>;
         researchKeywords?: Array<string | { label: string; fastId?: string; wikidataId?: string }>;
         semanticScholarId?: string;
         openAlexId?: string;

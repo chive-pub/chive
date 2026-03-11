@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.eprint.changelog",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "record",
@@ -48,6 +49,11 @@
             "type": "string",
             "format": "datetime",
             "description": "When this changelog was created"
+          },
+          "schemaRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Schema revision this record was created with. Absent means revision 1."
           }
         }
       }

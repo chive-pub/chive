@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.alpha.apply",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "procedure",
@@ -62,7 +63,7 @@
               "maxLength": 10,
               "items": {
                 "type": "ref",
-                "ref": "#affiliation"
+                "ref": "pub.chive.defs#affiliation"
               },
               "description": "Institutional affiliations (optional)"
             },
@@ -107,28 +108,16 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "InvalidEmail" },
-        { "name": "InvalidRequest" }
-      ]
-    },
-    "affiliation": {
-      "type": "object",
-      "description": "Institutional affiliation",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 200,
-          "description": "Institution name"
+        {
+          "name": "AuthenticationRequired"
         },
-        "rorId": {
-          "type": "string",
-          "maxLength": 100,
-          "description": "ROR ID"
+        {
+          "name": "InvalidEmail"
+        },
+        {
+          "name": "InvalidRequest"
         }
-      }
+      ]
     },
     "researchKeyword": {
       "type": "object",

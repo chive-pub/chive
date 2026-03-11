@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.getSuggestions",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -38,7 +39,11 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
     },
     "suggestedPaper": {
       "type": "object",
@@ -85,7 +90,9 @@
         },
         "categories": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Subject categories"
         },
         "source": {
@@ -141,7 +148,9 @@
         },
         "nameVariants": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Name variants used for matching"
         },
         "hasOrcid": {

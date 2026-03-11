@@ -384,7 +384,8 @@ const formSchema = z.object({
           z.object({
             name: z.string(),
             rorId: z.string().nullish(),
-            department: z.string().nullish(),
+            institutionUri: z.string().nullish(),
+            children: z.array(z.any()).nullish(),
           })
         ),
         contributions: z.array(
@@ -455,7 +456,7 @@ const stepSchemas = {
             z.object({
               name: z.string(),
               rorId: z.string().nullish(),
-              department: z.string().nullish(),
+              children: z.array(z.any()).nullish(),
             })
           ),
           contributions: z.array(
@@ -609,9 +610,7 @@ export function SubmissionWizard({
     orcid: a.orcid,
     email: a.email,
     order: a.order ?? index + 1,
-    affiliations: a.affiliation
-      ? [{ name: a.affiliation, rorId: undefined, department: undefined }]
-      : [],
+    affiliations: a.affiliation ? [{ name: a.affiliation, rorId: undefined }] : [],
     contributions: [],
     isCorrespondingAuthor: (a.order ?? index + 1) === 1,
     isHighlighted: false,

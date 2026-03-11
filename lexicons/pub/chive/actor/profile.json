@@ -1,29 +1,8 @@
 {
   "lexicon": 1,
   "id": "pub.chive.actor.profile",
+  "revision": 2,
   "defs": {
-    "affiliation": {
-      "type": "object",
-      "description": "Institutional affiliation referencing an institution node",
-      "required": ["name"],
-      "properties": {
-        "institutionUri": {
-          "type": "string",
-          "format": "at-uri",
-          "description": "AT-URI of institution node (subkind=institution)"
-        },
-        "name": {
-          "type": "string",
-          "description": "Organization name (display fallback if no institutionUri)",
-          "maxLength": 200
-        },
-        "rorId": {
-          "type": "string",
-          "description": "ROR ID (e.g., https://ror.org/02mhbdp94) for legacy/external data",
-          "maxLength": 50
-        }
-      }
-    },
     "keyword": {
       "type": "object",
       "description": "Research keyword referencing a topic node",
@@ -81,7 +60,7 @@
             "description": "Current institutional affiliations with optional ROR IDs",
             "items": {
               "type": "ref",
-              "ref": "#affiliation"
+              "ref": "pub.chive.defs#affiliation"
             },
             "maxLength": 10
           },
@@ -108,7 +87,7 @@
             "description": "Past institutional affiliations that may appear on older papers",
             "items": {
               "type": "ref",
-              "ref": "#affiliation"
+              "ref": "pub.chive.defs#affiliation"
             },
             "maxLength": 20
           },
@@ -155,6 +134,11 @@
             "type": "string",
             "description": "Scopus author ID",
             "maxLength": 50
+          },
+          "schemaRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Schema revision this record was created with. Absent means revision 1."
           }
         }
       }

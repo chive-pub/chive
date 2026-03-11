@@ -438,7 +438,7 @@ describe('XRPC getSubmission Handler', () => {
           {
             name: 'University of Testing',
             rorId: 'https://ror.org/03yrm5c26',
-            department: 'Computer Science',
+            children: [{ name: 'Computer Science' }],
           },
         ],
         contributions: [

@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.review.endorsement",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "record",
@@ -49,6 +50,11 @@
           "createdAt": {
             "type": "string",
             "format": "datetime"
+          },
+          "schemaRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Schema revision this record was created with. Absent means revision 1."
           }
         }
       }

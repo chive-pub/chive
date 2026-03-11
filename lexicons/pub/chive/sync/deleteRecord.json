@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.sync.deleteRecord",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -42,9 +43,15 @@
         }
       },
       "errors": [
-        { "name": "InvalidRequest" },
-        { "name": "AuthenticationRequired" },
-        { "name": "NotFound" }
+        {
+          "name": "InvalidRequest"
+        },
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "NotFound"
+        }
       ]
     }
   }

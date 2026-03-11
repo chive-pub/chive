@@ -66,7 +66,9 @@ const CAREER_STAGE_OPTIONS: { value: AlphaCareerStage; label: string }[] = [
  */
 const affiliationSchema = z.object({
   name: z.string().min(1).max(200),
+  institutionUri: z.string().optional(),
   rorId: z.string().max(100).optional(),
+  children: z.array(z.any()).optional(),
 });
 
 /**

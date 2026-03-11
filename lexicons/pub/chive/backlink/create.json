@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.backlink.create",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -48,7 +49,14 @@
           "ref": "#backlink"
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "InvalidRequest" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "InvalidRequest"
+        }
+      ]
     },
     "backlink": {
       "type": "object",

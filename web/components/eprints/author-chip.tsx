@@ -28,6 +28,27 @@ export interface AuthorChipProps {
 }
 
 /**
+ * Formats an affiliation as a path string showing the hierarchy.
+ * For example: "University of Rochester, School of Arts, Dept. of Linguistics"
+ */
+function formatAffiliationPath(aff: {
+  name: string;
+  children?: Array<{ name: string; children?: Array<{ name: string; children?: unknown[] }> }>;
+}): string {
+  const MAX_DEPTH = 10;
+  const parts = [aff.name];
+  type AffNode = { name: string; children?: AffNode[] };
+  let current = aff.children?.[0] as AffNode | undefined;
+  let depth = 0;
+  while (current && depth < MAX_DEPTH) {
+    parts.push(current.name);
+    current = current.children?.[0];
+    depth++;
+  }
+  return parts.join(', ');
+}
+
+/**
  * Displays an author as a compact chip with optional avatar and badges.
  *
  * @remarks
@@ -129,10 +150,7 @@ export function AuthorChip({
             {author.affiliations && author.affiliations.length > 0 && (
               <div>
                 {author.affiliations.map((aff, i) => (
-                  <div key={i}>
-                    {aff.name}
-                    {aff.department && `, ${aff.department}`}
-                  </div>
+                  <div key={i}>{formatAffiliationPath(aff)}</div>
                 ))}
               </div>
             )}

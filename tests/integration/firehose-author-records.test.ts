@@ -430,7 +430,7 @@ describe('Firehose Author Records Integration', () => {
           {
             name: 'Stanford University',
             rorId: 'https://ror.org/00f54p054',
-            department: 'Computer Science',
+            children: [{ name: 'Computer Science' }],
           },
           {
             name: 'Google Research',

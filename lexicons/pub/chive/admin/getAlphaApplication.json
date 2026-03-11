@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getAlphaApplication",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -24,9 +25,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "AdminRequired" },
-        { "name": "NotFound" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        },
+        {
+          "name": "NotFound"
+        }
       ]
     }
   }

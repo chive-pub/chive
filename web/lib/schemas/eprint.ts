@@ -80,6 +80,21 @@ export const externalProfileSchema = z.object({
 export type ExternalProfile = z.infer<typeof externalProfileSchema>;
 
 /**
+ * Recursive affiliation schema with optional sub-units.
+ */
+const affiliationSchema: z.ZodType<{
+  name: string;
+  rorId?: string;
+  institutionUri?: string;
+  children?: Array<{ name: string; rorId?: string; institutionUri?: string; children?: unknown[] }>;
+}> = z.object({
+  name: z.string(),
+  rorId: z.string().optional(),
+  institutionUri: z.string().optional(),
+  children: z.lazy(() => z.array(affiliationSchema)).optional(),
+});
+
+/**
  * Author reference for eprint submissions.
  *
  * @remarks
@@ -106,15 +121,7 @@ export const authorRefSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
 
   /** Author affiliations */
-  affiliations: z
-    .array(
-      z.object({
-        name: z.string(),
-        rorId: z.string().optional(),
-        department: z.string().optional(),
-      })
-    )
-    .default([]),
+  affiliations: z.array(z.lazy(() => affiliationSchema)).default([]),
 
   /** CRediT contributions */
   contributions: z

@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.actor.getDiscoverySettings",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -64,7 +65,10 @@
             },
             "followedFieldUris": {
               "type": "array",
-              "items": { "type": "string", "format": "at-uri" },
+              "items": {
+                "type": "string",
+                "format": "at-uri"
+              },
               "description": "Field URIs the user follows for discovery"
             },
             "followingTabIncludesWorkFields": {

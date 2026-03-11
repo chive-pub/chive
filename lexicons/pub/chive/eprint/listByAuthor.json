@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.eprint.listByAuthor",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -57,7 +58,11 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "eprintSummary": {
       "type": "object",

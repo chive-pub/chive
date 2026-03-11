@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listEndorsements",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -29,7 +30,10 @@
           "properties": {
             "items": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#endorsementSummary" },
+              "items": {
+                "type": "ref",
+                "ref": "#endorsementSummary"
+              },
               "description": "Endorsement records"
             },
             "total": {
@@ -39,21 +43,39 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "endorsementSummary": {
       "type": "object",
       "description": "Summary of an indexed endorsement",
       "required": ["uri", "eprintUri", "authorDid", "createdAt"],
       "properties": {
-        "uri": { "type": "string", "format": "at-uri", "description": "Endorsement AT URI" },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Endorsement AT URI"
+        },
         "eprintUri": {
           "type": "string",
           "format": "at-uri",
           "description": "Endorsed eprint AT URI"
         },
-        "authorDid": { "type": "string", "format": "did", "description": "Endorser DID" },
-        "authorHandle": { "type": "string", "description": "Endorser handle" },
+        "authorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Endorser DID"
+        },
+        "authorHandle": {
+          "type": "string",
+          "description": "Endorser handle"
+        },
         "createdAt": {
           "type": "string",
           "format": "datetime",

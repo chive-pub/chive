@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.requestCoauthorship",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -60,9 +61,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "NotFound" },
-        { "name": "InvalidRequest" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "NotFound"
+        },
+        {
+          "name": "InvalidRequest"
+        }
       ]
     },
     "coauthorRequest": {

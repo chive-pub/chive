@@ -1747,6 +1747,16 @@ export async function createEntityLinkRecord(
 // =============================================================================
 
 /**
+ * Recursive affiliation for profile records.
+ */
+export interface ChiveProfileAffiliation {
+  name: string;
+  rorId?: string;
+  institutionUri?: string;
+  children?: ChiveProfileAffiliation[];
+}
+
+/**
  * Chive profile record as stored in ATProto.
  */
 export interface ChiveProfileRecord {
@@ -1755,10 +1765,10 @@ export interface ChiveProfileRecord {
   displayName?: string;
   bio?: string;
   orcid?: string;
-  affiliations?: Array<{ name: string; rorId?: string }>;
+  affiliations?: ChiveProfileAffiliation[];
   fieldUris?: string[];
   nameVariants?: string[];
-  previousAffiliations?: Array<{ name: string; rorId?: string }>;
+  previousAffiliations?: ChiveProfileAffiliation[];
   researchKeywords?: Array<{ label: string; fastId?: string; wikidataId?: string }>;
   semanticScholarId?: string;
   openAlexId?: string;
@@ -1776,10 +1786,10 @@ export interface UpdateChiveProfileInput {
   displayName?: string;
   bio?: string;
   orcid?: string | null;
-  affiliations?: Array<{ name: string; rorId?: string }>;
+  affiliations?: ChiveProfileAffiliation[];
   fields?: string[];
   nameVariants?: string[];
-  previousAffiliations?: Array<{ name: string; rorId?: string }>;
+  previousAffiliations?: ChiveProfileAffiliation[];
   researchKeywords?: Array<{ label: string; fastId?: string; wikidataId?: string }>;
   semanticScholarId?: string | null;
   openAlexId?: string | null;

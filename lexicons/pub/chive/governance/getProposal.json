@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.getProposal",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -22,7 +23,11 @@
           "ref": "#proposalView"
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "proposalView": {
       "type": "object",
@@ -125,7 +130,9 @@
         },
         "alternateLabels": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Alternate labels"
         },
         "description": {

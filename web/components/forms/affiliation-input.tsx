@@ -35,7 +35,7 @@ const log = logger.child({ component: 'affiliation-input' });
 // =============================================================================
 
 /**
- * Author affiliation with optional ROR ID, Chive URI, and department.
+ * Author affiliation with optional ROR ID, Chive URI, and recursive sub-units.
  */
 export interface AuthorAffiliation {
   /** Organization name */
@@ -44,8 +44,8 @@ export interface AuthorAffiliation {
   rorId?: string;
   /** Chive institution AT-URI (if linked in knowledge graph) */
   institutionUri?: string;
-  /** Department or division */
-  department?: string;
+  /** Sub-units (schools, departments, labs, etc.) */
+  children?: AuthorAffiliation[];
 }
 
 /**
@@ -293,13 +293,33 @@ function AffiliationCard({
           )}
         </div>
 
-        {/* Department input */}
+        {/* Sub-unit input */}
         <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Department (optional)</label>
+          <label className="text-xs text-muted-foreground">
+            Sub-unit (school, department, etc.)
+          </label>
           <Input
-            value={affiliation.department ?? ''}
-            onChange={(e) => onUpdate({ department: e.target.value || undefined })}
-            placeholder="e.g., Computer Science"
+            value={affiliation.children?.[0]?.name ?? ''}
+            onChange={(e) => {
+              if (!e.target.value) {
+                onUpdate({ children: undefined });
+              } else {
+                const existingChild = affiliation.children?.[0];
+                onUpdate({
+                  children: [
+                    {
+                      name: e.target.value,
+                      ...(existingChild?.rorId && { rorId: existingChild.rorId }),
+                      ...(existingChild?.institutionUri && {
+                        institutionUri: existingChild.institutionUri,
+                      }),
+                      ...(existingChild?.children && { children: existingChild.children }),
+                    },
+                  ],
+                });
+              }
+            }}
+            placeholder="e.g., Department of Computer Science"
             disabled={disabled}
             className="h-8 text-sm"
           />
@@ -342,7 +362,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
         name: inst.name,
         rorId: inst.ror ? `https://ror.org/${inst.ror}` : undefined,
         institutionUri: inst.uri,
-        department: undefined,
       });
       setQuery('');
       clearResults();
@@ -356,8 +375,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
       onAdd({
         name: getRorDisplayName(org),
         rorId: org.id,
-        institutionUri: undefined,
-        department: undefined,
       });
       setQuery('');
       clearResults();
@@ -371,9 +388,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
 
     onAdd({
       name: query.trim(),
-      rorId: undefined,
-      institutionUri: undefined,
-      department: undefined,
     });
     setQuery('');
     clearResults();

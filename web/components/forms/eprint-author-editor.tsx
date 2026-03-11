@@ -159,6 +159,22 @@ function getInitials(name: string): string {
 }
 
 /**
+ * Formats an affiliation as a path string showing the hierarchy.
+ */
+function formatAffiliationPath(aff: AuthorAffiliation): string {
+  const MAX_DEPTH = 10;
+  const parts = [aff.name];
+  let current = aff.children?.[0];
+  let depth = 0;
+  while (current && depth < MAX_DEPTH) {
+    parts.push(current.name);
+    current = current.children?.[0];
+    depth++;
+  }
+  return parts.join(', ');
+}
+
+/**
  * Validates ORCID format.
  */
 function isValidOrcid(orcid: string): boolean {
@@ -686,8 +702,7 @@ function AuthorCard({
               <div className="space-y-1">
                 {author.affiliations.map((aff, i) => (
                   <div key={i} className="text-sm">
-                    {aff.name}
-                    {aff.department && `, ${aff.department}`}
+                    {formatAffiliationPath(aff)}
                   </div>
                 ))}
               </div>

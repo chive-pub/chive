@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.rejectClaim",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -38,9 +39,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "Forbidden" },
-        { "name": "NotFound" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Forbidden"
+        },
+        {
+          "name": "NotFound"
+        }
       ]
     }
   }

@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.metrics.recordSearchDownload",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -36,7 +37,11 @@
           }
         }
       },
-      "errors": [{ "name": "InvalidRequest" }]
+      "errors": [
+        {
+          "name": "InvalidRequest"
+        }
+      ]
     }
   }
 }

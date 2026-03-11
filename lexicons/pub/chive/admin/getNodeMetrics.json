@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getNodeMetrics",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -17,7 +18,10 @@
           "properties": {
             "metrics": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#nodeMetric" },
+              "items": {
+                "type": "ref",
+                "ref": "#nodeMetric"
+              },
               "description": "Node.js and process metric entries"
             },
             "processInfo": {
@@ -28,15 +32,28 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "nodeMetric": {
       "type": "object",
       "description": "A Node.js runtime metric",
       "required": ["name", "value", "type"],
       "properties": {
-        "name": { "type": "string", "description": "Metric name" },
-        "value": { "type": "string", "description": "Current value (numeric string)" },
+        "name": {
+          "type": "string",
+          "description": "Metric name"
+        },
+        "value": {
+          "type": "string",
+          "description": "Current value (numeric string)"
+        },
         "type": {
           "type": "string",
           "knownValues": ["counter", "gauge", "histogram"],
@@ -53,15 +70,42 @@
       "description": "Node.js process runtime information",
       "required": ["pid", "uptime", "heapUsed", "heapTotal", "rss"],
       "properties": {
-        "pid": { "type": "integer", "description": "Process ID" },
-        "uptime": { "type": "integer", "description": "Process uptime in seconds" },
-        "heapUsed": { "type": "integer", "description": "V8 heap used in bytes" },
-        "heapTotal": { "type": "integer", "description": "V8 heap total in bytes" },
-        "rss": { "type": "integer", "description": "Resident set size in bytes" },
-        "external": { "type": "integer", "description": "External memory in bytes" },
-        "cpuUser": { "type": "integer", "description": "CPU user time in microseconds" },
-        "cpuSystem": { "type": "integer", "description": "CPU system time in microseconds" },
-        "eventLoopLag": { "type": "integer", "description": "Event loop lag in microseconds" }
+        "pid": {
+          "type": "integer",
+          "description": "Process ID"
+        },
+        "uptime": {
+          "type": "integer",
+          "description": "Process uptime in seconds"
+        },
+        "heapUsed": {
+          "type": "integer",
+          "description": "V8 heap used in bytes"
+        },
+        "heapTotal": {
+          "type": "integer",
+          "description": "V8 heap total in bytes"
+        },
+        "rss": {
+          "type": "integer",
+          "description": "Resident set size in bytes"
+        },
+        "external": {
+          "type": "integer",
+          "description": "External memory in bytes"
+        },
+        "cpuUser": {
+          "type": "integer",
+          "description": "CPU user time in microseconds"
+        },
+        "cpuSystem": {
+          "type": "integer",
+          "description": "CPU system time in microseconds"
+        },
+        "eventLoopLag": {
+          "type": "integer",
+          "description": "Event loop lag in microseconds"
+        }
       }
     }
   }

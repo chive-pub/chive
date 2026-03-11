@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-03-11
+
+### Added
+
+#### Lexicon Versioning
+
+- ATProto-standard `revision` field on all lexicon files and `schemaRevision` on record-type lexicons
+- Central `lexicons/manifest.json` registry tracking revision, project version, and change date for every lexicon
+- `lexicons/VERSIONING.md` documenting the versioning strategy, changelog, and migration table
+
+#### Record Migration Service
+
+- Backend migration service (`src/services/migration/`) that transforms old-format PDS records at index time
+- Migration 0001: convert abstract string to rich text array, add titleRich for LaTeX titles, add license URI from slug mapping (submission rev 1 to 2)
+- Migration 0002: replace flat `department` field on affiliations with recursive `children` tree (submission rev 2 to 3, profile rev 1 to 2)
+- Migration chaining so records at any prior revision are brought up to current in a single pass
+
+### Changed
+
+#### Affiliations
+
+- Replace flat `department` field with recursive tree structure (`children` array) supporting arbitrary institutional hierarchies (university, school, department, lab, etc.)
+- Define canonical `pub.chive.defs#affiliation` shared type with `name`, `institutionUri`, `rorId`, and `children`
+- All lexicons now reference the shared affiliation type via cross-lexicon ref instead of local definitions
+- Each level in the affiliation tree can independently link to a knowledge graph node via `institutionUri`
+- Eprint cards display only the top-level institution name; full hierarchy shown in author detail views
+
+### Fixed
+
+#### Admin
+
+- Alpha dashboard returning 500 because `affiliations` and `researchKeywords` lexicon schemas defined items as strings but actual data contains objects
+
+#### Frontend
+
+- `institutionUri` dropped from affiliations in eprint card, edit sections, submission wizard Zod schemas, and sub-unit editing
+- Profile record creator missing `institutionUri` and `children` fields, silently stripping tree structure on profile save
+- Eprint submission Zod schema missing `institutionUri`, stripping institution graph links on submit
+
 ## [0.3.1] - 2026-03-10
 
 ### Fixed

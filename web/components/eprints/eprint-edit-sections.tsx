@@ -426,7 +426,8 @@ export function EprintEditSections({
         affiliations: (author.affiliations ?? []).map((aff) => ({
           name: aff.name,
           rorId: aff.rorId,
-          department: aff.department,
+          institutionUri: aff.institutionUri,
+          children: aff.children,
         })),
         contributions: (author.contributions ?? []).map((contrib) => ({
           typeUri: contrib.typeUri,
@@ -962,7 +963,8 @@ export function EprintEditSections({
           affiliations: author.affiliations?.map((aff) => ({
             name: aff.name,
             rorId: aff.rorId,
-            department: aff.department,
+            institutionUri: aff.institutionUri,
+            children: aff.children,
           })),
           contributions: author.contributions?.map((contrib) => ({
             typeUri: contrib.typeUri,

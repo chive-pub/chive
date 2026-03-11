@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listWarnings",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -30,7 +31,10 @@
           "properties": {
             "warnings": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#warning" },
+              "items": {
+                "type": "ref",
+                "ref": "#warning"
+              },
               "description": "Warning records"
             },
             "total": {
@@ -40,17 +44,37 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "warning": {
       "type": "object",
       "description": "User warning record",
       "required": ["id", "did", "reason", "issuedBy", "createdAt"],
       "properties": {
-        "id": { "type": "string", "description": "Warning ID" },
-        "did": { "type": "string", "format": "did", "description": "Warned user DID" },
-        "handle": { "type": "string", "description": "Warned user handle" },
-        "reason": { "type": "string", "description": "Reason for the warning" },
+        "id": {
+          "type": "string",
+          "description": "Warning ID"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "Warned user DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "Warned user handle"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Reason for the warning"
+        },
         "issuedBy": {
           "type": "string",
           "format": "did",

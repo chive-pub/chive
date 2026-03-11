@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listViolations",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -30,7 +31,10 @@
           "properties": {
             "violations": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#violation" },
+              "items": {
+                "type": "ref",
+                "ref": "#violation"
+              },
               "description": "Violation records"
             },
             "total": {
@@ -40,24 +44,50 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "violation": {
       "type": "object",
       "description": "Policy violation record",
       "required": ["id", "did", "type", "severity", "createdAt"],
       "properties": {
-        "id": { "type": "string", "description": "Violation ID" },
-        "did": { "type": "string", "format": "did", "description": "User DID" },
-        "handle": { "type": "string", "description": "User handle" },
-        "type": { "type": "string", "description": "Violation type" },
+        "id": {
+          "type": "string",
+          "description": "Violation ID"
+        },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "User DID"
+        },
+        "handle": {
+          "type": "string",
+          "description": "User handle"
+        },
+        "type": {
+          "type": "string",
+          "description": "Violation type"
+        },
         "severity": {
           "type": "string",
           "knownValues": ["low", "medium", "high", "critical"],
           "description": "Severity level"
         },
-        "description": { "type": "string", "description": "Violation description" },
-        "context": { "type": "string", "description": "Additional context" },
+        "description": {
+          "type": "string",
+          "description": "Violation description"
+        },
+        "context": {
+          "type": "string",
+          "description": "Additional context"
+        },
         "createdAt": {
           "type": "string",
           "format": "datetime",

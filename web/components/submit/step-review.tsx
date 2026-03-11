@@ -412,7 +412,21 @@ export function StepReview({
                     {author.affiliations && author.affiliations.length > 0 && (
                       <div className="flex items-start gap-1 text-xs text-muted-foreground">
                         <Building className="h-3 w-3 mt-0.5 shrink-0" />
-                        <span>{author.affiliations.map((aff) => aff.name).join('; ')}</span>
+                        <span>
+                          {author.affiliations
+                            .map((aff) => {
+                              const parts = [aff.name];
+                              let node = aff.children?.[0];
+                              let d = 0;
+                              while (node && d < 10) {
+                                parts.push(node.name);
+                                node = node.children?.[0];
+                                d++;
+                              }
+                              return parts.join(' > ');
+                            })
+                            .join('; ')}
+                        </span>
                       </div>
                     )}
 

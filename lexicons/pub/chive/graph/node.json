@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.graph.node",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "record",
@@ -94,6 +95,11 @@
           "updatedAt": {
             "type": "string",
             "format": "datetime"
+          },
+          "schemaRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Schema revision this record was created with. Absent means revision 1."
           }
         }
       }

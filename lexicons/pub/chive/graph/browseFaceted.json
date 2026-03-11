@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.graph.browseFaceted",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "query",
@@ -220,7 +221,7 @@
           "type": "array",
           "items": {
             "type": "ref",
-            "ref": "#affiliationRef"
+            "ref": "pub.chive.defs#affiliation"
           },
           "description": "Author affiliations"
         },
@@ -247,25 +248,6 @@
         "avatarUrl": {
           "type": "string",
           "description": "Avatar image URL"
-        }
-      }
-    },
-    "affiliationRef": {
-      "type": "object",
-      "description": "Author affiliation",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Institution name"
-        },
-        "rorId": {
-          "type": "string",
-          "description": "ROR identifier"
-        },
-        "department": {
-          "type": "string",
-          "description": "Department name"
         }
       }
     },

@@ -44,7 +44,7 @@ const AUTHOR_WITH_DID: EprintAuthor = {
     {
       name: 'Stanford University',
       rorId: 'https://ror.org/00f54p054',
-      department: 'Computer Science',
+      children: [{ name: 'Computer Science' }],
     },
   ],
   contributions: [
@@ -97,7 +97,7 @@ const EXTERNAL_COLLABORATOR: EprintAuthor = {
   affiliations: [
     {
       name: 'Partner Organization',
-      department: 'Research Division',
+      children: [{ name: 'Research Division' }],
     },
   ],
   contributions: [
@@ -150,7 +150,7 @@ function mapAuthorToDocument(author: EprintAuthor): object {
     affiliations: author.affiliations.map((a) => ({
       name: a.name,
       rorId: a.rorId,
-      department: a.department,
+      children: a.children,
     })),
     contributions: author.contributions.map((c) => ({
       typeId: c.typeId,
@@ -223,7 +223,7 @@ describe('Author Indexing Integration', () => {
                 properties: {
                   name: { type: 'text', fields: { keyword: { type: 'keyword' } } },
                   rorId: { type: 'keyword' },
-                  department: { type: 'text' },
+                  children: { type: 'nested', dynamic: true },
                 },
               },
               contributions: {

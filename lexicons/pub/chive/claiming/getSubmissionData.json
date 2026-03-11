@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.getSubmissionData",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -53,7 +54,9 @@
             },
             "keywords": {
               "type": "array",
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "Prefilled keywords/categories"
             },
             "doi": {
@@ -94,7 +97,14 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "submissionAuthor": {
       "type": "object",

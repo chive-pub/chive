@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.retryDLQEntry",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -36,9 +37,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "AdminRequired" },
-        { "name": "InvalidRequest" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        },
+        {
+          "name": "InvalidRequest"
+        }
       ]
     }
   }

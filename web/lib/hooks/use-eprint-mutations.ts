@@ -17,9 +17,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, authApi, createAuthenticatedClient } from '@/lib/api/client';
 import type {
   Main as AuthorContribution,
-  Affiliation as AuthorAffiliation,
   Contribution,
 } from '@/lib/api/generated/types/pub/chive/eprint/authorContribution';
+import type { Affiliation as AuthorAffiliation } from '@/lib/api/generated/types/pub/chive/defs';
 import type { ChangelogSection } from '@/lib/api/generated/types/pub/chive/eprint/changelog';
 import type { OutputSchema as DeleteOutput } from '@/lib/api/generated/types/pub/chive/eprint/deleteSubmission';
 import type { OutputSchema as GetChangelogOutput } from '@/lib/api/generated/types/pub/chive/eprint/getChangelog';

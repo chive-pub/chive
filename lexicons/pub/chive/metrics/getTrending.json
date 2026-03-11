@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.metrics.getTrending",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "query",
@@ -225,7 +226,7 @@
           "type": "array",
           "items": {
             "type": "ref",
-            "ref": "#affiliation"
+            "ref": "pub.chive.defs#affiliation"
           }
         },
         "contributions": {
@@ -250,25 +251,6 @@
         "avatarUrl": {
           "type": "string",
           "description": "Avatar URL (if available)"
-        }
-      }
-    },
-    "affiliation": {
-      "type": "object",
-      "description": "Author affiliation",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Institution name"
-        },
-        "rorId": {
-          "type": "string",
-          "description": "ROR identifier"
-        },
-        "department": {
-          "type": "string",
-          "description": "Department name"
         }
       }
     },

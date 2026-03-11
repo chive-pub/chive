@@ -43,7 +43,7 @@ export function createMockAffiliation(
   return {
     name: 'University of Example',
     rorId: 'https://ror.org/02mhbdp94',
-    department: 'Computer Science',
+    children: [{ name: 'Computer Science' }],
     ...overrides,
   };
 }

@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.eprint.listCitations",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
