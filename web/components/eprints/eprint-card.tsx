@@ -222,6 +222,7 @@ export function EprintCard({
           abstractItems={
             Array.isArray(eprint.abstract) ? eprint.abstract.filter(isRichTextItem) : undefined
           }
+          text={typeof eprint.abstract === 'string' ? eprint.abstract : undefined}
           maxLines={3}
         />
 
@@ -334,6 +335,7 @@ function FeaturedEprintCard({ eprint, onPrefetch, className }: FeaturedEprintCar
           abstractItems={
             Array.isArray(eprint.abstract) ? eprint.abstract.filter(isRichTextItem) : undefined
           }
+          text={typeof eprint.abstract === 'string' ? eprint.abstract : undefined}
           maxLines={4}
         />
 

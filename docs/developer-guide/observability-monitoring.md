@@ -596,7 +596,7 @@ Logs are JSON objects with these fields:
   "msg": "Request completed",
   "service": "chive-appview",
   "environment": "production",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "trace_id": "abc123def456",
   "span_id": "789ghi",
   "requestId": "req_xyz",
