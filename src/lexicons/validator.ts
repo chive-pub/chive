@@ -75,6 +75,8 @@ export class LexiconValidator {
     for (const file of files) {
       try {
         const schema = JSON.parse(await fs.readFile(file, 'utf-8')) as LexiconDoc;
+        // Skip non-lexicon JSON files (e.g., manifest.json) that lack an id field
+        if (!schema.id) continue;
         this.lexicons.add(schema);
       } catch (error) {
         throw new ValidationError(
