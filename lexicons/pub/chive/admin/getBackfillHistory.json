@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getBackfillHistory",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -17,20 +18,33 @@
           "properties": {
             "operations": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#backfillOperation" },
+              "items": {
+                "type": "ref",
+                "ref": "#backfillOperation"
+              },
               "description": "Historical backfill operations"
             }
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "backfillOperation": {
       "type": "object",
       "description": "A backfill operation record",
       "required": ["id", "type", "status", "startedAt", "recordsProcessed"],
       "properties": {
-        "id": { "type": "string", "description": "Operation ID" },
+        "id": {
+          "type": "string",
+          "description": "Operation ID"
+        },
         "type": {
           "type": "string",
           "knownValues": [
@@ -66,7 +80,10 @@
           "type": "integer",
           "description": "Total records to process"
         },
-        "error": { "type": "string", "description": "Error message if failed" },
+        "error": {
+          "type": "string",
+          "description": "Error message if failed"
+        },
         "startedBy": {
           "type": "string",
           "format": "did",

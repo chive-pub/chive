@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.discovery.getEnrichment",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -33,7 +34,11 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "enrichmentData": {
       "type": "object",
@@ -87,9 +92,15 @@
       "type": "object",
       "required": ["id", "displayName"],
       "properties": {
-        "id": { "type": "string" },
-        "displayName": { "type": "string" },
-        "wikidataId": { "type": "string" },
+        "id": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "wikidataId": {
+          "type": "string"
+        },
         "score": {
           "type": "integer",
           "minimum": 0,
@@ -102,11 +113,21 @@
       "type": "object",
       "required": ["id", "displayName"],
       "properties": {
-        "id": { "type": "string" },
-        "displayName": { "type": "string" },
-        "subfield": { "type": "string" },
-        "field": { "type": "string" },
-        "domain": { "type": "string" },
+        "id": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "subfield": {
+          "type": "string"
+        },
+        "field": {
+          "type": "string"
+        },
+        "domain": {
+          "type": "string"
+        },
         "score": {
           "type": "integer",
           "minimum": 0,

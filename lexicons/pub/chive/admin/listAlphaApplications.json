@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listAlphaApplications",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "query",
@@ -51,7 +52,29 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
+    },
+    "researchKeyword": {
+      "type": "object",
+      "description": "Research keyword with optional Wikidata link",
+      "required": ["label"],
+      "properties": {
+        "label": {
+          "type": "string",
+          "description": "Keyword label"
+        },
+        "wikidataId": {
+          "type": "string",
+          "description": "Wikidata entity ID"
+        }
+      }
     },
     "alphaApplication": {
       "type": "object",
@@ -108,14 +131,16 @@
         "affiliations": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "ref",
+            "ref": "pub.chive.defs#affiliation"
           },
           "description": "Institutional affiliations"
         },
         "researchKeywords": {
           "type": "array",
           "items": {
-            "type": "string"
+            "type": "ref",
+            "ref": "#researchKeyword"
           },
           "description": "Research keywords"
         },

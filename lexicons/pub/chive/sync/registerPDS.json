@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.sync.registerPDS",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -46,7 +47,14 @@
           }
         }
       },
-      "errors": [{ "name": "InvalidRequest" }, { "name": "ServiceUnavailable" }]
+      "errors": [
+        {
+          "name": "InvalidRequest"
+        },
+        {
+          "name": "ServiceUnavailable"
+        }
+      ]
     }
   }
 }

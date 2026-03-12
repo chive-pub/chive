@@ -53,7 +53,7 @@ const realRecordStringAbstract = {
         {
           name: 'University of Florida',
           rorId: 'https://ror.org/02y3ad647',
-          department: 'Linguistics',
+          children: [{ name: 'Linguistics' }],
         },
       ],
       contributions: [
@@ -282,7 +282,8 @@ describe('PDS record transformer with real records', () => {
       expect(author.affiliations[0]).toEqual({
         name: 'University of Florida',
         rorId: 'https://ror.org/02y3ad647',
-        department: 'Linguistics',
+        children: [{ name: 'Linguistics' }],
+        institutionUri: undefined,
       });
 
       // Contributions

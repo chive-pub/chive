@@ -29,10 +29,11 @@ import type { AtUri, BlobRef, DID } from '../atproto.js';
 export type ContributionDegree = 'lead' | 'equal' | 'supporting';
 
 /**
- * Author affiliation with optional ROR ID and department.
+ * Author affiliation with optional ROR ID and recursive children.
  *
  * @remarks
  * Used in eprint submission records to capture author affiliations.
+ * Children represent sub-organizations (departments, divisions, labs).
  *
  * @public
  */
@@ -50,14 +51,14 @@ export interface EprintAuthorAffiliation {
   readonly rorId?: string;
 
   /**
-   * Department or division within organization.
-   */
-  readonly department?: string;
-
-  /**
    * AT-URI to institution node in the knowledge graph (subkind=institution).
    */
   readonly institutionUri?: string;
+
+  /**
+   * Sub-organizations (departments, divisions, labs) within this affiliation.
+   */
+  readonly children?: EprintAuthorAffiliation[];
 }
 
 /**
@@ -193,11 +194,21 @@ export interface Affiliation {
   readonly name: string;
 
   /**
+   * AT-URI to institution node in knowledge graph.
+   */
+  readonly institutionUri?: string;
+
+  /**
    * ROR ID (e.g., "https://ror.org/02mhbdp94").
    *
    * @see {@link https://ror.org/ | Research Organization Registry}
    */
   readonly rorId?: string;
+
+  /**
+   * Sub-units (schools, departments, labs, etc.).
+   */
+  readonly children?: Affiliation[];
 }
 
 /**

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
+import type { Affiliation } from '@/lib/api/generated/types/pub/chive/defs';
 import { APIError } from '@/lib/errors';
 import type {
   Eprint,
@@ -49,12 +50,7 @@ function transformAuthor(author: {
   orcid?: string;
   email?: string;
   order: number;
-  affiliations?: Array<{
-    name: string;
-    institutionUri?: string;
-    rorId?: string;
-    department?: string;
-  }>;
+  affiliations?: Affiliation[];
   contributions?: Array<{
     typeUri: string;
     typeSlug?: string;

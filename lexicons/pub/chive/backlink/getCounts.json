@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.backlink.getCounts",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -61,7 +62,11 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     }
   }
 }

@@ -54,6 +54,7 @@ import type { EdgeService } from '../governance/edge-service.js';
 import type { NodeService } from '../governance/node-service.js';
 import type { PersonalGraphService } from '../graph/personal-graph-service.js';
 import type { KnowledgeGraphService } from '../knowledge-graph/graph-service.js';
+import { migrateRecord, needsMigration } from '../migration/index.js';
 import type { IPDSRegistry } from '../pds-discovery/pds-registry.js';
 import type { ReviewService } from '../review/review-service.js';
 
@@ -152,12 +153,15 @@ export interface ActorProfileRecord {
   readonly bio?: string;
   readonly avatarBlobRef?: { readonly ref: { readonly $link: string } };
   readonly orcid?: string;
-  readonly affiliations?: {
-    readonly name: string;
-    readonly rorId?: string;
-    readonly institutionUri?: string;
-  }[];
+  readonly affiliations?: ActorAffiliation[];
   readonly fieldIds?: readonly string[];
+}
+
+interface ActorAffiliation {
+  readonly name: string;
+  readonly rorId?: string;
+  readonly institutionUri?: string;
+  readonly children?: ActorAffiliation[];
 }
 
 /**
@@ -589,9 +593,18 @@ async function processRecord(
         }
       } else if (record) {
         try {
+          // Migrate old-format records to current schema revision
+          const migratedRecord = needsMigration(collection, record as Record<string, unknown>)
+            ? migrateRecord(collection, record as Record<string, unknown>)
+            : record;
+
           // Transform PDS record format to internal Eprint model
           // Also capture whether the source uses legacy abstract format
-          const transformResult = transformPDSRecordWithSchema(record, uri, cid ?? ('' as CID));
+          const transformResult = transformPDSRecordWithSchema(
+            migratedRecord,
+            uri,
+            cid ?? ('' as CID)
+          );
           const eprintRecord = transformResult.eprint;
           const needsAbstractMigration = transformResult.abstractFormat === 'string';
 
@@ -1388,7 +1401,11 @@ async function processRecord(
         }
       } else if (record) {
         try {
-          const profileRecord = record as ActorProfileRecord;
+          // Migrate old-format profile records to current schema revision
+          const migratedProfile = needsMigration(collection, record as Record<string, unknown>)
+            ? migrateRecord(collection, record as Record<string, unknown>)
+            : record;
+          const profileRecord = migratedProfile as ActorProfileRecord;
           const did = data.repo;
 
           await pool.query(

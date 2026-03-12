@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.sync.refreshRecord",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -45,7 +46,14 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }, { "name": "AuthenticationRequired" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        },
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
     }
   }
 }

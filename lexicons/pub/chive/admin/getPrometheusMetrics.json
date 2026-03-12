@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getPrometheusMetrics",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -17,7 +18,10 @@
           "properties": {
             "metrics": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#prometheusMetric" },
+              "items": {
+                "type": "ref",
+                "ref": "#prometheusMetric"
+              },
               "description": "Prometheus metric entries"
             },
             "timestamp": {
@@ -28,15 +32,28 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "prometheusMetric": {
       "type": "object",
       "description": "A single Prometheus metric with its values",
       "required": ["name", "help", "type", "values"],
       "properties": {
-        "name": { "type": "string", "description": "Metric name" },
-        "help": { "type": "string", "description": "Metric help text" },
+        "name": {
+          "type": "string",
+          "description": "Metric name"
+        },
+        "help": {
+          "type": "string",
+          "description": "Metric help text"
+        },
         "type": {
           "type": "string",
           "knownValues": ["counter", "gauge", "histogram", "summary"],
@@ -44,7 +61,10 @@
         },
         "values": {
           "type": "array",
-          "items": { "type": "ref", "ref": "#metricValue" },
+          "items": {
+            "type": "ref",
+            "ref": "#metricValue"
+          },
           "description": "Metric values with labels"
         }
       }
@@ -59,8 +79,14 @@
           "ref": "#labelSet",
           "description": "Label key-value pairs"
         },
-        "value": { "type": "string", "description": "Metric value (numeric string)" },
-        "exemplar": { "type": "string", "description": "Optional exemplar value (numeric string)" }
+        "value": {
+          "type": "string",
+          "description": "Metric value (numeric string)"
+        },
+        "exemplar": {
+          "type": "string",
+          "description": "Optional exemplar value (numeric string)"
+        }
       }
     },
     "labelSet": {

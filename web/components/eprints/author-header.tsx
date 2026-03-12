@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
-import type { AuthorProfile } from '@/lib/api/schema';
+import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
 
 /**
  * Props for the AuthorHeader component.
@@ -51,8 +51,8 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
 
   // Type-safe access to extended profile fields
   const extendedProfile = profile as AuthorProfile & {
-    affiliations?: Array<{ name: string; rorId?: string }>;
-    previousAffiliations?: Array<{ name: string; rorId?: string }>;
+    affiliations?: Affiliation[];
+    previousAffiliations?: Affiliation[];
     researchKeywords?: Array<{ label: string; fastId?: string; wikidataId?: string }>;
     nameVariants?: string[];
     semanticScholarId?: string;
@@ -121,18 +121,7 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
                   className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start"
                 >
                   <Building2 className="h-4 w-4 shrink-0" />
-                  {aff.rorId ? (
-                    <a
-                      href={`https://ror.org/${aff.rorId.replace('https://ror.org/', '')}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:text-foreground hover:underline"
-                    >
-                      {aff.name}
-                    </a>
-                  ) : (
-                    <span>{aff.name}</span>
-                  )}
+                  <span>{formatAffiliationHierarchy(aff)}</span>
                   {idx === 0 && (
                     <Badge variant="outline" className="text-xs">
                       Primary
@@ -320,18 +309,7 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
           <div className="flex flex-wrap gap-2">
             {extendedProfile.previousAffiliations!.map((aff, idx) => (
               <Badge key={idx} variant="outline" className="text-muted-foreground">
-                {aff.rorId ? (
-                  <a
-                    href={`https://ror.org/${aff.rorId.replace('https://ror.org/', '')}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-foreground"
-                  >
-                    {aff.name}
-                  </a>
-                ) : (
-                  aff.name
-                )}
+                {formatAffiliationHierarchy(aff)}
               </Badge>
             ))}
           </div>
@@ -405,6 +383,22 @@ function CopyButton({ value }: { value: string }) {
       )}
     </Button>
   );
+}
+
+/**
+ * Formats an affiliation tree as a hierarchy string (e.g. "University > School > Department").
+ */
+function formatAffiliationHierarchy(aff: Affiliation): string {
+  const parts: string[] = [aff.name];
+  let current = aff.children?.[0];
+  let depth = 0;
+  const MAX_DEPTH = 10;
+  while (current && depth < MAX_DEPTH) {
+    parts.push(current.name);
+    current = current.children?.[0];
+    depth++;
+  }
+  return parts.join(' > ');
 }
 
 /**

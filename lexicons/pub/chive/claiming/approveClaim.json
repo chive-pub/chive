@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.approveClaim",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",

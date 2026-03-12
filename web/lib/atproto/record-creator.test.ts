@@ -110,7 +110,7 @@ function createTestAuthor(
     did: string;
     order: number;
     name: string;
-    affiliations: { name: string; rorId?: string; department?: string }[];
+    affiliations: { name: string; rorId?: string; children?: Array<{ name: string }> }[];
     contributions: {
       typeUri: string;
       typeId?: string;

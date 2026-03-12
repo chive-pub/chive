@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getAlphaStats",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -17,17 +18,26 @@
           "properties": {
             "byStatus": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#countByKey" },
+              "items": {
+                "type": "ref",
+                "ref": "#countByKey"
+              },
               "description": "Application counts keyed by status"
             },
             "bySector": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#countByKey" },
+              "items": {
+                "type": "ref",
+                "ref": "#countByKey"
+              },
               "description": "Application counts keyed by sector"
             },
             "byCareerStage": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#countByKey" },
+              "items": {
+                "type": "ref",
+                "ref": "#countByKey"
+              },
               "description": "Application counts keyed by career stage"
             },
             "recentByDay": {
@@ -45,15 +55,28 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "countByKey": {
       "type": "object",
       "description": "Count for a specific key",
       "required": ["key", "count"],
       "properties": {
-        "key": { "type": "string", "description": "Category key" },
-        "count": { "type": "integer", "description": "Count for this category" }
+        "key": {
+          "type": "string",
+          "description": "Category key"
+        },
+        "count": {
+          "type": "integer",
+          "description": "Count for this category"
+        }
       }
     },
     "dayCount": {

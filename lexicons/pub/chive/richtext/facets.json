@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.richtext.facets",
+  "revision": 1,
   "defs": {
     "bold": {
       "type": "object",

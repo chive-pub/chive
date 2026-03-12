@@ -46,7 +46,7 @@ function createMockPDSRecord(overrides?: Record<string, unknown>): Record<string
           {
             name: 'University of Testing',
             rorId: 'https://ror.org/03yrm5c26',
-            department: 'Department of Verification',
+            children: [{ name: 'Department of Verification' }],
           },
         ],
         contributions: [
@@ -174,7 +174,8 @@ describe('transformPDSRecord', () => {
       expect(author.affiliations[0]).toEqual({
         name: 'University of Testing',
         rorId: 'https://ror.org/03yrm5c26',
-        department: 'Department of Verification',
+        children: [{ name: 'Department of Verification' }],
+        institutionUri: undefined,
       });
     });
 

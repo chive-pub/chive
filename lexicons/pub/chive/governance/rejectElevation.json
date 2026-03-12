@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.rejectElevation",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -32,9 +33,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "Unauthorized" },
-        { "name": "NotFound" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Unauthorized"
+        },
+        {
+          "name": "NotFound"
+        }
       ]
     },
     "elevationResult": {

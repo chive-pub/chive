@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.graph.listNodes",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",

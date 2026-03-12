@@ -1,34 +1,8 @@
 {
   "lexicon": 1,
   "id": "pub.chive.eprint.authorContribution",
+  "revision": 2,
   "defs": {
-    "affiliation": {
-      "type": "object",
-      "description": "Author affiliation with optional institution node reference",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Organization name (display fallback)",
-          "maxLength": 300
-        },
-        "institutionUri": {
-          "type": "string",
-          "format": "at-uri",
-          "description": "AT-URI to institution node in knowledge graph (subkind=institution)"
-        },
-        "rorId": {
-          "type": "string",
-          "description": "ROR ID (e.g., https://ror.org/02mhbdp94)",
-          "maxLength": 100
-        },
-        "department": {
-          "type": "string",
-          "description": "Department or division within organization",
-          "maxLength": 200
-        }
-      }
-    },
     "contribution": {
       "type": "object",
       "description": "Author contribution with type and degree node references",
@@ -102,7 +76,7 @@
           "description": "Author affiliations",
           "items": {
             "type": "ref",
-            "ref": "#affiliation"
+            "ref": "pub.chive.defs#affiliation"
           },
           "maxLength": 10
         },

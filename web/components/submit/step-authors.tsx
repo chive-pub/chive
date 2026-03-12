@@ -81,11 +81,7 @@ export function StepAuthors({ form, isImportMode = false, className }: StepAutho
         orcid: submitterProfile?.profile?.orcid,
         email: undefined,
         order: 1,
-        affiliations:
-          submitterProfile?.profile?.affiliations?.map((aff) => ({
-            name: aff.name,
-            rorId: aff.rorId,
-          })) ?? [],
+        affiliations: submitterProfile?.profile?.affiliations ?? [],
         contributions: [],
         isCorrespondingAuthor: true, // Submitter is corresponding by default
         isHighlighted: false,
@@ -107,11 +103,7 @@ export function StepAuthors({ form, isImportMode = false, className }: StepAutho
           updatedAuthors[submitterIndex] = {
             ...currentAuthor,
             orcid: submitterProfile.profile.orcid,
-            affiliations:
-              submitterProfile.profile.affiliations?.map((aff) => ({
-                name: aff.name,
-                rorId: aff.rorId,
-              })) ?? currentAuthor.affiliations,
+            affiliations: submitterProfile.profile.affiliations ?? currentAuthor.affiliations,
           };
           form.setValue('authors', updatedAuthors, { shouldValidate: true });
         }
@@ -165,10 +157,7 @@ export function StepAuthors({ form, isImportMode = false, className }: StepAutho
                 displayName: user.displayName,
                 avatar: user.avatar,
                 orcid: submitterProfile?.profile?.orcid,
-                affiliations: submitterProfile?.profile?.affiliations?.map((aff) => ({
-                  name: aff.name,
-                  rorId: aff.rorId,
-                })),
+                affiliations: submitterProfile?.profile?.affiliations,
               }
             : undefined
         }

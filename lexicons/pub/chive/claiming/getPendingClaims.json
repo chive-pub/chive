@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.getPendingClaims",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -57,7 +58,14 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Forbidden" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Forbidden"
+        }
+      ]
     },
     "claimRequest": {
       "type": "object",

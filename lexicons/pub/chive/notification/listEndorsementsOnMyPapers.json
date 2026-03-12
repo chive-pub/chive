@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.notification.listEndorsementsOnMyPapers",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -45,7 +46,11 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
     },
     "endorsementNotification": {
       "type": "object",
@@ -68,7 +73,9 @@
         },
         "contributions": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "comment": {
           "type": "string"

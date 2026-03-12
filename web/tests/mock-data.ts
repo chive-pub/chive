@@ -141,7 +141,7 @@ export interface Reconciliation {
 export interface AuthorAffiliation {
   name: string;
   rorId?: string;
-  department?: string;
+  children?: AuthorAffiliation[];
 }
 
 /**
@@ -1301,7 +1301,7 @@ export function createMockAuthorAffiliation(
   return {
     name: 'University of Example',
     rorId: 'https://ror.org/02mhbdp94',
-    department: 'Computer Science',
+    children: [{ name: 'Computer Science' }],
     ...overrides,
   };
 }
@@ -1377,7 +1377,6 @@ export function createMockExternalAuthor(
       createMockAuthorAffiliation({
         name: 'External Institute',
         rorId: undefined,
-        department: undefined,
       }),
     ],
     contributions: [

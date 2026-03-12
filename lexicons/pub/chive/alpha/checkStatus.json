@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.alpha.checkStatus",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -33,7 +34,11 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
     }
   }
 }

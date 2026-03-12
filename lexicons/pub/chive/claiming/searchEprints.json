@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.claiming.searchEprints",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -57,7 +58,11 @@
           }
         }
       },
-      "errors": [{ "name": "InvalidRequest" }]
+      "errors": [
+        {
+          "name": "InvalidRequest"
+        }
+      ]
     },
     "externalEprint": {
       "type": "object",
@@ -104,7 +109,9 @@
         },
         "categories": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Subject categories"
         },
         "source": {

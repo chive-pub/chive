@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.author.getProfile",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "query",
@@ -33,7 +34,11 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "authorProfile": {
       "type": "object",
@@ -63,7 +68,7 @@
           "type": "array",
           "items": {
             "type": "ref",
-            "ref": "#affiliation"
+            "ref": "pub.chive.defs#affiliation"
           }
         },
         "orcid": {
@@ -78,17 +83,21 @@
         },
         "fields": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "nameVariants": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
         },
         "previousAffiliations": {
           "type": "array",
           "items": {
             "type": "ref",
-            "ref": "#affiliation"
+            "ref": "pub.chive.defs#affiliation"
           }
         },
         "researchKeywords": {
@@ -98,40 +107,60 @@
             "ref": "#researchKeyword"
           }
         },
-        "semanticScholarId": { "type": "string" },
-        "openAlexId": { "type": "string" },
-        "googleScholarId": { "type": "string" },
-        "arxivAuthorId": { "type": "string" },
-        "openReviewId": { "type": "string" },
-        "dblpId": { "type": "string" },
-        "scopusAuthorId": { "type": "string" }
-      }
-    },
-    "affiliation": {
-      "type": "object",
-      "required": ["name"],
-      "properties": {
-        "name": { "type": "string" },
-        "rorId": { "type": "string" }
+        "semanticScholarId": {
+          "type": "string"
+        },
+        "openAlexId": {
+          "type": "string"
+        },
+        "googleScholarId": {
+          "type": "string"
+        },
+        "arxivAuthorId": {
+          "type": "string"
+        },
+        "openReviewId": {
+          "type": "string"
+        },
+        "dblpId": {
+          "type": "string"
+        },
+        "scopusAuthorId": {
+          "type": "string"
+        }
       }
     },
     "researchKeyword": {
       "type": "object",
       "required": ["label"],
       "properties": {
-        "label": { "type": "string" },
-        "fastId": { "type": "string" },
-        "wikidataId": { "type": "string" }
+        "label": {
+          "type": "string"
+        },
+        "fastId": {
+          "type": "string"
+        },
+        "wikidataId": {
+          "type": "string"
+        }
       }
     },
     "authorMetrics": {
       "type": "object",
       "required": ["totalEprints", "totalViews", "totalDownloads", "totalEndorsements"],
       "properties": {
-        "totalEprints": { "type": "integer" },
-        "totalViews": { "type": "integer" },
-        "totalDownloads": { "type": "integer" },
-        "totalEndorsements": { "type": "integer" }
+        "totalEprints": {
+          "type": "integer"
+        },
+        "totalViews": {
+          "type": "integer"
+        },
+        "totalDownloads": {
+          "type": "integer"
+        },
+        "totalEndorsements": {
+          "type": "integer"
+        }
       }
     }
   }

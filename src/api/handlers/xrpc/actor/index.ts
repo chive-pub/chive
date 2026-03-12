@@ -64,10 +64,11 @@ export type {
 } from '../../../../lexicons/generated/types/pub/chive/actor/discoverAuthorIds.js';
 
 export type {
-  Affiliation,
   OutputSchema as ChiveProfile,
   ResearchKeyword,
 } from '../../../../lexicons/generated/types/pub/chive/actor/getMyProfile.js';
+
+export type { Affiliation } from '../../../../lexicons/generated/types/pub/chive/defs.js';
 
 export type {
   OutputSchema as DiscoverySettings,

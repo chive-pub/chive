@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.defs",
+  "revision": 2,
   "description": "Shared type definitions for reusable enum-like values",
   "defs": {
     "documentFormat": {
@@ -51,6 +52,37 @@
         "questionnaire",
         "other"
       ]
+    },
+    "affiliation": {
+      "type": "object",
+      "description": "Institutional affiliation with optional sub-unit hierarchy",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Organization or unit name",
+          "maxLength": 300
+        },
+        "institutionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI to institution or unit node in knowledge graph"
+        },
+        "rorId": {
+          "type": "string",
+          "description": "ROR identifier URL",
+          "maxLength": 100
+        },
+        "children": {
+          "type": "array",
+          "description": "Sub-units (schools, departments, labs, etc.)",
+          "items": {
+            "type": "ref",
+            "ref": "#affiliation"
+          },
+          "maxLength": 10
+        }
+      }
     }
   }
 }

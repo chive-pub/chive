@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.auth.reviewerAccess",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "permission-set",

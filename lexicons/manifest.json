@@ -1,0 +1,1011 @@
+{
+  "description": "Chive lexicon version manifest. Maps each lexicon to its current revision, category, and project version.",
+  "generatedAt": "2026-03-11",
+  "lexicons": {
+    "pub.chive.activity.getCorrelationMetrics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.activity.getFeed": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.activity.log": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.activity.markFailed": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.autocompleteAffiliation": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.autocompleteKeyword": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.autocompleteOpenReview": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.autocompleteOrcid": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.discoverAuthorIds": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.getDiscoverySettings": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.getMyProfile": {
+      "revision": 2,
+      "category": "query",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.actor.getMyRoles": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.getProfileConfig": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.mute": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.actor.profile": {
+      "revision": 2,
+      "category": "record",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.admin.assignRole": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.cancelBackfill": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.deleteContent": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.dismissDLQEntry": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getActivityCorrelation": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getAlphaApplication": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getAlphaStats": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getAuditLog": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getBackfillHistory": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getBackfillStatus": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getEndpointMetrics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getFirehoseStatus": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getGraphStats": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getMetricsOverview": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getNodeMetrics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getOverview": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getPrometheusMetrics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getSearchAnalytics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getSystemHealth": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getTrendingVelocity": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getUserDetail": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.getViewDownloadTimeSeries": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listAlphaApplications": {
+      "revision": 2,
+      "category": "query",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.admin.listDLQEntries": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listEndorsements": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listEprints": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listImports": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listPDSes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listReviews": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listViolations": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.listWarnings": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.purgeOldDLQ": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.rescanPDS": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.retryAllDLQ": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.retryDLQEntry": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.revokeRole": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.searchUsers": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerBackfill": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerCitationExtraction": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerDIDSync": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerFreshnessScan": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerFullReindex": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerGovernanceSync": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.triggerPDSScan": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.admin.updateAlphaApplication": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.alpha.apply": {
+      "revision": 2,
+      "category": "procedure",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.alpha.checkStatus": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.comment": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.entityLink": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.getThread": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.listByAuthor": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.listForEprint": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.annotation.listForPage": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.auth.authorAccess": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.auth.basicReader": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.auth.fullAccess": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.auth.reviewerAccess": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.author.getProfile": {
+      "revision": 2,
+      "category": "query",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.author.searchAuthors": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.backlink.create": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.backlink.delete": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.backlink.getCounts": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.backlink.list": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.approveClaim": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.approveCoauthor": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.autocomplete": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.completeClaim": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.fetchExternalPdf": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.findClaimable": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getClaim": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getCoauthorRequests": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getMyCoauthorRequests": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getPendingClaims": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getSubmissionData": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getSuggestions": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.getUserClaims": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.rejectClaim": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.rejectCoauthor": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.requestCoauthorship": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.searchEprints": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.startClaim": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.claiming.startClaimFromExternal": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.defs": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.findContainsEdge": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.get": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.getContaining": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.getFeed": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.getParent": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.getSubcollections": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.listByOwner": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.listPublic": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.collection.search": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.defs": {
+      "revision": 2,
+      "category": "shared-defs",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.discovery.getCitations": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.discovery.getEnrichment": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.discovery.getSimilar": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.discovery.recordInteraction": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.discovery.settings": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.endorsement.getSummary": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.endorsement.getUserEndorsement": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.endorsement.listForAuthorPapers": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.endorsement.listForEprint": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.endorsement.listForUser": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.authorContribution": {
+      "revision": 2,
+      "category": "shared-defs",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.eprint.changelog": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.citation": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.deleteSubmission": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.getChangelog": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.getSubmission": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.listByAuthor": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.listChangelogs": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.listCitations": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.listRelatedWorks": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.relatedWork": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.searchSubmissions": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.submission": {
+      "revision": 3,
+      "category": "record",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.eprint.updateSubmission": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.userTag": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.eprint.version": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.approveElevation": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.getEditorStatus": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.getPendingCount": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.getProposal": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.getUserVote": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.grantDelegation": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.listDelegations": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.listElevationRequests": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.listProposals": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.listTrustedEditors": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.listVotes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.rejectElevation": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.requestElevation": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.revokeDelegation": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.governance.revokeRole": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.browseFaceted": {
+      "revision": 2,
+      "category": "query",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.graph.edge": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.edgeProposal": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.expandSubgraph": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getCommunities": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getEdge": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getHierarchy": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getNode": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getRelations": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.getSubkinds": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.listEdges": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.listNodes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.listPersonalEdgeTypes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.listPersonalNodes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.node": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.nodeProposal": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.reconciliation": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.searchNodes": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.graph.vote": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.import.exists": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.import.get": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.import.search": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.getMetrics": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.getTrending": {
+      "revision": 2,
+      "category": "query",
+      "lastChangedIn": "0.4.0"
+    },
+    "pub.chive.metrics.getViewCount": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.recordDownload": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.recordDwellTime": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.recordSearchClick": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.recordSearchDownload": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.metrics.recordView": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.notification.listEndorsementsOnMyPapers": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.notification.listReviewsOnMyPapers": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.comment": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.endorsement": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.entityLink": {
+      "revision": 1,
+      "category": "record",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.getThread": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.listForAuthor": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.review.listForEprint": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.richtext.defs": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.richtext.facets": {
+      "revision": 1,
+      "category": "shared-defs",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.checkStaleness": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.deleteRecord": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.indexRecord": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.refreshRecord": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.registerPDS": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.sync.verify": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.getDetail": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.getSuggestions": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.getTrending": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.listEprints": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.listForEprint": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.tag.search": {
+      "revision": 1,
+      "category": "query",
+      "lastChangedIn": "0.1.0"
+    }
+  }
+}

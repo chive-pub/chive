@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.listElevationRequests",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -46,7 +47,14 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "Unauthorized" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Unauthorized"
+        }
+      ]
     },
     "elevationRequest": {
       "type": "object",
@@ -192,7 +200,9 @@
         },
         "missingCriteria": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "List of missing eligibility criteria"
         }
       }
