@@ -12,6 +12,7 @@ Chive's core services handle:
 - **PDSSyncService**: Detects stale indexes and triggers re-sync from source PDSes
 - **AnnotationService**: Indexes inline text annotations and entity links with threaded discussions
 - **ReviewService**: Indexes document-level reviews and endorsements
+- **RecordMigrator**: Transforms legacy PDS records at index time to match the current schema revision
 
 All services follow ATProto compliance rules: they index data from the firehose but never write to user PDSes.
 

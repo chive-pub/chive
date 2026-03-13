@@ -395,6 +395,59 @@ interface ApiSchemaHints {
 }
 ```
 
+## Record migration service
+
+While the SchemaCompatibilityService detects formats and generates hints for API responses, the **RecordMigrator** transforms legacy records at index time. When the firehose event processor receives a record, it checks whether migration is needed and applies transformations before storing the indexed data.
+
+### How it works
+
+Each lexicon that supports versioning has a `schemaRevision` integer field. When a record's revision is below the current revision (or absent, implying revision 1), the migrator applies each migration in sequence.
+
+```typescript
+import { RecordMigrator } from '@/services/migration/record-migrator.js';
+
+const migrator = new RecordMigrator();
+
+// Check if a record needs migration
+if (migrator.needsMigration('pub.chive.eprint.submission', record)) {
+  const migrated = migrator.migrate('pub.chive.eprint.submission', record);
+  // migrated record is at the current revision
+}
+```
+
+### Current migrations
+
+| ID   | Collection                    | From | To  | Description                                                                                                   |
+| ---- | ----------------------------- | ---- | --- | ------------------------------------------------------------------------------------------------------------- |
+| 0001 | `pub.chive.eprint.submission` | 1    | 2   | Convert abstract to rich text array, generate `titleRich` for LaTeX titles, map `licenseSlug` to `licenseUri` |
+| 0002 | `pub.chive.eprint.submission` | 2    | 3   | Convert flat affiliation strings to `pub.chive.defs#affiliation` tree objects with `institutionUri` lookup    |
+| 0002 | `pub.chive.actor.profile`     | 1    | 2   | Convert flat affiliation strings to `pub.chive.defs#affiliation` tree objects                                 |
+
+### Migration chaining
+
+A submission record at revision 1 passes through both migrations in sequence (1 to 2 to 3). A record at revision 2 only needs the affiliation tree migration (2 to 3).
+
+### Integration with firehose indexing
+
+The event processor calls the migrator before indexing:
+
+```typescript
+// In the firehose event processor
+const record = event.record;
+if (migrator.needsMigration(event.collection, record)) {
+  const migrated = migrator.migrate(event.collection, record);
+  await indexRecord(event.collection, migrated);
+} else {
+  await indexRecord(event.collection, record);
+}
+```
+
+Migrations are idempotent and run at index time only. The original PDS record is never modified.
+
+### Connection to frontend
+
+The `_schemaHints` field in API responses bridges backend detection with frontend user-initiated PDS updates. When a user opens an eprint that has legacy fields, the frontend's migration system can prompt the user to update their PDS record to the current schema.
+
 ## ATProto compliance
 
 The schema compatibility service follows ATProto principles:

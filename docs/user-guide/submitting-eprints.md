@@ -23,22 +23,30 @@ Click "Submit Eprint" to open the submission form. The form has four sections.
 
 ### Step 3: Basic information
 
-| Field    | Required | Description                                  |
-| -------- | -------- | -------------------------------------------- |
-| Title    | Yes      | Full title of your eprint                    |
-| Abstract | Yes      | Plain text summary (recommended: 300 words)  |
-| Keywords | Yes      | At least one author-provided keyword         |
-| License  | Yes      | Creative Commons license (CC-BY recommended) |
+| Field    | Required | Description                                                     |
+| -------- | -------- | --------------------------------------------------------------- |
+| Title    | Yes      | Full title of your eprint. LaTeX math is detected and rendered. |
+| Abstract | Yes      | Rich text summary supporting formatting, LaTeX, and references  |
+| Keywords | Yes      | At least one author-provided keyword                            |
+| License  | Yes      | Creative Commons license (CC-BY recommended)                    |
+
+Titles containing LaTeX expressions (e.g., `$\alpha$-decay`) are automatically detected. A rich text version (`titleRich`) is generated with the math rendered inline.
+
+Abstracts support rich text items including plain text, LaTeX math, entity references (knowledge graph nodes, other eprints, authors), code blocks, headings, and lists.
 
 ### Step 4: Authors
 
 Add all authors with their affiliations:
 
 1. Click "Add Author"
-2. Enter name and affiliation
-3. Optionally link to ORCID
-4. Drag to reorder authors
-5. Mark corresponding author
+2. Enter name and institutional affiliation
+3. Add sub-units within the affiliation (e.g., University > School > Department > Lab)
+4. Optionally link to ORCID
+5. Assign CRediT contribution roles (conceptualization, methodology, writing, etc.)
+6. Drag to reorder authors
+7. Mark corresponding author
+
+Affiliations are stored as hierarchical trees linked to ROR identifiers and knowledge graph institution nodes.
 
 ### Step 5: Upload files
 

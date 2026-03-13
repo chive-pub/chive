@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 17 record types, 81 queries, and 32 procedures across 20 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 17 record types, 81 queries, and 32 procedures across 21 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
@@ -15,7 +15,8 @@ For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.c
 | `pub.chive.author.*`       | Author profiles and search                                 |
 | `pub.chive.backlink.*`     | Cross-reference backlinks                                  |
 | `pub.chive.claiming.*`     | Eprint ownership claiming and coauthorship                 |
-| `pub.chive.defs`           | Shared enum definitions                                    |
+| `pub.chive.admin.*`        | Administration, moderation, and platform management        |
+| `pub.chive.defs`           | Shared types and enum definitions                          |
 | `pub.chive.discovery.*`    | Recommendations and citation networks                      |
 | `pub.chive.endorsement.*`  | Endorsement aggregation queries                            |
 | `pub.chive.eprint.*`       | Eprint submissions, versions, citations, and related works |
@@ -90,6 +91,26 @@ type SupplementaryCategory =
   | 'other'
   | (string & {});
 ```
+
+### affiliation
+
+Hierarchical institutional affiliation. Supports recursive sub-units (schools, departments, labs) up to 10 levels deep.
+
+```typescript
+interface Affiliation {
+  name: string; // Organization or unit name (max 300)
+  institutionUri?: string; // AT-URI to institution/unit node in knowledge graph
+  rorId?: string; // ROR identifier URL (max 100)
+  children?: Affiliation[]; // Sub-units: schools, departments, labs (max 10)
+}
+```
+
+| Field            | Type                     | Required | Description                                        |
+| ---------------- | ------------------------ | -------- | -------------------------------------------------- |
+| `name`           | string (max 300)         | Yes      | Organization or unit name                          |
+| `institutionUri` | at-uri                   | No       | AT-URI to institution/unit node in knowledge graph |
+| `rorId`          | string (max 100)         | No       | ROR identifier URL                                 |
+| `children`       | `affiliation[]` (max 10) | No       | Sub-units (schools, departments, labs)             |
 
 ## Rich text system
 
@@ -464,23 +485,77 @@ Supported facet features: `bold`, `italic`, `strikethrough`, `code`, `latex`, `l
 
 ## Eprint lexicons
 
+### pub.chive.eprint.authorContribution
+
+**Type:** shared-defs | **Revision:** 2
+
+Author entry within an eprint submission. Each author has a position, optional DID (if they have an ATProto account), hierarchical affiliations, and CRediT-based contribution roles.
+
+**Contribution type:**
+
+```typescript
+interface Contribution {
+  typeUri: string; // AT-URI to contribution type node (subkind=contribution-type)
+  typeSlug?: string; // Slug (e.g., "conceptualization"), max 50
+  degreeUri?: string; // AT-URI to contribution degree node
+  degreeSlug?: string; // "lead" | "equal" | "supporting", default "equal"
+}
+```
+
+**Author entry:**
+
+```typescript
+interface AuthorContribution {
+  did?: string; // Author DID if they have an ATProto account
+  name: string; // Display name, max 200
+  handle?: string; // ATProto handle (AppView-enriched), max 253
+  avatarUrl?: string; // Avatar URL (AppView-enriched)
+  orcid?: string; // ORCID (0000-0000-0000-000X), max 19
+  email?: string; // Contact email, max 254
+  order: number; // Position in author list (min 1)
+  affiliations?: Affiliation[]; // pub.chive.defs#affiliation, max 10
+  contributions?: Contribution[]; // CRediT-based roles, max 14
+  isCorrespondingAuthor?: boolean; // Default: false
+  isHighlighted?: boolean; // Default: false
+}
+```
+
+| Field                   | Type                                    | Required | Description                                |
+| ----------------------- | --------------------------------------- | -------- | ------------------------------------------ |
+| `did`                   | did                                     | No       | Author DID if they have an ATProto account |
+| `name`                  | string (max 200)                        | Yes      | Author display name                        |
+| `handle`                | string (max 253)                        | No       | ATProto handle (AppView-enriched)          |
+| `avatarUrl`             | uri                                     | No       | Avatar URL (AppView-enriched)              |
+| `orcid`                 | string (max 19)                         | No       | ORCID in format `0000-0000-0000-000X`      |
+| `email`                 | string (max 254)                        | No       | Contact email                              |
+| `order`                 | integer (min 1)                         | Yes      | Position in author list                    |
+| `affiliations`          | `pub.chive.defs#affiliation[]` (max 10) | No       | Author affiliations                        |
+| `contributions`         | `#contribution[]` (max 14)              | No       | CRediT-based contribution roles            |
+| `isCorrespondingAuthor` | boolean                                 | No       | Default: `false`                           |
+| `isHighlighted`         | boolean                                 | No       | Default: `false`                           |
+
 ### pub.chive.eprint.submission
+
+**Type:** record | **Revision:** 3
 
 Core eprint record with rich text support for titles and abstracts.
 
 ```typescript
 {
   "$type": "pub.chive.eprint.submission",
+  "schemaRevision": number,       // Optional, absent means revision 1 (min 1)
   "title": string,              // Required, plain text title, max 500 chars
   "titleRich": TitleRichItem[], // Optional, rich title with LaTeX/refs, max 50 items
   "abstract": AbstractItem[],   // Required, rich abstract, max 500 items
   "abstractPlainText": string,  // Auto-generated for search indexing, max 10000 chars
   "document": BlobRef,          // Required, manuscript (PDF, DOCX, LaTeX, etc.)
   "documentFormatSlug": string, // Detected format (pdf, docx, latex, etc.)
-  "authors": AuthorContribution[], // Required, 1-100 authors
+  "documentFormatUri": string,  // AT-URI to document format node in knowledge graph
+  "authors": AuthorContribution[], // Required, 1-100 authors (see authorContribution above)
   "submittedBy": string,        // Required, DID of submitter
   "paperDid": string,           // Optional, DID of paper account (paper-centric model)
   "licenseSlug": string,        // Required, SPDX identifier
+  "licenseUri": string,         // Optional, AT-URI to license node in knowledge graph
   "keywords": string[],         // Optional, max 20 keywords
   "fieldUris": string[],        // Optional, AT-URIs to field nodes, max 10
   "topicUris": string[],        // Optional, AT-URIs to topic nodes, max 20
@@ -1174,18 +1249,23 @@ Entity reconciliation record linking local knowledge graph entities to external 
 
 ### Graph queries
 
-| Lexicon                          | Type  | Description                               |
-| -------------------------------- | ----- | ----------------------------------------- |
-| `pub.chive.graph.getNode`        | Query | Get a single node by URI                  |
-| `pub.chive.graph.listNodes`      | Query | List nodes with optional filtering        |
-| `pub.chive.graph.searchNodes`    | Query | Full-text search across nodes             |
-| `pub.chive.graph.getEdge`        | Query | Get a single edge by URI                  |
-| `pub.chive.graph.listEdges`      | Query | List edges for a node                     |
-| `pub.chive.graph.getHierarchy`   | Query | Get the hierarchy tree for a node         |
-| `pub.chive.graph.getRelations`   | Query | Get related nodes                         |
-| `pub.chive.graph.getCommunities` | Query | Get community clusters in the graph       |
-| `pub.chive.graph.getSubkinds`    | Query | List available subkind type nodes         |
-| `pub.chive.graph.browseFaceted`  | Query | Browse nodes using faceted classification |
+| Lexicon                                 | Type  | Description                                 |
+| --------------------------------------- | ----- | ------------------------------------------- |
+| `pub.chive.graph.getNode`               | Query | Get a single node by URI                    |
+| `pub.chive.graph.listNodes`             | Query | List nodes with optional filtering          |
+| `pub.chive.graph.searchNodes`           | Query | Full-text search across nodes               |
+| `pub.chive.graph.getEdge`               | Query | Get a single edge by URI                    |
+| `pub.chive.graph.listEdges`             | Query | List edges for a node                       |
+| `pub.chive.graph.getHierarchy`          | Query | Get the hierarchy tree for a node           |
+| `pub.chive.graph.getRelations`          | Query | Get related nodes                           |
+| `pub.chive.graph.getCommunities`        | Query | Get community clusters in the graph         |
+| `pub.chive.graph.getSubkinds`           | Query | List available subkind type nodes           |
+| `pub.chive.graph.browseFaceted`         | Query | Browse eprints using faceted classification |
+| `pub.chive.graph.expandSubgraph`        | Query | Expand a subgraph from a starting node      |
+| `pub.chive.graph.listPersonalNodes`     | Query | List user's personal graph nodes            |
+| `pub.chive.graph.listPersonalEdgeTypes` | Query | List available personal edge types          |
+
+`browseFaceted` (revision 2) adds `impressionId` for click tracking and enriches author references with `avatarUrl` and `handle`.
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
@@ -1193,18 +1273,60 @@ See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response
 
 ### pub.chive.actor.profile
 
-Extended user profile.
+**Type:** record | **Revision:** 2
+
+Extended user profile with hierarchical affiliations, external academic IDs, and research keywords.
 
 ```typescript
 {
   "$type": "pub.chive.actor.profile",
-  "bio": string,                // Max 1000 chars
-  "orcid": string,              // ORCID iD
-  "affiliation": string,
-  "website": string,
-  "researchInterests": string[],
-  "fields": string[],           // Followed fields
-  "publicEmail": string
+  "schemaRevision": number,              // Optional, absent means revision 1 (min 1)
+  "displayName": string,                 // Max 200 chars
+  "bio": string,                         // Max 2000 chars
+  "avatar": BlobRef,                     // PNG/JPEG, max 1 MB
+  "orcid": string,                       // ORCID iD
+  "affiliations": Affiliation[],         // pub.chive.defs#affiliation, max 10
+  "previousAffiliations": Affiliation[], // Past affiliations, max 20
+  "fieldUris": string[],                 // AT-URIs to field nodes, max 20
+  "nameVariants": string[],             // Alternative name forms, max 20
+  "researchKeywords": Keyword[],         // Research topics, max 50
+  // External academic IDs
+  "semanticScholarId": string,
+  "openAlexId": string,
+  "googleScholarId": string,
+  "arxivAuthorId": string,
+  "openReviewId": string,
+  "dblpId": string,
+  "scopusAuthorId": string
+}
+```
+
+| Field                  | Type                                    | Required | Description                           |
+| ---------------------- | --------------------------------------- | -------- | ------------------------------------- |
+| `schemaRevision`       | integer (min 1)                         | No       | Schema revision. Absent means rev 1   |
+| `displayName`          | string (max 200)                        | No       | Display name                          |
+| `bio`                  | string (max 2000)                       | No       | Biography                             |
+| `avatar`               | blob (PNG/JPEG, max 1 MB)               | No       | Profile image                         |
+| `orcid`                | string                                  | No       | ORCID iD                              |
+| `affiliations`         | `pub.chive.defs#affiliation[]` (max 10) | No       | Current institutional affiliations    |
+| `previousAffiliations` | `pub.chive.defs#affiliation[]` (max 20) | No       | Past institutional affiliations       |
+| `fieldUris`            | at-uri[] (max 20)                       | No       | AT-URIs of followed field nodes       |
+| `nameVariants`         | string[] (max 20)                       | No       | Alternative name forms                |
+| `researchKeywords`     | `#keyword[]` (max 50)                   | No       | Research keywords with Wikidata links |
+| `semanticScholarId`    | string                                  | No       | Semantic Scholar author ID            |
+| `openAlexId`           | string                                  | No       | OpenAlex author ID                    |
+| `googleScholarId`      | string                                  | No       | Google Scholar author ID              |
+| `arxivAuthorId`        | string                                  | No       | arXiv author ID                       |
+| `openReviewId`         | string                                  | No       | OpenReview profile ID                 |
+| `dblpId`               | string                                  | No       | DBLP author ID                        |
+| `scopusAuthorId`       | string                                  | No       | Scopus author ID                      |
+
+**Keyword type:**
+
+```typescript
+interface Keyword {
+  label: string; // Keyword label
+  wikidataId?: string; // Wikidata entity ID
 }
 ```
 
@@ -1249,15 +1371,19 @@ Discovery preferences for personalized recommendations.
 
 ### Actor queries
 
-| Lexicon                                   | Type  | Description                                 |
-| ----------------------------------------- | ----- | ------------------------------------------- |
-| `pub.chive.actor.getMyProfile`            | Query | Get the authenticated user's profile        |
-| `pub.chive.actor.getDiscoverySettings`    | Query | Get discovery preferences                   |
-| `pub.chive.actor.autocompleteOrcid`       | Query | Autocomplete ORCID iDs                      |
-| `pub.chive.actor.autocompleteAffiliation` | Query | Autocomplete institution affiliations       |
-| `pub.chive.actor.autocompleteKeyword`     | Query | Autocomplete research keywords              |
-| `pub.chive.actor.autocompleteOpenReview`  | Query | Autocomplete OpenReview profiles            |
-| `pub.chive.actor.discoverAuthorIds`       | Query | Discover author identifiers from ORCID/name |
+| Lexicon                                   | Type  | Rev | Description                                 |
+| ----------------------------------------- | ----- | --- | ------------------------------------------- |
+| `pub.chive.actor.getMyProfile`            | Query | 2   | Get the authenticated user's profile        |
+| `pub.chive.actor.getDiscoverySettings`    | Query | 1   | Get discovery preferences                   |
+| `pub.chive.actor.getMyRoles`              | Query | 1   | Get the authenticated user's roles          |
+| `pub.chive.actor.getProfileConfig`        | Query | 1   | Get profile configuration                   |
+| `pub.chive.actor.autocompleteOrcid`       | Query | 1   | Autocomplete ORCID iDs                      |
+| `pub.chive.actor.autocompleteAffiliation` | Query | 1   | Autocomplete institution affiliations       |
+| `pub.chive.actor.autocompleteKeyword`     | Query | 1   | Autocomplete research keywords              |
+| `pub.chive.actor.autocompleteOpenReview`  | Query | 1   | Autocomplete OpenReview profiles            |
+| `pub.chive.actor.discoverAuthorIds`       | Query | 1   | Discover author identifiers from ORCID/name |
+
+`getMyProfile` (revision 2) returns `affiliations` as an array of `pub.chive.defs#affiliation` objects (not a flat string), plus `previousAffiliations`, `nameVariants`, `researchKeywords`, and external academic IDs.
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
@@ -1267,10 +1393,12 @@ Author queries provide read-only access to author profile data aggregated from t
 
 ### Author queries
 
-| Lexicon                          | Type  | Description                     |
-| -------------------------------- | ----- | ------------------------------- |
-| `pub.chive.author.getProfile`    | Query | Get an author profile by DID    |
-| `pub.chive.author.searchAuthors` | Query | Search authors by name or ORCID |
+| Lexicon                          | Type  | Rev | Description                     |
+| -------------------------------- | ----- | --- | ------------------------------- |
+| `pub.chive.author.getProfile`    | Query | 2   | Get an author profile by DID    |
+| `pub.chive.author.searchAuthors` | Query | 1   | Search authors by name or ORCID |
+
+`getProfile` (revision 2) returns both the legacy `affiliation` string and the new `affiliations` array of `pub.chive.defs#affiliation` objects, plus `previousAffiliations`, `nameVariants`, `researchKeywords`, and external academic IDs (Semantic Scholar, OpenAlex, Google Scholar, arXiv, OpenReview, DBLP, Scopus).
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
@@ -1417,16 +1545,18 @@ Metrics endpoints track and report usage statistics for eprints.
 
 ### Metrics queries and procedures
 
-| Lexicon                                  | Type      | Description                           |
-| ---------------------------------------- | --------- | ------------------------------------- |
-| `pub.chive.metrics.getMetrics`           | Query     | Get aggregate metrics for an eprint   |
-| `pub.chive.metrics.getViewCount`         | Query     | Get view count for an eprint          |
-| `pub.chive.metrics.getTrending`          | Query     | Get trending eprints by metrics       |
-| `pub.chive.metrics.recordView`           | Procedure | Record an eprint view                 |
-| `pub.chive.metrics.recordDownload`       | Procedure | Record an eprint download             |
-| `pub.chive.metrics.recordDwellTime`      | Procedure | Record time spent reading an eprint   |
-| `pub.chive.metrics.recordSearchClick`    | Procedure | Record a click-through from search    |
-| `pub.chive.metrics.recordSearchDownload` | Procedure | Record a download from search results |
+| Lexicon                                  | Type      | Description                             |
+| ---------------------------------------- | --------- | --------------------------------------- |
+| `pub.chive.metrics.getMetrics`           | Query     | Get aggregate metrics for an eprint     |
+| `pub.chive.metrics.getViewCount`         | Query     | Get view count for an eprint            |
+| `pub.chive.metrics.getTrending`          | Query     | Get trending eprints by metrics (rev 2) |
+| `pub.chive.metrics.recordView`           | Procedure | Record an eprint view                   |
+| `pub.chive.metrics.recordDownload`       | Procedure | Record an eprint download               |
+| `pub.chive.metrics.recordDwellTime`      | Procedure | Record time spent reading an eprint     |
+| `pub.chive.metrics.recordSearchClick`    | Procedure | Record a click-through from search      |
+| `pub.chive.metrics.recordSearchDownload` | Procedure | Record a download from search results   |
+
+`getTrending` (revision 2) adds a `fieldUris` parameter to flag eprints matching the user's fields. Trending entries include `velocity`, `inUserFields`, and a `metrics` snapshot with views, downloads, and endorsements.
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
@@ -1462,12 +1592,117 @@ Alpha endpoints manage enrollment in the Chive alpha program.
 
 ### Alpha queries and procedures
 
-| Lexicon                       | Type      | Description                           |
-| ----------------------------- | --------- | ------------------------------------- |
-| `pub.chive.alpha.checkStatus` | Query     | Check the user's alpha program status |
-| `pub.chive.alpha.apply`       | Procedure | Apply for the alpha program           |
+| Lexicon                       | Type      | Rev | Description                           |
+| ----------------------------- | --------- | --- | ------------------------------------- |
+| `pub.chive.alpha.checkStatus` | Query     | 1   | Check the user's alpha program status |
+| `pub.chive.alpha.apply`       | Procedure | 2   | Apply for the alpha program           |
+
+`apply` (revision 2) accepts `affiliations` (array of `pub.chive.defs#affiliation`, max 10) and `researchKeywords` (array with `label` and optional `wikidataId`, max 10, required).
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
+
+## Admin lexicons
+
+Administration endpoints for platform management, moderation, and monitoring. All admin endpoints require the `admin` role.
+
+### Admin queries
+
+| Lexicon                                     | Rev | Description                            |
+| ------------------------------------------- | --- | -------------------------------------- |
+| `pub.chive.admin.getOverview`               | 1   | Platform overview with counts          |
+| `pub.chive.admin.getSystemHealth`           | 1   | System health across all services      |
+| `pub.chive.admin.getFirehoseStatus`         | 1   | Firehose consumer lag and throughput   |
+| `pub.chive.admin.getMetricsOverview`        | 1   | Aggregate platform metrics             |
+| `pub.chive.admin.getEndpointMetrics`        | 1   | Per-endpoint latency and error rates   |
+| `pub.chive.admin.getPrometheusMetrics`      | 1   | Prometheus-format metrics export       |
+| `pub.chive.admin.getSearchAnalytics`        | 1   | Search query analytics                 |
+| `pub.chive.admin.getTrendingVelocity`       | 1   | Trending velocity calculations         |
+| `pub.chive.admin.getViewDownloadTimeSeries` | 1   | View/download time series data         |
+| `pub.chive.admin.getActivityCorrelation`    | 1   | Activity correlation analysis          |
+| `pub.chive.admin.getGraphStats`             | 1   | Knowledge graph statistics             |
+| `pub.chive.admin.getNodeMetrics`            | 1   | Per-node usage metrics                 |
+| `pub.chive.admin.getBackfillStatus`         | 1   | Current backfill operation status      |
+| `pub.chive.admin.getBackfillHistory`        | 1   | Historical backfill operations         |
+| `pub.chive.admin.getAuditLog`               | 1   | Audit log entries                      |
+| `pub.chive.admin.getUserDetail`             | 1   | Detailed user information              |
+| `pub.chive.admin.searchUsers`               | 1   | Search registered users                |
+| `pub.chive.admin.listEprints`               | 1   | List eprints with filtering            |
+| `pub.chive.admin.listReviews`               | 1   | List reviews with filtering            |
+| `pub.chive.admin.listEndorsements`          | 1   | List endorsements                      |
+| `pub.chive.admin.listImports`               | 1   | List imported records                  |
+| `pub.chive.admin.listPDSes`                 | 1   | List known PDSes                       |
+| `pub.chive.admin.listDLQEntries`            | 1   | Dead letter queue entries              |
+| `pub.chive.admin.listViolations`            | 1   | Content violations                     |
+| `pub.chive.admin.listWarnings`              | 1   | User warnings                          |
+| `pub.chive.admin.getAlphaApplication`       | 1   | Single alpha application details       |
+| `pub.chive.admin.getAlphaStats`             | 1   | Alpha program statistics               |
+| `pub.chive.admin.listAlphaApplications`     | 2   | List alpha applications with filtering |
+
+### Admin procedures
+
+| Lexicon                                     | Rev | Description                     |
+| ------------------------------------------- | --- | ------------------------------- |
+| `pub.chive.admin.assignRole`                | 1   | Assign role to user             |
+| `pub.chive.admin.revokeRole`                | 1   | Revoke role from user           |
+| `pub.chive.admin.deleteContent`             | 1   | Remove content by URI           |
+| `pub.chive.admin.rescanPDS`                 | 1   | Trigger PDS rescan              |
+| `pub.chive.admin.triggerBackfill`           | 1   | Start backfill operation        |
+| `pub.chive.admin.cancelBackfill`            | 1   | Cancel running backfill         |
+| `pub.chive.admin.triggerFullReindex`        | 1   | Trigger full reindex            |
+| `pub.chive.admin.triggerFreshnessScan`      | 1   | Check record staleness          |
+| `pub.chive.admin.triggerPDSScan`            | 1   | Scan for new PDSes              |
+| `pub.chive.admin.triggerDIDSync`            | 1   | Sync DID documents              |
+| `pub.chive.admin.triggerGovernanceSync`     | 1   | Sync governance records         |
+| `pub.chive.admin.triggerCitationExtraction` | 1   | Extract citations from PDFs     |
+| `pub.chive.admin.retryDLQEntry`             | 1   | Retry single DLQ entry          |
+| `pub.chive.admin.retryAllDLQ`               | 1   | Retry all DLQ entries           |
+| `pub.chive.admin.purgeOldDLQ`               | 1   | Purge old DLQ entries           |
+| `pub.chive.admin.dismissDLQEntry`           | 1   | Dismiss DLQ entry               |
+| `pub.chive.admin.updateAlphaApplication`    | 1   | Update alpha application status |
+
+### pub.chive.admin.listAlphaApplications
+
+**Type:** query | **Revision:** 2
+
+List alpha program applications with optional status filtering. Returns applications with hierarchical affiliations and research keywords.
+
+**Parameters:**
+
+| Field    | Type            | Required | Description                                                    |
+| -------- | --------------- | -------- | -------------------------------------------------------------- |
+| `status` | string          | No       | Filter by status: `pending`, `approved`, `rejected`, `revoked` |
+| `limit`  | integer (1-100) | No       | Results per page. Default: 50                                  |
+| `cursor` | string          | No       | Pagination cursor                                              |
+
+**Output:**
+
+| Field    | Type                  | Required | Description          |
+| -------- | --------------------- | -------- | -------------------- |
+| `items`  | `#alphaApplication[]` | Yes      | Application entries  |
+| `total`  | integer               | Yes      | Total matching count |
+| `cursor` | string                | No       | Next page cursor     |
+
+**`#alphaApplication` fields:**
+
+| Field              | Type                           | Required | Description                                  |
+| ------------------ | ------------------------------ | -------- | -------------------------------------------- |
+| `id`               | string                         | Yes      | Application UUID                             |
+| `did`              | did                            | Yes      | Applicant DID                                |
+| `handle`           | string                         | No       | Applicant handle                             |
+| `email`            | string                         | Yes      | Contact email                                |
+| `status`           | string                         | Yes      | `pending`, `approved`, `rejected`, `revoked` |
+| `sector`           | string                         | Yes      | Organization sector                          |
+| `sectorOther`      | string                         | No       | Custom sector description                    |
+| `careerStage`      | string                         | Yes      | Career stage                                 |
+| `careerStageOther` | string                         | No       | Custom career stage                          |
+| `affiliations`     | `pub.chive.defs#affiliation[]` | No       | Institutional affiliations                   |
+| `researchKeywords` | `#researchKeyword[]`           | No       | Research keywords                            |
+| `motivation`       | string                         | No       | Application motivation                       |
+| `zulipInvited`     | boolean                        | No       | Whether Zulip invite sent                    |
+| `reviewedAt`       | datetime                       | No       | Review timestamp                             |
+| `reviewedBy`       | string                         | No       | Reviewer DID                                 |
+| `createdAt`        | datetime                       | Yes      | Application timestamp                        |
+| `updatedAt`        | datetime                       | Yes      | Last update timestamp                        |
 
 ## Common types
 
@@ -1541,23 +1776,37 @@ interface BlobRef {
 
 ## Versioning
 
-Lexicons follow semantic versioning:
+Chive lexicons use integer revision numbers tracked in [`lexicons/manifest.json`](https://github.com/chive-pub/chive/blob/main/lexicons/manifest.json). Record-type lexicons include an optional `schemaRevision` field so the AppView can detect which schema version a record was created with and apply migrations at index time.
 
-- **Major**: Breaking changes (new required fields, removed fields)
-- **Minor**: Backwards-compatible additions (new optional fields)
-- **Patch**: Bug fixes, documentation updates
+### Current revisions
 
-Current versions:
+Record types and shared definitions revised since initial release:
 
-| Lexicon                  | Version |
-| ------------------------ | ------- |
-| `pub.chive.eprint.*`     | 1.0.0   |
-| `pub.chive.annotation.*` | 1.0.0   |
-| `pub.chive.review.*`     | 1.0.0   |
-| `pub.chive.graph.*`      | 1.0.0   |
-| `pub.chive.actor.*`      | 1.0.0   |
-| `pub.chive.richtext.*`   | 1.0.0   |
-| `pub.chive.discovery.*`  | 1.0.0   |
+| Lexicon                                 | Current revision | Changed in |
+| --------------------------------------- | ---------------- | ---------- |
+| `pub.chive.defs`                        | 2                | v0.4.0     |
+| `pub.chive.eprint.submission`           | 3                | v0.4.0     |
+| `pub.chive.eprint.authorContribution`   | 2                | v0.4.0     |
+| `pub.chive.actor.profile`               | 2                | v0.4.0     |
+| `pub.chive.actor.getMyProfile`          | 2                | v0.4.0     |
+| `pub.chive.author.getProfile`           | 2                | v0.4.0     |
+| `pub.chive.alpha.apply`                 | 2                | v0.4.0     |
+| `pub.chive.admin.listAlphaApplications` | 2                | v0.4.0     |
+| `pub.chive.graph.browseFaceted`         | 2                | v0.4.0     |
+| `pub.chive.metrics.getTrending`         | 2                | v0.4.0     |
+
+All other lexicons remain at revision 1.
+
+### Schema migration
+
+When the AppView indexes a record whose `schemaRevision` is below the current revision (or absent, which implies revision 1), it applies migrations in sequence. For example, a submission record at revision 1 passes through two migrations:
+
+1. **0001-rich-text-and-license** (rev 1 to 2): converts plain-text abstract to rich text array, generates `titleRich` for LaTeX titles, maps `licenseSlug` to `licenseUri`
+2. **0002-affiliation-tree** (rev 2 to 3): converts flat affiliation strings to `pub.chive.defs#affiliation` objects with `institutionUri` lookup
+
+Migrations are idempotent and run at index time only. The original PDS record is never modified by the AppView.
+
+See [Schema compatibility](../developer-guide/services/schema-compatibility) for implementation details.
 
 ## Next steps
 

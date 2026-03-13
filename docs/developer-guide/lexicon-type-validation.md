@@ -333,8 +333,17 @@ The lexicon type validation pattern provides:
 
 This pattern ensures type safety at both compile time and runtime while providing clear error messages when records do not match their lexicon schemas.
 
+## Lexicon manifest and revision tracking
+
+The file `lexicons/manifest.json` tracks the current revision, category, and project version for every lexicon in the `pub.chive.*` namespace. This manifest is used by tooling but is not a lexicon schema itself.
+
+The `LexiconValidator.loadSchemas()` method recursively loads all `.json` files from the `lexicons/` directory. It skips files without an `id` field (such as `manifest.json` and `VERSIONING.md`) so only valid lexicon schemas are registered.
+
+Record-type lexicons that support versioning include a `schemaRevision` integer field. When absent, the record is assumed to be at revision 1. The [RecordMigrator](./services/schema-compatibility#record-migration-service) uses this field to determine which migrations to apply at index time.
+
 ## Next steps
 
 - [Core business services](./core-business-services): service architecture overview
 - [Indexing service](./services/indexing): firehose consumption pipeline
+- [Schema compatibility](./services/schema-compatibility): format detection and record migration
 - [Error handling](./services#error-handling-patterns): Result type patterns
