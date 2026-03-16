@@ -98,7 +98,7 @@ export class WhiteWindBacklinksPlugin extends BacklinkTrackingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.whitewind-backlinks',
     name: 'WhiteWind Backlinks',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Tracks references to Chive eprints from WhiteWind blog posts',
     author: 'Aaron Steven White',
     license: 'MIT',

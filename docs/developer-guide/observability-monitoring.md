@@ -100,7 +100,7 @@ import { initTelemetry } from '@/observability/index.js';
 // Initialize telemetry before anything else
 initTelemetry({
   serviceName: 'my-service',
-  serviceVersion: '0.3.0',
+  serviceVersion: '0.4.0',
   environment: process.env.NODE_ENV || 'development',
 });
 

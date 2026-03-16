@@ -34,7 +34,7 @@ export const TRACER_NAME = 'chive-appview';
  *
  * @public
  */
-export const TRACER_VERSION = '0.3.0';
+export const TRACER_VERSION = '0.4.0';
 
 /**
  * Gets the Chive tracer instance.

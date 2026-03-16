@@ -62,7 +62,7 @@ export interface ZeroTrustServiceConfig {
   /**
    * Policy version.
    *
-   * @defaultValue '0.3.0'
+   * @defaultValue '0.4.0'
    */
   readonly policyVersion?: string;
 }
@@ -118,7 +118,7 @@ const DEFAULT_CONFIG: FullConfig = {
   },
   keyPrefix: 'chive:zt:',
   cacheTtlSeconds: 300,
-  policyVersion: '0.3.0',
+  policyVersion: '0.4.0',
 };
 
 /**

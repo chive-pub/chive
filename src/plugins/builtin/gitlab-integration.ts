@@ -255,7 +255,7 @@ export class GitLabIntegrationPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.gitlab',
     name: 'GitLab Integration',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Provides repository linking and code verification via GitLab',
     author: 'Aaron Steven White',
     license: 'MIT',

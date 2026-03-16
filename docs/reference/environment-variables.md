@@ -172,7 +172,7 @@ These must be set for Chive to start:
 | Variable                   | Default                             | Description             |
 | -------------------------- | ----------------------------------- | ----------------------- |
 | `WIKIDATA_SPARQL_ENDPOINT` | `https://query.wikidata.org/sparql` | SPARQL endpoint         |
-| `WIKIDATA_USER_AGENT`      | `Chive/0.3.0`                       | User agent for requests |
+| `WIKIDATA_USER_AGENT`      | `Chive/0.4.0`                       | User agent for requests |
 
 ### GROBID
 

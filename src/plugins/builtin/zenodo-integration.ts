@@ -290,7 +290,7 @@ export class ZenodoIntegrationPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.zenodo',
     name: 'Zenodo Integration',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Provides software and data archival linking via Zenodo',
     author: 'Aaron Steven White',
     license: 'MIT',

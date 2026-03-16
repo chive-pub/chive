@@ -100,7 +100,7 @@ export class MyPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.my-plugin',
     name: 'My Plugin',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Adds custom functionality',
     author: 'Your Name',
     license: 'MIT',
@@ -393,7 +393,7 @@ await manager.loadBuiltinPlugin(plugin);
 await manager.loadPlugin({
   id: 'pub.chive.plugin.custom',
   name: 'Custom Plugin',
-  version: '0.3.0',
+  version: '0.4.0',
   // ... manifest
 });
 

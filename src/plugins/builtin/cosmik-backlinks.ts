@@ -84,7 +84,7 @@ export class CosmikBacklinksPlugin extends BacklinkTrackingPlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.cosmik-backlinks',
     name: 'Cosmik Backlinks',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Tracks references to Chive eprints from Cosmik cards',
     author: 'Aaron Steven White',
     license: 'MIT',
