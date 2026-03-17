@@ -16,7 +16,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
-  GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,7 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useMyChiveProfile, useUpdateChiveProfile } from '@/lib/hooks/use-author';
 import type { Affiliation, ResearchKeyword } from '@/lib/api/schema';
 import type { UpdateChiveProfileInput } from '@/lib/atproto/record-creator';
-import { AffiliationAutocompleteInput } from './affiliation-autocomplete-input';
+import { AffiliationInput } from '@/components/forms/affiliation-input';
 import { KeywordAutocompleteInput } from './keyword-autocomplete-input';
 import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
 import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
@@ -444,21 +443,19 @@ export function ChiveProfileForm() {
 
             {/* Affiliations Section */}
             <CollapsibleSection title="Affiliations" icon={Building}>
-              <AffiliationAutocompleteInput
+              <AffiliationInput
                 label="Current Affiliations"
-                values={form.watch('affiliations') ?? []}
-                onChange={(values) => form.setValue('affiliations', values)}
-                placeholder="Search institutions..."
-                maxItems={10}
-                description="Search ROR for your current institutional affiliations"
+                affiliations={form.watch('affiliations') ?? []}
+                onChange={(affiliations) => form.setValue('affiliations', affiliations)}
+                maxAffiliations={10}
+                helpText="Search ROR for your current institutional affiliations"
               />
-              <AffiliationAutocompleteInput
+              <AffiliationInput
                 label="Previous Affiliations"
-                values={form.watch('previousAffiliations') ?? []}
-                onChange={(values) => form.setValue('previousAffiliations', values)}
-                placeholder="Search institutions..."
-                maxItems={20}
-                description="Past affiliations that may appear on older papers"
+                affiliations={form.watch('previousAffiliations') ?? []}
+                onChange={(affiliations) => form.setValue('previousAffiliations', affiliations)}
+                maxAffiliations={20}
+                helpText="Past affiliations that may appear on older papers"
               />
             </CollapsibleSection>
 
