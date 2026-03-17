@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
+import { getAffiliationPaths } from '@/lib/utils/affiliation';
 import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
 
 /**
@@ -115,20 +116,22 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
           {/* Affiliations */}
           {hasAffiliations && (
             <div className="mt-3 space-y-1">
-              {extendedProfile.affiliations!.map((aff, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start"
-                >
-                  <Building2 className="h-4 w-4 shrink-0" />
-                  <span>{formatAffiliationHierarchy(aff)}</span>
-                  {idx === 0 && (
-                    <Badge variant="outline" className="text-xs">
-                      Primary
-                    </Badge>
-                  )}
-                </div>
-              ))}
+              {extendedProfile.affiliations!.flatMap((aff, affIdx) =>
+                getAffiliationPaths(aff).map((path, pathIdx) => (
+                  <div
+                    key={`${affIdx}-${pathIdx}`}
+                    className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start"
+                  >
+                    <Building2 className="h-4 w-4 shrink-0" />
+                    <span>{path}</span>
+                    {affIdx === 0 && pathIdx === 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        Primary
+                      </Badge>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
           )}
 
@@ -307,11 +310,17 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
             Previous Affiliations
           </div>
           <div className="flex flex-wrap gap-2">
-            {extendedProfile.previousAffiliations!.map((aff, idx) => (
-              <Badge key={idx} variant="outline" className="text-muted-foreground">
-                {formatAffiliationHierarchy(aff)}
-              </Badge>
-            ))}
+            {extendedProfile.previousAffiliations!.flatMap((aff, affIdx) =>
+              getAffiliationPaths(aff).map((path, pathIdx) => (
+                <Badge
+                  key={`${affIdx}-${pathIdx}`}
+                  variant="outline"
+                  className="text-muted-foreground"
+                >
+                  {path}
+                </Badge>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -383,22 +392,6 @@ function CopyButton({ value }: { value: string }) {
       )}
     </Button>
   );
-}
-
-/**
- * Formats an affiliation tree as a hierarchy string (e.g. "University > School > Department").
- */
-function formatAffiliationHierarchy(aff: Affiliation): string {
-  const parts: string[] = [aff.name];
-  let current = aff.children?.[0];
-  let depth = 0;
-  const MAX_DEPTH = 10;
-  while (current && depth < MAX_DEPTH) {
-    parts.push(current.name);
-    current = current.children?.[0];
-    depth++;
-  }
-  return parts.join(' > ');
 }
 
 /**

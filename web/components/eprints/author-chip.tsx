@@ -7,6 +7,7 @@ import { Mail, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatAffiliationCompact } from '@/lib/utils/affiliation';
 import type { EprintAuthor } from '@/lib/api/schema';
 
 export type { EprintAuthor };
@@ -25,27 +26,6 @@ export interface AuthorChipProps {
   size?: 'sm' | 'default';
   /** Additional CSS classes */
   className?: string;
-}
-
-/**
- * Formats an affiliation as a path string showing the hierarchy.
- * For example: "University of Rochester, School of Arts, Dept. of Linguistics"
- */
-function formatAffiliationPath(aff: {
-  name: string;
-  children?: Array<{ name: string; children?: Array<{ name: string; children?: unknown[] }> }>;
-}): string {
-  const MAX_DEPTH = 10;
-  const parts = [aff.name];
-  type AffNode = { name: string; children?: AffNode[] };
-  let current = aff.children?.[0] as AffNode | undefined;
-  let depth = 0;
-  while (current && depth < MAX_DEPTH) {
-    parts.push(current.name);
-    current = current.children?.[0];
-    depth++;
-  }
-  return parts.join(', ');
 }
 
 /**
@@ -150,7 +130,7 @@ export function AuthorChip({
             {author.affiliations && author.affiliations.length > 0 && (
               <div>
                 {author.affiliations.map((aff, i) => (
-                  <div key={i}>{formatAffiliationPath(aff)}</div>
+                  <div key={i}>{formatAffiliationCompact(aff)}</div>
                 ))}
               </div>
             )}

@@ -39,6 +39,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { formatAffiliationCompact } from '@/lib/utils/affiliation';
 import type { EprintFormValues } from './submission-wizard';
 
 // =============================================================================
@@ -414,17 +415,7 @@ export function StepReview({
                         <Building className="h-3 w-3 mt-0.5 shrink-0" />
                         <span>
                           {author.affiliations
-                            .map((aff) => {
-                              const parts = [aff.name];
-                              let node = aff.children?.[0];
-                              let d = 0;
-                              while (node && d < 10) {
-                                parts.push(node.name);
-                                node = node.children?.[0];
-                                d++;
-                              }
-                              return parts.join(' > ');
-                            })
+                            .map((aff) => formatAffiliationCompact(aff))
                             .join('; ')}
                         </span>
                       </div>

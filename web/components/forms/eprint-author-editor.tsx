@@ -44,6 +44,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatAffiliationCompact } from '@/lib/utils/affiliation';
 
 import {
   ContributionTypeSelector,
@@ -156,22 +157,6 @@ function getInitials(name: string): string {
   if (parts.length === 0) return '?';
   if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
   return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-}
-
-/**
- * Formats an affiliation as a path string showing the hierarchy.
- */
-function formatAffiliationPath(aff: AuthorAffiliation): string {
-  const MAX_DEPTH = 10;
-  const parts = [aff.name];
-  let current = aff.children?.[0];
-  let depth = 0;
-  while (current && depth < MAX_DEPTH) {
-    parts.push(current.name);
-    current = current.children?.[0];
-    depth++;
-  }
-  return parts.join(', ');
 }
 
 /**
@@ -702,7 +687,7 @@ function AuthorCard({
               <div className="space-y-1">
                 {author.affiliations.map((aff, i) => (
                   <div key={i} className="text-sm">
-                    {formatAffiliationPath(aff)}
+                    {formatAffiliationCompact(aff)}
                   </div>
                 ))}
               </div>
