@@ -131,6 +131,21 @@ Staleness detection catches:
 - Network partitions
 - Record updates outside the firehose window
 
+## Schema evolution and migration
+
+As Chive adds features, record schemas evolve. Record-type lexicons include a `schemaRevision` integer field to track which schema version a record was created with.
+
+When the AppView indexes a record at an older revision, it applies migrations at index time to transform the data for display. For example, a submission record created at revision 1 (with a plain-text abstract) is automatically converted to the current rich text format during indexing.
+
+This design preserves data sovereignty:
+
+- **PDS records are never modified** by the AppView
+- **Users choose when to update** their own records via frontend migration prompts
+- **Legacy records continue to work** indefinitely
+- **Indexes are always rebuildable** because migrations are deterministic and idempotent
+
+See [Schema compatibility](../developer-guide/services/schema-compatibility) for technical details.
+
 ## Portability guarantees
 
 ### Switching PDS providers

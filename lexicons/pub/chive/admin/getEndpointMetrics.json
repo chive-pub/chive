@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getEndpointMetrics",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -17,27 +18,61 @@
           "properties": {
             "metrics": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#endpointMetric" },
+              "items": {
+                "type": "ref",
+                "ref": "#endpointMetric"
+              },
               "description": "Endpoint metric entries"
             }
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "endpointMetric": {
       "type": "object",
       "description": "HTTP endpoint performance metric",
       "required": ["method", "path", "requestCount", "errorCount"],
       "properties": {
-        "method": { "type": "string", "description": "HTTP method (GET, POST, etc.)" },
-        "path": { "type": "string", "description": "Endpoint path" },
-        "requestCount": { "type": "integer", "description": "Total requests" },
-        "errorCount": { "type": "integer", "description": "Total error responses" },
-        "errorRate": { "type": "integer", "description": "Error rate in basis points (100 = 1%)" },
-        "p50": { "type": "integer", "description": "50th percentile latency in microseconds" },
-        "p95": { "type": "integer", "description": "95th percentile latency in microseconds" },
-        "p99": { "type": "integer", "description": "99th percentile latency in microseconds" }
+        "method": {
+          "type": "string",
+          "description": "HTTP method (GET, POST, etc.)"
+        },
+        "path": {
+          "type": "string",
+          "description": "Endpoint path"
+        },
+        "requestCount": {
+          "type": "integer",
+          "description": "Total requests"
+        },
+        "errorCount": {
+          "type": "integer",
+          "description": "Total error responses"
+        },
+        "errorRate": {
+          "type": "integer",
+          "description": "Error rate in basis points (100 = 1%)"
+        },
+        "p50": {
+          "type": "integer",
+          "description": "50th percentile latency in microseconds"
+        },
+        "p95": {
+          "type": "integer",
+          "description": "95th percentile latency in microseconds"
+        },
+        "p99": {
+          "type": "integer",
+          "description": "99th percentile latency in microseconds"
+        }
       }
     }
   }

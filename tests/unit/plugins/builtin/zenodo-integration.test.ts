@@ -416,7 +416,7 @@ describe('ZenodoIntegrationPlugin', () => {
 
     it('should have correct manifest metadata', () => {
       expect(plugin.manifest.name).toBe('Zenodo Integration');
-      expect(plugin.manifest.version).toBe('0.3.0');
+      expect(plugin.manifest.version).toBe('0.4.0');
       expect(plugin.manifest.author).toBe('Aaron Steven White');
       expect(plugin.manifest.license).toBe('MIT');
       expect(plugin.manifest.id).toBe('pub.chive.plugin.zenodo');

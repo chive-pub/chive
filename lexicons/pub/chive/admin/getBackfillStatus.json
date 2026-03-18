@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.getBackfillStatus",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -26,7 +27,10 @@
           "properties": {
             "operations": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#backfillOperation" },
+              "items": {
+                "type": "ref",
+                "ref": "#backfillOperation"
+              },
               "description": "Backfill operations"
             },
             "operation": {
@@ -37,14 +41,24 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "backfillOperation": {
       "type": "object",
       "description": "A backfill operation record",
       "required": ["id", "type", "status", "startedAt", "recordsProcessed"],
       "properties": {
-        "id": { "type": "string", "description": "Operation ID" },
+        "id": {
+          "type": "string",
+          "description": "Operation ID"
+        },
         "type": {
           "type": "string",
           "knownValues": [
@@ -76,8 +90,14 @@
           "type": "integer",
           "description": "Number of records processed so far"
         },
-        "totalRecords": { "type": "integer", "description": "Total records to process (if known)" },
-        "error": { "type": "string", "description": "Error message if failed" },
+        "totalRecords": {
+          "type": "integer",
+          "description": "Total records to process (if known)"
+        },
+        "error": {
+          "type": "string",
+          "description": "Error message if failed"
+        },
         "startedBy": {
           "type": "string",
           "format": "did",

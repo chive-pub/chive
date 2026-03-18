@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.endorsement.getUserEndorsement",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -28,7 +29,11 @@
           "ref": "#endorsementView"
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "endorsementView": {
       "type": "object",

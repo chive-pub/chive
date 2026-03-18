@@ -331,7 +331,7 @@ export class SemanticScholarPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.semantic-scholar',
     name: 'Semantic Scholar Integration',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Provides paper metadata and author verification via Semantic Scholar',
     author: 'Aaron Steven White',
     license: 'MIT',

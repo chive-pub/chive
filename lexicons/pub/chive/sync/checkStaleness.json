@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.sync.checkStaleness",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -52,7 +53,11 @@
           }
         }
       },
-      "errors": [{ "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "NotFound"
+        }
+      ]
     }
   }
 }

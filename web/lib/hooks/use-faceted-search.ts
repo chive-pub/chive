@@ -47,7 +47,12 @@ export interface FacetedSearchResponse {
       orcid?: string;
       email?: string;
       order: number;
-      affiliations: Array<{ name: string; rorId?: string; department?: string }>;
+      affiliations: Array<{
+        name: string;
+        rorId?: string;
+        institutionUri?: string;
+        children?: Array<{ name: string; rorId?: string; institutionUri?: string }>;
+      }>;
       contributions: Array<{
         typeUri?: string;
         typeId?: string;

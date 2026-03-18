@@ -19,6 +19,7 @@ import type {
   FundingSource as _FundingSource,
   ConferencePresentation as _ConferencePresentation,
 } from './generated/types/pub/chive/eprint/submission.js';
+import type { Affiliation as _Affiliation } from './generated/types/pub/chive/defs.js';
 
 // =============================================================================
 // EPRINT TYPES
@@ -106,12 +107,7 @@ export interface EprintAuthorView {
   /** Position in author list (1-indexed) */
   order: number;
   /** Author affiliations */
-  affiliations?: Array<{
-    name: string;
-    institutionUri?: string;
-    rorId?: string;
-    department?: string;
-  }>;
+  affiliations?: _Affiliation[];
   /** CRediT contributions */
   contributions?: Array<{
     typeUri: string;
@@ -314,9 +310,10 @@ export type {
   OutputSchema as AuthorProfileResponse,
   AuthorProfile,
   AuthorMetrics,
-  Affiliation,
   ResearchKeyword,
 } from './generated/types/pub/chive/author/getProfile.js';
+
+export type { Affiliation } from './generated/types/pub/chive/defs.js';
 
 // Author search - AuthorSearchResult aliased as Author
 export type {
@@ -978,7 +975,6 @@ export type { OutputSchema as AlphaStatusResponse } from './generated/types/pub/
 export type {
   InputSchema as AlphaApplyInput,
   OutputSchema as AlphaApplyResponse,
-  Affiliation as AlphaAffiliation,
   ResearchKeyword as AlphaResearchKeyword,
 } from './generated/types/pub/chive/alpha/apply.js';
 

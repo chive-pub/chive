@@ -42,7 +42,8 @@ function getAuthors(eprint: EprintCardData): EprintAuthor[] {
       affiliations: a.affiliations?.map((aff) => ({
         name: aff.name,
         rorId: aff.rorId,
-        department: aff.department,
+        institutionUri: aff.institutionUri,
+        children: aff.children,
       })),
       contributions: a.contributions?.map((c) => ({
         typeUri: c.typeUri,

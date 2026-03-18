@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.grantDelegation",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -19,7 +20,9 @@
             "collections": {
               "type": "array",
               "minLength": 1,
-              "items": { "type": "string" },
+              "items": {
+                "type": "string"
+              },
               "description": "NSID collections the delegation covers"
             },
             "daysValid": {
@@ -47,9 +50,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "Unauthorized" },
-        { "name": "InvalidRequest" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Unauthorized"
+        },
+        {
+          "name": "InvalidRequest"
+        }
       ]
     },
     "delegationResult": {

@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.activity.getCorrelationMetrics",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -29,7 +30,14 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AuthorizationRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AuthorizationRequired"
+        }
+      ]
     },
     "metricsEntry": {
       "type": "object",

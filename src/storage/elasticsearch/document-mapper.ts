@@ -135,8 +135,9 @@ export interface FieldNodeDocument {
  */
 export interface AuthorAffiliationDocument {
   readonly name: string;
+  readonly institutionUri?: string;
   readonly rorId?: string;
-  readonly department?: string;
+  readonly children?: readonly AuthorAffiliationDocument[];
 }
 
 /**
@@ -495,8 +496,9 @@ function mapAuthors(authors: readonly EprintAuthor[]): readonly AuthorDocument[]
     email: author.email,
     affiliations: author.affiliations.map((aff) => ({
       name: aff.name,
+      institutionUri: aff.institutionUri,
       rorId: aff.rorId,
-      department: aff.department,
+      children: aff.children,
     })),
     contributions: author.contributions.map((contrib) => ({
       typeUri: contrib.typeUri,

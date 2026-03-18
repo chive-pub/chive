@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.tag.listForEprint",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",

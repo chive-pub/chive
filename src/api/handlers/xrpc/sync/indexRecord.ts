@@ -35,6 +35,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/sync/indexRecord.js';
 import type { RecordMetadata } from '../../../../services/eprint/eprint-service.js';
 import { transformPDSRecord } from '../../../../services/eprint/pds-record-transformer.js';
+import { migrateRecord, needsMigration } from '../../../../services/migration/index.js';
 import type { AtUri, CID, DID } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
@@ -250,9 +251,15 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       let result;
 
       if (collection === 'pub.chive.eprint.submission') {
+        // Migrate old-format records to current schema revision before transforming
+        const rawRecord = record.value as Record<string, unknown>;
+        const migratedValue = needsMigration(collection, rawRecord)
+          ? migrateRecord(collection, rawRecord)
+          : rawRecord;
+
         // Transform PDS record to internal Eprint model
         const eprintRecord = transformPDSRecord(
-          record.value,
+          migratedValue,
           input.uri as AtUri,
           record.cid as CID
         );

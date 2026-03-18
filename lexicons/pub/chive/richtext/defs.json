@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.richtext.defs",
+  "revision": 1,
   "description": "Shared definitions for unified rich text in Chive. All rich text content (abstracts, review bodies, annotation bodies, titles) references these types.",
   "defs": {
     "facet": {

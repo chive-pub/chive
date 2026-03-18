@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.revokeRole",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -33,9 +34,15 @@
         }
       },
       "errors": [
-        { "name": "AuthenticationRequired" },
-        { "name": "Unauthorized" },
-        { "name": "InvalidRequest" }
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "Unauthorized"
+        },
+        {
+          "name": "InvalidRequest"
+        }
       ]
     },
     "elevationResult": {

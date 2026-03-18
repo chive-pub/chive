@@ -260,11 +260,13 @@ async function fetchChiveProfile(did: string): Promise<ChiveProfile | null> {
     return {
       orcid: profile.orcid ?? undefined,
       affiliations:
-        profile.affiliations?.map((aff: { name: string; rorId?: string; department?: string }) => ({
-          name: aff.name,
-          rorId: aff.rorId,
-          department: aff.department,
-        })) ?? undefined,
+        profile.affiliations?.map(
+          (aff: { name: string; rorId?: string; children?: AuthorAffiliation[] }) => ({
+            name: aff.name,
+            rorId: aff.rorId,
+            children: aff.children,
+          })
+        ) ?? undefined,
     };
   } catch {
     // Profile fetch is best-effort, don't fail selection

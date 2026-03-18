@@ -44,6 +44,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatAffiliationCompact } from '@/lib/utils/affiliation';
 
 import {
   ContributionTypeSelector,
@@ -686,8 +687,7 @@ function AuthorCard({
               <div className="space-y-1">
                 {author.affiliations.map((aff, i) => (
                   <div key={i} className="text-sm">
-                    {aff.name}
-                    {aff.department && `, ${aff.department}`}
+                    {formatAffiliationCompact(aff)}
                   </div>
                 ))}
               </div>

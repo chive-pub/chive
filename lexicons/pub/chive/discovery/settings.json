@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.discovery.settings",
+  "revision": 1,
   "defs": {
     "relatedPapersSignals": {
       "type": "object",
@@ -181,7 +182,10 @@
           },
           "followedFieldUris": {
             "type": "array",
-            "items": { "type": "string", "format": "at-uri" },
+            "items": {
+              "type": "string",
+              "format": "at-uri"
+            },
             "maxLength": 50,
             "description": "Field URIs the user follows for discovery (distinct from work fields in profile)"
           },
@@ -189,6 +193,11 @@
             "type": "boolean",
             "description": "Whether the Following tab also includes the user's work fields",
             "default": false
+          },
+          "schemaRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Schema revision this record was created with. Absent means revision 1."
           }
         }
       }

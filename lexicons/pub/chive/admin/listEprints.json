@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listEprints",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -31,7 +32,10 @@
           "properties": {
             "items": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#eprintSummary" },
+              "items": {
+                "type": "ref",
+                "ref": "#eprintSummary"
+              },
               "description": "Eprint records"
             },
             "total": {
@@ -41,22 +45,58 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "eprintSummary": {
       "type": "object",
       "description": "Summary of an indexed eprint",
       "required": ["uri", "title"],
       "properties": {
-        "uri": { "type": "string", "format": "at-uri", "description": "Eprint AT URI" },
-        "cid": { "type": "string", "description": "Content identifier" },
-        "title": { "type": "string", "description": "Eprint title" },
-        "authorDid": { "type": "string", "format": "did", "description": "Author DID" },
-        "authorHandle": { "type": "string", "description": "Author handle" },
-        "status": { "type": "string", "description": "Eprint status" },
-        "field": { "type": "string", "description": "Primary field" },
-        "views": { "type": "integer", "description": "Total views" },
-        "downloads": { "type": "integer", "description": "Total downloads" },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Eprint AT URI"
+        },
+        "cid": {
+          "type": "string",
+          "description": "Content identifier"
+        },
+        "title": {
+          "type": "string",
+          "description": "Eprint title"
+        },
+        "authorDid": {
+          "type": "string",
+          "format": "did",
+          "description": "Author DID"
+        },
+        "authorHandle": {
+          "type": "string",
+          "description": "Author handle"
+        },
+        "status": {
+          "type": "string",
+          "description": "Eprint status"
+        },
+        "field": {
+          "type": "string",
+          "description": "Primary field"
+        },
+        "views": {
+          "type": "integer",
+          "description": "Total views"
+        },
+        "downloads": {
+          "type": "integer",
+          "description": "Total downloads"
+        },
         "indexedAt": {
           "type": "string",
           "format": "datetime",

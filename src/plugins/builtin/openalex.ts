@@ -522,7 +522,7 @@ export class OpenAlexPlugin extends BasePlugin {
   readonly manifest: IPluginManifest = {
     id: 'pub.chive.plugin.openalex',
     name: 'OpenAlex Integration',
-    version: '0.3.0',
+    version: '0.4.0',
     description: 'Provides scholarly metadata from OpenAlex (250M+ works)',
     author: 'Aaron Steven White',
     license: 'MIT',

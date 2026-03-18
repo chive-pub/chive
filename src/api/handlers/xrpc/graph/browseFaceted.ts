@@ -196,8 +196,9 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
             order: a.order,
             affiliations: (a.affiliations ?? []).map((af) => ({
               name: af.name,
+              institutionUri: af.institutionUri,
               rorId: af.rorId,
-              department: af.department,
+              children: af.children,
             })),
             contributions: (a.contributions ?? []).map((contrib) => ({
               typeUri: contrib.typeUri as string,

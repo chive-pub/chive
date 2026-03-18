@@ -24,6 +24,18 @@ A Wikipedia-style moderation system allows the community to propose and vote on 
 
 PMEST classification (Personality, Matter, Energy, Space, Time) plus FAST facets enable precise discovery of related work.
 
+### Rich text and LaTeX
+
+Abstracts and titles support structured rich text with LaTeX math expressions, entity references, code blocks, and cross-references to other eprints and knowledge graph nodes.
+
+### Hierarchical affiliations
+
+Authors can represent institutional affiliations as trees (university > school > department > lab), linked to ROR identifiers and knowledge graph nodes.
+
+### Schema versioning
+
+Record-type lexicons track schema revisions. The AppView applies migrations at index time, so legacy PDS records continue to work without modification.
+
 ### Plugin ecosystem
 
 Integrate with external services: ORCID for author identification, DOI for persistent identifiers, Zenodo for archiving, and more.

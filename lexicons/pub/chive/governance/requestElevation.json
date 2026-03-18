@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.requestElevation",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "procedure",
@@ -26,7 +27,14 @@
           "ref": "#elevationResult"
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "InvalidRequest" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "InvalidRequest"
+        }
+      ]
     },
     "elevationResult": {
       "type": "object",

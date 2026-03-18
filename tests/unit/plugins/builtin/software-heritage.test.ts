@@ -218,7 +218,7 @@ describe('SoftwareHeritagePlugin', () => {
     });
 
     it('should have correct version', () => {
-      expect(plugin.manifest.version).toBe('0.3.0');
+      expect(plugin.manifest.version).toBe('0.4.0');
     });
   });
 

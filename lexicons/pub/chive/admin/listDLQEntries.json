@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.admin.listDLQEntries",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -31,7 +32,10 @@
           "properties": {
             "entries": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#dlqEntry" },
+              "items": {
+                "type": "ref",
+                "ref": "#dlqEntry"
+              },
               "description": "DLQ entries"
             },
             "total": {
@@ -41,23 +45,46 @@
           }
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "AdminRequired" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "AdminRequired"
+        }
+      ]
     },
     "dlqEntry": {
       "type": "object",
       "description": "Dead-letter queue entry",
       "required": ["id", "errorType", "createdAt", "retryCount"],
       "properties": {
-        "id": { "type": "string", "description": "Entry ID" },
+        "id": {
+          "type": "string",
+          "description": "Entry ID"
+        },
         "uri": {
           "type": "string",
           "format": "at-uri",
           "description": "AT URI of the failed event"
         },
-        "did": { "type": "string", "format": "did", "description": "DID of the event source" },
-        "errorType": { "type": "string", "description": "Error classification" },
-        "errorMessage": { "type": "string", "description": "Error detail message" },
-        "retryCount": { "type": "integer", "description": "Number of retry attempts" },
+        "did": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the event source"
+        },
+        "errorType": {
+          "type": "string",
+          "description": "Error classification"
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "Error detail message"
+        },
+        "retryCount": {
+          "type": "integer",
+          "description": "Number of retry attempts"
+        },
         "createdAt": {
           "type": "string",
           "format": "datetime",

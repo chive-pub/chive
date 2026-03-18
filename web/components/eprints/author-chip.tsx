@@ -7,6 +7,7 @@ import { Mail, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { formatAffiliationCompact } from '@/lib/utils/affiliation';
 import type { EprintAuthor } from '@/lib/api/schema';
 
 export type { EprintAuthor };
@@ -129,10 +130,7 @@ export function AuthorChip({
             {author.affiliations && author.affiliations.length > 0 && (
               <div>
                 {author.affiliations.map((aff, i) => (
-                  <div key={i}>
-                    {aff.name}
-                    {aff.department && `, ${aff.department}`}
-                  </div>
+                  <div key={i}>{formatAffiliationCompact(aff)}</div>
                 ))}
               </div>
             )}

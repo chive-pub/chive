@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.governance.getEditorStatus",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",
@@ -22,7 +23,14 @@
           "ref": "#editorStatus"
         }
       },
-      "errors": [{ "name": "AuthenticationRequired" }, { "name": "NotFound" }]
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "NotFound"
+        }
+      ]
     },
     "editorStatus": {
       "type": "object",
@@ -68,7 +76,9 @@
         },
         "delegationCollections": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Collections the delegation covers"
         },
         "recordsCreatedToday": {
@@ -184,7 +194,9 @@
         },
         "missingCriteria": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "List of missing eligibility criteria"
         }
       }

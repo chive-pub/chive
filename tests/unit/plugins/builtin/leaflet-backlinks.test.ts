@@ -286,7 +286,7 @@ describe('LeafletBacklinksPlugin', () => {
     });
 
     it('should have correct manifest version', () => {
-      expect(plugin.manifest.version).toBe('0.3.0');
+      expect(plugin.manifest.version).toBe('0.4.0');
     });
 
     it('should have correct manifest description', () => {

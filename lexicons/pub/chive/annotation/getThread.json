@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.annotation.getThread",
+  "revision": 1,
   "defs": {
     "main": {
       "type": "query",

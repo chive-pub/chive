@@ -70,6 +70,16 @@ interface PDSBlobRef {
 }
 
 /**
+ * Affiliation as stored in PDS records.
+ */
+interface PDSAffiliation {
+  name: string;
+  rorId?: string;
+  institutionUri?: string;
+  children?: PDSAffiliation[];
+}
+
+/**
  * Author reference as stored in PDS.
  */
 interface PDSAuthorRef {
@@ -80,7 +90,7 @@ interface PDSAuthorRef {
   orcid?: string;
   handle?: string;
   avatarUrl?: string;
-  affiliations?: { name: string; rorId?: string; department?: string; institutionUri?: string }[];
+  affiliations?: PDSAffiliation[];
   contributions?: {
     typeUri: string;
     typeId?: string;
@@ -403,7 +413,7 @@ function transformAuthor(pdsAuthor: PDSAuthorRef, index: number): EprintAuthor {
     (aff) => ({
       name: aff.name,
       rorId: aff.rorId,
-      department: aff.department,
+      children: aff.children,
       institutionUri: aff.institutionUri,
     })
   );

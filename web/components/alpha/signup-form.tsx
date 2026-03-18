@@ -25,9 +25,9 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useAlphaApply } from '@/lib/hooks/use-alpha-status';
-import { AffiliationAutocompleteInput } from '@/components/settings/affiliation-autocomplete-input';
+import { AffiliationInput, type AuthorAffiliation } from '@/components/forms/affiliation-input';
 import { KeywordAutocompleteInput } from '@/components/settings/keyword-autocomplete-input';
-import type { AlphaSector, AlphaCareerStage, Affiliation, ResearchKeyword } from '@/lib/api/schema';
+import type { AlphaSector, AlphaCareerStage, ResearchKeyword } from '@/lib/api/schema';
 
 /**
  * Sector options for alpha applications.
@@ -66,7 +66,9 @@ const CAREER_STAGE_OPTIONS: { value: AlphaCareerStage; label: string }[] = [
  */
 const affiliationSchema = z.object({
   name: z.string().min(1).max(200),
+  institutionUri: z.string().optional(),
   rorId: z.string().max(100).optional(),
+  children: z.array(z.any()).optional(),
 });
 
 /**
@@ -305,13 +307,12 @@ export function AlphaSignupForm({ onSuccess }: AlphaSignupFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <AffiliationAutocompleteInput
+                  <AffiliationInput
                     label="Affiliations (optional)"
-                    values={(field.value as Affiliation[]) ?? []}
-                    onChange={(values) => field.onChange(values)}
-                    placeholder="Search institutions..."
-                    maxItems={10}
-                    description="Add your institutional affiliations (up to 10)"
+                    affiliations={(field.value as AuthorAffiliation[]) ?? []}
+                    onChange={(affiliations) => field.onChange(affiliations)}
+                    maxAffiliations={10}
+                    helpText="Add your institutional affiliations (up to 10)"
                   />
                 </FormControl>
                 <FormMessage />

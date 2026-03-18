@@ -12,15 +12,42 @@ Your Chive profile displays your scholarly identity and work.
 - Location (optional)
 - Website URL (optional)
 
+### Affiliations
+
+Your institutional affiliations are stored as a hierarchical tree. Each affiliation can include sub-units:
+
+- **University of Example** (top-level institution with ROR ID)
+  - School of Engineering (sub-unit)
+    - Department of Computer Science (sub-unit)
+      - AI Research Lab (sub-unit)
+
+Affiliations link to institution nodes in the knowledge graph via AT-URIs, and can include [ROR](https://ror.org/) identifiers for unambiguous institution matching.
+
+You can also record previous affiliations separately from current ones.
+
+### Research keywords
+
+Add keywords that describe your research interests. Each keyword can optionally link to a Wikidata entity for disambiguation.
+
 ### Identifiers
 
-Link external identifiers to verify your identity:
+Link external identifiers to verify your identity and connect your publication history:
 
-| Identifier          | Description                          |
-| ------------------- | ------------------------------------ |
-| ORCID               | Connects to your ORCID profile       |
-| AT Protocol DID     | Your unique decentralized identifier |
-| Institutional email | Verifies affiliation                 |
+| Identifier       | Description                          |
+| ---------------- | ------------------------------------ |
+| ORCID            | Connects to your ORCID profile       |
+| AT Protocol DID  | Your unique decentralized identifier |
+| Semantic Scholar | Semantic Scholar author ID           |
+| OpenAlex         | OpenAlex author ID                   |
+| Google Scholar   | Google Scholar profile ID            |
+| arXiv            | arXiv author ID                      |
+| OpenReview       | OpenReview profile ID                |
+| DBLP             | DBLP author key                      |
+| Scopus           | Scopus author ID                     |
+
+### Name variants
+
+Add alternative forms of your name (maiden name, transliterations, abbreviated forms) to improve paper matching accuracy during authorship claiming.
 
 ### Activity summary
 

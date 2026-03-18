@@ -16,7 +16,6 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
-  GraduationCap,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -30,7 +29,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { useMyChiveProfile, useUpdateChiveProfile } from '@/lib/hooks/use-author';
 import type { Affiliation, ResearchKeyword } from '@/lib/api/schema';
 import type { UpdateChiveProfileInput } from '@/lib/atproto/record-creator';
-import { AffiliationAutocompleteInput } from './affiliation-autocomplete-input';
+import { AffiliationInput } from '@/components/forms/affiliation-input';
 import { KeywordAutocompleteInput } from './keyword-autocomplete-input';
 import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
 import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
@@ -39,15 +38,13 @@ import { FieldSearch, type FieldSelection } from '@/components/forms/field-searc
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
  */
-function normalizeAffiliations(
-  input: Array<string | { name: string; rorId?: string }> | undefined
-): Affiliation[] {
+function normalizeAffiliations(input: Array<string | Affiliation> | undefined): Affiliation[] {
   if (!input) return [];
   return input.map((item) => {
     if (typeof item === 'string') {
       return { name: item };
     }
-    return { name: item.name, rorId: item.rorId };
+    return item;
   });
 }
 
@@ -71,7 +68,9 @@ function normalizeKeywords(
  */
 const affiliationSchema = z.object({
   name: z.string().max(200),
+  institutionUri: z.string().optional(),
   rorId: z.string().max(50).optional(),
+  children: z.array(z.any()).optional(),
 });
 
 /**
@@ -280,11 +279,11 @@ export function ChiveProfileForm() {
         displayName?: string;
         bio?: string;
         orcid?: string;
-        affiliations?: Array<string | { name: string; rorId?: string }>;
+        affiliations?: Array<string | Affiliation>;
         fieldUris?: string[];
         fields?: string[];
         nameVariants?: string[];
-        previousAffiliations?: Array<string | { name: string; rorId?: string }>;
+        previousAffiliations?: Array<string | Affiliation>;
         researchKeywords?: Array<string | { label: string; fastId?: string; wikidataId?: string }>;
         semanticScholarId?: string;
         openAlexId?: string;
@@ -444,21 +443,19 @@ export function ChiveProfileForm() {
 
             {/* Affiliations Section */}
             <CollapsibleSection title="Affiliations" icon={Building}>
-              <AffiliationAutocompleteInput
+              <AffiliationInput
                 label="Current Affiliations"
-                values={form.watch('affiliations') ?? []}
-                onChange={(values) => form.setValue('affiliations', values)}
-                placeholder="Search institutions..."
-                maxItems={10}
-                description="Search ROR for your current institutional affiliations"
+                affiliations={form.watch('affiliations') ?? []}
+                onChange={(affiliations) => form.setValue('affiliations', affiliations)}
+                maxAffiliations={10}
+                helpText="Search ROR for your current institutional affiliations"
               />
-              <AffiliationAutocompleteInput
+              <AffiliationInput
                 label="Previous Affiliations"
-                values={form.watch('previousAffiliations') ?? []}
-                onChange={(values) => form.setValue('previousAffiliations', values)}
-                placeholder="Search institutions..."
-                maxItems={20}
-                description="Past affiliations that may appear on older papers"
+                affiliations={form.watch('previousAffiliations') ?? []}
+                onChange={(affiliations) => form.setValue('previousAffiliations', affiliations)}
+                maxAffiliations={20}
+                helpText="Past affiliations that may appear on older papers"
               />
             </CollapsibleSection>
 

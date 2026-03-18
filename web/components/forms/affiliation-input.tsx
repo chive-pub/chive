@@ -20,7 +20,7 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Plus, X, Building2, ExternalLink, Loader2 } from 'lucide-react';
+import { Plus, X, Building2, ExternalLink, Loader2, ChevronDown, ChevronRight } from 'lucide-react';
 import { useDebouncedCallback } from 'use-debounce';
 
 import { logger } from '@/lib/observability';
@@ -35,7 +35,7 @@ const log = logger.child({ component: 'affiliation-input' });
 // =============================================================================
 
 /**
- * Author affiliation with optional ROR ID, Chive URI, and department.
+ * Author affiliation with optional ROR ID, Chive URI, and recursive sub-units.
  */
 export interface AuthorAffiliation {
   /** Organization name */
@@ -44,8 +44,8 @@ export interface AuthorAffiliation {
   rorId?: string;
   /** Chive institution AT-URI (if linked in knowledge graph) */
   institutionUri?: string;
-  /** Department or division */
-  department?: string;
+  /** Sub-units (schools, departments, labs, etc.) */
+  children?: AuthorAffiliation[];
 }
 
 /**
@@ -252,13 +252,295 @@ function useDualSourceSearch() {
 }
 
 // =============================================================================
-// AFFILIATION CARD
+// INLINE SEARCH INPUT (reused at every tree level)
+// =============================================================================
+
+const MAX_CHILDREN = 10;
+const MAX_DEPTH = 5;
+
+const DEPTH_LABELS = [
+  'Sub-unit (school, college, etc.)',
+  'Sub-unit (department, division, etc.)',
+  'Sub-unit (lab, group, center, etc.)',
+  'Sub-unit',
+  'Sub-unit',
+];
+
+interface InlineSearchInputProps {
+  onAdd: (affiliation: AuthorAffiliation) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+
+function InlineSearchInput({ onAdd, disabled, placeholder }: InlineSearchInputProps) {
+  const { query, setQuery, results, hasResults, isSearching, clearResults } = useDualSourceSearch();
+  const [showResults, setShowResults] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleSelectChive = useCallback(
+    (inst: ChiveInstitution) => {
+      onAdd({
+        name: inst.name,
+        rorId: inst.ror ? `https://ror.org/${inst.ror}` : undefined,
+        institutionUri: inst.uri,
+      });
+      setQuery('');
+      clearResults();
+      setShowResults(false);
+    },
+    [onAdd, setQuery, clearResults]
+  );
+
+  const handleSelectRor = useCallback(
+    (org: RorOrganization) => {
+      onAdd({ name: getRorDisplayName(org), rorId: org.id });
+      setQuery('');
+      clearResults();
+      setShowResults(false);
+    },
+    [onAdd, setQuery, clearResults]
+  );
+
+  const handleManualAdd = useCallback(() => {
+    const trimmed = query.trim();
+    if (!trimmed) return;
+    onAdd({ name: trimmed });
+    setQuery('');
+    clearResults();
+    setShowResults(false);
+  }, [query, onAdd, setQuery, clearResults]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (results.chiveInstitutions.length > 0) {
+          handleSelectChive(results.chiveInstitutions[0]);
+        } else if (results.rorOrganizations.length > 0) {
+          handleSelectRor(results.rorOrganizations[0]);
+        } else if (query.trim()) {
+          handleManualAdd();
+        }
+      }
+      if (e.key === 'Escape') {
+        setShowResults(false);
+      }
+    },
+    [results, query, handleSelectChive, handleSelectRor, handleManualAdd]
+  );
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Building2 className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setShowResults(true);
+          }}
+          onFocus={() => query.length >= 2 && setShowResults(true)}
+          onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder ?? 'Search or type name...'}
+          disabled={disabled}
+          className="h-8 pl-8 pr-8 text-sm"
+        />
+        {isSearching && (
+          <Loader2 className="absolute right-2.5 top-2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        )}
+      </div>
+
+      {showResults && (hasResults || (query.trim().length >= 2 && !isSearching)) && (
+        <div className="absolute z-50 w-full rounded-md border bg-popover shadow-md mt-1">
+          <div className="max-h-56 overflow-y-auto">
+            {results.chiveInstitutions.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  Chive Institutions
+                </div>
+                <div className="p-1">
+                  {results.chiveInstitutions.map((inst) => (
+                    <button
+                      key={inst.uri}
+                      type="button"
+                      onClick={() => handleSelectChive(inst)}
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span className="font-medium">{inst.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {[inst.city, inst.country].filter(Boolean).join(', ')}
+                        {inst.ror && ' \u2022 ROR linked'}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {results.rorOrganizations.length > 0 && (
+              <div>
+                <div className="sticky top-0 bg-muted/80 px-2 py-1 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
+                  ROR Registry
+                </div>
+                <div className="p-1">
+                  {results.rorOrganizations.map((org) => (
+                    <button
+                      key={org.id}
+                      type="button"
+                      onClick={() => handleSelectRor(org)}
+                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span className="font-medium">{getRorDisplayName(org)}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {getRorCountryName(org)}
+                        {org.types && org.types.length > 0 && ` \u2022 ${org.types.join(', ')}`}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {query.trim().length >= 2 && (
+            <div className="border-t p-1">
+              <button
+                type="button"
+                onClick={handleManualAdd}
+                className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span>Add &quot;{query.trim()}&quot; manually</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// SUB-UNIT NODE (recursive)
+// =============================================================================
+
+interface SubUnitNodeProps {
+  node: AuthorAffiliation;
+  depth: number;
+  onUpdate: (updated: AuthorAffiliation) => void;
+  onRemove: () => void;
+  disabled?: boolean;
+}
+
+function SubUnitNode({ node, depth, onUpdate, onRemove, disabled }: SubUnitNodeProps) {
+  const [expanded, setExpanded] = useState(true);
+  const children = node.children ?? [];
+  const canAddChild = depth < MAX_DEPTH && children.length < MAX_CHILDREN;
+
+  const handleAddChild = useCallback(
+    (child: AuthorAffiliation) => {
+      onUpdate({ ...node, children: [...children, child] });
+    },
+    [node, children, onUpdate]
+  );
+
+  const handleUpdateChild = useCallback(
+    (index: number, updated: AuthorAffiliation) => {
+      const newChildren = [...children];
+      newChildren[index] = updated;
+      onUpdate({ ...node, children: newChildren });
+    },
+    [node, children, onUpdate]
+  );
+
+  const handleRemoveChild = useCallback(
+    (index: number) => {
+      const newChildren = children.filter((_, i) => i !== index);
+      onUpdate({ ...node, children: newChildren.length > 0 ? newChildren : undefined });
+    },
+    [node, children, onUpdate]
+  );
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 group">
+        {children.length > 0 ? (
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            className="p-0.5 rounded hover:bg-accent text-muted-foreground"
+          >
+            {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+          </button>
+        ) : (
+          <span className="w-4" />
+        )}
+
+        <span className="text-sm truncate">{node.name}</span>
+
+        {node.rorId && (
+          <a
+            href={node.rorId}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary shrink-0"
+          >
+            <ExternalLink className="h-2.5 w-2.5" />
+            ROR
+          </a>
+        )}
+        {node.institutionUri && (
+          <span className="text-xs text-muted-foreground shrink-0">linked</span>
+        )}
+
+        {!disabled && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+            aria-label={`Remove ${node.name}`}
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="ml-4 pl-3 border-l border-border space-y-1.5">
+          {children.map((child, i) => (
+            <SubUnitNode
+              key={`${child.name}-${i}`}
+              node={child}
+              depth={depth + 1}
+              onUpdate={(updated) => handleUpdateChild(i, updated)}
+              onRemove={() => handleRemoveChild(i)}
+              disabled={disabled}
+            />
+          ))}
+
+          {canAddChild && !disabled && (
+            <InlineSearchInput
+              onAdd={handleAddChild}
+              disabled={disabled}
+              placeholder={DEPTH_LABELS[depth] ?? 'Add sub-unit...'}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// =============================================================================
+// AFFILIATION CARD (top-level)
 // =============================================================================
 
 interface AffiliationCardProps {
   affiliation: AuthorAffiliation;
   index: number;
-  onUpdate: (updates: Partial<AuthorAffiliation>) => void;
+  onUpdate: (updated: AuthorAffiliation) => void;
   onRemove: () => void;
   disabled?: boolean;
 }
@@ -270,53 +552,108 @@ function AffiliationCard({
   onRemove,
   disabled,
 }: AffiliationCardProps) {
+  const [expanded, setExpanded] = useState(true);
+  const children = affiliation.children ?? [];
+  const canAddChild = children.length < MAX_CHILDREN;
+
+  const handleAddChild = useCallback(
+    (child: AuthorAffiliation) => {
+      onUpdate({ ...affiliation, children: [...children, child] });
+    },
+    [affiliation, children, onUpdate]
+  );
+
+  const handleUpdateChild = useCallback(
+    (childIndex: number, updated: AuthorAffiliation) => {
+      const newChildren = [...children];
+      newChildren[childIndex] = updated;
+      onUpdate({ ...affiliation, children: newChildren });
+    },
+    [affiliation, children, onUpdate]
+  );
+
+  const handleRemoveChild = useCallback(
+    (childIndex: number) => {
+      const newChildren = children.filter((_, i) => i !== childIndex);
+      onUpdate({ ...affiliation, children: newChildren.length > 0 ? newChildren : undefined });
+    },
+    [affiliation, children, onUpdate]
+  );
+
   return (
     <div
-      className="flex items-start gap-3 rounded-lg border bg-card p-3"
+      className="rounded-lg border bg-card p-3 space-y-2"
       data-testid={`affiliation-card-${index}`}
     >
-      <Building2 className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <Building2 className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <span className="font-medium truncate">{affiliation.name}</span>
+        {affiliation.rorId && (
+          <a
+            href={affiliation.rorId}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary shrink-0"
+          >
+            <ExternalLink className="h-3 w-3" />
+            ROR
+          </a>
+        )}
 
-      <div className="flex-1 min-w-0 space-y-2">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{affiliation.name}</span>
-          {affiliation.rorId && (
-            <a
-              href={affiliation.rorId}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-0.5 text-xs text-muted-foreground hover:text-primary"
+        <div className="ml-auto flex items-center gap-1">
+          {children.length > 0 && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setExpanded(!expanded)}
             >
-              <ExternalLink className="h-3 w-3" />
-              ROR
-            </a>
+              {expanded ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </Button>
           )}
-        </div>
-
-        {/* Department input */}
-        <div className="space-y-1">
-          <label className="text-xs text-muted-foreground">Department (optional)</label>
-          <Input
-            value={affiliation.department ?? ''}
-            onChange={(e) => onUpdate({ department: e.target.value || undefined })}
-            placeholder="e.g., Computer Science"
-            disabled={disabled}
-            className="h-8 text-sm"
-          />
+          {!disabled && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={onRemove}
+              aria-label={`Remove ${affiliation.name}`}
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
         </div>
       </div>
 
-      {!disabled && (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8 shrink-0"
-          onClick={onRemove}
-          aria-label={`Remove ${affiliation.name}`}
-        >
-          <X className="h-4 w-4" />
-        </Button>
+      {/* Sub-units tree */}
+      {expanded && (
+        <div className="ml-6 pl-3 border-l border-border space-y-1.5">
+          {children.map((child, i) => (
+            <SubUnitNode
+              key={`${child.name}-${i}`}
+              node={child}
+              depth={1}
+              onUpdate={(updated) => handleUpdateChild(i, updated)}
+              onRemove={() => handleRemoveChild(i)}
+              disabled={disabled}
+            />
+          ))}
+
+          {canAddChild && !disabled && (
+            <InlineSearchInput
+              onAdd={handleAddChild}
+              disabled={disabled}
+              placeholder={DEPTH_LABELS[0]}
+            />
+          )}
+        </div>
       )}
     </div>
   );
@@ -342,7 +679,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
         name: inst.name,
         rorId: inst.ror ? `https://ror.org/${inst.ror}` : undefined,
         institutionUri: inst.uri,
-        department: undefined,
       });
       setQuery('');
       clearResults();
@@ -356,8 +692,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
       onAdd({
         name: getRorDisplayName(org),
         rorId: org.id,
-        institutionUri: undefined,
-        department: undefined,
       });
       setQuery('');
       clearResults();
@@ -371,9 +705,6 @@ function AddAffiliationForm({ onAdd, disabled }: AddAffiliationFormProps) {
 
     onAdd({
       name: query.trim(),
-      rorId: undefined,
-      institutionUri: undefined,
-      department: undefined,
     });
     setQuery('');
     clearResults();
@@ -535,10 +866,10 @@ export function AffiliationInput({
   );
 
   const handleUpdate = useCallback(
-    (index: number, updates: Partial<AuthorAffiliation>) => {
-      const updated = [...affiliations];
-      updated[index] = { ...updated[index], ...updates };
-      onChange(updated);
+    (index: number, updated: AuthorAffiliation) => {
+      const newList = [...affiliations];
+      newList[index] = updated;
+      onChange(newList);
     },
     [affiliations, onChange]
   );
@@ -567,7 +898,7 @@ export function AffiliationInput({
               key={`${affiliation.name}-${index}`}
               affiliation={affiliation}
               index={index}
-              onUpdate={(updates) => handleUpdate(index, updates)}
+              onUpdate={(updated) => handleUpdate(index, updated)}
               onRemove={() => handleRemove(index)}
               disabled={disabled}
             />

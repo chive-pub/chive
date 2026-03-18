@@ -1,6 +1,7 @@
 {
   "lexicon": 1,
   "id": "pub.chive.actor.getMyProfile",
+  "revision": 2,
   "defs": {
     "main": {
       "type": "query",
@@ -30,7 +31,7 @@
               "type": "array",
               "items": {
                 "type": "ref",
-                "ref": "#affiliation"
+                "ref": "pub.chive.defs#affiliation"
               },
               "description": "Current institutional affiliations"
             },
@@ -52,7 +53,7 @@
               "type": "array",
               "items": {
                 "type": "ref",
-                "ref": "#affiliation"
+                "ref": "pub.chive.defs#affiliation"
               },
               "description": "Past institutional affiliations"
             },
@@ -103,21 +104,6 @@
           "name": "PDSNotFound"
         }
       ]
-    },
-    "affiliation": {
-      "type": "object",
-      "description": "Institutional affiliation",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "description": "Organization name"
-        },
-        "rorId": {
-          "type": "string",
-          "description": "ROR ID for the institution"
-        }
-      }
     },
     "researchKeyword": {
       "type": "object",
