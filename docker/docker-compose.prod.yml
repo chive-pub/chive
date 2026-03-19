@@ -178,8 +178,18 @@ services:
     image: lfoppiano/grobid:0.8.2.1-crf
     container_name: chive-grobid
     restart: unless-stopped
+    entrypoint: ["/tini", "-s", "--"]
+    command:
+      - /bin/bash
+      - -c
+      - |
+        if [ -n "$$CROSSREF_MAILTO" ]; then
+          sed -i "s/mailto: *$$/mailto: \"$$CROSSREF_MAILTO\"/" /opt/grobid/grobid-home/config/grobid.yaml
+        fi
+        exec ./grobid-service/bin/grobid-service
     environment:
       - GROBID_MAX_CONCURRENCY=2
+      - CROSSREF_MAILTO=${CROSSREF_MAILTO:-admin@chive.pub}
     networks:
       - chive-network
     deploy:
