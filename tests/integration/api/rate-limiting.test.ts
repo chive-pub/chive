@@ -29,7 +29,6 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 import {
   createMockAuthzService,
-  createMockAlphaService,
   createMockLogger,
   createMockEprintService,
   createMockSearchService,
@@ -111,7 +110,6 @@ describe('API Rate Limiting Integration', () => {
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

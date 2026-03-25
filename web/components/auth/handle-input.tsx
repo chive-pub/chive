@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * Actor suggestion from Bluesky API.
+ * Actor suggestion from ATProto actor search.
  */
 interface ActorSuggestion {
   did: string;
@@ -39,14 +39,14 @@ export interface HandleInputProps {
  * Handle input with autocomplete suggestions.
  *
  * @remarks
- * Provides typeahead suggestions using the Bluesky actor search API.
+ * Provides typeahead suggestions using the ATProto actor search API.
  * Shows matching handles as the user types.
  */
 export function HandleInput({
   value,
   onChange,
   onSelect,
-  placeholder = 'alice.bsky.social',
+  placeholder = 'yourhandle.example.com',
   disabled = false,
   className,
 }: HandleInputProps) {

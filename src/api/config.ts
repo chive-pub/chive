@@ -44,8 +44,8 @@ export const RATE_LIMITS: Readonly<Record<RateLimitTier, number>> = RATE_LIMITIN
       admin: 999999,
     }
   : {
-      anonymous: 120, // Increased from 60 for browse endpoints
-      authenticated: 600, // Increased from 300 for better UX
+      anonymous: 60, // Tightened for open alpha (was 120 during closed alpha)
+      authenticated: 600,
       premium: 1500,
       admin: 5000,
     };
@@ -70,7 +70,7 @@ export const AUTOCOMPLETE_RATE_LIMITS: Readonly<Record<RateLimitTier, number>> =
         admin: 999999,
       }
     : {
-        anonymous: 300, // 5x normal (5 req/sec for fast typing)
+        anonymous: 150, // 2.5x normal for fast typing
         authenticated: 600, // 2x normal
         premium: 1500, // 1.5x normal
         admin: 5000, // Same as normal (already high)

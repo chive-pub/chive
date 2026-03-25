@@ -234,36 +234,3 @@ export function requireAdmin(): MiddlewareHandler<ChiveEnv> {
     await next();
   };
 }
-
-/**
- * Middleware that requires alpha tester role.
- *
- * @remarks
- * Throws AuthorizationError if user is not an alpha tester.
- * Admins are automatically granted alpha tester access.
- * Should be applied after `authenticateServiceAuth()` and `requireAuth()`.
- *
- * @example
- * ```typescript
- * app.use('/xrpc/pub.chive.eprint.*', requireAuth(), requireAlphaTester());
- * ```
- *
- * @returns Hono middleware handler
- *
- * @public
- */
-export function requireAlphaTester(): MiddlewareHandler<ChiveEnv> {
-  return async (c, next) => {
-    const user = c.get('user');
-
-    if (!user) {
-      throw new AuthenticationError('Authentication required');
-    }
-
-    if (!user.isAlphaTester) {
-      throw new AuthorizationError('Alpha tester access required', 'alpha-tester');
-    }
-
-    await next();
-  };
-}

@@ -7,6 +7,7 @@ import { MobileSearch } from './mobile-search';
 import { ThemeToggle } from './theme-toggle';
 import { SearchBar } from './search-bar';
 import { AuthButton } from './auth-button';
+import { BugReportButton } from './bug-report-button';
 
 /**
  * Main site header with navigation.
@@ -30,6 +31,7 @@ export function SiteHeader() {
           <SearchBar className="hidden sm:flex" />
           <MobileSearch />
           <AuthButton />
+          <BugReportButton />
           <ThemeToggle />
           <MobileNav className="md:hidden" />
         </div>

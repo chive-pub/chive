@@ -22,7 +22,6 @@ import { lexicons, getMethodType } from '../../xrpc/validation.js';
 export * from './activity/index.js';
 export * from './actor/index.js';
 export { adminMethods } from './admin/index.js';
-export * from './alpha/index.js';
 export { annotationMethods } from './annotation/index.js';
 export * from './author/index.js';
 export * from './backlink/index.js';
@@ -39,12 +38,12 @@ export * from './review/index.js';
 export * from './sync/index.js';
 export * from './tag/index.js';
 export * from './notification/index.js';
+export { moderationMethods } from './moderation/index.js';
 
 // Import methods for registration
 import { activityMethods } from './activity/index.js';
 import { actorMethods } from './actor/index.js';
 import { adminMethods } from './admin/index.js';
-import { alphaMethods } from './alpha/index.js';
 import { annotationMethods } from './annotation/index.js';
 import { authorMethods } from './author/index.js';
 import { backlinkMethods } from './backlink/index.js';
@@ -57,6 +56,7 @@ import { governanceMethods } from './governance/index.js';
 import { graphMethods } from './graph/index.js';
 import { importMethods } from './import/index.js';
 import { metricsMethods } from './metrics/index.js';
+import { moderationMethods } from './moderation/index.js';
 import { notificationMethods } from './notification/index.js';
 import { reviewMethods } from './review/index.js';
 import { syncMethods } from './sync/index.js';
@@ -69,7 +69,6 @@ export const allXRPCMethods = {
   ...activityMethods,
   ...actorMethods,
   ...adminMethods,
-  ...alphaMethods,
   ...annotationMethods,
   ...authorMethods,
   ...backlinkMethods,
@@ -82,6 +81,7 @@ export const allXRPCMethods = {
   ...graphMethods,
   ...importMethods,
   ...metricsMethods,
+  ...moderationMethods,
   ...notificationMethods,
   ...reviewMethods,
   ...syncMethods,
