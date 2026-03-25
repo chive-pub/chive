@@ -2,8 +2,7 @@
  * Component tests for ConditionalHeader.
  *
  * @remarks
- * Tests that the header is hidden on alpha pages (landing, apply, pending)
- * and shown on all other pages.
+ * Tests that the header is hidden on the login page and shown on all other pages.
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
@@ -27,23 +26,9 @@ describe('ConditionalHeader', () => {
     vi.clearAllMocks();
   });
 
-  describe('Header Hidden on Alpha Pages', () => {
-    it('hides header on landing page (/)', () => {
-      mockUsePathname.mockReturnValue('/');
-      render(<ConditionalHeader />);
-
-      expect(screen.queryByTestId('site-header')).not.toBeInTheDocument();
-    });
-
-    it('hides header on apply page (/apply)', () => {
-      mockUsePathname.mockReturnValue('/apply');
-      render(<ConditionalHeader />);
-
-      expect(screen.queryByTestId('site-header')).not.toBeInTheDocument();
-    });
-
-    it('hides header on pending page (/pending)', () => {
-      mockUsePathname.mockReturnValue('/pending');
+  describe('Header Hidden on Login Page', () => {
+    it('hides header on login page (/login)', () => {
+      mockUsePathname.mockReturnValue('/login');
       render(<ConditionalHeader />);
 
       expect(screen.queryByTestId('site-header')).not.toBeInTheDocument();
@@ -51,6 +36,13 @@ describe('ConditionalHeader', () => {
   });
 
   describe('Header Shown on Other Pages', () => {
+    it('shows header on landing page (/)', () => {
+      mockUsePathname.mockReturnValue('/');
+      render(<ConditionalHeader />);
+
+      expect(screen.getByTestId('site-header')).toBeInTheDocument();
+    });
+
     it('shows header on dashboard (/dashboard)', () => {
       mockUsePathname.mockReturnValue('/dashboard');
       render(<ConditionalHeader />);
@@ -102,17 +94,15 @@ describe('ConditionalHeader', () => {
   });
 
   describe('Edge Cases', () => {
-    it('shows header on paths that start with but are not exactly headerless paths', () => {
-      // /apply-something is not the same as /apply
-      mockUsePathname.mockReturnValue('/apply-something');
+    it('shows header on paths that start with but are not exactly /login', () => {
+      mockUsePathname.mockReturnValue('/login-callback');
       render(<ConditionalHeader />);
 
       expect(screen.getByTestId('site-header')).toBeInTheDocument();
     });
 
-    it('shows header on nested paths under headerless paths', () => {
-      // /pending/details is not the same as /pending
-      mockUsePathname.mockReturnValue('/pending/details');
+    it('shows header on nested paths under /login', () => {
+      mockUsePathname.mockReturnValue('/login/details');
       render(<ConditionalHeader />);
 
       expect(screen.getByTestId('site-header')).toBeInTheDocument();
