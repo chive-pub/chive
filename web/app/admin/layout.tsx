@@ -44,7 +44,6 @@ const navSections = [
   {
     title: 'Operations',
     items: [
-      { href: '/admin/alpha', label: 'Alpha Applications', icon: FlaskConical },
       { href: '/admin/users', label: 'Users & Roles', icon: Users },
       { href: '/admin/content', label: 'Content', icon: FileText },
       { href: '/admin/governance', label: 'Governance', icon: Shield },

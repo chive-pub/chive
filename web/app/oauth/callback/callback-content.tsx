@@ -43,8 +43,8 @@ export function OAuthCallbackContent() {
         const result = await initializeOAuth();
 
         if (result) {
-          // Success: redirect to landing page which handles alpha status routing
-          router.push('/');
+          // Success: redirect to dashboard
+          router.push('/dashboard');
         } else {
           // No callback params found or session already exists
           // Check if there's a code parameter. If so, there was an error

@@ -151,9 +151,11 @@ export function ReportContentDialog({
                 id="report-description"
                 placeholder="Provide additional details..."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => setDescription(e.target.value.slice(0, 2000))}
+                maxLength={2000}
                 rows={3}
               />
+              <p className="text-xs text-muted-foreground">{description.length}/2000</p>
             </div>
           </div>
         )}

@@ -20,6 +20,7 @@ export function OpenAlphaBanner() {
   const [dismissed, setDismissed] = useState(true); // Default true to prevent flash
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored !== 'true') {
       setDismissed(false);
@@ -28,7 +29,9 @@ export function OpenAlphaBanner() {
 
   const handleDismiss = () => {
     setDismissed(true);
-    localStorage.setItem(STORAGE_KEY, 'true');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, 'true');
+    }
   };
 
   if (dismissed || !isAuthenticated) {

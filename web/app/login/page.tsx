@@ -15,17 +15,36 @@ import { useIsAuthenticated } from '@/lib/auth';
  * Displays the ATProto OAuth login form.
  * Redirects authenticated users to the dashboard or a redirect target.
  */
+/**
+ * Validates that a redirect path is a safe relative URL.
+ * Prevents open redirect attacks by only allowing paths starting with /.
+ */
+function getSafeRedirect(raw: string | null): string {
+  if (!raw) return '/dashboard';
+  try {
+    const decoded = decodeURIComponent(raw);
+    // Only allow relative paths; block protocol-relative URLs (//evil.com)
+    if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+      return decoded;
+    }
+  } catch {
+    // Malformed URI
+  }
+  return '/dashboard';
+}
+
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get('redirect');
+  const safeRedirect = getSafeRedirect(redirectTo);
   const isAuthenticated = useIsAuthenticated();
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace(redirectTo ? decodeURIComponent(redirectTo) : '/dashboard');
+      router.replace(safeRedirect);
     }
-  }, [isAuthenticated, router, redirectTo]);
+  }, [isAuthenticated, router, safeRedirect]);
 
   // Show login form for unauthenticated users
   return (
@@ -42,9 +61,9 @@ function LoginContent() {
         <CardContent>
           <LoginForm />
 
-          {redirectTo && (
+          {safeRedirect !== '/dashboard' && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              You&apos;ll be redirected to {decodeURIComponent(redirectTo)} after signing in.
+              You&apos;ll be redirected to {safeRedirect} after signing in.
             </p>
           )}
         </CardContent>

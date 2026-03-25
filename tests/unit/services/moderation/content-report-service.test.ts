@@ -119,27 +119,22 @@ describe('ContentReportService', () => {
       expect(result.createdAt).toBe('2024-01-15T10:00:00.000Z');
     });
 
-    it('returns existing report on duplicate', async () => {
+    it('returns existing report on duplicate via atomic upsert', async () => {
       const existingRow = createReportRow({ id: 42 });
-      // First query (INSERT) returns no rows (conflict)
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
-      // Second query (SELECT) returns the existing report
+      // Upsert returns the existing row (ON CONFLICT DO UPDATE)
       mockPool.query.mockResolvedValueOnce({ rows: [existingRow] });
 
       const result = await service.createReport(input);
 
       expect(result.id).toBe(42);
-      expect(mockPool.query).toHaveBeenCalledTimes(2);
+      expect(mockPool.query).toHaveBeenCalledTimes(1);
     });
 
-    it('throws if both insert and lookup fail', async () => {
-      // INSERT returns no rows
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
-      // SELECT also returns no rows
+    it('throws if upsert returns no rows', async () => {
       mockPool.query.mockResolvedValueOnce({ rows: [] });
 
       await expect(service.createReport(input)).rejects.toThrow(
-        'Content report insert and lookup both failed'
+        'Content report upsert returned no rows'
       );
     });
 
@@ -185,20 +180,18 @@ describe('ContentReportService', () => {
       });
     });
 
-    it('logs on duplicate detection', async () => {
+    it('logs on duplicate upsert (same as creation)', async () => {
       const existingRow = createReportRow({ id: 42 });
-      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      // Atomic upsert always returns a row, even on conflict
       mockPool.query.mockResolvedValueOnce({ rows: [existingRow] });
 
       await service.createReport(input);
 
-      expect(mockLogger.infoMock).toHaveBeenCalledWith(
-        'Duplicate content report, returning existing',
-        {
-          targetUri: TARGET_URI,
-          reporterDid: REPORTER_DID,
-        }
-      );
+      expect(mockLogger.infoMock).toHaveBeenCalledWith('Content report created', {
+        reportId: 42,
+        targetUri: TARGET_URI,
+        reason: 'spam',
+      });
     });
   });
 

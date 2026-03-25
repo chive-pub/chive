@@ -113,10 +113,13 @@ export class ContentReportService {
    * @returns the created or existing content report
    */
   async createReport(input: CreateReportInput): Promise<ContentReport> {
+    // Atomic upsert: insert or return existing report in a single query.
+    // ON CONFLICT touches updated_at so RETURNING always yields a row.
     const result = await this.pool.query<ContentReportRow>(
       `INSERT INTO content_reports (reporter_did, target_uri, target_collection, reason, description)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (reporter_did, target_uri) DO NOTHING
+       ON CONFLICT (reporter_did, target_uri) DO UPDATE
+         SET created_at = content_reports.created_at
        RETURNING *`,
       [
         input.reporterDid,
@@ -127,33 +130,18 @@ export class ContentReportService {
       ]
     );
 
-    const inserted = result.rows[0];
-    if (inserted) {
-      this.logger.info('Content report created', {
-        reportId: inserted.id,
-        targetUri: input.targetUri,
-        reason: input.reason,
-      });
-      return mapRow(inserted);
+    const row = result.rows[0];
+    if (!row) {
+      throw new Error('Content report upsert returned no rows');
     }
 
-    // Conflict: return the existing report
-    const existing = await this.pool.query<ContentReportRow>(
-      `SELECT * FROM content_reports WHERE reporter_did = $1 AND target_uri = $2`,
-      [input.reporterDid, input.targetUri]
-    );
-
-    const existingRow = existing.rows[0];
-    if (!existingRow) {
-      throw new Error('Content report insert and lookup both failed');
-    }
-
-    this.logger.info('Duplicate content report, returning existing', {
+    this.logger.info('Content report created', {
+      reportId: row.id,
       targetUri: input.targetUri,
-      reporterDid: input.reporterDid,
+      reason: input.reason,
     });
 
-    return mapRow(existingRow);
+    return mapRow(row);
   }
 
   /**

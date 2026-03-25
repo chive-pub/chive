@@ -173,6 +173,59 @@ describe('XRPC Moderation Handlers', () => {
       ).rejects.toThrow(ValidationError);
     });
 
+    it('throws ValidationError when targetUri is not an AT-URI', async () => {
+      const c = buildContext(authenticatedUser);
+
+      await expect(
+        createReport.handler({
+          input: { ...validInput, targetUri: 'https://example.com/bad' } as never,
+          c: c as never,
+          params: undefined as never,
+          auth: null,
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('throws ValidationError when targetCollection is not a valid NSID', async () => {
+      const c = buildContext(authenticatedUser);
+
+      await expect(
+        createReport.handler({
+          input: { ...validInput, targetCollection: 'not-an-nsid' } as never,
+          c: c as never,
+          params: undefined as never,
+          auth: null,
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('throws ValidationError when description exceeds 2000 characters', async () => {
+      const c = buildContext(authenticatedUser);
+
+      await expect(
+        createReport.handler({
+          input: { ...validInput, description: 'x'.repeat(2001) },
+          c: c as never,
+          params: undefined as never,
+          auth: null,
+        })
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it('accepts description at exactly 2000 characters', async () => {
+      mockContentReportService.createReport.mockResolvedValueOnce({ id: 1 });
+      const c = buildContext(authenticatedUser);
+
+      const result = await createReport.handler({
+        input: { ...validInput, description: 'x'.repeat(2000) },
+        c: c as never,
+        params: undefined as never,
+        auth: null,
+      });
+
+      expect(result.body.success).toBe(true);
+    });
+
     it('throws ValidationError when contentReport service is not configured', async () => {
       const c = {
         get: vi.fn((key: string) => {

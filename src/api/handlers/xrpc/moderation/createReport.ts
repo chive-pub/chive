@@ -46,6 +46,30 @@ export const createReport: XRPCMethod<void, CreateReportInput, CreateReportOutpu
       throw new ValidationError('Invalid reason', 'reason', 'enum');
     }
 
+    // Validate AT-URI format: at://did:method:id/collection/rkey
+    if (!input.targetUri.startsWith('at://')) {
+      throw new ValidationError('targetUri must be a valid AT-URI', 'targetUri', 'format');
+    }
+
+    // Validate collection NSID format
+    if (!/^[a-z]+\.[a-z]+\.[a-z]+/.test(input.targetCollection)) {
+      throw new ValidationError(
+        'targetCollection must be a valid NSID',
+        'targetCollection',
+        'format'
+      );
+    }
+
+    // Limit description length
+    const MAX_DESCRIPTION_LENGTH = 2000;
+    if (input.description && input.description.length > MAX_DESCRIPTION_LENGTH) {
+      throw new ValidationError(
+        `Description cannot exceed ${MAX_DESCRIPTION_LENGTH} characters`,
+        'description',
+        'maxLength'
+      );
+    }
+
     const reportService = c.get('services').contentReport;
     if (!reportService) {
       throw new ValidationError(
