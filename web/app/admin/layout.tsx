@@ -3,7 +3,6 @@ import Link from 'next/link';
 import {
   LayoutDashboard,
   HeartPulse,
-  FlaskConical,
   Users,
   FileText,
   Shield,

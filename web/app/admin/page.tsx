@@ -12,7 +12,6 @@ import {
   Radio,
   RefreshCw,
   AlertTriangle,
-  FlaskConical,
   Server,
   BarChart3,
   ShieldCheck,
@@ -419,12 +418,6 @@ export default function AdminOverviewPage() {
               <Link href="/admin/firehose">
                 <Radio className="mr-2 h-4 w-4" />
                 View DLQ
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/admin/alpha">
-                <FlaskConical className="mr-2 h-4 w-4" />
-                Alpha Applications
               </Link>
             </Button>
             <Button asChild variant="outline">
