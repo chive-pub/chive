@@ -125,7 +125,11 @@ export const listCitations: XRPCMethod<ListCitationsParams, void, ListCitationsO
         title: citation.title ?? '',
         doi: citation.doi ?? undefined,
         arxivId: citation.arxivId ?? undefined,
-        authors: citation.authors ? [...citation.authors] : undefined,
+        authors: citation.authors
+          ? citation.authors.map((a: string | { firstName?: string; lastName?: string }) =>
+              typeof a === 'string' ? a : [a.firstName, a.lastName].filter(Boolean).join(' ')
+            )
+          : undefined,
         year: citation.year ?? undefined,
         venue: citation.venue ?? undefined,
         chiveUri: citation.chiveMatchUri ?? undefined,

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Menu, ChevronDown } from 'lucide-react';
+import { Menu, ChevronDown, Bug } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -132,6 +132,19 @@ export function MobileNav({ className }: MobileNavProps) {
                 );
               })}
             </nav>
+
+            {/* Bug report link */}
+            <Separator className="my-2" />
+            <a
+              href="https://github.com/chive-pub/chive/issues/new?labels=bug"
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-3 rounded-md p-3 text-muted-foreground transition-colors hover:bg-accent"
+            >
+              <Bug className="h-5 w-5" />
+              <span className="font-medium">Report Bug</span>
+            </a>
 
             {/* Dashboard section for authenticated users */}
             {user && (

@@ -91,6 +91,7 @@ import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
+import { ReportContentDialog } from '@/components/moderation/report-content-dialog';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { toast } from 'sonner';
 
@@ -800,6 +801,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               itemLabel={eprint.title}
               variant="button"
             />
+
+            {/* Report content */}
+            <ReportContentDialog targetUri={uri} targetCollection="pub.chive.eprint.submission" />
           </div>
 
           {/* Share to Bluesky dialog */}

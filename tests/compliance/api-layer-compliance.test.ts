@@ -48,7 +48,6 @@ import type { Eprint } from '@/types/models/eprint.js';
 
 import {
   createMockAuthzService,
-  createMockAlphaService,
   createMockNodeService,
   createMockEdgeService,
   createMockNodeRepository,
@@ -573,7 +572,6 @@ describe('API Layer ATProto Compliance', () => {
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

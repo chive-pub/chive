@@ -27,7 +27,6 @@ import { ServiceAuthVerifier, type IServiceAuthVerifier } from '../auth/service-
 import type { ActivityService } from '../services/activity/activity-service.js';
 import type { AdminService } from '../services/admin/admin-service.js';
 import type { BackfillManager } from '../services/admin/backfill-manager.js';
-import type { AlphaApplicationService } from '../services/alpha/alpha-application-service.js';
 import type { AnnotationService } from '../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
@@ -44,6 +43,7 @@ import type { PersonalGraphService } from '../services/graph/personal-graph-serv
 import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
+import type { ContentReportService } from '../services/moderation/content-report-service.js';
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
@@ -244,11 +244,6 @@ export interface ServerConfig {
   readonly authzService: IAuthorizationService;
 
   /**
-   * Alpha application service.
-   */
-  readonly alphaService: AlphaApplicationService;
-
-  /**
    * Optional custom service auth verifier for testing.
    * If not provided, a default verifier is created using serviceDid.
    */
@@ -283,6 +278,11 @@ export interface ServerConfig {
    * Recommendation service for graph-based similarity (optional).
    */
   readonly recommendationService?: RecommendationService;
+
+  /**
+   * Content report service for user-submitted content reports (optional).
+   */
+  readonly contentReportService?: ContentReportService;
 }
 
 /**
@@ -384,10 +384,10 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       backfillManager: config.backfillManager,
       citationExtraction: config.citationExtractionService,
       recommendationService: config.recommendationService,
+      contentReport: config.contentReportService,
     } as ChiveServices);
     c.set('redis', config.redis);
     c.set('logger', config.logger);
-    c.set('alphaService', config.alphaService);
     await next();
   });
 

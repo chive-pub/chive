@@ -46,7 +46,6 @@ import type { Eprint } from '@/types/models/eprint.js';
 
 import {
   createMockAuthzService,
-  createMockAlphaService,
   createMockLogger,
   createMockIdentity,
   createMockRepository,
@@ -341,7 +340,6 @@ describe('XRPC Citation and Related Works Endpoints Integration', () => {
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

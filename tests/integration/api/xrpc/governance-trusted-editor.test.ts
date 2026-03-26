@@ -42,7 +42,6 @@ import {
   createMockImportService,
   createMockPDSSyncService,
   createMockActivityService,
-  createMockAlphaService,
   createMockAuthzService,
   createMockServiceAuthVerifier,
   createNoOpRelevanceLogger,
@@ -350,7 +349,6 @@ describe('XRPC Governance Trusted Editor Endpoints Integration', () => {
       serviceDid: 'did:web:test.chive.pub',
       serviceAuthVerifier: mockVerifier,
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       trustedEditorService: trustedEditorService as never,
       governancePdsWriter: governancePdsWriter as never,
     };

@@ -102,16 +102,6 @@
       "category": "query",
       "lastChangedIn": "0.1.0"
     },
-    "pub.chive.admin.getAlphaApplication": {
-      "revision": 1,
-      "category": "query",
-      "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.admin.getAlphaStats": {
-      "revision": 1,
-      "category": "query",
-      "lastChangedIn": "0.1.0"
-    },
     "pub.chive.admin.getAuditLog": {
       "revision": 1,
       "category": "query",
@@ -186,11 +176,6 @@
       "revision": 1,
       "category": "query",
       "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.admin.listAlphaApplications": {
-      "revision": 2,
-      "category": "query",
-      "lastChangedIn": "0.4.0"
     },
     "pub.chive.admin.listDLQEntries": {
       "revision": 1,
@@ -295,21 +280,6 @@
     "pub.chive.admin.triggerPDSScan": {
       "revision": 1,
       "category": "procedure",
-      "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.admin.updateAlphaApplication": {
-      "revision": 1,
-      "category": "procedure",
-      "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.alpha.apply": {
-      "revision": 2,
-      "category": "procedure",
-      "lastChangedIn": "0.4.0"
-    },
-    "pub.chive.alpha.checkStatus": {
-      "revision": 1,
-      "category": "query",
       "lastChangedIn": "0.1.0"
     },
     "pub.chive.annotation.comment": {
@@ -896,6 +866,11 @@
       "revision": 1,
       "category": "procedure",
       "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.moderation.createReport": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.5.0"
     },
     "pub.chive.notification.listEndorsementsOnMyPapers": {
       "revision": 1,

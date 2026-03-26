@@ -1,0 +1,64 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.moderation.createReport",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Report content for moderation review. Requires authentication. Duplicate reports from the same user for the same content are idempotent.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["targetUri", "targetCollection", "reason"],
+          "properties": {
+            "targetUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the content to report"
+            },
+            "targetCollection": {
+              "type": "string",
+              "description": "Collection NSID of the target content"
+            },
+            "reason": {
+              "type": "string",
+              "knownValues": ["spam", "inappropriate", "copyright", "misinformation", "other"],
+              "description": "Reason for reporting"
+            },
+            "description": {
+              "type": "string",
+              "maxLength": 2000,
+              "description": "Optional additional details about the report"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success", "id"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the report was created"
+            },
+            "id": {
+              "type": "integer",
+              "description": "Report ID"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "InvalidRequest"
+        }
+      ]
+    }
+  }
+}

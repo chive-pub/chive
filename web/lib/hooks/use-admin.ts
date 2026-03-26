@@ -111,12 +111,6 @@ export const adminKeys = {
   health: () => [...adminKeys.all, 'health'] as const,
   prometheus: () => [...adminKeys.all, 'prometheus'] as const,
 
-  // Alpha
-  alpha: () => [...adminKeys.all, 'alpha'] as const,
-  alphaList: (status?: string) => [...adminKeys.alpha(), 'list', status] as const,
-  alphaDetail: (did: string) => [...adminKeys.alpha(), 'detail', did] as const,
-  alphaStats: () => [...adminKeys.alpha(), 'stats'] as const,
-
   // Users
   users: () => [...adminKeys.all, 'users'] as const,
   userSearch: (query: string) => [...adminKeys.users(), 'search', query] as const,
@@ -220,40 +214,6 @@ export interface MetricEntry {
 }
 
 /**
- * Alpha application record.
- */
-export interface AlphaApplication {
-  did: string;
-  handle: string;
-  displayName?: string;
-  email?: string;
-  sector?: string;
-  careerStage?: string;
-  affiliations?: string[];
-  researchKeywords?: string[];
-  status: 'pending' | 'approved' | 'rejected' | 'revoked';
-  motivation?: string;
-  createdAt: string;
-  reviewedAt?: string;
-  reviewedBy?: string;
-}
-
-/**
- * Alpha application statistics.
- */
-export interface AlphaStats {
-  total: number;
-  pending: number;
-  approved: number;
-  rejected: number;
-  revoked: number;
-  byStatus: Record<string, number>;
-  bySector?: Record<string, number>;
-  byCareerStage?: Record<string, number>;
-  recentByDay?: Array<{ date: string; count: number }>;
-}
-
-/**
  * User record with roles for admin listing.
  */
 export interface AdminUser {
@@ -274,7 +234,6 @@ export interface AdminUserDetail extends AdminUser {
   eprintCount: number;
   reviewCount: number;
   endorsementCount: number;
-  alphaStatus?: string;
   pdsEndpoint?: string;
   flags?: string[];
   warnings?: Array<{ type?: string; reason?: string; createdAt?: string }>;
@@ -593,13 +552,6 @@ export interface GovernanceViolation {
 // MUTATION INPUT TYPES
 // =============================================================================
 
-/** Input for updating an alpha application status. */
-export interface UpdateAlphaInput {
-  did: string;
-  action: 'approve' | 'reject' | 'revoke';
-  reason?: string;
-}
-
 /** Input for assigning a role to a user. */
 export interface AssignRoleInput {
   did: string;
@@ -674,77 +626,6 @@ export function usePrometheusMetrics() {
     queryFn: () => adminFetch<PrometheusMetrics>('pub.chive.admin.getPrometheusMetrics'),
     staleTime: 15_000,
     refetchInterval: 15_000,
-  });
-}
-
-// =============================================================================
-// ALPHA HOOKS
-// =============================================================================
-
-/**
- * Fetches alpha application list with optional status filter.
- *
- * @param status - Optional status filter ("pending", "approved", "rejected")
- * @returns Query result with alpha applications
- */
-export function useAdminAlphaApplications(status?: string) {
-  return useQuery({
-    queryKey: adminKeys.alphaList(status),
-    queryFn: () => {
-      const params: Record<string, string> = {};
-      if (status) params['status'] = status;
-      return adminFetch<{ items: AlphaApplication[]; total: number; cursor?: string }>(
-        'pub.chive.admin.listAlphaApplications',
-        params
-      );
-    },
-    staleTime: 30_000,
-  });
-}
-
-/**
- * Fetches a single alpha application by DID.
- *
- * @param did - Applicant's DID
- * @returns Query result with alpha application detail
- */
-export function useAdminAlphaApplication(did: string) {
-  return useQuery({
-    queryKey: adminKeys.alphaDetail(did),
-    queryFn: () => adminFetch<AlphaApplication>('pub.chive.admin.getAlphaApplication', { did }),
-    enabled: !!did,
-    staleTime: 30_000,
-  });
-}
-
-/**
- * Fetches alpha application statistics.
- *
- * @returns Query result with alpha stats
- */
-export function useAdminAlphaStats() {
-  return useQuery({
-    queryKey: adminKeys.alphaStats(),
-    queryFn: () => adminFetch<AlphaStats>('pub.chive.admin.getAlphaStats'),
-    staleTime: 30_000,
-  });
-}
-
-/**
- * Mutation hook for updating an alpha application status.
- *
- * @returns Mutation object for approving or rejecting alpha applications
- */
-export function useUpdateAlphaApplication() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: UpdateAlphaInput) =>
-      adminPost<{ success: boolean }>('pub.chive.admin.updateAlphaApplication', input),
-    onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: adminKeys.alpha() });
-      queryClient.invalidateQueries({ queryKey: adminKeys.alphaDetail(variables.did) });
-    },
   });
 }
 

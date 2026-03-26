@@ -16,8 +16,6 @@ import { cancelBackfill } from './cancelBackfill.js';
 import { deleteContent } from './deleteContent.js';
 import { dismissDLQEntry } from './dismissDLQEntry.js';
 import { getActivityCorrelation } from './getActivityCorrelation.js';
-import { getAlphaApplication } from './getAlphaApplication.js';
-import { getAlphaStats } from './getAlphaStats.js';
 import { getAuditLog } from './getAuditLog.js';
 import { getBackfillHistory } from './getBackfillHistory.js';
 import { getBackfillStatus } from './getBackfillStatus.js';
@@ -33,7 +31,6 @@ import { getSystemHealth } from './getSystemHealth.js';
 import { getTrendingVelocity } from './getTrendingVelocity.js';
 import { getUserDetail } from './getUserDetail.js';
 import { getViewDownloadTimeSeries } from './getViewDownloadTimeSeries.js';
-import { listAlphaApplications } from './listAlphaApplications.js';
 import { listDLQEntries } from './listDLQEntries.js';
 import { listEndorsements } from './listEndorsements.js';
 import { listEprints } from './listEprints.js';
@@ -55,8 +52,6 @@ import { triggerFreshnessScan } from './triggerFreshnessScan.js';
 import { triggerFullReindex } from './triggerFullReindex.js';
 import { triggerGovernanceSync } from './triggerGovernanceSync.js';
 import { triggerPDSScan } from './triggerPDSScan.js';
-import { updateAlphaApplication } from './updateAlphaApplication.js';
-
 /**
  * Admin methods map keyed by NSID.
  *
@@ -73,12 +68,6 @@ export const adminMethods: Record<string, XRPCMethod<any, any, any>> = {
   'pub.chive.admin.getOverview': getOverview,
   'pub.chive.admin.getSystemHealth': getSystemHealth,
   'pub.chive.admin.getPrometheusMetrics': getPrometheusMetrics,
-
-  // Alpha application management
-  'pub.chive.admin.listAlphaApplications': listAlphaApplications,
-  'pub.chive.admin.getAlphaApplication': getAlphaApplication,
-  'pub.chive.admin.updateAlphaApplication': updateAlphaApplication,
-  'pub.chive.admin.getAlphaStats': getAlphaStats,
 
   // User management
   'pub.chive.admin.searchUsers': searchUsers,

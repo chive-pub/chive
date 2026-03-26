@@ -5,6 +5,8 @@ import { GeistMono } from 'geist/font/mono';
 import { Providers } from '@/components/providers';
 import { FaroInit } from '@/components/observability';
 import { ConditionalHeader } from '@/components/conditional-header';
+import { OpenAlphaBanner } from '@/components/banners/open-alpha-banner';
+import { OnboardingPromptBanner } from '@/components/banners/onboarding-prompt-banner';
 import { SkipLink } from '@/components/skip-link';
 import { Toaster } from '@/components/ui/sonner';
 import { DebugPanel } from '@/components/debug';
@@ -73,6 +75,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <SkipLink />
           <div className="relative flex min-h-screen flex-col">
             <ConditionalHeader />
+            <OpenAlphaBanner />
+            <OnboardingPromptBanner />
             <main id="main-content" className="flex-1" tabIndex={-1}>
               {children}
             </main>

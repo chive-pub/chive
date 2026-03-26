@@ -12,7 +12,6 @@ import {
   Bell,
 } from 'lucide-react';
 
-import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { SidebarLayout, SidebarSection } from '@/components/layout';
 
@@ -70,16 +69,14 @@ function DashboardNav() {
  *
  * @remarks
  * Uses the SidebarLayout component for consistent sidebar styling.
- * Protected by AuthGuard (requires authentication) and AlphaGate (requires alpha approval).
+ * Protected by AuthGuard (requires authentication).
  */
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <AlphaGate>
-        <SidebarLayout sidebar={<DashboardNav />} stickyNavigation sidebarTitle="Dashboard">
-          {children}
-        </SidebarLayout>
-      </AlphaGate>
+      <SidebarLayout sidebar={<DashboardNav />} stickyNavigation sidebarTitle="Dashboard">
+        {children}
+      </SidebarLayout>
     </AuthGuard>
   );
 }

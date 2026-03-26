@@ -5,7 +5,7 @@
  *
  * @remarks
  * Hosts the CollectionWizard for creating a new collection.
- * Protected by AuthGuard and AlphaGate via the layout.
+ * Protected by AuthGuard via the layout.
  *
  * Reads optional `item`, `type`, and `label` query params to pre-populate
  * the wizard with an initial item (e.g., when navigating from the

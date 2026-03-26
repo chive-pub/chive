@@ -29,11 +29,11 @@ const loginFormSchema = z.object({
     .min(1, 'Handle is required')
     .refine(
       (val) => {
-        // Allow handles like "alice.bsky.social" or "alice.example.com"
+        // Allow handles like "user.example.com" or DIDs like "did:plc:abc123"
         // Also allow DIDs like "did:plc:abc123"
         return val.includes('.') || val.startsWith('did:');
       },
-      { message: 'Enter a valid handle (e.g., alice.bsky.social) or DID' }
+      { message: 'Enter a valid handle (e.g., user.example.com) or DID' }
     ),
 });
 
@@ -108,11 +108,11 @@ export function LoginForm({ onSuccess, onError }: LoginFormProps) {
                 <HandleInput
                   value={field.value}
                   onChange={field.onChange}
-                  placeholder="alice.bsky.social"
+                  placeholder="yourhandle.example.com"
                   disabled={isSubmitting}
                 />
               </FormControl>
-              <FormDescription>Your Bluesky handle or AT Protocol identifier</FormDescription>
+              <FormDescription>Your AT Protocol handle or DID</FormDescription>
               <FormMessage />
             </FormItem>
           )}
