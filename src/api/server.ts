@@ -22,6 +22,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Redis } from 'ioredis';
+import type { Pool } from 'pg';
 
 import { ServiceAuthVerifier, type IServiceAuthVerifier } from '../auth/service-auth/index.js';
 import type { ActivityService } from '../services/activity/activity-service.js';
@@ -211,6 +212,14 @@ export interface ServerConfig {
   readonly governancePdsWriter?: GovernancePDSWriter;
 
   /**
+   * PostgreSQL connection pool for direct queries (optional).
+   *
+   * @remarks
+   * Used by handlers that need raw SQL access (e.g., ORCID verification).
+   */
+  readonly pool?: Pool;
+
+  /**
    * Redis client for rate limiting and caching.
    */
   readonly redis: Redis;
@@ -387,6 +396,9 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       contentReport: config.contentReportService,
     } as ChiveServices);
     c.set('redis', config.redis);
+    if (config.pool) {
+      c.set('pool', config.pool);
+    }
     c.set('logger', config.logger);
     await next();
   });

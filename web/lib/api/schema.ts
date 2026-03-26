@@ -321,6 +321,9 @@ export type {
   AuthorSearchResult as Author,
 } from './generated/types/pub/chive/author/searchAuthors.js';
 
+// ORCID verification
+export type { OutputSchema as InitiateOrcidVerificationResponse } from './generated/types/pub/chive/author/initiateOrcidVerification.js';
+
 // =============================================================================
 // REVIEW TYPES
 // =============================================================================

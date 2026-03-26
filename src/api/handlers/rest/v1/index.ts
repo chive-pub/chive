@@ -11,6 +11,7 @@ import type { ChiveEnv } from '../../../types/context.js';
 
 import { registerEprintRoutes } from './eprints.js';
 import { registerIntegrationRoutes } from './integrations.js';
+import { registerOrcidAuthRoutes } from './orcid-auth.js';
 import { registerSearchRoutes } from './search.js';
 
 /**
@@ -24,8 +25,10 @@ export function registerV1Routes(app: Hono<ChiveEnv>): void {
   registerEprintRoutes(app);
   registerSearchRoutes(app);
   registerIntegrationRoutes(app);
+  registerOrcidAuthRoutes(app);
 }
 
-export { registerIntegrationRoutes } from './integrations.js';
 export { registerEprintRoutes } from './eprints.js';
+export { registerIntegrationRoutes } from './integrations.js';
+export { registerOrcidAuthRoutes } from './orcid-auth.js';
 export { registerSearchRoutes } from './search.js';

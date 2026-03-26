@@ -10,6 +10,7 @@
  */
 
 import type { Redis } from 'ioredis';
+import type { Pool } from 'pg';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
 import type { AdminService } from '../../services/admin/admin-service.js';
@@ -187,6 +188,16 @@ export interface ChiveEnv {
      * Redis client for rate limiting and caching.
      */
     redis: Redis;
+
+    /**
+     * PostgreSQL connection pool for direct queries.
+     *
+     * @remarks
+     * Available for handlers that need raw SQL access (e.g., ORCID verification
+     * callback). Prefer using services for standard operations. May be undefined
+     * if not configured (e.g., in tests).
+     */
+    pool?: Pool;
 
     /**
      * Logger instance with request context.

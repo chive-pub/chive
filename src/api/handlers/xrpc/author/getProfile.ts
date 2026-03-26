@@ -373,6 +373,23 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
       eprint.countEprintsByAuthor(did),
     ]);
 
+    // Check ORCID verification status from index
+    let orcidVerified: boolean | undefined;
+    const pool = c.get('pool');
+    if (pool) {
+      try {
+        const verificationResult = await pool.query<{ orcid_verified_at: Date | null }>(
+          'SELECT orcid_verified_at FROM authors_index WHERE did = $1',
+          [did]
+        );
+        if (verificationResult.rows[0]?.orcid_verified_at) {
+          orcidVerified = true;
+        }
+      } catch {
+        // Non-critical: do not fail profile fetch if verification check fails
+      }
+    }
+
     const response: OutputSchema = {
       profile: {
         did,
@@ -383,6 +400,7 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
         affiliation: profileData?.affiliation,
         affiliations: profileData?.affiliations,
         orcid: profileData?.orcid,
+        orcidVerified,
         website: profileData?.website,
         pdsEndpoint: pdsEndpoint ?? 'unknown',
         // Research fields

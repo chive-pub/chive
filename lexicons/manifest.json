@@ -333,9 +333,14 @@
       "lastChangedIn": "0.1.0"
     },
     "pub.chive.author.getProfile": {
-      "revision": 2,
+      "revision": 3,
       "category": "query",
-      "lastChangedIn": "0.4.0"
+      "lastChangedIn": "0.5.0"
+    },
+    "pub.chive.author.initiateOrcidVerification": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.5.0"
     },
     "pub.chive.author.searchAuthors": {
       "revision": 1,
