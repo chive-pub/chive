@@ -1,23 +1,27 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
-import Image from 'next/image';
-import Link from 'next/link';
+import { useState, useCallback, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
-import { useIsAuthenticated } from '@/lib/auth';
+import { useAuth, useIsAuthenticated } from '@/lib/auth';
+import { HandleInput } from '@/components/auth/handle-input';
 import { Button } from '@/components/ui/button';
 
 /**
  * Public landing page for Chive.
  *
  * @remarks
- * Displays hero content and calls-to-action for unauthenticated visitors.
+ * Displays hero content with an inline ATProto login form.
  * Authenticated users are redirected to the dashboard.
  */
 export default function LandingPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const isAuthenticated = useIsAuthenticated();
+  const [handle, setHandle] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -25,18 +29,38 @@ export default function LandingPage() {
     }
   }, [isAuthenticated, router]);
 
+  const handleLogin = useCallback(async () => {
+    if (!handle.trim()) {
+      setError('Please enter your handle');
+      return;
+    }
+
+    setError(null);
+    setIsLoggingIn(true);
+
+    try {
+      await login({ handle });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+      setIsLoggingIn(false);
+    }
+  }, [handle, login]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && handle.trim()) {
+        handleLogin();
+      }
+    },
+    [handle, handleLogin]
+  );
+
   return (
-    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-6 py-16">
+    <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="max-w-[600px] text-center">
         {/* Logo */}
-        <Image
-          src="/chive-logo.svg"
-          alt="Chive"
-          width={100}
-          height={100}
-          className="mx-auto mb-8"
-          priority
-        />
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/chive-logo.svg" alt="Chive" className="mx-auto mb-8 h-[100px] w-[100px]" />
 
         {/* Title */}
         <h1 className="mb-2 text-5xl font-bold tracking-tight">Chive</h1>
@@ -48,36 +72,45 @@ export default function LandingPage() {
         </p>
 
         {/* Open Alpha Notice */}
-        <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 to-amber-500/10 shadow-sm">
-          <div className="flex items-center gap-2 border-b border-amber-500/10 bg-amber-500/5 px-4 py-2">
-            <span className="inline-flex h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
+        <div className="mx-auto mb-6 max-w-sm overflow-hidden rounded-xl border border-[#157200]/20 bg-gradient-to-br from-[#157200]/5 to-[#157200]/10 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-[#157200]/10 bg-[#157200]/5 px-4 py-2">
+            <span className="inline-flex h-2 w-2 rounded-full bg-[#157200] animate-pulse" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-[#157200]">
               Open Alpha
             </span>
           </div>
           <p className="px-4 py-3 text-sm text-muted-foreground">
-            Chive is in open alpha. You may encounter bugs or incomplete features. We appreciate and
-            encourage{' '}
-            <a
-              href="https://github.com/chive-pub/chive/issues"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="underline hover:text-foreground"
-            >
-              bug reports
-            </a>
-            .
+            Chive is in open alpha. You may encounter bugs or incomplete features.
           </p>
         </div>
 
-        {/* CTAs */}
-        <div className="mx-auto mb-8 flex max-w-sm flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button asChild size="lg" className="bg-[#157200] hover:bg-[#125f00]">
-            <Link href="/eprints">Browse Eprints</Link>
+        {/* Handle Input */}
+        <div className="mx-auto mb-6 max-w-sm">
+          <div className="mb-3" onKeyDown={handleKeyDown}>
+            <HandleInput
+              value={handle}
+              onChange={setHandle}
+              onSelect={(actor) => setHandle(actor.handle)}
+              placeholder="yourhandle.example.com"
+              disabled={isLoggingIn}
+              className="w-full"
+            />
+          </div>
+          <Button
+            onClick={handleLogin}
+            disabled={isLoggingIn || !handle.trim()}
+            className="w-full bg-[#157200] hover:bg-[#125f00]"
+          >
+            {isLoggingIn ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Signing in...
+              </>
+            ) : (
+              'Sign in with ATProto'
+            )}
           </Button>
-          <Button asChild variant="outline" size="lg">
-            <Link href="/login">Sign In</Link>
-          </Button>
+          {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
         </div>
 
         {/* Links */}
@@ -108,6 +141,6 @@ export default function LandingPage() {
           </a>
         </div>
       </div>
-    </div>
+    </main>
   );
 }
