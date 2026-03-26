@@ -70,7 +70,7 @@ interface OrcidTokenResponse {
  * @public
  */
 export function registerOrcidAuthRoutes(app: Hono<ChiveEnv>): void {
-  app.get('/api/v1/auth/orcid/callback', async (c) => {
+  app.get('/v1/auth/orcid/callback', async (c) => {
     const logger = c.get('logger');
     const redis = c.get('redis');
     const pool = c.get('pool');
