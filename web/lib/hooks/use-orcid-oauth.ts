@@ -68,7 +68,6 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json',
             Authorization: `Bearer ${token}`,
           },
         }
