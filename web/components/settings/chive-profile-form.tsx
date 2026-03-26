@@ -245,6 +245,7 @@ export function ChiveProfileForm() {
   const {
     initiateOrcidOAuth,
     isVerifying: isOrcidVerifying,
+    isAvailable: isOrcidOAuthAvailable,
     error: orcidOAuthError,
     verifiedOrcid,
   } = useOrcidOAuth({
@@ -505,7 +506,7 @@ export function ChiveProfileForm() {
                     <ShieldCheck className="h-4 w-4" />
                     <span>Verified via ORCID</span>
                   </div>
-                ) : form.watch('orcid') ? (
+                ) : form.watch('orcid') && isOrcidOAuthAvailable ? (
                   <div className="flex items-center gap-2">
                     <Button
                       type="button"

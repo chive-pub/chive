@@ -107,6 +107,7 @@ export function AccountLinkingWizard({
   const {
     initiateOrcidOAuth,
     isVerifying: isOrcidVerifying,
+    isAvailable: isOrcidOAuthAvailable,
     error: orcidError,
     verifiedOrcid,
   } = useOrcidOAuth({
@@ -240,8 +241,8 @@ export function AccountLinkingWizard({
               <Button
                 variant="outline"
                 className="w-full justify-start h-auto py-3"
-                onClick={initiateOrcidOAuth}
-                disabled={isOrcidVerifying || !!verifiedOrcid}
+                onClick={isOrcidOAuthAvailable ? initiateOrcidOAuth : undefined}
+                disabled={!isOrcidOAuthAvailable || isOrcidVerifying || !!verifiedOrcid}
               >
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded bg-[#A6CE39] flex items-center justify-center text-white font-bold text-sm">
@@ -267,6 +268,11 @@ export function AccountLinkingWizard({
                         <div className="text-xs text-muted-foreground">
                           A popup window should open
                         </div>
+                      </>
+                    ) : !isOrcidOAuthAvailable ? (
+                      <>
+                        <div className="font-medium">Sign in with ORCID</div>
+                        <div className="text-xs text-muted-foreground">Coming soon</div>
                       </>
                     ) : (
                       <>

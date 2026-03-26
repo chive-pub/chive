@@ -12,9 +12,10 @@
 
 import crypto from 'node:crypto';
 
-import { getOrcidConfig } from '../../../../config/orcid.js';
+import { getOrcidConfig, isOrcidOAuthConfigured } from '../../../../config/orcid.js';
 import type { OutputSchema } from '../../../../lexicons/generated/types/pub/chive/author/initiateOrcidVerification.js';
-import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
+import { AuthenticationError } from '../../../../types/errors.js';
+import { XRPCError } from '../../../xrpc/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -37,12 +38,11 @@ export const initiateOrcidVerification: XRPCMethod<void, void, OutputSchema> = {
       throw new AuthenticationError('Authentication required');
     }
 
-    let config;
-    try {
-      config = getOrcidConfig();
-    } catch {
-      throw new ValidationError('ORCID OAuth not configured', 'orcid', 'not_configured');
+    if (!isOrcidOAuthConfigured()) {
+      throw new XRPCError(501, 'ORCID OAuth is not available', 'OrcidNotConfigured');
     }
+
+    const config = getOrcidConfig();
 
     const state = crypto.randomBytes(32).toString('hex');
     const redis = c.get('redis');

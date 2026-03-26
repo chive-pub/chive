@@ -19,11 +19,15 @@ interface UseOrcidOAuthOptions {
  * the popup posts a message back to the opener with the verified ORCID.
  * Invalidates author and profile query caches on success.
  *
+ * If the server does not have ORCID OAuth configured, `isAvailable`
+ * is set to false so the UI can hide the button.
+ *
  * @param options - optional callbacks
  * @returns state and trigger function for the ORCID OAuth flow
  */
 export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
   const [isVerifying, setIsVerifying] = useState(false);
+  const [isAvailable, setIsAvailable] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [verifiedOrcid, setVerifiedOrcid] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -74,7 +78,18 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
       );
 
       if (!response.ok) {
-        const body = (await response.json().catch(() => ({}))) as { message?: string };
+        const body = (await response.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+
+        // If the server says ORCID OAuth isn't configured, disable the button
+        if (body.error === 'OrcidNotConfigured' || response.status === 501) {
+          setIsAvailable(false);
+          setIsVerifying(false);
+          return;
+        }
+
         throw new Error(body.message ?? 'Failed to initiate ORCID verification');
       }
 
@@ -113,5 +128,5 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
     }
   }, []);
 
-  return { initiateOrcidOAuth, isVerifying, error, verifiedOrcid };
+  return { initiateOrcidOAuth, isVerifying, isAvailable, error, verifiedOrcid };
 }
