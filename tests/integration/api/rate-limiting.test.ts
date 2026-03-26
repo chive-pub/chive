@@ -194,7 +194,7 @@ describe('API Rate Limiting Integration', () => {
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(120);
+      expect(limit).toBe(60);
     });
 
     it('applies higher rate limit for autocomplete endpoints', async () => {
@@ -421,7 +421,7 @@ describe('API Rate Limiting Integration', () => {
       );
 
       expect(autocompleteLimit).toBeGreaterThan(standardLimit);
-      expect(standardLimit).toBe(120);
+      expect(standardLimit).toBe(60);
       expect(autocompleteLimit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
     });
   });
@@ -452,7 +452,7 @@ describe('API Rate Limiting Integration', () => {
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(120);
+      expect(limit).toBe(60);
     });
 
     it('autocomplete endpoints use higher req/min limit', async () => {
