@@ -624,6 +624,7 @@ function createServices(
     adminService,
     backfillManager,
     contentReportService,
+    pool: pgPool,
     redis,
     logger,
     serviceDid: config.serviceDid,

@@ -1,6 +1,7 @@
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, ShieldCheck } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * Props for the OrcidBadge component.
@@ -8,6 +9,8 @@ import { cn } from '@/lib/utils';
 export interface OrcidBadgeProps {
   /** ORCID identifier (with or without URL prefix) */
   orcid: string;
+  /** Whether the ORCID has been verified via OAuth */
+  verified?: boolean;
   /** Whether to show the full ORCID URL */
   showFull?: boolean;
   /** Size variant */
@@ -33,6 +36,7 @@ export interface OrcidBadgeProps {
  */
 export function OrcidBadge({
   orcid,
+  verified = false,
   showFull = false,
   size = 'default',
   className,
@@ -57,6 +61,18 @@ export function OrcidBadge({
     >
       <OrcidIcon className={iconSize} />
       <span className="font-mono">{showFull ? orcidUrl : cleanOrcid}</span>
+      {verified && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <ShieldCheck className={cn(iconSize, 'text-[#A6CE39]')} />
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Verified via ORCID</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
       <ExternalLink className={cn(iconSize, 'text-muted-foreground')} />
     </a>
   );

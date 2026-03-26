@@ -1,0 +1,33 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.author.initiateOrcidVerification",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Initiate ORCID OAuth verification flow. Returns a URL to redirect the user to ORCID for authentication. Requires authentication.",
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["authorizeUrl"],
+          "properties": {
+            "authorizeUrl": {
+              "type": "string",
+              "format": "uri",
+              "description": "Full ORCID OAuth authorization URL to redirect the user to"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        },
+        {
+          "name": "OrcidNotConfigured"
+        }
+      ]
+    }
+  }
+}

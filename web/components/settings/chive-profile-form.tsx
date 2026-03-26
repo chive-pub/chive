@@ -16,6 +16,8 @@ import {
   Loader2,
   ChevronDown,
   ChevronRight,
+  CheckCircle2,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -34,6 +36,7 @@ import { KeywordAutocompleteInput } from './keyword-autocomplete-input';
 import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
 import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
 import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
+import { useOrcidOAuth } from '@/lib/hooks/use-orcid-oauth';
 
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
@@ -237,6 +240,18 @@ function CollapsibleSection({
 export function ChiveProfileForm() {
   const { data: existingProfile, isLoading } = useMyChiveProfile();
   const { mutate: updateProfile, isPending } = useUpdateChiveProfile();
+
+  // ORCID OAuth verification
+  const {
+    initiateOrcidOAuth,
+    isVerifying: isOrcidVerifying,
+    error: orcidOAuthError,
+    verifiedOrcid,
+  } = useOrcidOAuth({
+    onSuccess: (orcid) => {
+      form.setValue('orcid', orcid);
+    },
+  });
 
   // Field selections managed outside react-hook-form (FieldSearch has its own UI)
   const [selectedFields, setSelectedFields] = useState<FieldSelection[]>([]);
@@ -478,12 +493,45 @@ export function ChiveProfileForm() {
                 to find your profiles automatically.
               </p>
 
-              {/* ORCID with autocomplete */}
-              <OrcidAutocompleteInput
-                value={form.watch('orcid') ?? ''}
-                onChange={(value) => form.setValue('orcid', value || undefined)}
-                className="mb-4"
-              />
+              {/* ORCID with autocomplete and verification */}
+              <div className="mb-4 space-y-2">
+                <OrcidAutocompleteInput
+                  value={form.watch('orcid') ?? ''}
+                  onChange={(value) => form.setValue('orcid', value || undefined)}
+                />
+                {(existingProfile as { orcidVerified?: boolean })?.orcidVerified ||
+                verifiedOrcid ? (
+                  <div className="flex items-center gap-1.5 text-sm text-[#A6CE39]">
+                    <ShieldCheck className="h-4 w-4" />
+                    <span>Verified via ORCID</span>
+                  </div>
+                ) : form.watch('orcid') ? (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={initiateOrcidOAuth}
+                      disabled={isOrcidVerifying}
+                    >
+                      {isOrcidVerifying ? (
+                        <>
+                          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          Verifying...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" />
+                          Verify with ORCID
+                        </>
+                      )}
+                    </Button>
+                    {orcidOAuthError && (
+                      <p className="text-xs text-destructive">{orcidOAuthError}</p>
+                    )}
+                  </div>
+                ) : null}
+              </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 {/* Semantic Scholar with autocomplete */}

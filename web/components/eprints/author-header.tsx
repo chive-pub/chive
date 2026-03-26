@@ -152,7 +152,7 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
 
           {/* Primary links row */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
-            {profile.orcid && <OrcidBadge orcid={profile.orcid} />}
+            {profile.orcid && <OrcidBadge orcid={profile.orcid} verified={profile.orcidVerified} />}
 
             {profile.website && (
               <a
