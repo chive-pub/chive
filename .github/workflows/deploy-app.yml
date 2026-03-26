@@ -70,6 +70,8 @@ jobs:
           ZULIP_INVITE_URL: ${{ secrets.ZULIP_INVITE_URL }}
           GRAFANA_ADMIN_PASSWORD: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           ADMIN_DIDS: ${{ vars.ADMIN_DIDS }}
+          ORCID_CLIENT_ID: ${{ secrets.ORCID_CLIENT_ID }}
+          ORCID_CLIENT_SECRET: ${{ secrets.ORCID_CLIENT_SECRET }}
         run: |
           mkdir -p docker-env
 
@@ -122,6 +124,9 @@ jobs:
           ZULIP_BOT_API_KEY=${ZULIP_BOT_API_KEY}
           ZULIP_INVITE_URL=${ZULIP_INVITE_URL}
           ADMIN_DIDS=${ADMIN_DIDS}
+          ORCID_CLIENT_ID=${ORCID_CLIENT_ID}
+          ORCID_CLIENT_SECRET=${ORCID_CLIENT_SECRET}
+          ORCID_REDIRECT_URI=https://${DOMAIN}/api/v1/auth/orcid/callback
           EOF
 
           # Remove leading whitespace
