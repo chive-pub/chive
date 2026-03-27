@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getApiBaseUrl } from '@/lib/api/client';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
+import { updateChiveProfileRecord } from '@/lib/atproto/record-creator';
 
 interface UseOrcidOAuthOptions {
   onSuccess?: (orcid: string) => void;
@@ -43,6 +44,14 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
       setVerifiedOrcid(orcid);
       setIsVerifying(false);
       setError(null);
+
+      // Write the verified ORCID to the user's PDS profile record
+      const agent = getCurrentAgent();
+      if (agent) {
+        updateChiveProfileRecord(agent, { orcid }).catch(() => {
+          // Non-critical: the index already has the verified ORCID
+        });
+      }
 
       // Invalidate profile queries so the verified badge shows
       queryClient.invalidateQueries({ queryKey: ['author'] });
