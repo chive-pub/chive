@@ -6,6 +6,7 @@ import { X, Link2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { useIsAuthenticated } from '@/lib/auth';
+import { useMyChiveProfile } from '@/lib/hooks/use-author';
 
 const STORAGE_KEY = 'chive_onboarding_prompt_dismissed';
 
@@ -14,10 +15,12 @@ const STORAGE_KEY = 'chive_onboarding_prompt_dismissed';
  *
  * @remarks
  * Displays below the open alpha banner for authenticated users who have
- * not dismissed it. Dismissed state is persisted in localStorage.
+ * not dismissed it and do not already have an ORCID linked.
+ * Dismissed state is persisted in localStorage.
  */
 export function OnboardingPromptBanner() {
   const isAuthenticated = useIsAuthenticated();
+  const { data: profile } = useMyChiveProfile();
   const [dismissed, setDismissed] = useState(true); // Default true to prevent flash
 
   useEffect(() => {
@@ -35,7 +38,9 @@ export function OnboardingPromptBanner() {
     }
   };
 
-  if (dismissed || !isAuthenticated) {
+  // Hide if: dismissed, not authenticated, or already has ORCID linked
+  const hasOrcid = !!(profile as { orcid?: string } | null)?.orcid;
+  if (dismissed || !isAuthenticated || hasOrcid) {
     return null;
   }
 
