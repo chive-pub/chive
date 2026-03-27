@@ -20,9 +20,14 @@ import { getOrcidConfig } from '../../../../config/orcid.js';
 import type { ChiveEnv } from '../../../types/context.js';
 
 /**
- * Frontend base URL for redirect targets.
+ * Resolves the frontend base URL for redirect targets.
  */
-const FRONTEND_URL = process.env.NEXT_PUBLIC_URL ?? process.env.WEB_URL ?? 'http://localhost:3000';
+function getFrontendUrl(): string {
+  if (process.env.NEXT_PUBLIC_URL) return process.env.NEXT_PUBLIC_URL;
+  if (process.env.WEB_URL) return process.env.WEB_URL;
+  if (process.env.DOMAIN) return `https://${process.env.DOMAIN}`;
+  return 'http://localhost:3000';
+}
 
 /**
  * Builds a frontend redirect URL for the ORCID completion page.
@@ -35,7 +40,7 @@ function buildRedirectUrl(
   status: 'success' | 'error',
   params: Record<string, string> = {}
 ): string {
-  const url = new URL(`${FRONTEND_URL}/auth/orcid/complete`);
+  const url = new URL(`${getFrontendUrl()}/auth/orcid/complete`);
   url.searchParams.set('status', status);
   for (const [key, value] of Object.entries(params)) {
     url.searchParams.set(key, value);
