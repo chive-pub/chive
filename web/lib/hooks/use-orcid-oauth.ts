@@ -34,13 +34,9 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
   const queryClient = useQueryClient();
   const popupRef = useRef<Window | null>(null);
 
-  // Listen for postMessage from popup
-  useEffect(() => {
-    function handleMessage(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== 'orcid-oauth-complete') return;
-
-      const orcid = event.data.orcid as string;
+  // Handle a verified ORCID from the popup (via postMessage or localStorage)
+  const handleVerified = useCallback(
+    (orcid: string) => {
       setVerifiedOrcid(orcid);
       setIsVerifying(false);
       setError(null);
@@ -58,11 +54,45 @@ export function useOrcidOAuth(options?: UseOrcidOAuthOptions) {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
 
       options?.onSuccess?.(orcid);
+    },
+    [queryClient, options]
+  );
+
+  // Listen for postMessage from popup
+  useEffect(() => {
+    function handleMessage(event: MessageEvent) {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== 'orcid-oauth-complete') return;
+      handleVerified(event.data.orcid as string);
     }
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [queryClient, options]);
+  }, [handleVerified]);
+
+  // Listen for localStorage storage event (works when postMessage is blocked
+  // because the popup navigated cross-origin through orcid.org)
+  useEffect(() => {
+    const STORAGE_KEY = 'chive_orcid_oauth_result';
+
+    function handleStorage(event: StorageEvent) {
+      if (event.key !== STORAGE_KEY || !event.newValue) return;
+      try {
+        const data = JSON.parse(event.newValue) as { orcid: string; timestamp: number };
+        // Only accept results from the last 60 seconds
+        if (Date.now() - data.timestamp < 60_000) {
+          handleVerified(data.orcid);
+        }
+      } catch {
+        // Ignore malformed data
+      }
+      // Clean up the key
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [handleVerified]);
 
   const initiateOrcidOAuth = useCallback(async () => {
     setError(null);

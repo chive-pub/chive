@@ -7,6 +7,8 @@ import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 
+const STORAGE_KEY = 'chive_orcid_oauth_result';
+
 function OrcidCompleteContent() {
   const searchParams = useSearchParams();
   const status = searchParams.get('status');
@@ -15,8 +17,24 @@ function OrcidCompleteContent() {
   const [sent, setSent] = useState(false);
 
   useEffect(() => {
-    if (status === 'success' && orcid && window.opener) {
-      window.opener.postMessage({ type: 'orcid-oauth-complete', orcid }, window.location.origin);
+    if (typeof window === 'undefined') return;
+
+    if (status === 'success' && orcid) {
+      // Write to localStorage - the parent window listens for storage events
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ orcid, timestamp: Date.now() }));
+
+      // Also try postMessage as a fallback
+      if (window.opener) {
+        try {
+          window.opener.postMessage(
+            { type: 'orcid-oauth-complete', orcid },
+            window.location.origin
+          );
+        } catch {
+          // Cross-origin opener, localStorage will handle it
+        }
+      }
+
       setSent(true);
       setTimeout(() => window.close(), 1500);
     }
@@ -31,7 +49,7 @@ function OrcidCompleteContent() {
           <p className="text-sm text-muted-foreground">
             {sent ? 'This window will close automatically.' : 'Verification complete.'}
           </p>
-          {!window.opener && (
+          {typeof window !== 'undefined' && !window.opener && (
             <Button asChild variant="outline" size="sm">
               <Link href="/dashboard/settings">Return to Settings</Link>
             </Button>
