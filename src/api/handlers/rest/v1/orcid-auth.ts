@@ -153,13 +153,18 @@ export function registerOrcidAuthRoutes(app: Hono<ChiveEnv>): void {
         return c.redirect(buildRedirectUrl('error', { message: 'Internal error' }));
       }
 
-      // Update authors_index with verified ORCID
-      await pool.query(
-        `INSERT INTO authors_index (did, orcid, orcid_verified_at)
-         VALUES ($1, $2, NOW())
-         ON CONFLICT (did) DO UPDATE SET orcid = $2, orcid_verified_at = NOW()`,
-        [did, orcid]
+      // Update authors_index with verified ORCID (UPDATE only, since INSERT
+      // would require all NOT NULL columns like pds_url that we don't have here)
+      const updateResult = await pool.query(
+        `UPDATE authors_index SET orcid = $1, orcid_verified_at = NOW() WHERE did = $2`,
+        [orcid, did]
       );
+
+      if (updateResult.rowCount === 0) {
+        // User not yet in authors_index (not indexed from firehose yet).
+        // Verification still succeeded - it will be picked up when they are indexed.
+        logger.info('ORCID verified but user not yet in authors_index', { did, orcid });
+      }
 
       logger.info('ORCID verification completed', { did, orcid });
 
