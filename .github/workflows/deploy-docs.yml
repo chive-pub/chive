@@ -14,6 +14,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' || github.event_name == 'push' }}
 
     steps:
@@ -32,7 +33,7 @@ jobs:
       - name: Deploy to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.DOCS_HOST }}
+          host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "docs/build/*"
@@ -42,7 +43,7 @@ jobs:
       - name: Deploy and restart docs container
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.DOCS_HOST }}
+          host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
