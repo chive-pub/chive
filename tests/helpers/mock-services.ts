@@ -57,31 +57,6 @@ export function createMockAuthzService(): IAuthorizationService {
 }
 
 /**
- * Creates a mock alpha application service for tests.
- *
- * @remarks
- * Returns null/none status by default. Override with vi.mocked().
- */
-export function createMockAlphaService(): ServerConfig['alphaService'] {
-  return {
-    apply: vi.fn().mockResolvedValue({
-      id: 'test-app-id',
-      did: 'did:plc:test123',
-      email: 'test@example.com',
-      sector: 'academia',
-      careerStage: 'postdoc',
-      researchField: 'Test Field',
-      status: 'pending',
-      zulipInvited: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }),
-    getByDid: vi.fn().mockResolvedValue(null),
-    getStatus: vi.fn().mockResolvedValue({ status: 'none' }),
-  } as unknown as ServerConfig['alphaService'];
-}
-
-/**
  * Creates a mock logger for tests.
  */
 export function createMockLogger(): ILogger {

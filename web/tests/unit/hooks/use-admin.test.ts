@@ -43,10 +43,6 @@ import {
   useAdminOverview,
   useSystemHealth,
   usePrometheusMetrics,
-  useAdminAlphaApplications,
-  useAdminAlphaApplication,
-  useAdminAlphaStats,
-  useUpdateAlphaApplication,
   useAdminUserSearch,
   useAdminUserDetail,
   useAssignRole,
@@ -117,19 +113,6 @@ describe('adminKeys', () => {
     expect(adminKeys.overview()).toEqual(['admin', 'overview']);
     expect(adminKeys.health()).toEqual(['admin', 'health']);
     expect(adminKeys.prometheus()).toEqual(['admin', 'prometheus']);
-  });
-
-  it('produces alpha sub-keys', () => {
-    expect(adminKeys.alpha()).toEqual(['admin', 'alpha']);
-    expect(adminKeys.alphaList('pending')).toEqual(['admin', 'alpha', 'list', 'pending']);
-    expect(adminKeys.alphaList()).toEqual(['admin', 'alpha', 'list', undefined]);
-    expect(adminKeys.alphaDetail('did:plc:abc')).toEqual([
-      'admin',
-      'alpha',
-      'detail',
-      'did:plc:abc',
-    ]);
-    expect(adminKeys.alphaStats()).toEqual(['admin', 'alpha', 'stats']);
   });
 
   it('produces user sub-keys', () => {
@@ -256,34 +239,6 @@ describe('adminFetch (via query hooks)', () => {
     );
   });
 
-  it('appends query parameters when status filter is provided', async () => {
-    mockFetchResponse({ items: [], total: 0 });
-
-    const { result } = renderHook(() => useAdminAlphaApplications('pending'), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
-    const parsed = new URL(url);
-    expect(parsed.searchParams.get('status')).toBe('pending');
-  });
-
-  it('omits undefined query parameter values', async () => {
-    mockFetchResponse({ items: [], total: 0 });
-
-    const { result } = renderHook(() => useAdminAlphaApplications(undefined), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
-    const parsed = new URL(url);
-    expect(parsed.searchParams.has('status')).toBe(false);
-  });
-
   it('throws on non-ok response with server error message', async () => {
     mockFetchResponse({ message: 'Forbidden' }, false, 403);
 
@@ -362,22 +317,22 @@ describe('adminPost (via mutation hooks)', () => {
   it('sends POST with JSON body and auth header', async () => {
     mockFetchResponse({ success: true });
 
-    const { result } = renderHook(() => useUpdateAlphaApplication(), {
+    const { result } = renderHook(() => useAssignRole(), {
       wrapper: createWrapper(queryClient),
     });
 
-    await result.current.mutateAsync({ did: 'did:plc:test', action: 'approve' });
+    await result.current.mutateAsync({ did: 'did:plc:test', role: 'moderator' });
 
     expect(fetch).toHaveBeenCalledTimes(1);
     const [url, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [
       string,
       RequestInit,
     ];
-    expect(url).toBe('https://api.chive.test/xrpc/pub.chive.admin.updateAlphaApplication');
+    expect(url).toBe('https://api.chive.test/xrpc/pub.chive.admin.assignRole');
     expect(options.method).toBe('POST');
     expect(JSON.parse(options.body as string)).toEqual({
       did: 'did:plc:test',
-      action: 'approve',
+      role: 'moderator',
     });
     expect((options.headers as Record<string, string>)['Content-Type']).toBe('application/json');
     expect((options.headers as Record<string, string>)['Authorization']).toBe(
@@ -432,26 +387,6 @@ describe('useAdminOverview', () => {
       collections: 0,
       tags: 3,
     });
-  });
-});
-
-describe('useAdminAlphaApplications', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
-
-  it('passes status filter to fetch params', async () => {
-    mockFetchResponse({ items: [], total: 0 });
-    const queryClient = createTestQueryClient();
-
-    const { result } = renderHook(() => useAdminAlphaApplications('approved'), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-
-    const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0] as [string];
-    expect(new URL(url).searchParams.get('status')).toBe('approved');
   });
 });
 
@@ -628,21 +563,6 @@ describe('mutation cache invalidation', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     queryClient.clear();
-  });
-
-  it('useUpdateAlphaApplication invalidates alpha and detail keys', async () => {
-    mockFetchResponse({ success: true });
-
-    const { result } = renderHook(() => useUpdateAlphaApplication(), {
-      wrapper: createWrapper(queryClient),
-    });
-
-    await result.current.mutateAsync({ did: 'did:plc:target', action: 'approve' });
-
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({ queryKey: adminKeys.alpha() });
-    expect(queryClient.invalidateQueries).toHaveBeenCalledWith({
-      queryKey: adminKeys.alphaDetail('did:plc:target'),
-    });
   });
 
   it('useAssignRole invalidates user detail and users list', async () => {

@@ -45,34 +45,33 @@ All mock services are created with Vitest's `vi.fn()` and can be customized usin
 
 ### Available Mock Factories
 
-| Factory                           | Service                   |
-| --------------------------------- | ------------------------- |
-| `createMockAuthzService()`        | Authorization service     |
-| `createMockAlphaService()`        | Alpha application service |
-| `createMockLogger()`              | Logger                    |
-| `createMockIdentity()`            | Identity resolver         |
-| `createMockRepository()`          | ATProto repository        |
-| `createMockSearchEngine()`        | Search engine             |
-| `createMockSearchService()`       | Search service wrapper    |
-| `createMockMetricsService()`      | Metrics service           |
-| `createMockGraphService()`        | Knowledge graph service   |
-| `createMockBlobProxyService()`    | Blob proxy service        |
-| `createMockReviewService()`       | Review service            |
-| `createMockTagManager()`          | Tag manager               |
-| `createMockBacklinkService()`     | Backlink service          |
-| `createMockClaimingService()`     | Claiming service          |
-| `createMockImportService()`       | Import service            |
-| `createMockPDSSyncService()`      | PDS sync service          |
-| `createMockActivityService()`     | Activity service          |
-| `createMockEprintService()`       | Eprint service            |
-| `createMockFacetManager()`        | Facet manager             |
-| `createMockNodeService()`         | Node service              |
-| `createMockEdgeService()`         | Edge service              |
-| `createMockStorageBackend()`      | Storage backend           |
-| `createMockNodeRepository()`      | Node repository           |
-| `createMockEdgeRepository()`      | Edge repository           |
-| `createMockServiceAuthVerifier()` | Service auth verifier     |
-| `createNoOpRelevanceLogger()`     | No-op relevance logger    |
+| Factory                           | Service                 |
+| --------------------------------- | ----------------------- |
+| `createMockAuthzService()`        | Authorization service   |
+| `createMockLogger()`              | Logger                  |
+| `createMockIdentity()`            | Identity resolver       |
+| `createMockRepository()`          | ATProto repository      |
+| `createMockSearchEngine()`        | Search engine           |
+| `createMockSearchService()`       | Search service wrapper  |
+| `createMockMetricsService()`      | Metrics service         |
+| `createMockGraphService()`        | Knowledge graph service |
+| `createMockBlobProxyService()`    | Blob proxy service      |
+| `createMockReviewService()`       | Review service          |
+| `createMockTagManager()`          | Tag manager             |
+| `createMockBacklinkService()`     | Backlink service        |
+| `createMockClaimingService()`     | Claiming service        |
+| `createMockImportService()`       | Import service          |
+| `createMockPDSSyncService()`      | PDS sync service        |
+| `createMockActivityService()`     | Activity service        |
+| `createMockEprintService()`       | Eprint service          |
+| `createMockFacetManager()`        | Facet manager           |
+| `createMockNodeService()`         | Node service            |
+| `createMockEdgeService()`         | Edge service            |
+| `createMockStorageBackend()`      | Storage backend         |
+| `createMockNodeRepository()`      | Node repository         |
+| `createMockEdgeRepository()`      | Edge repository         |
+| `createMockServiceAuthVerifier()` | Service auth verifier   |
+| `createNoOpRelevanceLogger()`     | No-op relevance logger  |
 
 ## Usage Example
 

@@ -7,6 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-03-27
+
+### Added
+
+#### Open Alpha
+
+- Public landing page with inline ATProto login and open alpha notice
+- Bug report button in site header and mobile nav with pre-filled GitHub issue URL
+- Open alpha banner for authenticated users (dismissable, localStorage-persisted)
+- Onboarding prompt banner for new users to link academic accounts (auto-dismisses when ORCID is linked)
+- Permanent redirects from `/apply` and `/pending` to `/`
+
+#### Content Reporting
+
+- `pub.chive.moderation.createReport` XRPC endpoint for user-submitted content reports
+- `content_reports` database table with migration
+- `ContentReportService` with atomic upsert, pagination, and admin review methods
+- Report dialog on eprint detail pages with reason categories and description (2000 char limit)
+- Lexicon schema for moderation createReport
+
+#### ORCID OAuth Verification
+
+- ORCID OAuth 2.0 authorization code flow for verifying researcher identity
+- `pub.chive.author.initiateOrcidVerification` XRPC endpoint generating state and returning ORCID authorize URL
+- `/api/v1/auth/orcid/callback` REST handler for token exchange
+- `orcid_verified_at` column on `authors_index` for tracking verification status
+- `orcidVerified` boolean field in `pub.chive.author.getProfile` response
+- "Sign in with ORCID" button in onboarding wizard (replaces "Coming soon" placeholder)
+- "Verify with ORCID" button in profile settings form
+- Verified badge (ShieldCheck icon) on `OrcidBadge` component for OAuth-verified ORCIDs
+- Popup-based OAuth flow with localStorage event fallback for cross-origin communication
+- Writes verified ORCID to user's PDS profile record after OAuth completion
+- Graceful fallback to "Coming soon" when ORCID OAuth credentials are not configured
+- ORCID credentials wired into staging and production deploy workflows
+
+### Changed
+
+- Anonymous rate limit tightened from 120 to 60 req/min for open alpha
+- Anonymous autocomplete rate limit tightened from 300 to 150 req/min
+- All user-facing Bluesky references replaced with ATProto in login form, login dialog, and handle input
+- Landing page restored to inline login style with ATProto handle input
+- ConditionalHeader only hides on `/login` (was also hiding `/`, `/apply`, `/pending`)
+- OAuth callback redirects to `/dashboard` directly instead of `/`
+
+### Removed
+
+- Alpha gate (`AlphaGate` component) removed from all 16 layout/page files
+- Alpha application system: frontend components, hooks, pages, admin pages, scripts, E2E tests
+- Alpha XRPC handlers (`pub.chive.alpha.apply`, `pub.chive.alpha.checkStatus`)
+- Alpha admin handlers and lexicon schemas
+- `AlphaApplicationService` and `requireAlphaTester` middleware
+- Alpha type re-exports from `web/lib/api/schema.ts`
+
+### Fixed
+
+- Open redirect vulnerability in login page redirect parameter
+- localStorage SSR safety guards in banner components
+- Stale alpha references in admin nav, coming-soon page, and OAuth callback
+
+### Security
+
+- Login redirect parameter validated to prevent open redirects (blocks `//evil.com` and `https://...`)
+- AT-URI and NSID format validation on content report submissions
+- Description length limit (2000 chars) enforced on frontend and backend for content reports
+- ORCID client secret kept server-side only; state parameter is crypto-random, single-use, Redis-backed with TTL
+
 ## [0.4.0] - 2026-03-11
 
 ### Added

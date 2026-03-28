@@ -30,7 +30,6 @@ import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
 import {
   createMockAuthzService,
-  createMockAlphaService,
   createMockLogger,
   createMockEprintService,
   createMockSearchService,
@@ -155,7 +154,6 @@ describe('XRPC Graph Endpoints Integration', () => {
       activityService: createMockActivityService(),
       relevanceLogger: createNoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

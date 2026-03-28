@@ -1,7 +1,15 @@
 'use client';
 
 import * as React from 'react';
-import { Check, ChevronRight, Link2, ExternalLink, Sparkles } from 'lucide-react';
+import {
+  Check,
+  CheckCircle2,
+  ChevronRight,
+  ExternalLink,
+  Link2,
+  Loader2,
+  Sparkles,
+} from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,6 +21,7 @@ import {
   AuthorIdDiscovery,
   type AuthorIdDiscoveryProps,
 } from '@/components/settings/author-id-discovery';
+import { useOrcidOAuth } from '@/lib/hooks/use-orcid-oauth';
 
 type WizardStep = 'start' | 'orcid' | 'discover' | 'complete';
 
@@ -95,6 +104,18 @@ export function AccountLinkingWizard({
   const [step, setStep] = React.useState<WizardStep>('start');
   const [linkedIds, setLinkedIds] = React.useState<LinkedIds>(existingIds);
   const [manualOrcid, setManualOrcid] = React.useState(existingIds.orcid ?? '');
+  const {
+    initiateOrcidOAuth,
+    isVerifying: isOrcidVerifying,
+    isAvailable: isOrcidOAuthAvailable,
+    error: orcidError,
+    verifiedOrcid,
+  } = useOrcidOAuth({
+    onSuccess: (orcid) => {
+      setLinkedIds((prev) => ({ ...prev, orcid }));
+      setManualOrcid(orcid);
+    },
+  });
 
   const handleOrcidNext = () => {
     if (manualOrcid.trim()) {
@@ -216,18 +237,55 @@ export function AccountLinkingWizard({
             </div>
 
             <div className="space-y-4">
-              {/* OAuth Button (placeholder for future implementation) */}
-              <Button variant="outline" className="w-full justify-start h-auto py-3" disabled>
+              {/* ORCID OAuth Button */}
+              <Button
+                variant="outline"
+                className="w-full justify-start h-auto py-3"
+                onClick={isOrcidOAuthAvailable ? initiateOrcidOAuth : undefined}
+                disabled={!isOrcidOAuthAvailable || isOrcidVerifying || !!verifiedOrcid}
+              >
                 <div className="flex items-center gap-3">
                   <div className="h-8 w-8 rounded bg-[#A6CE39] flex items-center justify-center text-white font-bold text-sm">
                     iD
                   </div>
                   <div className="text-left">
-                    <div className="font-medium">Sign in with ORCID</div>
-                    <div className="text-xs text-muted-foreground">Coming soon</div>
+                    {verifiedOrcid ? (
+                      <>
+                        <div className="font-medium flex items-center gap-1.5">
+                          <CheckCircle2 className="h-4 w-4 text-[#A6CE39]" />
+                          ORCID Verified
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {verifiedOrcid}
+                        </div>
+                      </>
+                    ) : isOrcidVerifying ? (
+                      <>
+                        <div className="font-medium flex items-center gap-1.5">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Connecting to ORCID...
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          A popup window should open
+                        </div>
+                      </>
+                    ) : !isOrcidOAuthAvailable ? (
+                      <>
+                        <div className="font-medium">Sign in with ORCID</div>
+                        <div className="text-xs text-muted-foreground">Coming soon</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="font-medium">Sign in with ORCID</div>
+                        <div className="text-xs text-muted-foreground">
+                          Verify your researcher identity
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               </Button>
+              {orcidError && <p className="text-xs text-destructive">{orcidError}</p>}
 
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

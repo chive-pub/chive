@@ -24,7 +24,6 @@ api/
 │   └── xrpc/                  # XRPC handlers (AT Protocol)
 │       ├── activity/          # Activity logging and feed
 │       ├── actor/             # User profile and autocomplete
-│       ├── alpha/             # Alpha access management
 │       ├── author/            # Author profiles
 │       ├── backlink/          # Backlink tracking (Bluesky, etc.)
 │       ├── claiming/          # Paper claiming workflow
@@ -94,7 +93,6 @@ const app = createServer({
   logger,
   serviceDid: 'did:web:chive.pub',
   authzService,
-  alphaService,
 });
 
 // Start server

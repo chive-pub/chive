@@ -102,16 +102,6 @@
       "category": "query",
       "lastChangedIn": "0.1.0"
     },
-    "pub.chive.admin.getAlphaApplication": {
-      "revision": 1,
-      "category": "query",
-      "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.admin.getAlphaStats": {
-      "revision": 1,
-      "category": "query",
-      "lastChangedIn": "0.1.0"
-    },
     "pub.chive.admin.getAuditLog": {
       "revision": 1,
       "category": "query",
@@ -186,11 +176,6 @@
       "revision": 1,
       "category": "query",
       "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.admin.listAlphaApplications": {
-      "revision": 2,
-      "category": "query",
-      "lastChangedIn": "0.4.0"
     },
     "pub.chive.admin.listDLQEntries": {
       "revision": 1,
@@ -297,21 +282,6 @@
       "category": "procedure",
       "lastChangedIn": "0.1.0"
     },
-    "pub.chive.admin.updateAlphaApplication": {
-      "revision": 1,
-      "category": "procedure",
-      "lastChangedIn": "0.1.0"
-    },
-    "pub.chive.alpha.apply": {
-      "revision": 2,
-      "category": "procedure",
-      "lastChangedIn": "0.4.0"
-    },
-    "pub.chive.alpha.checkStatus": {
-      "revision": 1,
-      "category": "query",
-      "lastChangedIn": "0.1.0"
-    },
     "pub.chive.annotation.comment": {
       "revision": 1,
       "category": "record",
@@ -363,9 +333,14 @@
       "lastChangedIn": "0.1.0"
     },
     "pub.chive.author.getProfile": {
-      "revision": 2,
+      "revision": 3,
       "category": "query",
-      "lastChangedIn": "0.4.0"
+      "lastChangedIn": "0.5.0"
+    },
+    "pub.chive.author.initiateOrcidVerification": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.5.0"
     },
     "pub.chive.author.searchAuthors": {
       "revision": 1,
@@ -896,6 +871,11 @@
       "revision": 1,
       "category": "procedure",
       "lastChangedIn": "0.1.0"
+    },
+    "pub.chive.moderation.createReport": {
+      "revision": 1,
+      "category": "procedure",
+      "lastChangedIn": "0.5.0"
     },
     "pub.chive.notification.listEndorsementsOnMyPapers": {
       "revision": 1,

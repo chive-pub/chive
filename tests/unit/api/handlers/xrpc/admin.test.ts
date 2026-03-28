@@ -10,8 +10,6 @@ import { cancelBackfill } from '@/api/handlers/xrpc/admin/cancelBackfill.js';
 import { deleteContent } from '@/api/handlers/xrpc/admin/deleteContent.js';
 import { dismissDLQEntry } from '@/api/handlers/xrpc/admin/dismissDLQEntry.js';
 import { getActivityCorrelation } from '@/api/handlers/xrpc/admin/getActivityCorrelation.js';
-import { getAlphaApplication } from '@/api/handlers/xrpc/admin/getAlphaApplication.js';
-import { getAlphaStats } from '@/api/handlers/xrpc/admin/getAlphaStats.js';
 import { getAuditLog } from '@/api/handlers/xrpc/admin/getAuditLog.js';
 import { getBackfillHistory } from '@/api/handlers/xrpc/admin/getBackfillHistory.js';
 import { getBackfillStatus } from '@/api/handlers/xrpc/admin/getBackfillStatus.js';
@@ -27,7 +25,6 @@ import { getSystemHealth } from '@/api/handlers/xrpc/admin/getSystemHealth.js';
 import { getTrendingVelocity } from '@/api/handlers/xrpc/admin/getTrendingVelocity.js';
 import { getUserDetail } from '@/api/handlers/xrpc/admin/getUserDetail.js';
 import { getViewDownloadTimeSeries } from '@/api/handlers/xrpc/admin/getViewDownloadTimeSeries.js';
-import { listAlphaApplications } from '@/api/handlers/xrpc/admin/listAlphaApplications.js';
 import { listDLQEntries } from '@/api/handlers/xrpc/admin/listDLQEntries.js';
 import { listEndorsements } from '@/api/handlers/xrpc/admin/listEndorsements.js';
 import { listEprints } from '@/api/handlers/xrpc/admin/listEprints.js';
@@ -49,7 +46,6 @@ import { triggerFreshnessScan } from '@/api/handlers/xrpc/admin/triggerFreshness
 import { triggerFullReindex } from '@/api/handlers/xrpc/admin/triggerFullReindex.js';
 import { triggerGovernanceSync } from '@/api/handlers/xrpc/admin/triggerGovernanceSync.js';
 import { triggerPDSScan } from '@/api/handlers/xrpc/admin/triggerPDSScan.js';
-import { updateAlphaApplication } from '@/api/handlers/xrpc/admin/updateAlphaApplication.js';
 import { AuthorizationError, ServiceUnavailableError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -91,30 +87,6 @@ vi.mock('@/config/graph.js', () => ({
   getGraphPdsDid: vi.fn().mockReturnValue('did:plc:chive-governance'),
 }));
 
-// Mock email service (dynamically imported in updateAlphaApplication)
-vi.mock('@/services/email/email-service.js', () => ({
-  createEmailServiceFromEnv: vi.fn().mockReturnValue(null),
-}));
-
-vi.mock('@/services/email/templates/alpha-approval.js', () => ({
-  renderAlphaApprovalEmail: vi.fn().mockReturnValue({
-    subject: 'Approved',
-    html: '<p>Welcome</p>',
-    text: 'Welcome',
-  }),
-}));
-
-// Mock DIDResolver used in listAlphaApplications
-vi.mock('@/auth/did/did-resolver.js', () => {
-  return {
-    DIDResolver: class MockDIDResolver {
-      resolveDID = vi.fn().mockResolvedValue({
-        alsoKnownAs: ['at://resolved-handle.test'],
-      });
-    },
-  };
-});
-
 // ---------------------------------------------------------------------------
 // Shared helpers
 // ---------------------------------------------------------------------------
@@ -133,10 +105,6 @@ const NON_ADMIN_DID = TEST_USER_DIDS.USER_1;
 interface MockAdminService {
   getOverview: ReturnType<typeof vi.fn>;
   getSystemHealth: ReturnType<typeof vi.fn>;
-  getAlphaApplications: ReturnType<typeof vi.fn>;
-  getAlphaApplication: ReturnType<typeof vi.fn>;
-  updateAlphaApplication: ReturnType<typeof vi.fn>;
-  getAlphaStats: ReturnType<typeof vi.fn>;
   searchUsers: ReturnType<typeof vi.fn>;
   getUserDetail: ReturnType<typeof vi.fn>;
   listEprints: ReturnType<typeof vi.fn>;
@@ -192,30 +160,6 @@ const createMockAdminService = (): MockAdminService => ({
     databases: [],
     uptime: 3600,
     timestamp: new Date().toISOString(),
-  }),
-  getAlphaApplications: vi.fn().mockResolvedValue({
-    items: [{ did: 'did:plc:app1', handle: 'user.test', status: 'pending' }],
-    total: 1,
-    cursor: undefined,
-  }),
-  getAlphaApplication: vi.fn().mockResolvedValue({
-    id: 'app-1',
-    did: 'did:plc:app1',
-    status: 'pending',
-  }),
-  updateAlphaApplication: vi.fn().mockResolvedValue({
-    id: 'app-1',
-    did: 'did:plc:app1',
-    status: 'approved',
-    email: 'test@example.com',
-    handle: 'user.test',
-  }),
-  getAlphaStats: vi.fn().mockResolvedValue({
-    byStatus: { pending: 5, approved: 10 },
-    bySector: { academia: 12 },
-    byCareerStage: { postdoc: 8 },
-    recentByDay: [],
-    total: 15,
   }),
   searchUsers: vi
     .fn()
@@ -289,10 +233,6 @@ describe('XRPC Admin Handlers', () => {
   let mockBackfillManager: MockBackfillManager;
   let mockRedis: MockRedis;
   let mockContext: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
-  const mockAlphaService = {
-    grantAccess: vi.fn().mockResolvedValue({ status: 'approved' }),
-  };
-
   const adminUser = { did: ADMIN_DID, handle: 'admin.test', isAdmin: true };
   const nonAdminUser = { did: NON_ADMIN_DID, handle: 'user.test', isAdmin: false };
 
@@ -421,8 +361,6 @@ describe('XRPC Admin Handlers', () => {
             return mockLogger;
           case 'redis':
             return mockRedis;
-          case 'alphaService':
-            return mockAlphaService;
           default:
             return undefined;
         }
@@ -631,267 +569,6 @@ describe('XRPC Admin Handlers', () => {
       expect(result.body).toHaveProperty('processInfo');
       const processInfo = (result.body as { processInfo: { pid: number } }).processInfo;
       expect(processInfo.pid).toBe(process.pid);
-    });
-  });
-
-  // =========================================================================
-  // Alpha: listAlphaApplications
-  // =========================================================================
-  describe('listAlphaApplications', () => {
-    it('rejects non-admin users', async () => {
-      const ctx = buildContext(nonAdminUser);
-      await expect(
-        listAlphaApplications.handler({
-          params: {},
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('rejects missing admin service', async () => {
-      const ctx = buildContextWithoutAdmin(adminUser);
-      await expect(
-        listAlphaApplications.handler({
-          params: {},
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(ServiceUnavailableError);
-    });
-
-    it('returns applications with default limit of 50', async () => {
-      const result = await listAlphaApplications.handler({
-        params: {},
-        input: undefined,
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockAdminService.getAlphaApplications).toHaveBeenCalledWith(undefined, 50, undefined);
-      expect(result.encoding).toBe('application/json');
-    });
-
-    it('passes status filter and custom limit', async () => {
-      await listAlphaApplications.handler({
-        params: { status: 'pending', limit: 10, cursor: 'abc' },
-        input: undefined,
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockAdminService.getAlphaApplications).toHaveBeenCalledWith('pending', 10, 'abc');
-    });
-
-    it('enriches applications without handles via DID resolution', async () => {
-      mockAdminService.getAlphaApplications.mockResolvedValueOnce({
-        items: [{ did: 'did:plc:nohandle', handle: null, status: 'pending' }],
-        total: 1,
-      });
-
-      const result = await listAlphaApplications.handler({
-        params: {},
-        input: undefined,
-        auth: null,
-        c: mockContext as never,
-      });
-
-      const body = result.body as { items: { handle: string | null }[] };
-      expect(body.items[0]?.handle).toBe('resolved-handle.test');
-    });
-  });
-
-  // =========================================================================
-  // Alpha: getAlphaApplication
-  // =========================================================================
-  describe('getAlphaApplication', () => {
-    it('rejects non-admin users', async () => {
-      const ctx = buildContext(nonAdminUser);
-      await expect(
-        getAlphaApplication.handler({
-          params: { did: 'did:plc:app1' },
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('rejects missing admin service', async () => {
-      const ctx = buildContextWithoutAdmin(adminUser);
-      await expect(
-        getAlphaApplication.handler({
-          params: { did: 'did:plc:app1' },
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(ServiceUnavailableError);
-    });
-
-    it('throws ValidationError when DID is missing', async () => {
-      await expect(
-        getAlphaApplication.handler({
-          params: { did: '' },
-          input: undefined,
-          auth: null,
-          c: mockContext as never,
-        })
-      ).rejects.toThrow('DID is required');
-    });
-
-    it('throws NotFoundError when application does not exist', async () => {
-      mockAdminService.getAlphaApplication.mockResolvedValueOnce(null);
-      await expect(
-        getAlphaApplication.handler({
-          params: { did: 'did:plc:missing' },
-          input: undefined,
-          auth: null,
-          c: mockContext as never,
-        })
-      ).rejects.toThrow();
-    });
-
-    it('returns application for valid DID', async () => {
-      const result = await getAlphaApplication.handler({
-        params: { did: 'did:plc:app1' },
-        input: undefined,
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(result.body).toMatchObject({ id: 'app-1', did: 'did:plc:app1' });
-    });
-  });
-
-  // =========================================================================
-  // Alpha: updateAlphaApplication
-  // =========================================================================
-  describe('updateAlphaApplication', () => {
-    it('rejects non-admin users', async () => {
-      const ctx = buildContext(nonAdminUser);
-      await expect(
-        updateAlphaApplication.handler({
-          params: undefined,
-          input: { did: 'did:plc:app1', action: 'approve' },
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('rejects missing admin service', async () => {
-      const ctx = buildContextWithoutAdmin(adminUser);
-      await expect(
-        updateAlphaApplication.handler({
-          params: undefined,
-          input: { did: 'did:plc:app1', action: 'approve' },
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(ServiceUnavailableError);
-    });
-
-    it('throws ValidationError for missing input', async () => {
-      await expect(
-        updateAlphaApplication.handler({
-          params: undefined,
-          input: undefined as never,
-          auth: null,
-          c: mockContext as never,
-        })
-      ).rejects.toThrow('DID and action are required');
-    });
-
-    it('throws ValidationError for invalid action', async () => {
-      await expect(
-        updateAlphaApplication.handler({
-          params: undefined,
-          input: { did: 'did:plc:app1', action: 'invalid' as 'approve' },
-          auth: null,
-          c: mockContext as never,
-        })
-      ).rejects.toThrow('Invalid action');
-    });
-
-    it('adds alpha-tester role on approve', async () => {
-      await updateAlphaApplication.handler({
-        params: undefined,
-        input: { did: 'did:plc:app1', action: 'approve' },
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockRedis.sadd).toHaveBeenCalledWith('chive:authz:roles:did:plc:app1', 'alpha-tester');
-    });
-
-    it('removes alpha-tester role on reject', async () => {
-      await updateAlphaApplication.handler({
-        params: undefined,
-        input: { did: 'did:plc:app1', action: 'reject' },
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockRedis.srem).toHaveBeenCalledWith('chive:authz:roles:did:plc:app1', 'alpha-tester');
-    });
-
-    it('removes alpha-tester role on revoke', async () => {
-      await updateAlphaApplication.handler({
-        params: undefined,
-        input: { did: 'did:plc:app1', action: 'revoke' },
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockRedis.srem).toHaveBeenCalledWith('chive:authz:roles:did:plc:app1', 'alpha-tester');
-    });
-
-    it('throws NotFoundError when application does not exist', async () => {
-      mockAdminService.updateAlphaApplication.mockResolvedValueOnce(null);
-      await expect(
-        updateAlphaApplication.handler({
-          params: undefined,
-          input: { did: 'did:plc:missing', action: 'approve' },
-          auth: null,
-          c: mockContext as never,
-        })
-      ).rejects.toThrow();
-    });
-  });
-
-  // =========================================================================
-  // Alpha: getAlphaStats
-  // =========================================================================
-  describe('getAlphaStats', () => {
-    it('rejects non-admin users', async () => {
-      const ctx = buildContext(nonAdminUser);
-      await expect(
-        getAlphaStats.handler({
-          params: undefined,
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(AuthorizationError);
-    });
-
-    it('rejects missing admin service', async () => {
-      const ctx = buildContextWithoutAdmin(adminUser);
-      await expect(
-        getAlphaStats.handler({
-          params: undefined,
-          input: undefined,
-          auth: null,
-          c: ctx as never,
-        })
-      ).rejects.toThrow(ServiceUnavailableError);
-    });
-
-    it('returns alpha stats', async () => {
-      const result = await getAlphaStats.handler({
-        params: undefined,
-        input: undefined,
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(result.body).toMatchObject({ total: 15 });
     });
   });
 

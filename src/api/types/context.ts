@@ -10,11 +10,11 @@
  */
 
 import type { Redis } from 'ioredis';
+import type { Pool } from 'pg';
 
 import type { ActivityService } from '../../services/activity/activity-service.js';
 import type { AdminService } from '../../services/admin/admin-service.js';
 import type { BackfillManager } from '../../services/admin/backfill-manager.js';
-import type { AlphaApplicationService } from '../../services/alpha/alpha-application-service.js';
 import type { AnnotationService } from '../../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
@@ -31,6 +31,7 @@ import type { PersonalGraphService } from '../../services/graph/personal-graph-s
 import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
+import type { ContentReportService } from '../../services/moderation/content-report-service.js';
 import type { IPDSRegistry } from '../../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
@@ -87,6 +88,7 @@ export interface ChiveServices {
   readonly admin?: AdminService;
   readonly backfillManager?: BackfillManager;
   readonly citationExtraction?: CitationExtractionService;
+  readonly contentReport?: ContentReportService;
 }
 
 /**
@@ -188,14 +190,19 @@ export interface ChiveEnv {
     redis: Redis;
 
     /**
+     * PostgreSQL connection pool for direct queries.
+     *
+     * @remarks
+     * Available for handlers that need raw SQL access (e.g., ORCID verification
+     * callback). Prefer using services for standard operations. May be undefined
+     * if not configured (e.g., in tests).
+     */
+    pool?: Pool;
+
+    /**
      * Logger instance with request context.
      */
     logger: ILogger;
-
-    /**
-     * Alpha application service.
-     */
-    alphaService: AlphaApplicationService;
 
     /**
      * Authenticated user (undefined if anonymous).

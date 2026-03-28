@@ -29,6 +29,13 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  async redirects() {
+    return [
+      { source: '/apply', destination: '/', permanent: true },
+      { source: '/pending', destination: '/', permanent: true },
+    ];
+  },
+
   async rewrites() {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
     return [

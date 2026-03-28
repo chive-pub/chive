@@ -43,7 +43,6 @@ import {
 import { ActivityService } from './services/activity/activity-service.js';
 import { AdminService } from './services/admin/admin-service.js';
 import { BackfillManager } from './services/admin/backfill-manager.js';
-import { AlphaApplicationService } from './services/alpha/alpha-application-service.js';
 import { AnnotationService } from './services/annotation/annotation-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
 import { CDNAdapter } from './services/blob-proxy/cdn-adapter.js';
@@ -66,6 +65,7 @@ import { PersonalGraphService } from './services/graph/personal-graph-service.js
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
+import { ContentReportService } from './services/moderation/content-report-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { PDSScanner } from './services/pds-discovery/pds-scanner.js';
 import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
@@ -529,12 +529,6 @@ function createServices(
     logger,
   });
 
-  // Create alpha application service
-  const alphaService = new AlphaApplicationService({
-    pool: pgPool,
-    logger,
-  });
-
   // Create trusted editor service for governance role management
   const trustedEditorService = new TrustedEditorService({
     pool: pgPool,
@@ -577,6 +571,9 @@ function createServices(
   const adminService = new AdminService(pgPool, redis, esPool, neo4jConnection, logger);
   const backfillManager = new BackfillManager(redis, logger);
 
+  // Create content report service for moderation
+  const contentReportService = new ContentReportService(pgPool, logger);
+
   // Create index retry worker for failed indexRecord calls
   const redisUrl = new URL(config.redisUrl);
   const indexRetryWorker = new IndexRetryWorker({
@@ -614,7 +611,6 @@ function createServices(
     discoveryService,
     rankingService,
     authzService,
-    alphaService,
     trustedEditorService,
     pdsRegistry,
     pdsScanner,
@@ -627,6 +623,8 @@ function createServices(
     collectionService,
     adminService,
     backfillManager,
+    contentReportService,
+    pool: pgPool,
     redis,
     logger,
     serviceDid: config.serviceDid,

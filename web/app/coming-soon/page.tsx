@@ -88,7 +88,7 @@ export default function ComingSoonPage() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#157200] opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-[#157200]" />
             </span>
-            Alpha Coming Soon
+            Coming Soon
           </div>
 
           {/* CTA Buttons */}

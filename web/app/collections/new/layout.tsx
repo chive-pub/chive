@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { PageContainer } from '@/components/layout';
 
@@ -16,16 +15,14 @@ export const metadata: Metadata = {
  * Layout for the new collection page.
  *
  * @remarks
- * Protected by AuthGuard (requires authentication) and AlphaGate (requires alpha approval).
+ * Protected by AuthGuard (requires authentication).
  */
 export default function NewCollectionLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <AlphaGate>
-        <PageContainer variant="narrow" as="main">
-          {children}
-        </PageContainer>
-      </AlphaGate>
+      <PageContainer variant="narrow" as="main">
+        {children}
+      </PageContainer>
     </AuthGuard>
   );
 }

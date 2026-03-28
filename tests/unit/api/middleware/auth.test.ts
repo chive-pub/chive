@@ -3,13 +3,13 @@
  *
  * @remarks
  * Tests authentication and authorization middleware including
- * requireAuth, requireAdmin, and requireAlphaTester.
+ * requireAuth and requireAdmin.
  */
 
 import { Hono } from 'hono';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { requireAuth, requireAdmin, requireAlphaTester } from '@/api/middleware/auth.js';
+import { requireAuth, requireAdmin } from '@/api/middleware/auth.js';
 import { errorHandler } from '@/api/middleware/error-handler.js';
 import type { ChiveEnv, AuthenticatedUser } from '@/api/types/context.js';
 import type { DID } from '@/types/atproto.js';
@@ -124,86 +124,6 @@ describe('Auth Middleware', () => {
       const res = await app.request('/admin/dashboard');
 
       expect(res.status).toBe(401);
-    });
-  });
-
-  describe('requireAlphaTester', () => {
-    it('should allow alpha testers', async () => {
-      const user = createMockUser({ isAlphaTester: true });
-
-      app.use('/alpha/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/alpha/*', requireAlphaTester());
-      app.get('/alpha/feature', (c) => c.json({ success: true }));
-
-      const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(200);
-      const body = (await res.json()) as { success: boolean };
-      expect(body.success).toBe(true);
-    });
-
-    it('should allow admins (implicit alpha access)', async () => {
-      const user = createMockUser({ isAdmin: true, isAlphaTester: true });
-
-      app.use('/alpha/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/alpha/*', requireAlphaTester());
-      app.get('/alpha/feature', (c) => c.json({ success: true }));
-
-      const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(200);
-    });
-
-    it('should reject non-alpha users', async () => {
-      const user = createMockUser({ isAlphaTester: false });
-
-      app.use('/alpha/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/alpha/*', requireAlphaTester());
-      app.get('/alpha/feature', (c) => c.json({ success: true }));
-
-      const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(403);
-      const body = (await res.json()) as { error: string; message: string };
-      expect(body.error).toBe('Forbidden');
-      expect(body.message).toBe('Alpha tester access required');
-    });
-
-    it('should reject unauthenticated users', async () => {
-      app.use('/alpha/*', requireAlphaTester());
-      app.get('/alpha/feature', (c) => c.json({ success: true }));
-
-      const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(401);
-      const body = (await res.json()) as { error: string; message: string };
-      expect(body.error).toBe('AuthenticationRequired');
-      expect(body.message).toBe('Authentication required');
-    });
-
-    it('should reject pending alpha applicants', async () => {
-      // User has applied but not yet approved
-      const user = createMockUser({ isAlphaTester: false });
-
-      app.use('/alpha/*', async (c, next) => {
-        c.set('user', user);
-        await next();
-      });
-      app.use('/alpha/*', requireAlphaTester());
-      app.get('/alpha/feature', (c) => c.json({ success: true }));
-
-      const res = await app.request('/alpha/feature');
-
-      expect(res.status).toBe(403);
     });
   });
 });

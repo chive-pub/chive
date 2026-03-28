@@ -54,7 +54,6 @@ function createMockAbstract(text: string): AnnotationBody {
 
 import {
   createMockAuthzService,
-  createMockAlphaService,
   createMockLogger,
   createMockIdentity,
   createMockRepository,
@@ -343,7 +342,6 @@ describe('XRPC Eprint Endpoints Integration', () => {
       activityService: createMockActivityService(),
       relevanceLogger: new NoOpRelevanceLogger(),
       authzService: createMockAuthzService(),
-      alphaService: createMockAlphaService(),
       redis,
       logger,
       serviceDid: 'did:web:test.chive.pub',

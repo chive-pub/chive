@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Vote, FileText, CheckCircle, Clock, Shield, Settings } from 'lucide-react';
 
-import { AlphaGate } from '@/components/alpha';
 import { AuthGuard } from '@/components/auth/auth-guard';
 import { SidebarLayout, SidebarSection } from '@/components/layout';
 
@@ -58,16 +57,14 @@ function GovernanceNav() {
  * @remarks
  * Uses the SidebarLayout component for consistent sidebar styling
  * across governance pages.
- * Protected by AuthGuard (requires authentication) and AlphaGate (requires alpha approval).
+ * Protected by AuthGuard (requires authentication).
  */
 export default function GovernanceLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthGuard>
-      <AlphaGate>
-        <SidebarLayout sidebar={<GovernanceNav />} stickyNavigation sidebarTitle="Governance">
-          {children}
-        </SidebarLayout>
-      </AlphaGate>
+      <SidebarLayout sidebar={<GovernanceNav />} stickyNavigation sidebarTitle="Governance">
+        {children}
+      </SidebarLayout>
     </AuthGuard>
   );
 }

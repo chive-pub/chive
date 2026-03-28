@@ -321,6 +321,9 @@ export type {
   AuthorSearchResult as Author,
 } from './generated/types/pub/chive/author/searchAuthors.js';
 
+// ORCID verification
+export type { OutputSchema as InitiateOrcidVerificationResponse } from './generated/types/pub/chive/author/initiateOrcidVerification.js';
+
 // =============================================================================
 // REVIEW TYPES
 // =============================================================================
@@ -965,30 +968,6 @@ export type {
 export type { OutputSchema as GetSuggestionsResponse } from './generated/types/pub/chive/claiming/getSuggestions.js';
 
 export type { OutputSchema as FindClaimableResponse } from './generated/types/pub/chive/claiming/findClaimable.js';
-
-// =============================================================================
-// ALPHA TYPES
-// =============================================================================
-
-export type { OutputSchema as AlphaStatusResponse } from './generated/types/pub/chive/alpha/checkStatus.js';
-
-export type {
-  InputSchema as AlphaApplyInput,
-  OutputSchema as AlphaApplyResponse,
-  ResearchKeyword as AlphaResearchKeyword,
-} from './generated/types/pub/chive/alpha/apply.js';
-
-// Organization/sector type for alpha application, derived from generated InputSchema.
-import type { InputSchema as _AlphaApplyInput } from './generated/types/pub/chive/alpha/apply.js';
-export type AlphaSector = _AlphaApplyInput['sector'];
-
-// Career stage for alpha application, derived from generated InputSchema.
-export type AlphaCareerStage = _AlphaApplyInput['careerStage'];
-
-/**
- * Alpha application status.
- */
-export type AlphaApplicationStatus = 'none' | 'pending' | 'approved' | 'rejected';
 
 // =============================================================================
 // NOTIFICATION TYPES

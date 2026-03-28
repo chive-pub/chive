@@ -40,7 +40,7 @@ export interface LoginDialogProps {
  *
  * @remarks
  * Modal dialog for ATProto OAuth authentication.
- * Users can sign in with their Bluesky handle or PDS URL.
+ * Users sign in with their AT Protocol handle.
  *
  * @example
  * ```tsx
@@ -69,8 +69,7 @@ export function LoginDialog({ trigger, open, onOpenChange }: LoginDialogProps) {
         <DialogHeader>
           <DialogTitle>Sign in to Chive</DialogTitle>
           <DialogDescription>
-            Use your Bluesky handle or AT Protocol identity to sign in. Your data stays in your
-            Personal Data Server.
+            Use your AT Protocol handle to sign in. Your data stays in your Personal Data Server.
           </DialogDescription>
         </DialogHeader>
 
