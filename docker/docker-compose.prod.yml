@@ -318,8 +318,8 @@ services:
       - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
       - "traefik.http.routers.api-path.middlewares=api-strip,api-ratelimit"
       # Rate limiting middleware
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=500"
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=200"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=2000"
+      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=500"
       - "traefik.http.routers.api.middlewares=api-ratelimit"
 
   # ---------------------------------------------------------------------------
