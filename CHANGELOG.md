@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-03-27
+## [0.5.0] - 2026-03-30
 
 ### Added
 
@@ -65,6 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Open redirect vulnerability in login page redirect parameter
 - localStorage SSR safety guards in banner components
 - Stale alpha references in admin nav, coming-soon page, and OAuth callback
+- Docs deploy workflow missing `environment: production` for secret access
+- Rate limits too low for SPA usage patterns (Traefik and backend limits raised)
 
 ### Security
 
