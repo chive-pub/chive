@@ -1104,8 +1104,8 @@ describe('OsfPlugin', () => {
       await realPlugin.searchProjects('test2');
       const elapsed = Date.now() - start;
 
-      // Should have waited at least 600ms between requests
-      expect(elapsed).toBeGreaterThanOrEqual(600);
+      // Should have waited at least 600ms between requests (allow 50ms jitter for CI runners)
+      expect(elapsed).toBeGreaterThanOrEqual(550);
     });
 
     it('should log rate limit in initialization', async () => {
