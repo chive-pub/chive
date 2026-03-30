@@ -19,7 +19,7 @@ import type { Hono } from 'hono';
 import { Redis } from 'ioredis';
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 
-import { RATE_LIMIT_KEY_PREFIX, AUTOCOMPLETE_RATE_LIMITS } from '@/api/config.js';
+import { RATE_LIMIT_KEY_PREFIX, RATE_LIMITS, AUTOCOMPLETE_RATE_LIMITS } from '@/api/config.js';
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
@@ -194,7 +194,7 @@ describe('API Rate Limiting Integration', () => {
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(200);
+      expect(limit).toBe(RATE_LIMITS.anonymous);
     });
 
     it('applies higher rate limit for autocomplete endpoints', async () => {
@@ -310,7 +310,7 @@ describe('API Rate Limiting Integration', () => {
       // Implementation uses ZADD with timestamp as score
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < RATE_LIMITS.anonymous; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -333,7 +333,7 @@ describe('API Rate Limiting Integration', () => {
       // Pre-fill Redis sorted set to exceed limit
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < RATE_LIMITS.anonymous; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -361,7 +361,7 @@ describe('API Rate Limiting Integration', () => {
       // Pre-fill Redis sorted set to exceed limit
       const now = Date.now();
       const entries: (string | number)[] = [];
-      for (let i = 0; i < 120; i++) {
+      for (let i = 0; i < RATE_LIMITS.anonymous; i++) {
         entries.push(now - i * 100, `${now - i * 100}:test${i}`);
       }
       await redis.zadd(key, ...entries);
@@ -421,7 +421,7 @@ describe('API Rate Limiting Integration', () => {
       );
 
       expect(autocompleteLimit).toBeGreaterThan(standardLimit);
-      expect(standardLimit).toBe(200);
+      expect(standardLimit).toBe(RATE_LIMITS.anonymous);
       expect(autocompleteLimit).toBe(AUTOCOMPLETE_ANONYMOUS_LIMIT);
     });
   });
@@ -452,7 +452,7 @@ describe('API Rate Limiting Integration', () => {
       });
 
       const limit = parseInt(res.headers.get('X-RateLimit-Limit') ?? '0', 10);
-      expect(limit).toBe(200);
+      expect(limit).toBe(RATE_LIMITS.anonymous);
     });
 
     it('autocomplete endpoints use higher req/min limit', async () => {
