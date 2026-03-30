@@ -44,10 +44,10 @@ export const RATE_LIMITS: Readonly<Record<RateLimitTier, number>> = RATE_LIMITIN
       admin: 999999,
     }
   : {
-      anonymous: 60, // Tightened for open alpha (was 120 during closed alpha)
-      authenticated: 600,
-      premium: 1500,
-      admin: 5000,
+      anonymous: 200, // Per-minute limit for unauthenticated requests
+      authenticated: 1200, // ~20 req/sec for SPA page loads with concurrent API calls
+      premium: 3000,
+      admin: 10000,
     };
 
 /**
@@ -70,10 +70,10 @@ export const AUTOCOMPLETE_RATE_LIMITS: Readonly<Record<RateLimitTier, number>> =
         admin: 999999,
       }
     : {
-        anonymous: 150, // 2.5x normal for fast typing
-        authenticated: 600, // 2x normal
-        premium: 1500, // 1.5x normal
-        admin: 5000, // Same as normal (already high)
+        anonymous: 500, // Higher for autocomplete keystroke frequency
+        authenticated: 1200, // Same as standard (already high)
+        premium: 3000,
+        admin: 10000,
       };
 
 /**

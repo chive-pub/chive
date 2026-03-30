@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2026-03-27
+## [0.5.1] - 2026-03-30
+
+### Fixed
+
+- Docs deploy workflow missing `environment: production` for secret access
+- Rate limits too low for SPA usage patterns (Traefik raised to 2000 avg / 500 burst, backend authenticated raised to 1200 req/min)
+
+## [0.5.0] - 2026-03-28
 
 ### Added
 
@@ -44,8 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Anonymous rate limit tightened from 120 to 60 req/min for open alpha
-- Anonymous autocomplete rate limit tightened from 300 to 150 req/min
 - All user-facing Bluesky references replaced with ATProto in login form, login dialog, and handle input
 - Landing page restored to inline login style with ATProto handle input
 - ConditionalHeader only hides on `/login` (was also hiding `/`, `/apply`, `/pending`)
