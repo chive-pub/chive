@@ -42,6 +42,7 @@ export function up(pgm: MigrationBuilder): void {
     updated_at: { type: 'timestamptz' },
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('cosmik_connections_index', 'owner_did');
@@ -64,6 +65,7 @@ export function up(pgm: MigrationBuilder): void {
     created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('cosmik_follows_index', 'follower_did');
@@ -105,6 +107,7 @@ export function up(pgm: MigrationBuilder): void {
     created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('margin_annotations_index', 'author_did');
@@ -130,6 +133,7 @@ export function up(pgm: MigrationBuilder): void {
     created_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('margin_bookmarks_index', 'author_did');
@@ -247,6 +251,7 @@ export function up(pgm: MigrationBuilder): void {
     removed_at: { type: 'timestamptz', notNull: true },
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('cosmik_link_removals_index', 'collection_uri');
