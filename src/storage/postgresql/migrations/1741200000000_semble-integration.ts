@@ -230,9 +230,10 @@ export function up(pgm: MigrationBuilder): void {
   // =========================================================================
   // 8. Add collaborators column to collections_index
   // =========================================================================
-  pgm.addColumns('collections_index', {
-    collaborators: { type: 'jsonb', default: "'[]'::jsonb" },
-  });
+  pgm.sql(`
+    ALTER TABLE collections_index
+    ADD COLUMN collaborators jsonb NOT NULL DEFAULT '[]'::jsonb
+  `);
 
   // =========================================================================
   // 9. Cosmik collection link removals index (tombstones)
@@ -259,7 +260,7 @@ export function up(pgm: MigrationBuilder): void {
  */
 export function down(pgm: MigrationBuilder): void {
   pgm.dropTable('cosmik_link_removals_index');
-  pgm.dropColumns('collections_index', ['collaborators']);
+  pgm.sql('ALTER TABLE collections_index DROP COLUMN IF EXISTS collaborators');
 
   // Restore previous refresh_backlink_counts function
   pgm.sql(`
