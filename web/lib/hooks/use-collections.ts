@@ -55,12 +55,28 @@ import {
   deleteCosmikMirror,
   addCosmikItem,
   removeCosmikItem,
+  createCosmikConnection,
+  deleteCosmikConnection,
+  createCosmikConnectionsForEdges,
+  deleteCosmikConnections,
+  createCosmikFollow,
+  deleteCosmikFollow,
+  createCosmikCollectionLinkRemoval,
+  createMarginAnnotation,
+  deleteMarginAnnotation,
+  updateMarginAnnotation,
+  createMarginBookmark,
+  deleteMarginBookmark,
+  createMarginReply,
+  createMarginLike,
+  deleteMarginLike,
   type CreateCollectionNodeInput,
   type UpdateCollectionNodeInput,
   type AddItemToCollectionInput,
   type AddSubcollectionInput,
   type MoveSubcollectionInput,
   type CosmikItemMapping,
+  type CosmikConnectionMapping,
 } from '@/lib/atproto/record-creator';
 
 const logger = createLogger({ context: { component: 'use-collections' } });
@@ -488,6 +504,15 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
       isPersonal?: boolean;
     };
   }>;
+  /** Inter-item edges to mirror as Cosmik connections when enableCosmikMirror is true */
+  edges?: Array<{
+    sourceUri: string;
+    targetUri: string;
+    relationSlug: string;
+    note?: string;
+  }>;
+  /** Collaborator DIDs for shared Cosmik collections */
+  collaborators?: string[];
 }
 
 /**
@@ -547,6 +572,7 @@ export function useCreateCollection() {
             title: input.name,
             description: input.description,
             visibility: input.visibility,
+            collaborators: input.collaborators,
             items: (input.items ?? []).map((item) => ({
               url: item.uri,
               title: item.label,
@@ -554,6 +580,7 @@ export function useCreateCollection() {
               itemType: item.type,
               metadata: item.metadata,
             })),
+            edges: input.edges,
           });
 
           cosmikCollectionUri = cosmikResult.cosmikCollectionUri;
@@ -569,6 +596,7 @@ export function useCreateCollection() {
           logger.info('Cosmik mirror created', {
             cosmikCollectionUri: cosmikResult.cosmikCollectionUri,
             itemCount: Object.keys(cosmikResult.cosmikItems).length,
+            connectionCount: Object.keys(cosmikResult.cosmikConnections).length,
           });
         } catch (cosmikError) {
           logger.warn('Cosmik mirror creation failed; collection was created without mirror', {
@@ -1351,6 +1379,325 @@ export function useMoveSubcollection() {
       queryClient.invalidateQueries({
         queryKey: collectionKeys.parent(variables.subcollectionUri),
       });
+    },
+  });
+}
+
+// =============================================================================
+// COSMIK FOLLOW HOOKS
+// =============================================================================
+
+/**
+ * Query key factory for follow queries.
+ */
+export const followKeys = {
+  all: ['follows'] as const,
+  status: (followerDid: string, subject: string) =>
+    [...followKeys.all, 'status', followerDid, subject] as const,
+  count: (subject: string) => [...followKeys.all, 'count', subject] as const,
+};
+
+/**
+ * Fetches the follower count for a collection.
+ *
+ * @param collectionUri - AT-URI of the collection
+ * @param options - Hook options
+ * @returns Query result with follower count
+ */
+export function useFollowerCount(collectionUri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: followKeys.count(collectionUri),
+    queryFn: async (): Promise<{ count: number }> => {
+      const response = await api.pub.chive.collection.getFollowerCount({
+        uri: collectionUri,
+      });
+      return response.data as unknown as { count: number };
+    },
+    enabled: !!collectionUri && (options?.enabled ?? true),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Checks if the current user follows a collection.
+ *
+ * @param followerDid - DID of the current user
+ * @param subject - AT-URI of the collection to check
+ * @param options - Hook options
+ * @returns Query result with follow URI or null
+ */
+export function useFollowStatus(
+  followerDid: string,
+  subject: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: followKeys.status(followerDid, subject),
+    queryFn: async (): Promise<{ followUri: string | null }> => {
+      const response = await api.pub.chive.collection.getFollowStatus({
+        followerDid,
+        subject,
+      });
+      return response.data as unknown as { followUri: string | null };
+    },
+    enabled: !!followerDid && !!subject && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Mutation hook for following a collection.
+ *
+ * @returns Mutation object for creating a follow
+ */
+export function useFollowCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      subject,
+    }: {
+      subject: string;
+      followerDid: string;
+    }): Promise<{ followUri: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'followCollection');
+      }
+
+      const result = await createCosmikFollow(agent, subject);
+      return { followUri: result.uri };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: followKeys.status(variables.followerDid, variables.subject),
+      });
+      queryClient.invalidateQueries({
+        queryKey: followKeys.count(variables.subject),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for unfollowing a collection.
+ *
+ * @returns Mutation object for deleting a follow
+ */
+export function useUnfollowCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      followUri,
+    }: {
+      followUri: string;
+      subject: string;
+      followerDid: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'unfollowCollection');
+      }
+
+      await deleteCosmikFollow(agent, followUri);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: followKeys.status(variables.followerDid, variables.subject),
+      });
+      queryClient.invalidateQueries({
+        queryKey: followKeys.count(variables.subject),
+      });
+    },
+  });
+}
+
+// =============================================================================
+// COSMIK CONNECTION HOOKS (edges between links)
+// =============================================================================
+
+/**
+ * Mutation hook for creating a Cosmik connection (edge between links).
+ *
+ * @remarks
+ * Used when adding an inter-item edge to a collection that has Cosmik mirroring enabled.
+ *
+ * @returns Mutation object for creating connections
+ */
+export function useCreateCosmikConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      collectionUri: string;
+      source: string;
+      target: string;
+      connectionType?: string;
+      note?: string;
+    }): Promise<{ connectionUri: string; connectionCid: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError(
+          'Not authenticated. Please log in again.',
+          401,
+          'createCosmikConnection'
+        );
+      }
+
+      const result = await createCosmikConnection(agent, {
+        source: input.source,
+        target: input.target,
+        connectionType: input.connectionType,
+        note: input.note,
+      });
+
+      return { connectionUri: result.uri, connectionCid: result.cid };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for deleting a Cosmik connection.
+ *
+ * @returns Mutation object for deleting connections
+ */
+export function useDeleteCosmikConnection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      connectionUri,
+    }: {
+      connectionUri: string;
+      collectionUri: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError(
+          'Not authenticated. Please log in again.',
+          401,
+          'deleteCosmikConnection'
+        );
+      }
+
+      await deleteCosmikConnection(agent, connectionUri);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+// =============================================================================
+// MARGIN ANNOTATION HOOKS
+// =============================================================================
+
+/**
+ * Query key factory for Margin annotation queries.
+ */
+export const marginKeys = {
+  all: ['margin'] as const,
+  annotations: (eprintUri: string) => [...marginKeys.all, 'annotations', eprintUri] as const,
+};
+
+/**
+ * Fetches Margin annotations for an eprint.
+ *
+ * @param eprintUri - AT-URI of the eprint
+ * @param options - Hook options
+ * @returns Query result with annotations
+ */
+export function useMarginAnnotations(eprintUri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: marginKeys.annotations(eprintUri),
+    queryFn: async () => {
+      const response = await api.pub.chive.collection.getMarginAnnotations({
+        eprintUri,
+        limit: 50,
+      });
+      return response.data;
+    },
+    enabled: !!eprintUri && (options?.enabled ?? true),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook for creating a Margin annotation (dual-write from Chive review).
+ *
+ * @returns Mutation object for creating annotations
+ */
+export function useCreateMarginAnnotation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      sourceUrl: string;
+      pageTitle?: string;
+      body?: string;
+      bodyFormat?: string;
+      motivation?: 'commenting' | 'assessing' | 'highlighting';
+      tags?: string[];
+      eprintUri: string;
+    }): Promise<{ annotationUri: string; annotationCid: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError(
+          'Not authenticated. Please log in again.',
+          401,
+          'createMarginAnnotation'
+        );
+      }
+
+      const result = await createMarginAnnotation(agent, {
+        sourceUrl: input.sourceUrl,
+        pageTitle: input.pageTitle,
+        body: input.body,
+        bodyFormat: input.bodyFormat,
+        motivation: input.motivation,
+        tags: input.tags,
+      });
+
+      return { annotationUri: result.uri, annotationCid: result.cid };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: marginKeys.annotations(variables.eprintUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for creating a Margin bookmark (dual-write from Chive bookmark).
+ *
+ * @returns Mutation object for creating bookmarks
+ */
+export function useCreateMarginBookmark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      sourceUrl: string;
+      title?: string;
+      description?: string;
+      tags?: string[];
+    }): Promise<{ bookmarkUri: string; bookmarkCid: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'createMarginBookmark');
+      }
+
+      const result = await createMarginBookmark(agent, input);
+      return { bookmarkUri: result.uri, bookmarkCid: result.cid };
     },
   });
 }

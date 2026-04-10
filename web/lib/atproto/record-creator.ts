@@ -3811,6 +3811,8 @@ export async function createCosmikMirror(
     description?: string;
     /** Visibility setting */
     visibility: 'listed' | 'unlisted';
+    /** Collaborator DIDs for shared collections */
+    collaborators?: string[];
     /** Items to create cards for */
     items: Array<{
       /** URL or AT-URI of the item */
@@ -3824,11 +3826,19 @@ export async function createCosmikMirror(
       /** Additional metadata for rich card content */
       metadata?: ItemMetadata;
     }>;
+    /** Inter-item edges to mirror as Cosmik connections */
+    edges?: Array<{
+      sourceUri: string;
+      targetUri: string;
+      relationSlug: string;
+      note?: string;
+    }>;
   }
 ): Promise<{
   cosmikCollectionUri: string;
   cosmikCollectionCid: string;
   cosmikItems: Record<string, CosmikItemMapping>;
+  cosmikConnections: Record<string, CosmikConnectionMapping>;
 }> {
   const did = getAgentDid(agent);
   if (!did) {
@@ -3847,7 +3857,7 @@ export async function createCosmikMirror(
     $type: 'network.cosmik.collection',
     name: input.title,
     accessType: toCosmikAccessType(input.visibility),
-    collaborators: [],
+    collaborators: input.collaborators ?? [],
     createdAt: now,
     updatedAt: now,
   };
@@ -3892,7 +3902,21 @@ export async function createCosmikMirror(
     };
   }
 
-  // Step 3: Update the Chive collection node's metadata with Cosmik URIs
+  // Step 3: Create Cosmik connections for inter-item edges
+  let cosmikConnections: Record<string, CosmikConnectionMapping> = {};
+
+  if (input.edges && input.edges.length > 0) {
+    // Build a map of item AT-URIs to Chive web URLs for connection source/target
+    const itemUrlMap = new Map<string, string>();
+    for (const item of input.items) {
+      const httpUrl = toChiveUrl(item.url, item.itemType, item.subkind);
+      itemUrlMap.set(item.url, httpUrl);
+    }
+
+    cosmikConnections = await createCosmikConnectionsForEdges(agent, input.edges, itemUrlMap);
+  }
+
+  // Step 4: Update the Chive collection node's metadata with Cosmik URIs
   const parsed = parseAtUri(input.collectionUri);
   if (parsed && parsed.did === did) {
     const existingResponse = await agent.com.atproto.repo.getRecord({
@@ -3910,6 +3934,7 @@ export async function createCosmikMirror(
         cosmikCollectionUri,
         cosmikCollectionCid,
         cosmikItems,
+        cosmikConnections,
       },
     };
 
@@ -3924,9 +3949,10 @@ export async function createCosmikMirror(
   recordLogger.info('Cosmik mirror created', {
     cosmikCollectionUri,
     cardCount: Object.keys(cosmikItems).length,
+    connectionCount: Object.keys(cosmikConnections).length,
   });
 
-  return { cosmikCollectionUri, cosmikCollectionCid, cosmikItems };
+  return { cosmikCollectionUri, cosmikCollectionCid, cosmikItems, cosmikConnections };
 }
 
 /**
@@ -3998,7 +4024,8 @@ export async function updateCosmikCollection(
 export async function deleteCosmikMirror(
   agent: Agent,
   cosmikCollectionUri: string,
-  cosmikItems?: Record<string, CosmikItemMapping>
+  cosmikItems?: Record<string, CosmikItemMapping>,
+  cosmikConnections?: Record<string, CosmikConnectionMapping>
 ): Promise<void> {
   const did = getAgentDid(agent);
   if (!did) {
@@ -4007,7 +4034,10 @@ export async function deleteCosmikMirror(
 
   recordLogger.info('Deleting Cosmik mirror', { cosmikCollectionUri });
 
-  // Delete all links and cards first
+  // Delete connections first
+  await deleteCosmikConnections(agent, cosmikConnections);
+
+  // Delete all links and cards
   if (cosmikItems) {
     for (const [url, mapping] of Object.entries(cosmikItems)) {
       try {
@@ -4220,6 +4250,851 @@ async function removeCosmikItemMetadata(
     collection: 'pub.chive.graph.node',
     rkey: parsed.rkey,
     record: updatedRecord,
+  });
+}
+
+// =============================================================================
+// COSMIK CONNECTION RECORDS (edges between links)
+// =============================================================================
+
+/**
+ * Cosmik connection record matching Semble's `network.cosmik.connection` lexicon.
+ *
+ * @remarks
+ * Represents an edge between two entities (URLs or AT URIs) in the Semble graph.
+ * Used to mirror Chive's inter-item edges to the Cosmik/Semble ecosystem.
+ */
+export interface CosmikConnectionRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.connection';
+  source: string;
+  target: string;
+  connectionType?: string;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Mapping of a Cosmik connection's record URI, stored in Chive node metadata.
+ */
+export interface CosmikConnectionMapping {
+  connectionUri: string;
+  connectionCid: string;
+}
+
+/**
+ * Creates a Cosmik connection record in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Connection data
+ * @returns Created record result
+ */
+export async function createCosmikConnection(
+  agent: Agent,
+  input: {
+    source: string;
+    target: string;
+    connectionType?: string;
+    note?: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const now = new Date().toISOString();
+
+  const record: CosmikConnectionRecord = {
+    $type: 'network.cosmik.connection',
+    source: input.source,
+    target: input.target,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  if (input.connectionType) record.connectionType = input.connectionType;
+  if (input.note) record.note = input.note;
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.connection',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a Cosmik connection record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param connectionUri - AT-URI of the connection record
+ */
+export async function deleteCosmikConnection(agent: Agent, connectionUri: string): Promise<void> {
+  const parsed = parseAtUri(connectionUri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.connection',
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Updates a Cosmik connection record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param connectionUri - AT-URI of the connection record
+ * @param changes - Fields to update
+ */
+export async function updateCosmikConnection(
+  agent: Agent,
+  connectionUri: string,
+  changes: {
+    connectionType?: string;
+    note?: string;
+  }
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(connectionUri);
+  if (!parsed) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.connection',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as CosmikConnectionRecord;
+
+  const updatedRecord: CosmikConnectionRecord = {
+    ...existing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (changes.connectionType !== undefined) updatedRecord.connectionType = changes.connectionType;
+  if (changes.note !== undefined) updatedRecord.note = changes.note;
+
+  await agent.com.atproto.repo.putRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.connection',
+    rkey: parsed.rkey,
+    record: updatedRecord,
+  });
+}
+
+/**
+ * Creates Cosmik connections for all inter-item edges in a collection.
+ *
+ * @remarks
+ * Called during mirror creation and when edges are added to a mirrored collection.
+ * Converts AT-URIs to Chive web URLs for the source/target fields, and maps
+ * Chive relation slugs to Cosmik connectionType values.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param edges - Inter-item edges to mirror
+ * @param itemUrlMap - Map of item AT-URIs to their Chive web URLs
+ * @returns Mapping of Chive edge key to Cosmik connection URI/CID
+ */
+export async function createCosmikConnectionsForEdges(
+  agent: Agent,
+  edges: Array<{
+    sourceUri: string;
+    targetUri: string;
+    relationSlug: string;
+    note?: string;
+  }>,
+  itemUrlMap: Map<string, string>
+): Promise<Record<string, CosmikConnectionMapping>> {
+  const connections: Record<string, CosmikConnectionMapping> = {};
+
+  for (const edge of edges) {
+    const sourceUrl = itemUrlMap.get(edge.sourceUri) ?? edge.sourceUri;
+    const targetUrl = itemUrlMap.get(edge.targetUri) ?? edge.targetUri;
+
+    const result = await createCosmikConnection(agent, {
+      source: sourceUrl,
+      target: targetUrl,
+      connectionType: edge.relationSlug,
+      note: edge.note,
+    });
+
+    const edgeKey = `${edge.sourceUri}::${edge.targetUri}::${edge.relationSlug}`;
+    connections[edgeKey] = {
+      connectionUri: result.uri,
+      connectionCid: result.cid,
+    };
+  }
+
+  return connections;
+}
+
+/**
+ * Deletes all Cosmik connections associated with a mirror.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cosmikConnections - Mapping of edge keys to connection URIs
+ */
+export async function deleteCosmikConnections(
+  agent: Agent,
+  cosmikConnections?: Record<string, CosmikConnectionMapping>
+): Promise<void> {
+  if (!cosmikConnections) return;
+
+  for (const [key, mapping] of Object.entries(cosmikConnections)) {
+    try {
+      await deleteCosmikConnection(agent, mapping.connectionUri);
+    } catch (err) {
+      recordLogger.warn('Failed to delete Cosmik connection', {
+        key,
+        connectionUri: mapping.connectionUri,
+        err,
+      });
+    }
+  }
+}
+
+// =============================================================================
+// COSMIK COLLECTION LINK REMOVAL (tombstones for collaborative collections)
+// =============================================================================
+
+/**
+ * Cosmik collectionLinkRemoval record matching Semble's lexicon.
+ *
+ * @remarks
+ * Created by a collection owner to indicate that a collaborator's link
+ * has been removed. Since the owner cannot delete records in another user's
+ * PDS, this tombstone record signals the removal.
+ */
+export interface CosmikCollectionLinkRemovalRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.collectionLinkRemoval';
+  collection: { uri: string; cid: string };
+  removedLink: { uri: string; cid: string };
+  removedAt: string;
+}
+
+/**
+ * Creates a collectionLinkRemoval tombstone record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Removal data
+ * @returns Created record result
+ */
+export async function createCosmikCollectionLinkRemoval(
+  agent: Agent,
+  input: {
+    collectionUri: string;
+    collectionCid: string;
+    linkUri: string;
+    linkCid: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CosmikCollectionLinkRemovalRecord = {
+    $type: 'network.cosmik.collectionLinkRemoval',
+    collection: { uri: input.collectionUri, cid: input.collectionCid },
+    removedLink: { uri: input.linkUri, cid: input.linkCid },
+    removedAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.collectionLinkRemoval',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// COSMIK FOLLOW RECORDS
+// =============================================================================
+
+/**
+ * Cosmik follow record matching Semble's `network.cosmik.follow` lexicon.
+ */
+export interface CosmikFollowRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.follow';
+  subject: string;
+  createdAt: string;
+}
+
+/**
+ * Creates a Cosmik follow record for a user or collection.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param subject - DID (user follow) or AT-URI (collection follow)
+ * @returns Created record result
+ */
+export async function createCosmikFollow(
+  agent: Agent,
+  subject: string
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CosmikFollowRecord = {
+    $type: 'network.cosmik.follow',
+    subject,
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.follow',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a Cosmik follow record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param followUri - AT-URI of the follow record
+ */
+export async function deleteCosmikFollow(agent: Agent, followUri: string): Promise<void> {
+  const parsed = parseAtUri(followUri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'network.cosmik.follow',
+    rkey: parsed.rkey,
+  });
+}
+
+// =============================================================================
+// COSMIK NOTE CARD RECORDS
+// =============================================================================
+
+/**
+ * Cosmik note card record matching Semble's `network.cosmik.card` NOTE type.
+ */
+export interface CosmikNoteCardRecord {
+  [key: string]: unknown;
+  $type: 'network.cosmik.card';
+  type: 'NOTE';
+  content: {
+    $type: 'network.cosmik.card#noteContent';
+    text: string;
+  };
+  parentCard?: { uri: string; cid: string };
+  originalCard?: { uri: string; cid: string };
+  provenance?: { via: { uri: string; cid: string } };
+  createdAt: string;
+}
+
+/**
+ * Creates a NOTE-type Cosmik card.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Note card data
+ * @returns Created record result
+ */
+export async function createCosmikNoteCard(
+  agent: Agent,
+  input: {
+    text: string;
+    parentCard?: { uri: string; cid: string };
+    originalCard?: { uri: string; cid: string };
+    provenanceVia?: { uri: string; cid: string };
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CosmikNoteCardRecord = {
+    $type: 'network.cosmik.card',
+    type: 'NOTE',
+    content: {
+      $type: 'network.cosmik.card#noteContent',
+      text: input.text,
+    },
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.parentCard) record.parentCard = input.parentCard;
+  if (input.originalCard) record.originalCard = input.originalCard;
+  if (input.provenanceVia) record.provenance = { via: input.provenanceVia };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'network.cosmik.card',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+// =============================================================================
+// MARGIN ANNOTATION RECORDS (at.margin.*)
+// =============================================================================
+
+/**
+ * Margin annotation target structure (W3C SpecificResource).
+ */
+export interface MarginAnnotationTarget {
+  $type: 'at.margin.annotation#target';
+  source: string;
+  sourceHash?: string;
+  title?: string;
+  selector?: MarginSelector;
+}
+
+/**
+ * Margin TextQuoteSelector (W3C TextQuoteSelector).
+ */
+export interface MarginTextQuoteSelector {
+  type: 'TextQuoteSelector';
+  exact: string;
+  prefix?: string;
+  suffix?: string;
+}
+
+/**
+ * Margin TextPositionSelector (W3C TextPositionSelector).
+ */
+export interface MarginTextPositionSelector {
+  type: 'TextPositionSelector';
+  start: number;
+  end: number;
+}
+
+/**
+ * Margin FragmentSelector (W3C FragmentSelector).
+ */
+export interface MarginFragmentSelector {
+  type: 'FragmentSelector';
+  value: string;
+  conformsTo?: string;
+}
+
+/**
+ * Union of all Margin selector types.
+ */
+export type MarginSelector =
+  | MarginTextQuoteSelector
+  | MarginTextPositionSelector
+  | MarginFragmentSelector;
+
+/**
+ * Margin annotation body (W3C AnnotationBody).
+ */
+export interface MarginAnnotationBody {
+  $type: 'at.margin.annotation#body';
+  value: string;
+  format?: string;
+  language?: string;
+}
+
+/**
+ * W3C motivation values supported by Margin.
+ */
+export type MarginMotivation =
+  | 'commenting'
+  | 'highlighting'
+  | 'bookmarking'
+  | 'tagging'
+  | 'describing'
+  | 'linking'
+  | 'replying'
+  | 'editing'
+  | 'questioning'
+  | 'assessing';
+
+/**
+ * Margin annotation record matching `at.margin.annotation` lexicon.
+ */
+export interface MarginAnnotationRecord {
+  [key: string]: unknown;
+  $type: 'at.margin.annotation';
+  target: MarginAnnotationTarget;
+  body?: MarginAnnotationBody;
+  motivation?: MarginMotivation;
+  tags?: string[];
+  createdAt: string;
+}
+
+/**
+ * Computes a SHA256 hash of a normalized URL for Margin sourceHash.
+ *
+ * @param url - URL to hash
+ * @returns Hex-encoded SHA256 hash
+ */
+async function computeSourceHash(url: string): Promise<string> {
+  const normalized = url.toLowerCase().replace(/\/+$/, '');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(normalized);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/**
+ * Creates a Margin annotation record in the user's PDS.
+ *
+ * @remarks
+ * Used for dual-writing Chive reviews as W3C Web Annotations. Maps
+ * review body text to annotation body, and inline selections to
+ * TextQuoteSelector.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Annotation data
+ * @returns Created record result
+ */
+export async function createMarginAnnotation(
+  agent: Agent,
+  input: {
+    sourceUrl: string;
+    pageTitle?: string;
+    body?: string;
+    bodyFormat?: string;
+    motivation?: MarginMotivation;
+    selector?: MarginSelector;
+    tags?: string[];
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const sourceHash = await computeSourceHash(input.sourceUrl);
+
+  const target: MarginAnnotationTarget = {
+    $type: 'at.margin.annotation#target',
+    source: input.sourceUrl,
+    sourceHash,
+  };
+
+  if (input.pageTitle) target.title = input.pageTitle;
+  if (input.selector) target.selector = input.selector;
+
+  const record: MarginAnnotationRecord = {
+    $type: 'at.margin.annotation',
+    target,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.body) {
+    record.body = {
+      $type: 'at.margin.annotation#body',
+      value: input.body,
+      format: input.bodyFormat ?? 'text/plain',
+    };
+  }
+
+  if (input.motivation) record.motivation = input.motivation;
+  if (input.tags && input.tags.length > 0) record.tags = input.tags.slice(0, 10);
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'at.margin.annotation',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a Margin annotation record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param annotationUri - AT-URI of the annotation record
+ */
+export async function deleteMarginAnnotation(agent: Agent, annotationUri: string): Promise<void> {
+  const parsed = parseAtUri(annotationUri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: parsed.collection,
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Updates a Margin annotation record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param annotationUri - AT-URI of the annotation record
+ * @param changes - Fields to update
+ */
+export async function updateMarginAnnotation(
+  agent: Agent,
+  annotationUri: string,
+  changes: {
+    body?: string;
+    bodyFormat?: string;
+    motivation?: MarginMotivation;
+    tags?: string[];
+  }
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const parsed = parseAtUri(annotationUri);
+  if (!parsed) return;
+
+  const existingResponse = await agent.com.atproto.repo.getRecord({
+    repo: parsed.did,
+    collection: 'at.margin.annotation',
+    rkey: parsed.rkey,
+  });
+
+  const existing = existingResponse.data.value as MarginAnnotationRecord;
+  const updated: MarginAnnotationRecord = { ...existing };
+
+  if (changes.body !== undefined) {
+    updated.body = {
+      $type: 'at.margin.annotation#body',
+      value: changes.body,
+      format: changes.bodyFormat ?? existing.body?.format ?? 'text/plain',
+    };
+  }
+
+  if (changes.motivation !== undefined) updated.motivation = changes.motivation;
+  if (changes.tags !== undefined) updated.tags = changes.tags.slice(0, 10);
+
+  await agent.com.atproto.repo.putRecord({
+    repo: parsed.did,
+    collection: 'at.margin.annotation',
+    rkey: parsed.rkey,
+    record: updated,
+  });
+}
+
+/**
+ * Margin bookmark record matching `at.margin.bookmark` lexicon.
+ */
+export interface MarginBookmarkRecord {
+  [key: string]: unknown;
+  $type: 'at.margin.bookmark';
+  source: string;
+  sourceHash?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  createdAt: string;
+}
+
+/**
+ * Creates a Margin bookmark record in the user's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Bookmark data
+ * @returns Created record result
+ */
+export async function createMarginBookmark(
+  agent: Agent,
+  input: {
+    sourceUrl: string;
+    title?: string;
+    description?: string;
+    tags?: string[];
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const sourceHash = await computeSourceHash(input.sourceUrl);
+
+  const record: MarginBookmarkRecord = {
+    $type: 'at.margin.bookmark',
+    source: input.sourceUrl,
+    sourceHash,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.title) record.title = input.title;
+  if (input.description) record.description = input.description;
+  if (input.tags && input.tags.length > 0) record.tags = input.tags.slice(0, 10);
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'at.margin.bookmark',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a Margin bookmark record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param bookmarkUri - AT-URI of the bookmark record
+ */
+export async function deleteMarginBookmark(agent: Agent, bookmarkUri: string): Promise<void> {
+  const parsed = parseAtUri(bookmarkUri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'at.margin.bookmark',
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Margin reply record matching `at.margin.reply` lexicon.
+ */
+export interface MarginReplyRecord {
+  [key: string]: unknown;
+  $type: 'at.margin.reply';
+  parent: { uri: string; cid: string };
+  root: { uri: string; cid: string };
+  text: string;
+  format?: string;
+  createdAt: string;
+}
+
+/**
+ * Creates a Margin reply record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Reply data
+ * @returns Created record result
+ */
+export async function createMarginReply(
+  agent: Agent,
+  input: {
+    parentUri: string;
+    parentCid: string;
+    rootUri: string;
+    rootCid: string;
+    text: string;
+    format?: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: MarginReplyRecord = {
+    $type: 'at.margin.reply',
+    parent: { uri: input.parentUri, cid: input.parentCid },
+    root: { uri: input.rootUri, cid: input.rootCid },
+    text: input.text,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (input.format) record.format = input.format;
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'at.margin.reply',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Margin like record matching `at.margin.like` lexicon.
+ */
+export interface MarginLikeRecord {
+  [key: string]: unknown;
+  $type: 'at.margin.like';
+  subject: { uri: string; cid: string };
+  createdAt: string;
+}
+
+/**
+ * Creates a Margin like record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param subjectUri - AT-URI of the annotation or reply to like
+ * @param subjectCid - CID of the target record
+ * @returns Created record result
+ */
+export async function createMarginLike(
+  agent: Agent,
+  subjectUri: string,
+  subjectCid: string
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: MarginLikeRecord = {
+    $type: 'at.margin.like',
+    subject: { uri: subjectUri, cid: subjectCid },
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'at.margin.like',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a Margin like record.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param likeUri - AT-URI of the like record
+ */
+export async function deleteMarginLike(agent: Agent, likeUri: string): Promise<void> {
+  const parsed = parseAtUri(likeUri);
+  if (!parsed) return;
+
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'at.margin.like',
+    rkey: parsed.rkey,
   });
 }
 

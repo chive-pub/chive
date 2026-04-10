@@ -84,6 +84,10 @@ export interface CollectionFormValues {
   edges: CollectionEdgeFormData[];
   subcollections: SubcollectionFormData[];
   enableCosmikMirror: boolean;
+  /** Collaborator DIDs for shared Cosmik collections */
+  cosmikCollaborators: string[];
+  /** Whether to sync edges as Cosmik connections */
+  syncEdgesAsConnections: boolean;
 }
 
 // =============================================================================
@@ -152,6 +156,8 @@ export const collectionFormSchema = z.object({
     )
     .optional(),
   enableCosmikMirror: z.boolean().default(false),
+  cosmikCollaborators: z.array(z.string()).default([]),
+  syncEdgesAsConnections: z.boolean().default(true),
 });
 
 /**
