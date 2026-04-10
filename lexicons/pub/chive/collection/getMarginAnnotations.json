@@ -1,0 +1,105 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getMarginAnnotations",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get Margin annotations (at.margin.annotation, at.margin.highlight) targeting a Chive eprint",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "description": "AT-URI of the eprint to get annotations for"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["annotations"],
+          "properties": {
+            "annotations": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#annotationView"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            },
+            "hasMore": {
+              "type": "boolean"
+            },
+            "total": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "annotationView": {
+      "type": "object",
+      "required": ["uri", "authorDid", "recordType", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "AT-URI of the annotation record"
+        },
+        "authorDid": {
+          "type": "string",
+          "description": "DID of the annotation author"
+        },
+        "recordType": {
+          "type": "string",
+          "description": "Record type: annotation or highlight"
+        },
+        "motivation": {
+          "type": "string",
+          "description": "W3C annotation motivation"
+        },
+        "body": {
+          "type": "string",
+          "description": "Annotation body text"
+        },
+        "bodyFormat": {
+          "type": "string",
+          "description": "Body MIME type"
+        },
+        "pageTitle": {
+          "type": "string",
+          "description": "Page title at annotation time"
+        },
+        "color": {
+          "type": "string",
+          "description": "Highlight color"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    }
+  }
+}
