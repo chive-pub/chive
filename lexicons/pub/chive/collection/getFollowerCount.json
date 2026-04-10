@@ -1,0 +1,34 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getFollowerCount",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the follower count for a collection (via network.cosmik.follow records)",
+      "parameters": {
+        "type": "params",
+        "required": ["uri"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["count"],
+          "properties": {
+            "count": {
+              "type": "integer",
+              "description": "Number of followers"
+            }
+          }
+        }
+      }
+    }
+  }
+}

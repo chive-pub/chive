@@ -1458,10 +1458,15 @@ export function isImportingPlugin(plugin: IChivePlugin): plugin is ImportingPlug
  */
 export type BacklinkSourceType =
   | 'cosmik.collection'
+  | 'cosmik.connection'
+  | 'cosmik.follow'
   | 'leaflet.list'
   | 'whitewind.blog'
   | 'bluesky.post'
   | 'bluesky.embed'
+  | 'margin.annotation'
+  | 'margin.highlight'
+  | 'margin.bookmark'
   | 'other';
 
 /**

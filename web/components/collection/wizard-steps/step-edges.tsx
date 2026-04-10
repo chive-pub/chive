@@ -262,6 +262,14 @@ export function StepEdges({ form }: StepEdgesProps) {
           Define relationships between items. For example, &quot;Paper A cites Paper B&quot; or
           &quot;Author X contributed to Paper Y.&quot;
         </p>
+        {form.watch('enableCosmikMirror') && form.watch('syncEdgesAsConnections') && (
+          <div className="mt-2 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+            <svg className="h-3 w-3" viewBox="0 0 12 12" fill="currentColor">
+              <circle cx="6" cy="6" r="6" />
+            </svg>
+            Edges will be synced to Semble as connections
+          </div>
+        )}
       </div>
 
       {/* Edge creation form */}

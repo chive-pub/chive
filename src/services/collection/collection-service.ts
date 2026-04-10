@@ -1796,6 +1796,552 @@ export class CollectionService {
     }
   }
 
+  // =========================================================================
+  // COSMIK CONNECTIONS (edges between links)
+  // =========================================================================
+
+  /**
+   * Retrieves Cosmik connections that reference items in a collection.
+   *
+   * @param collectionUri - AT URI of the collection
+   * @returns Connections where source or target is an item in the collection
+   *
+   * @public
+   */
+  async getCosmikConnections(collectionUri: AtUri): Promise<
+    {
+      uri: string;
+      sourceEntity: string;
+      targetEntity: string;
+      connectionType?: string;
+      note?: string;
+      chiveEdgeUri?: string;
+    }[]
+  > {
+    try {
+      const result = await this.pool.query<{
+        uri: string;
+        source_entity: string;
+        target_entity: string;
+        connection_type: string | null;
+        note: string | null;
+        chive_edge_uri: string | null;
+      }>(
+        `SELECT cc.uri, cc.source_entity, cc.target_entity,
+                cc.connection_type, cc.note, cc.chive_edge_uri
+         FROM cosmik_connections_index cc
+         WHERE cc.chive_edge_uri IN (
+           SELECT pge.uri FROM personal_graph_edges_index pge
+           WHERE pge.source_uri IN (
+             SELECT ce.target_uri FROM collection_edges_index ce
+             WHERE ce.source_uri = $1 AND ce.relation_slug = 'contains'
+           )
+           AND pge.target_uri IN (
+             SELECT ce.target_uri FROM collection_edges_index ce
+             WHERE ce.source_uri = $1 AND ce.relation_slug = 'contains'
+           )
+           AND pge.relation_slug NOT IN ('contains', 'subcollection-of')
+         )`,
+        [collectionUri]
+      );
+
+      return result.rows.map((row) => ({
+        uri: row.uri,
+        sourceEntity: row.source_entity,
+        targetEntity: row.target_entity,
+        connectionType: row.connection_type ?? undefined,
+        note: row.note ?? undefined,
+        chiveEdgeUri: row.chive_edge_uri ?? undefined,
+      }));
+    } catch (error) {
+      this.logger.error(
+        'Failed to get Cosmik connections',
+        error instanceof Error ? error : undefined,
+        { collectionUri }
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Indexes a Cosmik connection record from the firehose.
+   *
+   * @param record - Parsed connection record
+   * @param metadata - Record metadata
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexCosmikConnection(
+    record: {
+      source: string;
+      target: string;
+      connectionType?: string;
+      note?: string;
+    },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      const ownerDid = extractDidFromUri(metadata.uri);
+
+      await this.pool.query(
+        `INSERT INTO cosmik_connections_index (
+          uri, cid, owner_did, source_entity, target_entity,
+          connection_type, note, created_at, pds_url, indexed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          source_entity = EXCLUDED.source_entity,
+          target_entity = EXCLUDED.target_entity,
+          connection_type = EXCLUDED.connection_type,
+          note = EXCLUDED.note,
+          updated_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          ownerDid,
+          record.source,
+          record.target,
+          record.connectionType ?? null,
+          record.note ?? null,
+          metadata.indexedAt,
+          metadata.pdsUrl,
+        ]
+      );
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Cosmik connection: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Cosmik connection', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Deletes a Cosmik connection from the index.
+   *
+   * @param uri - AT URI of the connection
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteCosmikConnection(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM cosmik_connections_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'DELETE',
+        `Failed to delete Cosmik connection: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return Err(dbError);
+    }
+  }
+
+  // =========================================================================
+  // COSMIK FOLLOWS
+  // =========================================================================
+
+  /**
+   * Gets the follower count for a collection.
+   *
+   * @param collectionUri - AT URI of the collection (as a Cosmik subject)
+   * @returns Number of followers
+   *
+   * @public
+   */
+  async getFollowerCount(collectionUri: AtUri): Promise<number> {
+    try {
+      const result = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM cosmik_follows_index
+         WHERE subject = $1 AND subject_type = 'collection'`,
+        [collectionUri]
+      );
+      return parseInt(result.rows[0]?.count ?? '0', 10);
+    } catch (error) {
+      this.logger.error(
+        'Failed to get follower count',
+        error instanceof Error ? error : undefined,
+        { collectionUri }
+      );
+      return 0;
+    }
+  }
+
+  /**
+   * Checks if a user follows a collection.
+   *
+   * @param followerDid - DID of the follower
+   * @param subject - AT URI of the collection
+   * @returns Follow URI if following, null otherwise
+   *
+   * @public
+   */
+  async getFollowStatus(followerDid: DID, subject: string): Promise<string | null> {
+    try {
+      const result = await this.pool.query<{ uri: string }>(
+        `SELECT uri FROM cosmik_follows_index
+         WHERE follower_did = $1 AND subject = $2
+         LIMIT 1`,
+        [followerDid, subject]
+      );
+      return result.rows[0]?.uri ?? null;
+    } catch (error) {
+      this.logger.error('Failed to get follow status', error instanceof Error ? error : undefined, {
+        followerDid,
+        subject,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Indexes a Cosmik follow record from the firehose.
+   *
+   * @param record - Parsed follow record
+   * @param metadata - Record metadata
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexCosmikFollow(
+    record: { subject: string; createdAt: string },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      const followerDid = extractDidFromUri(metadata.uri);
+      const subjectType = record.subject.startsWith('did:') ? 'user' : 'collection';
+
+      await this.pool.query(
+        `INSERT INTO cosmik_follows_index (
+          uri, cid, follower_did, subject, subject_type, created_at, pds_url, indexed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+        ON CONFLICT (uri) DO NOTHING`,
+        [
+          metadata.uri,
+          metadata.cid,
+          followerDid,
+          record.subject,
+          subjectType,
+          new Date(record.createdAt),
+          metadata.pdsUrl,
+        ]
+      );
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Cosmik follow: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Cosmik follow', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Deletes a Cosmik follow from the index.
+   *
+   * @param uri - AT URI of the follow record
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteCosmikFollow(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM cosmik_follows_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'DELETE',
+        `Failed to delete Cosmik follow: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return Err(dbError);
+    }
+  }
+
+  // =========================================================================
+  // MARGIN ANNOTATIONS
+  // =========================================================================
+
+  /**
+   * Retrieves Margin annotations targeting a specific eprint.
+   *
+   * @param eprintUri - AT URI of the eprint
+   * @param options - Pagination options
+   * @returns Paginated list of Margin annotations
+   *
+   * @public
+   */
+  async getMarginAnnotationsForEprint(
+    eprintUri: AtUri,
+    options: PaginationOptions = {}
+  ): Promise<
+    PaginatedResult<{
+      uri: string;
+      authorDid: string;
+      recordType: string;
+      motivation?: string;
+      body?: string;
+      bodyFormat?: string;
+      pageTitle?: string;
+      selectorJson?: Record<string, unknown>;
+      color?: string;
+      tags?: string[];
+      createdAt: Date;
+    }>
+  > {
+    const limit = Math.min(options.limit ?? 50, 100);
+
+    try {
+      const countResult = await this.pool.query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count FROM margin_annotations_index WHERE eprint_uri = $1`,
+        [eprintUri]
+      );
+      const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
+
+      let sql = `SELECT uri, author_did, record_type, motivation, body, body_format,
+                        page_title, selector_json, color, tags, created_at
+                 FROM margin_annotations_index
+                 WHERE eprint_uri = $1`;
+      const params: unknown[] = [eprintUri];
+
+      if (options.cursor) {
+        const parts = options.cursor.split('::');
+        const timestamp = parts[0] ?? new Date().toISOString();
+        const cursorUri = parts[1] ?? '';
+        sql += ` AND (created_at, uri) < ($2, $3)`;
+        params.push(new Date(timestamp), cursorUri);
+      }
+
+      sql += ` ORDER BY created_at DESC, uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1);
+
+      const result = await this.pool.query<{
+        uri: string;
+        author_did: string;
+        record_type: string;
+        motivation: string | null;
+        body: string | null;
+        body_format: string | null;
+        page_title: string | null;
+        selector_json: Record<string, unknown> | null;
+        color: string | null;
+        tags: string[] | null;
+        created_at: Date;
+      }>(sql, params);
+
+      const hasMore = result.rows.length > limit;
+      const items = result.rows.slice(0, limit);
+
+      let cursor: string | undefined;
+      const lastItem = items[items.length - 1];
+      if (hasMore && lastItem) {
+        cursor = `${lastItem.created_at.toISOString()}::${lastItem.uri}`;
+      }
+
+      return {
+        items: items.map((row) => ({
+          uri: row.uri,
+          authorDid: row.author_did,
+          recordType: row.record_type,
+          motivation: row.motivation ?? undefined,
+          body: row.body ?? undefined,
+          bodyFormat: row.body_format ?? undefined,
+          pageTitle: row.page_title ?? undefined,
+          selectorJson: row.selector_json ?? undefined,
+          color: row.color ?? undefined,
+          tags: row.tags ?? undefined,
+          createdAt: new Date(row.created_at),
+        })),
+        cursor,
+        hasMore,
+        total,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to get Margin annotations for eprint',
+        error instanceof Error ? error : undefined,
+        { eprintUri }
+      );
+      return { items: [], hasMore: false, total: 0 };
+    }
+  }
+
+  /**
+   * Indexes a Margin annotation or highlight record from the firehose.
+   *
+   * @param record - Parsed annotation/highlight record
+   * @param metadata - Record metadata
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexMarginAnnotation(
+    record: {
+      recordType: 'annotation' | 'highlight';
+      sourceUrl: string;
+      sourceHash?: string;
+      motivation?: string;
+      body?: string;
+      bodyFormat?: string;
+      pageTitle?: string;
+      selectorJson?: Record<string, unknown>;
+      color?: string;
+      tags?: string[];
+      eprintUri?: string;
+    },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      const authorDid = extractDidFromUri(metadata.uri);
+
+      await this.pool.query(
+        `INSERT INTO margin_annotations_index (
+          uri, cid, author_did, source_url, source_hash, record_type,
+          motivation, body, body_format, page_title, selector_json,
+          color, tags, eprint_uri, created_at, pds_url, indexed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13::jsonb, $14, $15, $16, NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          body = EXCLUDED.body,
+          body_format = EXCLUDED.body_format,
+          tags = EXCLUDED.tags`,
+        [
+          metadata.uri,
+          metadata.cid,
+          authorDid,
+          record.sourceUrl,
+          record.sourceHash ?? null,
+          record.recordType,
+          record.motivation ?? null,
+          record.body ?? null,
+          record.bodyFormat ?? null,
+          record.pageTitle ?? null,
+          record.selectorJson ? JSON.stringify(record.selectorJson) : null,
+          record.color ?? null,
+          record.tags ? JSON.stringify(record.tags) : null,
+          record.eprintUri ?? null,
+          metadata.indexedAt,
+          metadata.pdsUrl,
+        ]
+      );
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Margin annotation: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Margin annotation', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Deletes a Margin annotation from the index.
+   *
+   * @param uri - AT URI of the annotation
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteMarginAnnotation(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM margin_annotations_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'DELETE',
+        `Failed to delete Margin annotation: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Indexes a Margin bookmark record from the firehose.
+   *
+   * @param record - Parsed bookmark record
+   * @param metadata - Record metadata
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async indexMarginBookmark(
+    record: {
+      sourceUrl: string;
+      sourceHash?: string;
+      title?: string;
+      description?: string;
+      tags?: string[];
+      eprintUri?: string;
+    },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      const authorDid = extractDidFromUri(metadata.uri);
+
+      await this.pool.query(
+        `INSERT INTO margin_bookmarks_index (
+          uri, cid, author_did, source_url, source_hash, title,
+          description, tags, eprint_uri, created_at, pds_url, indexed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, $10, $11, NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          title = EXCLUDED.title,
+          description = EXCLUDED.description,
+          tags = EXCLUDED.tags`,
+        [
+          metadata.uri,
+          metadata.cid,
+          authorDid,
+          record.sourceUrl,
+          record.sourceHash ?? null,
+          record.title ?? null,
+          record.description ?? null,
+          record.tags ? JSON.stringify(record.tags) : null,
+          record.eprintUri ?? null,
+          metadata.indexedAt,
+          metadata.pdsUrl,
+        ]
+      );
+
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Margin bookmark: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Margin bookmark', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Deletes a Margin bookmark from the index.
+   *
+   * @param uri - AT URI of the bookmark
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteMarginBookmark(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM margin_bookmarks_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'DELETE',
+        `Failed to delete Margin bookmark: ${error instanceof Error ? error.message : String(error)}`
+      );
+      return Err(dbError);
+    }
+  }
+
   /**
    * Converts a database row to an IndexedCollection.
    *
