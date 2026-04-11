@@ -15,6 +15,15 @@
 # Estimated resources: 10GB RAM minimum, 16GB recommended
 # =============================================================================
 
+# Default JSON log rotation config applied to all services via YAML anchor.
+# Prevents unbounded log growth (we've hit 12GB single-file incidents).
+# 50MB per file × 3 files = 150MB max per container.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "50m"
+    max-file: "3"
+
 services:
   # ---------------------------------------------------------------------------
   # Reverse Proxy - Traefik (auto-SSL with Let's Encrypt)
@@ -23,6 +32,7 @@ services:
     image: traefik:latest
     container_name: chive-traefik
     restart: unless-stopped
+    logging: *default-logging
     command:
       - "--api.dashboard=true"
       - "--providers.docker=true"
@@ -60,6 +70,7 @@ services:
     image: chive-web:${CHIVE_VERSION:-latest}
     container_name: chive-web
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - NODE_ENV=production
     depends_on:
@@ -95,6 +106,7 @@ services:
     image: ghcr.io/bluesky-social/pds:latest
     container_name: chive-governance-pds
     restart: unless-stopped
+    logging: *default-logging
     environment:
       PDS_HOSTNAME: governance.${DOMAIN}
       PDS_DATA_DIRECTORY: /pds
@@ -146,6 +158,7 @@ services:
     image: chive-docs:${CHIVE_VERSION:-latest}
     container_name: chive-docs
     restart: unless-stopped
+    logging: *default-logging
     networks:
       - chive-network
     deploy:
@@ -178,6 +191,7 @@ services:
     image: lfoppiano/grobid:0.8.2.1-crf
     container_name: chive-grobid
     restart: unless-stopped
+    logging: *default-logging
     entrypoint: ["/tini", "-s", "--"]
     command:
       - /bin/bash
@@ -224,6 +238,7 @@ services:
     networks:
       - chive-network
     restart: "no"
+    logging: *default-logging
 
   # ---------------------------------------------------------------------------
   # Elasticsearch Setup (runs once before API starts)
@@ -240,6 +255,7 @@ services:
     networks:
       - chive-network
     restart: "no"
+    logging: *default-logging
 
   # ---------------------------------------------------------------------------
   # Neo4j Setup (runs once before API starts)
@@ -256,6 +272,7 @@ services:
     networks:
       - chive-network
     restart: "no"
+    logging: *default-logging
 
   # ---------------------------------------------------------------------------
   # Chive API (AppView)
@@ -264,6 +281,7 @@ services:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-api
     restart: unless-stopped
+    logging: *default-logging
     env_file:
       - .env.production
     environment:
@@ -329,6 +347,7 @@ services:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-indexer
     restart: unless-stopped
+    logging: *default-logging
     command: ["node", "--enable-source-maps", "dist/src/indexer.js"]
     env_file:
       - .env.production
@@ -370,6 +389,7 @@ services:
     image: postgres:16-alpine
     container_name: chive-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-chive}
       POSTGRES_USER: ${POSTGRES_USER:-chive}
@@ -437,6 +457,7 @@ services:
     image: redis:7-alpine
     container_name: chive-redis
     restart: unless-stopped
+    logging: *default-logging
     command:
       - "redis-server"
       - "--maxmemory"
@@ -485,6 +506,7 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
     container_name: chive-elasticsearch
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -533,6 +555,7 @@ services:
     image: neo4j:5-community
     container_name: chive-neo4j
     restart: unless-stopped
+    logging: *default-logging
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?NEO4J_PASSWORD is required}
       NEO4J_PLUGINS: '["apoc"]'
@@ -571,6 +594,7 @@ services:
     image: grafana/alloy:v1.5.1
     container_name: chive-alloy
     restart: unless-stopped
+    logging: *default-logging
     command:
       - run
       - /etc/alloy/config.alloy
@@ -615,6 +639,7 @@ services:
     image: grafana/tempo:2.6.1
     container_name: chive-tempo
     restart: unless-stopped
+    logging: *default-logging
     command:
       - -config.file=/etc/tempo/config.yaml
     volumes:
@@ -646,6 +671,7 @@ services:
     image: grafana/loki:3.3.2
     container_name: chive-loki
     restart: unless-stopped
+    logging: *default-logging
     command:
       - -config.file=/etc/loki/config.yaml
     volumes:
@@ -678,6 +704,7 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: chive-prometheus
     restart: unless-stopped
+    logging: *default-logging
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
@@ -714,6 +741,7 @@ services:
     image: grafana/grafana:11.4.0
     container_name: chive-grafana
     restart: unless-stopped
+    logging: *default-logging
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?GRAFANA_ADMIN_PASSWORD is required}
