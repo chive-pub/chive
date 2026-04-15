@@ -367,6 +367,28 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
     return groups;
   }, [sortableItems]);
 
+  const handleRepairMirror = useCallback(async () => {
+    if (!collection?.cosmikCollectionUri) return;
+    try {
+      const result = await repairCosmikMirror.mutateAsync({
+        collectionUri: collection.uri,
+        interItemEdges: interItemEdges.map((edge) => ({
+          edgeUri: edge.edgeUri,
+          sourceUri: edge.sourceUri,
+          targetUri: edge.targetUri,
+          relationSlug: edge.relationSlug,
+        })),
+        itemUrls: items.map((item) => item.itemUri),
+      });
+      toast.success(
+        `Mirror repaired — ${result.created} connections created, ${result.pruned} orphans pruned.`
+      );
+    } catch (err) {
+      logger.error('Repair mirror failed', err);
+      toast.error('Could not repair mirror.');
+    }
+  }, [collection, interItemEdges, items, repairCosmikMirror]);
+
   const handleReorder = useCallback(
     (reordered: Array<CollectionItemView & { id: string }>) => {
       if (!collection) return;
@@ -434,28 +456,6 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
       </div>
     );
   }
-
-  const handleRepairMirror = useCallback(async () => {
-    if (!collection?.cosmikCollectionUri) return;
-    try {
-      const result = await repairCosmikMirror.mutateAsync({
-        collectionUri: collection.uri,
-        interItemEdges: interItemEdges.map((edge) => ({
-          edgeUri: edge.edgeUri,
-          sourceUri: edge.sourceUri,
-          targetUri: edge.targetUri,
-          relationSlug: edge.relationSlug,
-        })),
-        itemUrls: items.map((item) => item.itemUri),
-      });
-      toast.success(
-        `Mirror repaired — ${result.created} connections created, ${result.pruned} orphans pruned.`
-      );
-    } catch (err) {
-      logger.error('Repair mirror failed', err);
-      toast.error('Could not repair mirror.');
-    }
-  }, [collection, interItemEdges, items, repairCosmikMirror]);
 
   return (
     <div className="space-y-8">

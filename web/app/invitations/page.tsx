@@ -15,7 +15,7 @@ import { InvitationsPanel } from '@/components/invitations/invitations-panel';
 import { useCurrentUser } from '@/lib/auth';
 
 export default function InvitationsPage() {
-  const { user } = useCurrentUser();
+  const user = useCurrentUser();
 
   if (!user?.did) {
     return (
