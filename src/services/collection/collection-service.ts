@@ -1878,6 +1878,10 @@ export class CollectionService {
       target: string;
       connectionType?: string;
       note?: string;
+      /** Resolved Chive relation slug when the connectionType maps to one of our relations. */
+      chiveRelationSlug?: string;
+      /** AT-URI of the resolved Chive relation node. */
+      chiveRelationUri?: string;
     },
     metadata: RecordMetadata
   ): Promise<Result<void, DatabaseError>> {
@@ -1887,14 +1891,17 @@ export class CollectionService {
       await this.pool.query(
         `INSERT INTO cosmik_connections_index (
           uri, cid, owner_did, source_entity, target_entity,
-          connection_type, note, created_at, pds_url, indexed_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
+          connection_type, note, chive_relation_slug, chive_relation_uri,
+          created_at, pds_url, indexed_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           source_entity = EXCLUDED.source_entity,
           target_entity = EXCLUDED.target_entity,
           connection_type = EXCLUDED.connection_type,
           note = EXCLUDED.note,
+          chive_relation_slug = EXCLUDED.chive_relation_slug,
+          chive_relation_uri = EXCLUDED.chive_relation_uri,
           updated_at = NOW()`,
         [
           metadata.uri,
@@ -1904,6 +1911,8 @@ export class CollectionService {
           record.target,
           record.connectionType ?? null,
           record.note ?? null,
+          record.chiveRelationSlug ?? null,
+          record.chiveRelationUri ?? null,
           metadata.indexedAt,
           metadata.pdsUrl,
         ]

@@ -344,6 +344,16 @@ export interface EventProcessorOptions {
    * When provided, personal (non-governance) graph records are indexed.
    */
   readonly personalGraphService?: PersonalGraphService;
+  /**
+   * Optional plugin event bus. When provided, records from foreign
+   * namespaces (e.g., `network.cosmik.*`, `at.margin.*`) are forwarded to
+   * plugins subscribed on the corresponding `firehose.<collection>` event.
+   * Chive-native records (`pub.chive.*`) are NOT forwarded — they flow
+   * through the switch below with full service access instead.
+   */
+  readonly pluginEventBus?: {
+    emit: (event: string, payload: unknown) => void;
+  };
 }
 
 /**
@@ -381,10 +391,35 @@ export function createEventProcessor(
     citationExtractionJob,
     collectionService,
     personalGraphService,
+    pluginEventBus,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
     const { repo, collection, rkey, action, cid, seq, record } = event;
+
+    // Forward foreign-namespace records to plugins. Chive records (`pub.chive.*`)
+    // are handled inline by the switch below with direct service access; we
+    // don't emit them twice.
+    if (pluginEventBus && !collection.startsWith('pub.chive.')) {
+      const firehoseRecord = {
+        uri: `at://${repo}/${collection}/${rkey}`,
+        collection,
+        did: repo,
+        rkey,
+        record: record ?? null,
+        deleted: action === 'delete',
+        cid: cid ?? undefined,
+        timestamp: new Date(),
+      };
+      try {
+        pluginEventBus.emit(`firehose.${collection}`, firehoseRecord);
+      } catch (err) {
+        logger.warn('Plugin eventBus emit failed', {
+          collection,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
     logger.debug('Processing firehose event', {
       repo,

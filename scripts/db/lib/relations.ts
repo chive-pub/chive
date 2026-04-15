@@ -32,6 +32,13 @@ export interface RelationDefinition {
   readonly skosUri?: string;
   /** Wikidata property ID if applicable */
   readonly wikidataProperty?: string;
+  /**
+   * Cosmik/Semble connection type when this relation is mirrored to
+   * `network.cosmik.connection` records (cosmik.network ecosystem).
+   */
+  readonly cosmikConnectionType?: string;
+  /** CiTO (Citation Typing Ontology) URI if applicable (SPAR Ontologies). */
+  readonly citoUri?: string;
 }
 
 /**
@@ -73,6 +80,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     symmetric: true,
     skosUri: 'http://www.w3.org/2004/02/skos/core#related',
     wikidataProperty: 'P527', // has part
+    cosmikConnectionType: 'RELATED',
   },
   {
     slug: 'exact-match',
@@ -142,6 +150,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     inverseSlug: 'has-part',
     transitive: true,
     wikidataProperty: 'P361', // part of
+    cosmikConnectionType: 'PART_OF',
   },
   {
     slug: 'has-part',
@@ -150,6 +159,7 @@ export const RELATIONS: readonly RelationDefinition[] = [
     inverseSlug: 'part-of',
     transitive: true,
     wikidataProperty: 'P527', // has part
+    cosmikConnectionType: 'HAS_PART',
   },
   {
     slug: 'located-in',
@@ -191,6 +201,156 @@ export const RELATIONS: readonly RelationDefinition[] = [
     label: 'Applied In',
     description: 'Domain uses a methodology',
     inverseSlug: 'applies-to',
+  },
+
+  // =============================================================================
+  // Academic / citation relations (CiTO-aligned)
+  // =============================================================================
+  {
+    slug: 'cites',
+    label: 'Cites',
+    description: 'Work formally references another work',
+    inverseSlug: 'cited-by',
+    citoUri: 'http://purl.org/spar/cito/cites',
+    wikidataProperty: 'P2860', // cites work
+    cosmikConnectionType: 'REFERENCES',
+  },
+  {
+    slug: 'cited-by',
+    label: 'Cited By',
+    description: 'Work is formally referenced by another work',
+    inverseSlug: 'cites',
+    citoUri: 'http://purl.org/spar/cito/isCitedBy',
+    cosmikConnectionType: 'CITED_BY',
+  },
+  {
+    slug: 'builds-on',
+    label: 'Builds On',
+    description: 'Derivative work extending prior work',
+    inverseSlug: 'extended-by',
+    citoUri: 'http://purl.org/spar/cito/extends',
+    cosmikConnectionType: 'BUILDS_ON',
+  },
+  {
+    slug: 'extended-by',
+    label: 'Extended By',
+    description: 'Earlier work extended by a derivative',
+    inverseSlug: 'builds-on',
+    citoUri: 'http://purl.org/spar/cito/isExtendedBy',
+    cosmikConnectionType: 'EXTENDED_BY',
+  },
+  {
+    slug: 'supports',
+    label: 'Supports',
+    description: 'Work corroborates or substantiates another',
+    inverseSlug: 'supported-by',
+    citoUri: 'http://purl.org/spar/cito/confirms',
+    cosmikConnectionType: 'SUPPORTS',
+  },
+  {
+    slug: 'supported-by',
+    label: 'Supported By',
+    description: 'Work is corroborated by another',
+    inverseSlug: 'supports',
+    citoUri: 'http://purl.org/spar/cito/isConfirmedBy',
+  },
+  {
+    slug: 'contradicts',
+    label: 'Contradicts',
+    description: 'Work disputes or disagrees with another',
+    inverseSlug: 'contradicted-by',
+    citoUri: 'http://purl.org/spar/cito/disagreesWith',
+    cosmikConnectionType: 'OPPOSES',
+  },
+  {
+    slug: 'contradicted-by',
+    label: 'Contradicted By',
+    description: 'Work is disputed by another',
+    inverseSlug: 'contradicts',
+    citoUri: 'http://purl.org/spar/cito/isDisagreedWithBy',
+  },
+  {
+    slug: 'replicates',
+    label: 'Replicates',
+    description: 'Work replicates findings of another',
+    inverseSlug: 'replicated-by',
+    citoUri: 'http://purl.org/spar/cito/includesExcerptFrom',
+    cosmikConnectionType: 'REPLICATES',
+  },
+  {
+    slug: 'replicated-by',
+    label: 'Replicated By',
+    description: 'Work is replicated by another',
+    inverseSlug: 'replicates',
+  },
+  {
+    slug: 'explains',
+    label: 'Explains',
+    description: 'Work elaborates or clarifies another',
+    inverseSlug: 'explained-by',
+    citoUri: 'http://purl.org/spar/cito/discusses',
+    cosmikConnectionType: 'EXPLAINER',
+  },
+  {
+    slug: 'explained-by',
+    label: 'Explained By',
+    description: 'Work is explained by another',
+    inverseSlug: 'explains',
+    citoUri: 'http://purl.org/spar/cito/isDiscussedBy',
+  },
+  {
+    slug: 'supplements',
+    label: 'Supplements',
+    description: 'Work provides supplementary material for another',
+    inverseSlug: 'supplemented-by',
+    citoUri: 'http://purl.org/spar/cito/providesDataFor',
+    cosmikConnectionType: 'SUPPLEMENT',
+  },
+  {
+    slug: 'supplemented-by',
+    label: 'Supplemented By',
+    description: 'Work is supplemented by another',
+    inverseSlug: 'supplements',
+    citoUri: 'http://purl.org/spar/cito/hasReplyFrom',
+  },
+  {
+    slug: 'depends-on',
+    label: 'Depends On',
+    description: 'Work requires or builds upon another as prerequisite',
+    inverseSlug: 'depended-on-by',
+    cosmikConnectionType: 'DEPENDS_ON',
+  },
+  {
+    slug: 'depended-on-by',
+    label: 'Depended On By',
+    description: 'Work is a prerequisite for another',
+    inverseSlug: 'depends-on',
+  },
+  {
+    slug: 'leads-to',
+    label: 'Leads To',
+    description: 'Work leads naturally to another (sequential reading order)',
+    inverseSlug: 'follows-from',
+    cosmikConnectionType: 'LEADS_TO',
+  },
+  {
+    slug: 'follows-from',
+    label: 'Follows From',
+    description: 'Work follows from another',
+    inverseSlug: 'leads-to',
+  },
+  {
+    slug: 'addresses',
+    label: 'Addresses',
+    description: 'Work addresses a question, problem, or phenomenon',
+    inverseSlug: 'addressed-by',
+    cosmikConnectionType: 'ADDRESSES',
+  },
+  {
+    slug: 'addressed-by',
+    label: 'Addressed By',
+    description: 'Question/problem is addressed by a work',
+    inverseSlug: 'addresses',
   },
 ];
 

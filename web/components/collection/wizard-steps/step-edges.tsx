@@ -87,6 +87,13 @@ export function StepEdges({ form }: StepEdgesProps) {
   const [newRelationSymmetric, setNewRelationSymmetric] = useState(false);
   const [newRelationTransitive, setNewRelationTransitive] = useState(false);
   const [newRelationInverseSlug, setNewRelationInverseSlug] = useState('');
+  /**
+   * Optional Semble (Cosmik) connectionType mapping declared on the new
+   * relation. Stored as an `externalIds` entry with `system: "cosmik"`. When
+   * the relation is later used on an inter-item edge in a mirrored
+   * collection, this value drives the `network.cosmik.connection.connectionType`.
+   */
+  const [newRelationCosmikType, setNewRelationCosmikType] = useState('');
 
   const createPersonalNode = useCreatePersonalNode();
 
@@ -205,11 +212,29 @@ export function StepEdges({ form }: StepEdgesProps) {
       if (newRelationTransitive) metadata.transitive = true;
       if (newRelationInverseSlug) metadata.inverseSlug = newRelationInverseSlug;
 
+      const externalIds: Array<{
+        system: string;
+        identifier: string;
+        uri?: string;
+        matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+      }> = [];
+      const cosmikType = newRelationCosmikType.trim();
+      if (cosmikType) {
+        const normalized = cosmikType.toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+        externalIds.push({
+          system: 'cosmik',
+          identifier: normalized,
+          uri: `cosmik://connectionType/${normalized}`,
+          matchType: 'exact',
+        });
+      }
+
       const result = await createPersonalNode.mutateAsync({
         kind: 'type',
         subkind: 'relation',
         label: newRelationLabel,
         metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
+        externalIds: externalIds.length > 0 ? externalIds : undefined,
       });
       setSelectedRelation({
         id: result.uri,
@@ -227,6 +252,7 @@ export function StepEdges({ form }: StepEdgesProps) {
       setNewRelationSymmetric(false);
       setNewRelationTransitive(false);
       setNewRelationInverseSlug('');
+      setNewRelationCosmikType('');
     } catch {
       toast.error('Failed to create relation type.');
     }
@@ -236,6 +262,7 @@ export function StepEdges({ form }: StepEdgesProps) {
     newRelationSymmetric,
     newRelationTransitive,
     newRelationInverseSlug,
+    newRelationCosmikType,
   ]);
 
   if (items.length < 2) {
@@ -379,6 +406,20 @@ export function StepEdges({ form }: StepEdgesProps) {
                       />
                     </div>
                   )}
+                  <div className="space-y-1">
+                    <Label className="text-xs">Semble connection type (optional)</Label>
+                    <input
+                      type="text"
+                      value={newRelationCosmikType}
+                      onChange={(e) => setNewRelationCosmikType(e.target.value)}
+                      placeholder="e.g., REFERENCES, BUILDS_ON"
+                      className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm font-mono"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      When edges using this relation are mirrored to Semble, the connection will use
+                      this <code>connectionType</code>. Leave empty to derive from the slug.
+                    </p>
+                  </div>
                   <div className="flex gap-2">
                     <Button type="button" size="sm" onClick={confirmCreateRelation}>
                       Create
@@ -390,6 +431,10 @@ export function StepEdges({ form }: StepEdgesProps) {
                       onClick={() => {
                         setShowNewRelationForm(false);
                         setNewRelationLabel('');
+                        setNewRelationSymmetric(false);
+                        setNewRelationTransitive(false);
+                        setNewRelationInverseSlug('');
+                        setNewRelationCosmikType('');
                       }}
                     >
                       Cancel
