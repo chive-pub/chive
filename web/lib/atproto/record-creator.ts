@@ -4957,6 +4957,150 @@ export async function deleteCosmikConnectionsForItem(
 }
 
 // =============================================================================
+// CHIVE COLLABORATION (invites + acceptances)
+// =============================================================================
+
+/**
+ * `pub.chive.collaboration.invite` record.
+ *
+ * @public
+ */
+export interface CollaborationInviteRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.collaboration.invite';
+  subject: { uri: string; cid: string };
+  invitee: string;
+  role?: string;
+  message?: string;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+/**
+ * `pub.chive.collaboration.inviteAcceptance` record.
+ *
+ * @public
+ */
+export interface CollaborationInviteAcceptanceRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.collaboration.inviteAcceptance';
+  invite: { uri: string; cid: string };
+  subject: { uri: string; cid: string };
+  createdAt: string;
+}
+
+/**
+ * Creates a collaboration invite in the subject-record author's PDS.
+ *
+ * @public
+ */
+export async function createInviteRecord(
+  agent: Agent,
+  input: {
+    subjectUri: string;
+    subjectCid: string;
+    invitee: string;
+    role?: string;
+    message?: string;
+    expiresAt?: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CollaborationInviteRecord = {
+    $type: 'pub.chive.collaboration.invite',
+    subject: { uri: input.subjectUri, cid: input.subjectCid },
+    invitee: input.invitee,
+    createdAt: new Date().toISOString(),
+  };
+  if (input.role) record.role = input.role;
+  if (input.message) record.message = input.message;
+  if (input.expiresAt) record.expiresAt = input.expiresAt;
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.collaboration.invite',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a collaboration invite record.
+ *
+ * @public
+ */
+export async function deleteInviteRecord(agent: Agent, inviteUri: string): Promise<void> {
+  const parsed = parseAtUri(inviteUri);
+  if (!parsed) return;
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'pub.chive.collaboration.invite',
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Creates a collaboration acceptance in the invitee's PDS.
+ *
+ * @public
+ */
+export async function createInviteAcceptance(
+  agent: Agent,
+  input: {
+    inviteUri: string;
+    inviteCid: string;
+    subjectUri: string;
+    subjectCid: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CollaborationInviteAcceptanceRecord = {
+    $type: 'pub.chive.collaboration.inviteAcceptance',
+    invite: { uri: input.inviteUri, cid: input.inviteCid },
+    subject: { uri: input.subjectUri, cid: input.subjectCid },
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.collaboration.inviteAcceptance',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a collaboration acceptance record.
+ *
+ * @public
+ */
+export async function deleteInviteAcceptance(agent: Agent, acceptanceUri: string): Promise<void> {
+  const parsed = parseAtUri(acceptanceUri);
+  if (!parsed) return;
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'pub.chive.collaboration.inviteAcceptance',
+    rkey: parsed.rkey,
+  });
+}
+
+// =============================================================================
 // COSMIK COLLECTION LINK REMOVAL (tombstones for collaborative collections)
 // =============================================================================
 
