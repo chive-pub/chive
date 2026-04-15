@@ -54,6 +54,7 @@ import { CitationExtractionService } from './services/citation/citation-extracti
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
 import { ClaimingService } from './services/claiming/claiming-service.js';
+import { CollaborationService } from './services/collaboration/collaboration-service.js';
 import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
@@ -535,9 +536,10 @@ function createServices(
     logger,
   });
 
-  // Create personal graph and collection services
+  // Create personal graph, collection, and collaboration services
   const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
   const collectionService = new CollectionService({ pool: pgPool, logger });
+  const collaborationService = new CollaborationService({ pool: pgPool, logger });
 
   // Create PDS Discovery services
   const pdsRegistry = new PDSRegistry(pgPool, logger);
@@ -621,6 +623,7 @@ function createServices(
     recommendationService: recommendationEngine,
     personalGraphService,
     collectionService,
+    collaborationService,
     adminService,
     backfillManager,
     contentReportService,

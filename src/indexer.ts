@@ -50,6 +50,7 @@ import { BacklinkService } from './services/backlink/backlink-service.js';
 import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
+import { CollaborationService } from './services/collaboration/collaboration-service.js';
 import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
@@ -474,9 +475,11 @@ async function main(): Promise<void> {
     await state.fieldLabelResolutionJob.start();
     logger.info('Field label resolution job started');
 
-    // Create personal graph and collection services for firehose indexing
+    // Create personal graph, collection, and collaboration services for
+    // firehose indexing
     const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
     const collectionService = new CollectionService({ pool: pgPool, logger });
+    const collaborationService = new CollaborationService({ pool: pgPool, logger });
 
     // Node service for relation-node lookups (used by cosmik-connections
     // plugin for reverse mapping connectionType → chive relation slug)
@@ -537,6 +540,7 @@ async function main(): Promise<void> {
       citationExtractionJob, // Async citation extraction after eprint indexing
       collectionService, // Index collections from personal PDSes
       personalGraphService, // Index personal graph nodes/edges from PDSes
+      collaborationService, // Index invites + acceptances from personal PDSes
       pluginEventBus, // Forward foreign-namespace records to plugins
     });
 
