@@ -55,10 +55,6 @@ import {
   deleteCosmikMirror,
   addCosmikItem,
   removeCosmikItem,
-  createCosmikConnection,
-  deleteCosmikConnection,
-  createCosmikConnectionsForEdges,
-  deleteCosmikConnections,
   createCosmikFollow,
   deleteCosmikFollow,
   createCosmikCollectionLinkRemoval,
@@ -1004,6 +1000,20 @@ export function useRemoveFromCollection() {
             linkUri: cosmikLinkUri,
           });
 
+          // Also prune any orphan inter-item Cosmik connections that
+          // referenced the removed item. Without this, Semble would still
+          // display edges pointing at a card that no longer exists.
+          try {
+            const { deleteCosmikConnectionsForItem } = await import('@/lib/atproto/record-creator');
+            await deleteCosmikConnectionsForItem(agent, collectionUri, cosmikItemUrl);
+          } catch (connectionErr) {
+            logger.warn('Failed to prune orphan Cosmik connections', {
+              collectionUri,
+              cosmikItemUrl,
+              error: connectionErr instanceof Error ? connectionErr.message : String(connectionErr),
+            });
+          }
+
           // Re-index so server picks up updated metadata
           try {
             await authApi.pub.chive.sync.indexRecord({ uri: collectionUri });
@@ -1514,89 +1524,6 @@ export function useUnfollowCollection() {
 }
 
 // =============================================================================
-// COSMIK CONNECTION HOOKS (edges between links)
-// =============================================================================
-
-/**
- * Mutation hook for creating a Cosmik connection (edge between links).
- *
- * @remarks
- * Used when adding an inter-item edge to a collection that has Cosmik mirroring enabled.
- *
- * @returns Mutation object for creating connections
- */
-export function useCreateCosmikConnection() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (input: {
-      collectionUri: string;
-      source: string;
-      target: string;
-      connectionType?: string;
-      note?: string;
-    }): Promise<{ connectionUri: string; connectionCid: string }> => {
-      const agent = getCurrentAgent();
-      if (!agent) {
-        throw new APIError(
-          'Not authenticated. Please log in again.',
-          401,
-          'createCosmikConnection'
-        );
-      }
-
-      const result = await createCosmikConnection(agent, {
-        source: input.source,
-        target: input.target,
-        connectionType: input.connectionType,
-        note: input.note,
-      });
-
-      return { connectionUri: result.uri, connectionCid: result.cid };
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: collectionKeys.detail(variables.collectionUri),
-      });
-    },
-  });
-}
-
-/**
- * Mutation hook for deleting a Cosmik connection.
- *
- * @returns Mutation object for deleting connections
- */
-export function useDeleteCosmikConnection() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({
-      connectionUri,
-    }: {
-      connectionUri: string;
-      collectionUri: string;
-    }): Promise<void> => {
-      const agent = getCurrentAgent();
-      if (!agent) {
-        throw new APIError(
-          'Not authenticated. Please log in again.',
-          401,
-          'deleteCosmikConnection'
-        );
-      }
-
-      await deleteCosmikConnection(agent, connectionUri);
-    },
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: collectionKeys.detail(variables.collectionUri),
-      });
-    },
-  });
-}
-
-// =============================================================================
 // MARGIN ANNOTATION HOOKS
 // =============================================================================
 
@@ -1700,4 +1627,174 @@ export function useCreateMarginBookmark() {
       return { bookmarkUri: result.uri, bookmarkCid: result.cid };
     },
   });
+}
+
+// =============================================================================
+// REPAIR MIRROR HOOK
+// =============================================================================
+
+/**
+ * Mutation hook for repairing an existing Cosmik mirror.
+ *
+ * @remarks
+ * Reconciles the collection's `cosmikConnections` metadata with the actual
+ * state of the graph: creates Cosmik connection records for inter-item
+ * edges that should be mirrored but aren't, and deletes orphan connections
+ * whose endpoints are no longer in the collection.
+ *
+ * Used to recover from pre-rigorous-integration mirrors that were created
+ * without connections, and from drift introduced by partial-failure edge
+ * operations.
+ *
+ * @returns Mutation object; input takes the collection URI, inter-item
+ *   edges returned from the collection query, and the items currently in
+ *   the collection.
+ *
+ * @public
+ */
+export function useRepairCosmikMirror() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      collectionUri: string;
+      interItemEdges: Array<{
+        edgeUri?: string;
+        sourceUri: string;
+        targetUri: string;
+        relationSlug: string;
+      }>;
+      itemUrls: string[];
+    }): Promise<{ created: number; pruned: number }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'repairCosmikMirror');
+      }
+
+      const { syncEdgeToCosmik, deleteCosmikConnectionsForItem } =
+        await import('@/lib/atproto/record-creator');
+
+      let created = 0;
+      for (const edge of input.interItemEdges) {
+        if (!edge.edgeUri) continue;
+        try {
+          const mapping = await syncEdgeToCosmik(agent, 'create', {
+            collectionUri: input.collectionUri,
+            chiveEdgeUri: edge.edgeUri,
+            chiveEdgeSourceUri: edge.sourceUri,
+            chiveEdgeTargetUri: edge.targetUri,
+            relationSlug: edge.relationSlug,
+          });
+          if (mapping) created++;
+        } catch (err) {
+          logger.warn('Repair: failed to sync edge', {
+            edgeUri: edge.edgeUri,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // Prune Cosmik connections whose endpoints are no longer in the
+      // collection. We look up each connection record, check whether either
+      // endpoint URL matches a current item, and delete if neither does.
+      const itemUrlSet = new Set(input.itemUrls);
+      const pruned = await pruneOrphanConnections(agent, input.collectionUri, itemUrlSet);
+
+      return { created, pruned };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Helper for `useRepairCosmikMirror`: deletes Cosmik connections whose
+ * source and target are both absent from the current item set.
+ *
+ * @remarks
+ * Reads the collection node's `cosmikConnections` metadata, fetches each
+ * connection record to inspect its `source` and `target`, and deletes any
+ * connection whose endpoints no longer correspond to items in the
+ * collection. Updates the `cosmikConnections` metadata to reflect the
+ * surviving set.
+ *
+ * @internal
+ */
+async function pruneOrphanConnections(
+  agent: import('@atproto/api').Agent,
+  collectionUri: string,
+  itemUrlSet: Set<string>
+): Promise<number> {
+  const { loadEdgeSyncLookup, writeBackCosmikConnections, deleteCosmikConnection } =
+    await import('@/lib/atproto/record-creator');
+
+  const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+  if (!lookup) return 0;
+
+  const did = (agent as unknown as { did?: string }).did;
+  if (!did) return 0;
+
+  const keep: Record<string, import('@/lib/atproto/record-creator').CosmikConnectionMapping> = {};
+  const toDelete: import('@/lib/atproto/record-creator').CosmikConnectionMapping[] = [];
+
+  for (const [key, mapping] of Object.entries(lookup.cosmikConnections)) {
+    try {
+      const parsed = parseAtUri(mapping.connectionUri);
+      if (!parsed) {
+        keep[key] = mapping;
+        continue;
+      }
+      const response = await agent.com.atproto.repo.getRecord({
+        repo: parsed.did,
+        collection: 'network.cosmik.connection',
+        rkey: parsed.rkey,
+      });
+      const record = response.data.value as {
+        source?: string;
+        target?: string;
+      };
+      if (
+        (record.source && itemUrlSet.has(record.source)) ||
+        (record.target && itemUrlSet.has(record.target))
+      ) {
+        keep[key] = mapping;
+      } else {
+        toDelete.push(mapping);
+      }
+    } catch {
+      // Can't read the record — err on the side of keeping it.
+      keep[key] = mapping;
+    }
+  }
+
+  for (const mapping of toDelete) {
+    try {
+      await deleteCosmikConnection(agent, mapping.connectionUri);
+    } catch (err) {
+      logger.warn('Repair: failed to delete orphan connection', {
+        connectionUri: mapping.connectionUri,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await writeBackCosmikConnections(agent, did, lookup.rkey, lookup.node, keep);
+  }
+
+  return toDelete.length;
+}
+
+/**
+ * Minimal AT-URI parser used by the repair helper.
+ *
+ * @internal
+ */
+function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
+  const match = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(uri);
+  if (!match) return null;
+  return { did: match[1]!, collection: match[2]!, rkey: match[3]! };
 }

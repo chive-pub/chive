@@ -49,6 +49,16 @@ export interface CollectionEdgeFormData {
   targetUri: string;
   /** Relation type slug */
   relationSlug: string;
+  /**
+   * AT-URI of the relation-type node.
+   *
+   * @remarks
+   * Captured when the user picks a relation so downstream edge creation
+   * can pass it through to the `pub.chive.graph.edge` record and to
+   * `syncEdgeToCosmik` for foreign-ecosystem mapping lookups via the
+   * relation's `externalIds`.
+   */
+  relationUri?: string;
   /** Display label for the relation */
   relationLabel: string;
   /** Optional note */
@@ -57,6 +67,8 @@ export interface CollectionEdgeFormData {
   isBidirectional?: boolean;
   /** Slug of the inverse relation (for paired edges) */
   inverseRelationSlug?: string;
+  /** AT-URI of the inverse relation-type node. */
+  inverseRelationUri?: string;
   /** Display label for the inverse relation */
   inverseRelationLabel?: string;
 }
@@ -139,10 +151,12 @@ export const collectionFormSchema = z.object({
         sourceUri: z.string(),
         targetUri: z.string(),
         relationSlug: z.string(),
+        relationUri: z.string().optional(),
         relationLabel: z.string(),
         note: z.string().optional(),
         isBidirectional: z.boolean().optional(),
         inverseRelationSlug: z.string().optional(),
+        inverseRelationUri: z.string().optional(),
         inverseRelationLabel: z.string().optional(),
       })
     )

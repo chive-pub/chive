@@ -121,6 +121,7 @@ export function StepEdges({ form }: StepEdgesProps) {
     const relationSlug =
       (selectedRelation.metadata?.slug as string | undefined) ??
       selectedRelation.label.toLowerCase().replace(/\s+/g, '-');
+    const relationUri = selectedRelation.uri;
 
     const newEdges: CollectionEdgeFormData[] = [];
 
@@ -128,6 +129,7 @@ export function StepEdges({ form }: StepEdgesProps) {
       sourceUri,
       targetUri,
       relationSlug,
+      relationUri,
       relationLabel: selectedRelation.label,
       note: edgeNote || undefined,
       isBidirectional: addReverse || undefined,
@@ -139,8 +141,13 @@ export function StepEdges({ form }: StepEdgesProps) {
         ? relationSlug
         : (selectedRelation.metadata?.inverseSlug as string);
       const inverseLabel = isSymmetric ? selectedRelation.label : slugToLabel(inverseSlug);
+      // When symmetric the inverse is the same node. For inverse-pair
+      // relations the inverse URI is not known from the current selection;
+      // downstream sync falls back to slug-based resolution.
+      const inverseUri = isSymmetric ? relationUri : undefined;
 
       forwardEdge.inverseRelationSlug = inverseSlug;
+      forwardEdge.inverseRelationUri = inverseUri;
       forwardEdge.inverseRelationLabel = inverseLabel;
 
       newEdges.push(forwardEdge);
@@ -148,10 +155,12 @@ export function StepEdges({ form }: StepEdgesProps) {
         sourceUri: targetUri,
         targetUri: sourceUri,
         relationSlug: inverseSlug,
+        relationUri: inverseUri,
         relationLabel: inverseLabel,
         note: edgeNote || undefined,
         isBidirectional: true,
         inverseRelationSlug: relationSlug,
+        inverseRelationUri: relationUri,
         inverseRelationLabel: selectedRelation.label,
       });
     } else {

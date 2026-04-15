@@ -304,7 +304,31 @@ export function useCreatePersonalEdge() {
 
   return useMutation({
     mutationFn: async (
-      input: CreatePersonalEdgeInput & { ownerDid: string }
+      input: CreatePersonalEdgeInput & {
+        ownerDid: string;
+        /**
+         * AT-URI of the relation-type node. Passed to the edge record so
+         * downstream consumers (e.g., Cosmik dual-write) can resolve the
+         * relation's `externalIds` for cross-ecosystem mappings.
+         */
+        relationUri?: string;
+        /**
+         * When set and the parent collection has a Cosmik mirror, the edge
+         * is also dual-written as a `network.cosmik.connection` record. The
+         * resulting connection URI is stored in the collection node's
+         * `cosmikConnections` metadata keyed by the Chive edge URI.
+         */
+        collectionUri?: string;
+        /**
+         * Optional: the edge's source URI as it appeared before mapping into
+         * the personal-graph namespace (e.g., the eprint AT-URI from the
+         * wizard). Used to look up the corresponding Cosmik card endpoint
+         * URL precisely. Falls back to converting the personal-graph URI.
+         */
+        originalSourceUri?: string;
+        /** Counterpart to `originalSourceUri`. */
+        originalTargetUri?: string;
+      }
     ): Promise<PersonalEdgeView> => {
       const agent = getCurrentAgent();
       if (!agent) {
@@ -322,6 +346,47 @@ export function useCreatePersonalEdge() {
           uri: result.uri,
           error: indexError instanceof Error ? indexError.message : String(indexError),
         });
+      }
+
+      // Dual-write to Cosmik when the edge sits inside a mirrored collection
+      if (input.collectionUri) {
+        try {
+          const { syncEdgeToCosmik } = await import('@/lib/atproto/record-creator');
+          const originalUriMap =
+            input.originalSourceUri || input.originalTargetUri
+              ? new Map<string, string>([
+                  ...(input.originalSourceUri
+                    ? [[input.originalSourceUri, input.sourceUri] as const]
+                    : []),
+                  ...(input.originalTargetUri
+                    ? [[input.originalTargetUri, input.targetUri] as const]
+                    : []),
+                ])
+              : undefined;
+          await syncEdgeToCosmik(
+            agent,
+            'create',
+            {
+              collectionUri: input.collectionUri,
+              chiveEdgeUri: result.uri,
+              chiveEdgeSourceUri: input.sourceUri,
+              chiveEdgeTargetUri: input.targetUri,
+              relationSlug: input.relationSlug,
+              relationUri: input.relationUri,
+              note:
+                input.metadata && typeof input.metadata === 'object' && 'note' in input.metadata
+                  ? (input.metadata.note as string | undefined)
+                  : undefined,
+            },
+            originalUriMap
+          );
+        } catch (syncErr) {
+          logger.warn('Cosmik edge sync failed', {
+            edgeUri: result.uri,
+            collectionUri: input.collectionUri,
+            error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+          });
+        }
       }
 
       return {

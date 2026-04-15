@@ -3181,6 +3181,8 @@ export interface PersonalEdgeRecord {
   sourceUri: string;
   targetUri: string;
   relationSlug: string;
+  /** AT-URI of the relation-type node (graph lookup for inverse, externalIds). */
+  relationUri?: string;
   metadata: Record<string, unknown>;
   status: 'established';
   createdAt: string;
@@ -3365,6 +3367,12 @@ export interface CreatePersonalEdgeInput {
   targetUri: string;
   /** Relation type slug (e.g., 'related-to', 'depends-on') */
   relationSlug: string;
+  /**
+   * AT-URI of the relation-type node. Written to the edge record so
+   * consumers can look up the relation's `externalIds` for cross-app
+   * translations without re-resolving by slug.
+   */
+  relationUri?: string;
   /** Optional metadata */
   metadata?: Record<string, unknown>;
 }
@@ -3408,6 +3416,9 @@ export async function createPersonalEdge(
     status: 'established',
     createdAt: new Date().toISOString(),
   };
+  if (input.relationUri) {
+    record.relationUri = input.relationUri;
+  }
 
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
@@ -4518,11 +4529,11 @@ export interface SyncEdgeToCosmikInput {
 }
 
 /**
- * Options controlling how `cosmikConnections` metadata is stored.
+ * Snapshot of a mirrored collection's state used by edge sync and repair.
  *
- * @internal
+ * @public
  */
-interface EdgeSyncLookup {
+export interface EdgeSyncLookup {
   /** Collection node record fetched fresh before mutation. */
   node: CollectionNodeRecord;
   /** Collection rkey. */
@@ -4551,9 +4562,13 @@ function cosmikConnectionKey(chiveEdgeUri: string): string {
  * Reads the collection node record and returns its Cosmik mirror state,
  * or `null` if the collection isn't mirrored.
  *
- * @internal
+ * @remarks
+ * Exported for use by repair flows that need access to the raw mirror
+ * metadata (e.g., `useRepairCosmikMirror`).
+ *
+ * @public
  */
-async function loadEdgeSyncLookup(
+export async function loadEdgeSyncLookup(
   agent: Agent,
   collectionUri: string
 ): Promise<EdgeSyncLookup | null> {
@@ -4585,9 +4600,9 @@ async function loadEdgeSyncLookup(
 /**
  * Writes back the collection node with an updated `cosmikConnections` map.
  *
- * @internal
+ * @public
  */
-async function writeBackCosmikConnections(
+export async function writeBackCosmikConnections(
   agent: Agent,
   did: string,
   rkey: string,
