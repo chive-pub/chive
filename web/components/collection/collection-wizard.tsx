@@ -196,7 +196,39 @@ export function CollectionWizard({
                 metadata: item.metadata,
               }))
             : undefined,
+        collaborators: values.cosmikCollaborators?.length ? values.cosmikCollaborators : undefined,
       });
+
+      // Create native Chive collaboration invites for each DID. This lives in
+      // the owner's PDS and grants permission only when the invitee accepts
+      // via `pub.chive.collaboration.inviteAcceptance`. The `collaborators[]`
+      // field written to the Cosmik mirror above is the Semble-side allowlist
+      // equivalent.
+      if (values.cosmikCollaborators?.length) {
+        try {
+          const { createInviteRecord } = await import('@/lib/atproto/record-creator');
+          for (const invitee of values.cosmikCollaborators) {
+            try {
+              await createInviteRecord(agent, {
+                subjectUri: collection.uri,
+                subjectCid: collection.cid,
+                invitee,
+                role: 'collaborator',
+              });
+            } catch (inviteErr) {
+              wizardLogger.warn('Failed to create collaboration invite', {
+                collectionUri: collection.uri,
+                invitee,
+                error: inviteErr instanceof Error ? inviteErr.message : String(inviteErr),
+              });
+            }
+          }
+        } catch (err) {
+          wizardLogger.warn('Invite batch failed to load record-creator module', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
 
       wizardLogger.info('Collection node created', { uri: collection.uri });
 
