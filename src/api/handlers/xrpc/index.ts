@@ -34,6 +34,7 @@ export * from './graph/index.js';
 export * from './import/index.js';
 export * from './metrics/index.js';
 export * from './eprint/index.js';
+export * from './resolve/index.js';
 export * from './review/index.js';
 export * from './sync/index.js';
 export * from './tag/index.js';
@@ -58,6 +59,7 @@ import { importMethods } from './import/index.js';
 import { metricsMethods } from './metrics/index.js';
 import { moderationMethods } from './moderation/index.js';
 import { notificationMethods } from './notification/index.js';
+import { resolveMethods } from './resolve/index.js';
 import { reviewMethods } from './review/index.js';
 import { syncMethods } from './sync/index.js';
 import { tagMethods } from './tag/index.js';
@@ -83,6 +85,7 @@ export const allXRPCMethods = {
   ...metricsMethods,
   ...moderationMethods,
   ...notificationMethods,
+  ...resolveMethods,
   ...reviewMethods,
   ...syncMethods,
   ...tagMethods,

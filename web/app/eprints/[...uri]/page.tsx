@@ -7,6 +7,12 @@ import { EprintDetailSkeleton } from './loading';
 import { EprintFaroErrorBoundary } from './eprint-error-boundary';
 import { createServerClient } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
+import {
+  buildEntityHeadTags,
+  type EntityHeadTag,
+  type EntityExternalId,
+} from '@/lib/metadata/entity-metadata';
+import { EntityHeadTags } from '@/lib/metadata/EntityHeadTags';
 
 /**
  * Eprint detail page route parameters.
@@ -103,11 +109,80 @@ export default async function EprintPage({ params }: EprintPageProps) {
     notFound();
   }
 
+  // Build `<head>` tag descriptors for Zotero/Citoid/Semble aggregation.
+  // Fetched here in addition to `generateMetadata` — Next.js request-level
+  // dedup makes this effectively one network round-trip.
+  let headTags: EntityHeadTag[] = [];
+  try {
+    const serverApi = createServerClient();
+    const response = await serverApi.pub.chive.eprint.getSubmission({ uri: fullUri });
+    const value = response.data.value as SubmissionRecord;
+    const canonicalUrl = `https://chive.pub/eprints/${encodeURIComponent(fullUri)}`;
+    const externalIds: EntityExternalId[] = [];
+    const publishedDoi = value.publishedVersion?.doi;
+    if (publishedDoi) {
+      externalIds.push({
+        system: 'doi',
+        identifier: publishedDoi,
+        uri: `https://doi.org/${publishedDoi}`,
+      });
+    }
+    const ext = value.externalIds;
+    if (ext) {
+      if (ext.arxivId) {
+        externalIds.push({
+          system: 'arxiv',
+          identifier: ext.arxivId,
+          uri: `https://arxiv.org/abs/${ext.arxivId}`,
+        });
+      }
+      if (ext.pmid) {
+        externalIds.push({
+          system: 'pmid',
+          identifier: ext.pmid,
+          uri: `https://pubmed.ncbi.nlm.nih.gov/${ext.pmid}`,
+        });
+      }
+      if (ext.zenodoDoi) {
+        externalIds.push({
+          system: 'doi',
+          identifier: ext.zenodoDoi,
+          uri: `https://doi.org/${ext.zenodoDoi}`,
+        });
+      }
+    }
+
+    let abstractText = value.abstractPlainText ?? '';
+    if (!abstractText && Array.isArray(value.abstract)) {
+      abstractText = value.abstract
+        .filter((item) => typeof item === 'object' && 'type' in item && item.type === 'text')
+        .map((item) => (item as { type: 'text'; content: string }).content)
+        .join(' ');
+    }
+
+    headTags = buildEntityHeadTags({
+      atUri: fullUri,
+      canonicalUrl,
+      title: value.title,
+      description: abstractText.slice(0, 500),
+      entityType: 'research',
+      authors: value.authors.map((a) => a.name ?? ''),
+      publishedDate: value.createdAt,
+      journalTitle: value.publishedVersion?.journal,
+      externalIds,
+    });
+  } catch {
+    // Head tags are best-effort; missing eprint returns empty tags.
+  }
+
   return (
-    <Suspense fallback={<EprintDetailSkeleton />}>
-      <EprintFaroErrorBoundary uri={fullUri}>
-        <EprintDetailContent uri={fullUri} />
-      </EprintFaroErrorBoundary>
-    </Suspense>
+    <>
+      <EntityHeadTags tags={headTags} />
+      <Suspense fallback={<EprintDetailSkeleton />}>
+        <EprintFaroErrorBoundary uri={fullUri}>
+          <EprintDetailContent uri={fullUri} />
+        </EprintFaroErrorBoundary>
+      </Suspense>
+    </>
   );
 }
