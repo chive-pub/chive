@@ -40,6 +40,7 @@ import {
   MarginHighlightsPlugin,
   MarginRepliesPlugin,
 } from './plugins/builtin/margin-annotations.js';
+import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
   getPluginManager,
@@ -492,6 +493,7 @@ async function main(): Promise<void> {
     // =====================================================================
     // Register plugin system and load cross-ecosystem tracking plugins
     // =====================================================================
+    registerPluginDependencies(logger, redis);
     registerPluginSystem();
     const pluginManager = getPluginManager();
     const pluginEventBus = getEventBus();

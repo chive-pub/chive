@@ -13,7 +13,6 @@ import 'reflect-metadata';
 import { serve } from '@hono/node-server';
 import EventEmitter2Module from 'eventemitter2';
 import { Redis } from 'ioredis';
-import { container } from 'tsyringe';
 
 const { EventEmitter2 } = EventEmitter2Module;
 type EventEmitter2Type = InstanceType<typeof EventEmitter2>;
@@ -30,6 +29,7 @@ import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
 import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   registerPluginSystem,
   getPluginManager,
@@ -93,8 +93,6 @@ import { getDatabaseConfig } from './storage/postgresql/config.js';
 import { closePool, createPool } from './storage/postgresql/connection.js';
 import { FacetUsageHistoryRepository } from './storage/postgresql/facet-usage-history-repository.js';
 import type { DID } from './types/atproto.js';
-import type { ICacheProvider } from './types/interfaces/cache.interface.js';
-import type { IMetrics } from './types/interfaces/metrics.interface.js';
 import { FreshnessWorker } from './workers/freshness-worker.js';
 import { IndexRetryWorker } from './workers/index-retry-worker.js';
 
@@ -775,63 +773,6 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
 }
 
 /**
- * Creates a Redis-backed cache provider for the plugin system.
- */
-function createPluginCacheProvider(redis: Redis): ICacheProvider {
-  const PREFIX = 'chive:plugin:';
-  return {
-    async get<T>(key: string): Promise<T | null> {
-      const value = await redis.get(`${PREFIX}${key}`);
-      if (value === null) return null;
-      try {
-        return JSON.parse(value) as T;
-      } catch {
-        return null;
-      }
-    },
-    async set<T>(key: string, value: T, ttl?: number): Promise<void> {
-      const serialized = JSON.stringify(value);
-      if (ttl) {
-        await redis.setex(`${PREFIX}${key}`, ttl, serialized);
-      } else {
-        await redis.set(`${PREFIX}${key}`, serialized);
-      }
-    },
-    async delete(key: string): Promise<void> {
-      await redis.del(`${PREFIX}${key}`);
-    },
-    async exists(key: string): Promise<boolean> {
-      const result = await redis.exists(`${PREFIX}${key}`);
-      return result === 1;
-    },
-    async expire(key: string, ttl: number): Promise<void> {
-      await redis.expire(`${PREFIX}${key}`, ttl);
-    },
-  };
-}
-
-/**
- * Creates a no-op metrics provider for the plugin system.
- * In production, this would be replaced with Prometheus metrics.
- */
-function createNoopMetrics(): IMetrics {
-  return {
-    incrementCounter: (_name, _labels, _value) => {
-      // No-op for development
-    },
-    setGauge: (_name, _value, _labels) => {
-      // No-op for development
-    },
-    observeHistogram: (_name, _value, _labels) => {
-      // No-op for development
-    },
-    startTimer: (_name, _labels) => () => {
-      // No-op for development
-    },
-  };
-}
-
-/**
  * Initializes the plugin system with hybrid search/import architecture.
  *
  * @remarks
@@ -856,9 +797,7 @@ async function initializePluginSystem(
   logger.info('Initializing plugin system (hybrid architecture)...');
 
   // Register dependencies with tsyringe container
-  container.register('ILogger', { useValue: logger });
-  container.register('ICacheProvider', { useValue: createPluginCacheProvider(redis) });
-  container.register('IMetrics', { useValue: createNoopMetrics() });
+  registerPluginDependencies(logger, redis);
 
   // Register plugin system components
   registerPluginSystem();
