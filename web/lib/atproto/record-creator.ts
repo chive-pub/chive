@@ -3560,6 +3560,16 @@ export interface CosmikUrlMetadata {
   author?: string;
   siteName?: string;
   type?: string;
+  /** Content MIME or identifier type for scholarly artifacts. */
+  publishedDate?: string;
+  /** Open Graph / preview image URL. */
+  imageUrl?: string;
+  /** Digital Object Identifier for academic content. */
+  doi?: string;
+  /** ISBN for books. */
+  isbn?: string;
+  /** Timestamp when the metadata was populated. */
+  retrievedAt?: string;
 }
 
 /**
@@ -3617,6 +3627,11 @@ export interface CosmikCardRecord {
 /**
  * Item metadata from the collection wizard, used to build rich Semble card content.
  */
+/**
+ * Metadata passed from the collection wizard or detail pages to
+ * `buildSembleCardMetadata`. These fields flow through to Cosmik/Semble's
+ * `network.cosmik.card#urlMetadata` record for rich card previews.
+ */
 interface ItemMetadata {
   subkind?: string;
   description?: string;
@@ -3625,6 +3640,23 @@ interface ItemMetadata {
   kind?: string;
   avatarUrl?: string;
   isPersonal?: boolean;
+  /** DOI extracted from eprint.publishedVersion.doi or externalIds.zenodoDoi. */
+  doi?: string;
+  /** ISBN for book items (if the graph node carries one). */
+  isbn?: string;
+  /** ISO date string for the publication event. */
+  publishedDate?: string;
+  /** Cover / preview image URL. */
+  imageUrl?: string;
+  /** All known external IDs on the item's graph node, in original form. */
+  externalIds?: Array<{
+    system: string;
+    identifier: string;
+    uri?: string;
+    matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+  }>;
+  /** Journal / publication venue for articles. */
+  journalTitle?: string;
 }
 
 /**
@@ -3644,35 +3676,94 @@ function buildSembleCardMetadata(
     $type: 'network.cosmik.card#urlMetadata',
     title: label,
     siteName: 'Chive',
+    retrievedAt: new Date().toISOString(),
   };
+
+  // Pull DOI / ISBN from dedicated fields first, then fall back to externalIds.
+  const doi = metadata?.doi ?? metadata?.externalIds?.find((id) => id.system === 'doi')?.identifier;
+  const isbn =
+    metadata?.isbn ?? metadata?.externalIds?.find((id) => id.system === 'isbn')?.identifier;
+  if (doi) result.doi = doi;
+  if (isbn) result.isbn = isbn;
+
+  if (metadata?.imageUrl) result.imageUrl = metadata.imageUrl;
+  if (metadata?.publishedDate) result.publishedDate = metadata.publishedDate;
 
   switch (subkind) {
     case 'eprint':
+      result.type = 'research';
       if (metadata?.authors?.length) {
         result.author = metadata.authors.join(', ');
       }
-      result.type = 'article';
+      if (metadata?.description) {
+        // Short plaintext excerpt of the abstract if present.
+        result.description = truncate(metadata.description, 500);
+      }
+      if (metadata?.journalTitle) {
+        result.siteName = metadata.journalTitle;
+      }
+      break;
+    case 'reference':
+    case 'external-work':
+      // DOI-only graph nodes referencing external works.
+      result.type = 'research';
+      if (metadata?.authors?.length) {
+        result.author = metadata.authors.join(', ');
+      }
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
+      break;
+    case 'person':
+      result.type = 'link';
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
       break;
     case 'field':
-      result.description = metadata?.description || 'Research field';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Research field', 500);
       break;
     case 'institution':
-      result.description = metadata?.description || 'Research institution';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Research institution', 500);
       break;
     case 'event':
-      result.description = metadata?.description || 'Academic event';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Academic event', 500);
       break;
     case 'concept':
-      result.description = metadata?.description || 'Concept';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Concept', 500);
+      break;
+    case 'collection':
+      result.type = 'link';
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
       break;
     default:
       if (metadata?.description) {
-        result.description = metadata.description;
+        result.description = truncate(metadata.description, 500);
       }
       break;
   }
 
   return result;
+}
+
+/**
+ * Truncates text to a maximum length, breaking on word boundaries where
+ * possible and appending an ellipsis.
+ *
+ * @internal
+ */
+function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const slice = text.slice(0, maxLength);
+  const lastSpace = slice.lastIndexOf(' ');
+  const cut = lastSpace > maxLength * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return `${cut.trimEnd()}…`;
 }
 
 /**

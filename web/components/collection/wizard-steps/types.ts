@@ -26,7 +26,7 @@ export interface CollectionItemFormData {
   label: string;
   /** Optional annotation note */
   note?: string;
-  /** Optional metadata for richer rendering */
+  /** Optional metadata for richer rendering + Cosmik card emission */
   metadata?: {
     avatarUrl?: string;
     handle?: string;
@@ -35,7 +35,24 @@ export interface CollectionItemFormData {
     kind?: string;
     description?: string;
     isPersonal?: boolean;
-    [key: string]: string | string[] | boolean | undefined;
+    /** Digital Object Identifier (DOI). */
+    doi?: string;
+    /** ISBN for books. */
+    isbn?: string;
+    /** Publication / creation date (ISO 8601). */
+    publishedDate?: string;
+    /** Cover / preview image URL. */
+    imageUrl?: string;
+    /** Journal or venue title for scholarly artifacts. */
+    journalTitle?: string;
+    /** Additional external IDs from the item's graph node. */
+    externalIds?: Array<{
+      system: string;
+      identifier: string;
+      uri?: string;
+      matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+    }>;
+    [key: string]: unknown;
   };
 }
 

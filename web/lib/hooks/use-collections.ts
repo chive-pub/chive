@@ -498,6 +498,17 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
       kind?: string;
       avatarUrl?: string;
       isPersonal?: boolean;
+      doi?: string;
+      isbn?: string;
+      publishedDate?: string;
+      imageUrl?: string;
+      journalTitle?: string;
+      externalIds?: Array<{
+        system: string;
+        identifier: string;
+        uri?: string;
+        matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+      }>;
     };
   }>;
   /** Inter-item edges to mirror as Cosmik connections when enableCosmikMirror is true */
