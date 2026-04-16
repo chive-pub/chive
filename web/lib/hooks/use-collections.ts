@@ -1224,6 +1224,7 @@ export function useUpdateCollectionItem() {
   return useMutation({
     mutationFn: async ({
       edgeUri,
+      collectionUri,
       itemUri,
       label,
       note,
@@ -1262,6 +1263,32 @@ export function useUpdateCollectionItem() {
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch {
         logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      // Sync label change to Cosmik card if the collection has a mirror
+      if (label !== undefined && itemUri) {
+        try {
+          const { loadEdgeSyncLookup, updateCosmikCard } =
+            await import('@/lib/atproto/record-creator');
+          const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+          if (lookup) {
+            // cosmikItems is keyed by original item URI (may differ from the
+            // personal-graph URI). Extract the rkey from itemUri and match
+            // against keys that share the same rkey.
+            const itemRkey = itemUri.split('/').pop();
+            for (const [key, mapping] of Object.entries(lookup.cosmikItems)) {
+              if (key === itemUri || (itemRkey && key.endsWith(`/${itemRkey}`))) {
+                await updateCosmikCard(agent, mapping.cardUri, { title: label });
+                break;
+              }
+            }
+          }
+        } catch (syncErr) {
+          logger.warn('Cosmik card label sync failed', {
+            itemUri,
+            error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+          });
+        }
       }
     },
     onSuccess: (_, variables) => {

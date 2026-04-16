@@ -3869,6 +3869,44 @@ export async function createCosmikCard(
 }
 
 /**
+ * Updates an existing Cosmik card record's metadata (e.g., after a label rename).
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param cardUri - AT-URI of the card to update
+ * @param updates - Fields to update on the card metadata
+ */
+export async function updateCosmikCard(
+  agent: Agent,
+  cardUri: string,
+  updates: { title?: string }
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(cardUri);
+  if (!parsed) return;
+
+  const existing = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'network.cosmik.card',
+    rkey: parsed.rkey,
+  });
+
+  const card = existing.data.value as CosmikCardRecord;
+
+  if (updates.title && card.content?.metadata) {
+    card.content.metadata.title = updates.title;
+  }
+
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'network.cosmik.card',
+    rkey: parsed.rkey,
+    record: card,
+  });
+}
+
+/**
  * Create a Cosmik collectionLink record linking a card to a collection.
  *
  * @param agent - Authenticated ATProto Agent
