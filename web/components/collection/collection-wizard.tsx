@@ -327,6 +327,48 @@ export function CollectionWizard({
         }
       }
 
+      // 2b. Patch cosmikItems with personalNodeUri so card lookups work at update time
+      if (values.enableCosmikMirror && uriMap.size > 0) {
+        try {
+          const { loadEdgeSyncLookup, writeBackCosmikConnections } =
+            await import('@/lib/atproto/record-creator');
+          const lookup = await loadEdgeSyncLookup(agent, collection.uri);
+          if (lookup) {
+            let patched = false;
+            for (const [originalUri, personalUri] of uriMap.entries()) {
+              if (originalUri !== personalUri && lookup.cosmikItems[originalUri]) {
+                lookup.cosmikItems[originalUri].personalNodeUri = personalUri;
+                patched = true;
+              }
+            }
+            if (patched) {
+              const ownerDid = (agent as unknown as { did?: string }).did ?? '';
+              const parsed = collection.uri.split('/');
+              const rkey = parsed[parsed.length - 1];
+              // Re-read and update the node with patched cosmikItems
+              const nodeResp = await agent.com.atproto.repo.getRecord({
+                repo: ownerDid,
+                collection: 'pub.chive.graph.node',
+                rkey,
+              });
+              const node = nodeResp.data.value as Record<string, unknown>;
+              const metadata = (node.metadata ?? {}) as Record<string, unknown>;
+              metadata.cosmikItems = lookup.cosmikItems;
+              await agent.com.atproto.repo.putRecord({
+                repo: ownerDid,
+                collection: 'pub.chive.graph.node',
+                rkey,
+                record: { ...node, metadata },
+              });
+            }
+          }
+        } catch (patchErr) {
+          wizardLogger.warn('Failed to patch cosmikItems with personalNodeUri', {
+            error: patchErr instanceof Error ? patchErr.message : String(patchErr),
+          });
+        }
+      }
+
       // 3. Add each item to the collection via CONTAINS edge using personal node URIs
       for (let i = 0; i < values.items.length; i++) {
         const item = values.items[i];

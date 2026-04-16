@@ -122,6 +122,8 @@ export function StepEdges({ form }: StepEdgesProps) {
       (selectedRelation.metadata?.slug as string | undefined) ??
       selectedRelation.label.toLowerCase().replace(/\s+/g, '-');
     const relationUri = selectedRelation.uri;
+    const hasSembleMapping =
+      selectedRelation.externalIds?.some((id) => id.system === 'cosmik') ?? false;
 
     const newEdges: CollectionEdgeFormData[] = [];
 
@@ -133,6 +135,7 @@ export function StepEdges({ form }: StepEdgesProps) {
       relationLabel: selectedRelation.label,
       note: edgeNote || undefined,
       isBidirectional: addReverse || undefined,
+      hasSembleMapping,
     };
 
     if (addReverse) {
@@ -162,6 +165,7 @@ export function StepEdges({ form }: StepEdgesProps) {
         inverseRelationSlug: relationSlug,
         inverseRelationUri: relationUri,
         inverseRelationLabel: selectedRelation.label,
+        hasSembleMapping,
       });
     } else {
       newEdges.push(forwardEdge);
@@ -355,6 +359,11 @@ export function StepEdges({ form }: StepEdgesProps) {
                       Personal
                     </span>
                   )}
+                  {selectedRelation.externalIds?.some((id) => id.system === 'cosmik') && (
+                    <span className="ml-1 text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1 py-0.5 rounded">
+                      Semble
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => setSelectedRelation(null)}
@@ -533,6 +542,11 @@ export function StepEdges({ form }: StepEdgesProps) {
                             </span>
                           )}
                       </Badge>
+                      {edge.hasSembleMapping && (
+                        <span className="text-[9px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1 py-0.5 rounded">
+                          Semble
+                        </span>
+                      )}
                       {edge.isBidirectional ? (
                         <span className="mx-2 text-muted-foreground">&harr;</span>
                       ) : (

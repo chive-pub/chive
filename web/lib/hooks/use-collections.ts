@@ -489,6 +489,8 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
     note?: string;
     /** Item type */
     type?: string;
+    /** Personal-graph node URI when item was cloned into the user's PDS */
+    personalNodeUri?: string;
     /** Additional metadata for rich Semble card content */
     metadata?: {
       subkind?: string;
@@ -516,6 +518,7 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
     sourceUri: string;
     targetUri: string;
     relationSlug: string;
+    relationUri?: string;
     note?: string;
   }>;
   /** Collaborator DIDs for shared Cosmik collections */
@@ -586,6 +589,7 @@ export function useCreateCollection() {
               subkind: item.metadata?.subkind,
               itemType: item.type,
               metadata: item.metadata,
+              personalNodeUri: item.personalNodeUri,
             })),
             edges: input.edges,
           });
@@ -1272,14 +1276,18 @@ export function useUpdateCollectionItem() {
             await import('@/lib/atproto/record-creator');
           const lookup = await loadEdgeSyncLookup(agent, collectionUri);
           if (lookup) {
-            // cosmikItems is keyed by original item URI (may differ from the
-            // personal-graph URI). Extract the rkey from itemUri and match
-            // against keys that share the same rkey.
-            const itemRkey = itemUri.split('/').pop();
-            for (const [key, mapping] of Object.entries(lookup.cosmikItems)) {
-              if (key === itemUri || (itemRkey && key.endsWith(`/${itemRkey}`))) {
-                await updateCosmikCard(agent, mapping.cardUri, { title: label });
-                break;
+            // cosmikItems is keyed by original item URI. Find the entry by:
+            // 1. Direct key match (itemUri IS the original URI)
+            // 2. personalNodeUri field (itemUri is the personal-graph clone)
+            const directMatch = lookup.cosmikItems[itemUri];
+            if (directMatch) {
+              await updateCosmikCard(agent, directMatch.cardUri, { title: label });
+            } else {
+              const entry = Object.values(lookup.cosmikItems).find(
+                (m) => m.personalNodeUri === itemUri
+              );
+              if (entry) {
+                await updateCosmikCard(agent, entry.cardUri, { title: label });
               }
             }
           }

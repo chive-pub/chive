@@ -123,6 +123,29 @@ export async function resolveCosmikConnectionType(
 }
 
 /**
+ * Checks whether a relation has a declared Cosmik mapping (not a fallback).
+ *
+ * @returns The Cosmik connectionType if the relation declares one, or `null`
+ *   if no mapping exists (meaning edges with this relation are Chive-only
+ *   and should not be dual-written as Semble connections).
+ */
+export async function resolveCosmikConnectionTypeStrict(
+  relationUri: string | undefined
+): Promise<string | null> {
+  if (!relationUri) return null;
+  return getRelationExternalId(relationUri, 'cosmik');
+}
+
+/**
+ * Checks whether a relation node has a cosmik externalId mapping declared.
+ * Synchronous check against the local cache -- returns false if not cached.
+ * For use in UI rendering, not for sync decisions.
+ */
+export function hasCosmikMapping(externalIds?: Array<{ system: string }>): boolean {
+  return externalIds?.some((id) => id.system === 'cosmik') ?? false;
+}
+
+/**
  * Reverse resolver: finds the Chive relation node whose `externalIds` match
  * a given foreign `(system, identifier)` pair.
  *

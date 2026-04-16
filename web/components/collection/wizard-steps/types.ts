@@ -88,6 +88,8 @@ export interface CollectionEdgeFormData {
   inverseRelationUri?: string;
   /** Display label for the inverse relation */
   inverseRelationLabel?: string;
+  /** Whether the relation has a declared Semble (Cosmik) connection type mapping */
+  hasSembleMapping?: boolean;
 }
 
 /**

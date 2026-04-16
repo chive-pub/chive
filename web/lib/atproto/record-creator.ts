@@ -3809,6 +3809,8 @@ export interface CosmikItemMapping {
   cardCid: string;
   linkUri: string;
   linkCid: string;
+  /** The personal-graph node URI, when different from the cosmikItems key. */
+  personalNodeUri?: string;
 }
 
 /**
@@ -3989,12 +3991,15 @@ export async function createCosmikMirror(
       itemType?: string;
       /** Additional metadata for rich card content */
       metadata?: ItemMetadata;
+      /** Personal-graph node URI, when the item was cloned into the user's PDS */
+      personalNodeUri?: string;
     }>;
     /** Inter-item edges to mirror as Cosmik connections */
     edges?: Array<{
       sourceUri: string;
       targetUri: string;
       relationSlug: string;
+      relationUri?: string;
       note?: string;
     }>;
   }
@@ -4063,6 +4068,9 @@ export async function createCosmikMirror(
       cardCid: card.cid,
       linkUri: link.uri,
       linkCid: link.cid,
+      ...(item.personalNodeUri && item.personalNodeUri !== item.url
+        ? { personalNodeUri: item.personalNodeUri }
+        : {}),
     };
   }
 
@@ -4584,12 +4592,17 @@ export async function createCosmikConnectionsForEdges(
   const connections: Record<string, CosmikConnectionMapping> = {};
 
   for (const edge of edges) {
+    // Only create connections for relations with a declared Cosmik mapping
+    const connectionType = await resolveCosmikConnectionTypeStrict(edge.relationUri);
+    if (!connectionType) {
+      recordLogger.debug('Skipping Cosmik connection for Chive-only relation', {
+        relationSlug: edge.relationSlug,
+      });
+      continue;
+    }
+
     const sourceUrl = itemUrlMap.get(edge.sourceUri) ?? edge.sourceUri;
     const targetUrl = itemUrlMap.get(edge.targetUri) ?? edge.targetUri;
-    const connectionType = await resolveCosmikConnectionTypeViaAppView(
-      edge.relationUri,
-      edge.relationSlug
-    );
 
     const result = await createCosmikConnection(agent, {
       source: sourceUrl,
@@ -4872,10 +4885,16 @@ export async function syncEdgeToCosmik(
     return existing;
   }
 
-  const connectionType = await resolveCosmikConnectionTypeViaAppView(
-    input.relationUri,
-    input.relationSlug
-  );
+  // Only dual-write edges whose relation has a declared Cosmik mapping.
+  // Chive-only relation types (no cosmik externalId) are gracefully skipped.
+  const connectionType = await resolveCosmikConnectionTypeStrict(input.relationUri);
+  if (!connectionType) {
+    recordLogger.debug('Skipping Cosmik connection for Chive-only relation', {
+      relationSlug: input.relationSlug,
+      relationUri: input.relationUri,
+    });
+    return undefined;
+  }
 
   const source = resolveEndpointUrl(input.chiveEdgeSourceUri, lookup.cosmikItems, originalUriMap);
   const target = resolveEndpointUrl(input.chiveEdgeTargetUri, lookup.cosmikItems, originalUriMap);
@@ -4927,6 +4946,21 @@ async function resolveCosmikConnectionTypeViaAppView(
   } catch {
     // Fallback if dynamic import fails (e.g. in test harnesses)
     return relationSlug.toUpperCase().replace(/-/g, '_');
+  }
+}
+
+/**
+ * Checks if a relation has a declared Cosmik mapping (not a SCREAMING_SNAKE fallback).
+ * Returns `null` when the relation is Chive-only and should not be dual-written.
+ */
+async function resolveCosmikConnectionTypeStrict(
+  relationUri: string | undefined
+): Promise<string | null> {
+  try {
+    const resolver = await import('./relation-resolver.js');
+    return await resolver.resolveCosmikConnectionTypeStrict(relationUri);
+  } catch {
+    return null;
   }
 }
 
