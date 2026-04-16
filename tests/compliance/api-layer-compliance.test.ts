@@ -578,9 +578,20 @@ describe('API Layer ATProto Compliance', () => {
     };
 
     app = createServer(serverConfig);
+
+    // Mock global fetch to prevent real HTTP calls to Bluesky API
+    // (the getSubmission handler fetches author avatars from public.api.bsky.app)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+    );
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
     try {
       await esClient.indices.delete({ index: INDEX_NAME });
     } catch {
