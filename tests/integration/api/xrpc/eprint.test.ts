@@ -19,7 +19,7 @@ import { Client } from '@elastic/elasticsearch';
 import type { Hono } from 'hono';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
@@ -348,9 +348,20 @@ describe('XRPC Eprint Endpoints Integration', () => {
     };
 
     app = createServer(serverConfig);
+
+    // Mock global fetch to prevent real HTTP calls to Bluesky API
+    // (the getSubmission handler fetches author avatars from public.api.bsky.app)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+    );
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
     // Clean up test index
     try {
       await esClient.indices.delete({ index: INDEX_NAME });

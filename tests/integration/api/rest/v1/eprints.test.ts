@@ -14,7 +14,7 @@ import { Client } from '@elastic/elasticsearch';
 import type { Hono } from 'hono';
 import { Redis } from 'ioredis';
 import { Pool } from 'pg';
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
@@ -343,9 +343,20 @@ describe('REST v1/eprints Endpoints Integration', () => {
     };
 
     app = createServer(serverConfig);
+
+    // Mock global fetch to prevent real HTTP calls to Bluesky API
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+    );
   });
 
   afterAll(async () => {
+    vi.unstubAllGlobals();
+
     // Clean up test index
     try {
       await esClient.indices.delete({ index: INDEX_NAME });
