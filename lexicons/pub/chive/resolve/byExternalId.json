@@ -1,0 +1,57 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.resolve.byExternalId",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Resolve an external identifier (DOI, arXiv, ORCID, ROR, ISBN, etc.) to the Chive entity that declares it — either a Chive-native eprint submission or a knowledge-graph node.",
+      "parameters": {
+        "type": "params",
+        "required": ["system", "identifier"],
+        "properties": {
+          "system": {
+            "type": "string",
+            "knownValues": ["doi", "arxiv", "orcid", "ror", "isbn", "pmid", "wikidata"],
+            "description": "External identifier system."
+          },
+          "identifier": {
+            "type": "string",
+            "description": "Identifier value (without URL prefix)."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["found"],
+          "properties": {
+            "found": {
+              "type": "boolean",
+              "description": "Whether a matching entity was found."
+            },
+            "entityType": {
+              "type": "string",
+              "knownValues": ["eprint", "author", "graphNode"],
+              "description": "Kind of entity that matched."
+            },
+            "uri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "AT-URI of the matched entity."
+            },
+            "label": {
+              "type": "string",
+              "description": "Display label for the matched entity."
+            },
+            "webPath": {
+              "type": "string",
+              "description": "Chive web path that renders this entity (e.g., /eprints/...)."
+            }
+          }
+        }
+      }
+    }
+  }
+}

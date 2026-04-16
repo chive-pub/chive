@@ -196,7 +196,39 @@ export function CollectionWizard({
                 metadata: item.metadata,
               }))
             : undefined,
+        collaborators: values.cosmikCollaborators?.length ? values.cosmikCollaborators : undefined,
       });
+
+      // Create native Chive collaboration invites for each DID. This lives in
+      // the owner's PDS and grants permission only when the invitee accepts
+      // via `pub.chive.collaboration.inviteAcceptance`. The `collaborators[]`
+      // field written to the Cosmik mirror above is the Semble-side allowlist
+      // equivalent.
+      if (values.cosmikCollaborators?.length) {
+        try {
+          const { createInviteRecord } = await import('@/lib/atproto/record-creator');
+          for (const invitee of values.cosmikCollaborators) {
+            try {
+              await createInviteRecord(agent, {
+                subjectUri: collection.uri,
+                subjectCid: collection.cid,
+                invitee,
+                role: 'collaborator',
+              });
+            } catch (inviteErr) {
+              wizardLogger.warn('Failed to create collaboration invite', {
+                collectionUri: collection.uri,
+                invitee,
+                error: inviteErr instanceof Error ? inviteErr.message : String(inviteErr),
+              });
+            }
+          }
+        } catch (err) {
+          wizardLogger.warn('Invite batch failed to load record-creator module', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
 
       wizardLogger.info('Collection node created', { uri: collection.uri });
 
@@ -381,16 +413,30 @@ export function CollectionWizard({
         }
       }
 
-      // 5. Create custom edges using remapped URIs
+      // 5. Create custom edges using remapped URIs, then dual-write to Semble
+      //    as network.cosmik.connection records when the collection is mirrored.
       const ownerDid = (agent as unknown as { did?: string }).did ?? '';
       for (const edge of values.edges ?? []) {
         try {
-          await createPersonalEdge.mutateAsync({
+          const personalEdge = await createPersonalEdge.mutateAsync({
             sourceUri: uriMap.get(edge.sourceUri) ?? edge.sourceUri,
             targetUri: uriMap.get(edge.targetUri) ?? edge.targetUri,
             relationSlug: edge.relationSlug,
             metadata: edge.note ? { note: edge.note } : undefined,
             ownerDid,
+            // Pass through the relation node's URI so syncEdgeToCosmik can
+            // resolve its `externalIds` to a Cosmik connectionType.
+            relationUri: edge.relationUri,
+            // Pass the parent collection URI so the edge hook can dual-write.
+            collectionUri: collection.uri,
+            // Pass the wizard-original URIs for endpoint URL resolution.
+            originalSourceUri: edge.sourceUri,
+            originalTargetUri: edge.targetUri,
+          });
+
+          wizardLogger.debug('Created personal edge', {
+            edgeUri: personalEdge.uri,
+            collectionUri: collection.uri,
           });
         } catch (edgeError) {
           wizardLogger.warn('Failed to create custom edge', {

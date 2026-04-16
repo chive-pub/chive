@@ -41,6 +41,24 @@ export async function seedRelations(nodeCreator: NodeCreator): Promise<number> {
       });
     }
 
+    if (relation.citoUri) {
+      externalIds.push({
+        system: 'schema-org',
+        identifier: relation.citoUri.split('/').pop() ?? relation.slug,
+        uri: relation.citoUri,
+        matchType: 'exact',
+      });
+    }
+
+    if (relation.cosmikConnectionType) {
+      externalIds.push({
+        system: 'cosmik',
+        identifier: relation.cosmikConnectionType,
+        uri: `cosmik://connectionType/${relation.cosmikConnectionType}`,
+        matchType: 'exact',
+      });
+    }
+
     const metadata: Record<string, string | boolean> = {};
     if (relation.symmetric) metadata.symmetric = true;
     if (relation.inverseSlug) metadata.inverseSlug = relation.inverseSlug;

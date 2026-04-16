@@ -445,8 +445,12 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         url.searchParams.append('wantedCollections', collection);
       }
     } else {
-      // Default to all pub.chive.* collections
+      // Default: subscribe to Chive records plus cosmik/margin ecosystems we
+      // interoperate with. Jetstream supports multiple wantedCollections;
+      // trailing-wildcard filters match all records in that namespace.
       url.searchParams.append('wantedCollections', 'pub.chive.*');
+      url.searchParams.append('wantedCollections', 'network.cosmik.*');
+      url.searchParams.append('wantedCollections', 'at.margin.*');
     }
 
     // Create WebSocket

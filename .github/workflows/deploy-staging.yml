@@ -329,6 +329,43 @@ jobs:
                   }
               }
 
+      - name: Backfill Elasticsearch from Postgres if empty
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_SSH_USER }}
+          key: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          command_timeout: 30m
+          script: |
+            set -e
+            cd /opt/chive
+
+            # Compare Postgres and Elasticsearch eprint counts. When ES is
+            # behind Postgres — which happens after the setup step recreates
+            # the index, or when a fresh container comes up against a
+            # populated Postgres — run the full reindex script. When ES
+            # already matches (the steady state after any deploy), this is
+            # a no-op.
+            PG_COUNT=$(docker exec chive-postgres psql -U chive -d chive -tAc 'SELECT COUNT(*) FROM eprints_index;')
+            ES_COUNT=$(docker exec chive-elasticsearch curl -s 'http://localhost:9200/eprints/_count' | sed -n 's/.*"count":\([0-9]*\).*/\1/p')
+            ES_COUNT=${ES_COUNT:-0}
+
+            echo "Postgres eprints: $PG_COUNT"
+            echo "Elasticsearch eprints: $ES_COUNT"
+
+            if [ "$PG_COUNT" -gt "$ES_COUNT" ]; then
+              echo "Elasticsearch is behind Postgres ($ES_COUNT < $PG_COUNT) — running reindex"
+              # chive-api already has DATABASE_URL, ELASTICSEARCH_URL,
+              # NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD baked in from
+              # .env.production, so we only pass overrides needed to use
+              # in-network hostnames.
+              docker exec \
+                chive-api \
+                node --enable-source-maps dist/scripts/reindex-all-eprints.js
+            else
+              echo "Elasticsearch is in sync with Postgres — skipping reindex"
+            fi
+
       - name: Verify staging deployment
         run: |
           echo "Waiting for services to fully start..."

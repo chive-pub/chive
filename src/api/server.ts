@@ -33,6 +33,7 @@ import type { BacklinkService } from '../services/backlink/backlink-service.js';
 import type { BlobProxyService } from '../services/blob-proxy/proxy-service.js';
 import type { CitationExtractionService } from '../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../services/claiming/claiming-service.js';
+import type { CollaborationService } from '../services/collaboration/collaboration-service.js';
 import type { CollectionService } from '../services/collection/collection-service.js';
 import type { DiscoveryService } from '../services/discovery/discovery-service.js';
 import type { EprintService } from '../services/eprint/eprint-service.js';
@@ -269,6 +270,12 @@ export interface ServerConfig {
   readonly collectionService?: CollectionService;
 
   /**
+   * Collaboration service for indexing invites / acceptances and deriving
+   * active collaborators (optional).
+   */
+  readonly collaborationService?: CollaborationService;
+
+  /**
    * Admin service for dashboard operations (optional).
    */
   readonly adminService?: AdminService;
@@ -389,6 +396,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       indexRetryWorker: config.indexRetryWorker,
       personalGraph: config.personalGraphService,
       collection: config.collectionService,
+      collaborationService: config.collaborationService,
       admin: config.adminService,
       backfillManager: config.backfillManager,
       citationExtraction: config.citationExtractionService,

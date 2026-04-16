@@ -405,6 +405,15 @@ export class NodeRepository {
     status?: NodeStatus;
     limit?: number;
     cursor?: string;
+    /**
+     * Filter nodes whose `externalIds` array includes an entry matching both
+     * `system` and `identifier`. External IDs are stored in Neo4j as a
+     * serialized JSON string, so this filter uses a substring match on the
+     * JSON representation. Must be combined with `externalIdIdentifier`.
+     */
+    externalIdSystem?: string;
+    /** See `externalIdSystem`. */
+    externalIdIdentifier?: string;
   }): Promise<NodeSearchResult> {
     const limit = options?.limit ?? 50;
     const filters: string[] = [];
@@ -440,6 +449,18 @@ export class NodeRepository {
     if (options?.cursor) {
       filters.push('n.label > $cursor');
       params.cursor = options.cursor;
+    }
+
+    // External-id filter: match against the JSON-serialized externalIds
+    // property using CONTAINS for both system and identifier. Both fragments
+    // must be present in the same externalIds JSON string. Efficient enough
+    // for the expected result sizes (relation nodes: ~30, field nodes: ~1k).
+    if (options?.externalIdSystem && options?.externalIdIdentifier) {
+      filters.push('n.externalIds IS NOT NULL');
+      filters.push('n.externalIds CONTAINS $externalIdSystemFragment');
+      filters.push('n.externalIds CONTAINS $externalIdIdentifierFragment');
+      params.externalIdSystemFragment = `"system":"${options.externalIdSystem}"`;
+      params.externalIdIdentifierFragment = `"identifier":"${options.externalIdIdentifier}"`;
     }
 
     const whereClause = filters.length > 0 ? `WHERE ${filters.join(' AND ')}` : '';

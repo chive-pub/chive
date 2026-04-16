@@ -30,15 +30,34 @@ import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
+import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
+import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
+import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
+import {
+  MarginAnnotationsPlugin,
+  MarginBookmarksPlugin,
+  MarginHighlightsPlugin,
+  MarginRepliesPlugin,
+} from './plugins/builtin/margin-annotations.js';
+import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
+import {
+  getEventBus,
+  getPluginManager,
+  registerPluginSystem,
+} from './plugins/core/plugin-registry.js';
 import { ActivityService } from './services/activity/activity-service.js';
+import { BacklinkService } from './services/backlink/backlink-service.js';
 import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
+import { CollaborationService } from './services/collaboration/collaboration-service.js';
 import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { AutomaticProposalService } from './services/governance/automatic-proposal-service.js';
 import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
+import { NodeService } from './services/governance/node-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
@@ -50,6 +69,7 @@ import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
 import { CitationGraph } from './storage/neo4j/citation-graph.js';
 import { Neo4jConnection } from './storage/neo4j/connection.js';
+import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
@@ -456,9 +476,55 @@ async function main(): Promise<void> {
     await state.fieldLabelResolutionJob.start();
     logger.info('Field label resolution job started');
 
-    // Create personal graph and collection services for firehose indexing
+    // Create personal graph, collection, and collaboration services for
+    // firehose indexing
     const personalGraphService = new PersonalGraphService({ pool: pgPool, logger });
     const collectionService = new CollectionService({ pool: pgPool, logger });
+    const collaborationService = new CollaborationService({ pool: pgPool, logger });
+
+    // Node service for relation-node lookups (used by cosmik-connections
+    // plugin for reverse mapping connectionType → chive relation slug)
+    const nodeRepository = new NodeRepository(neo4jConnection);
+    const nodeService = new NodeService({ nodeRepository, logger });
+
+    // Backlink service for plugin-emitted eprint references
+    const backlinkService = new BacklinkService(logger, pgPool);
+
+    // =====================================================================
+    // Register plugin system and load cross-ecosystem tracking plugins
+    // =====================================================================
+    registerPluginDependencies(logger, redis);
+    registerPluginSystem();
+    const pluginManager = getPluginManager();
+    const pluginEventBus = getEventBus();
+
+    const pluginContext = {
+      backlinkService,
+      collectionService,
+      nodeService,
+    };
+
+    // Cosmik (Semble) ecosystem plugins
+    try {
+      await pluginManager.loadBuiltinPlugin(new CosmikBacklinksPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new CosmikConnectionsPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new CosmikFollowsPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new CosmikLinkRemovalsPlugin(), pluginContext);
+      logger.info('Cosmik ecosystem plugins loaded');
+    } catch (err) {
+      logger.error('Failed to load Cosmik plugins', err instanceof Error ? err : undefined);
+    }
+
+    // Margin (W3C Web Annotation) ecosystem plugins
+    try {
+      await pluginManager.loadBuiltinPlugin(new MarginAnnotationsPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new MarginHighlightsPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new MarginBookmarksPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new MarginRepliesPlugin(), pluginContext);
+      logger.info('Margin ecosystem plugins loaded');
+    } catch (err) {
+      logger.error('Failed to load Margin plugins', err instanceof Error ? err : undefined);
+    }
 
     // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
@@ -467,6 +533,7 @@ async function main(): Promise<void> {
       eprintService,
       reviewService,
       graphService,
+      nodeService,
       automaticProposalService,
       identity: identityResolver,
       logger,
@@ -475,6 +542,8 @@ async function main(): Promise<void> {
       citationExtractionJob, // Async citation extraction after eprint indexing
       collectionService, // Index collections from personal PDSes
       personalGraphService, // Index personal graph nodes/edges from PDSes
+      collaborationService, // Index invites + acceptances from personal PDSes
+      pluginEventBus, // Forward foreign-namespace records to plugins
     });
 
     // Create indexing service

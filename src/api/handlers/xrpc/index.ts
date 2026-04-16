@@ -26,6 +26,7 @@ export { annotationMethods } from './annotation/index.js';
 export * from './author/index.js';
 export * from './backlink/index.js';
 export * from './claiming/index.js';
+export * from './collaboration/index.js';
 export { collectionMethods } from './collection/index.js';
 export * from './discovery/index.js';
 export * from './endorsement/index.js';
@@ -34,6 +35,7 @@ export * from './graph/index.js';
 export * from './import/index.js';
 export * from './metrics/index.js';
 export * from './eprint/index.js';
+export * from './resolve/index.js';
 export * from './review/index.js';
 export * from './sync/index.js';
 export * from './tag/index.js';
@@ -48,6 +50,7 @@ import { annotationMethods } from './annotation/index.js';
 import { authorMethods } from './author/index.js';
 import { backlinkMethods } from './backlink/index.js';
 import { claimingMethods, claimingRestEndpoints } from './claiming/index.js';
+import { collaborationMethods } from './collaboration/index.js';
 import { collectionMethods } from './collection/index.js';
 import { discoveryMethods } from './discovery/index.js';
 import { endorsementMethods } from './endorsement/index.js';
@@ -58,6 +61,7 @@ import { importMethods } from './import/index.js';
 import { metricsMethods } from './metrics/index.js';
 import { moderationMethods } from './moderation/index.js';
 import { notificationMethods } from './notification/index.js';
+import { resolveMethods } from './resolve/index.js';
 import { reviewMethods } from './review/index.js';
 import { syncMethods } from './sync/index.js';
 import { tagMethods } from './tag/index.js';
@@ -73,6 +77,7 @@ export const allXRPCMethods = {
   ...authorMethods,
   ...backlinkMethods,
   ...claimingMethods,
+  ...collaborationMethods,
   ...collectionMethods,
   ...discoveryMethods,
   ...endorsementMethods,
@@ -83,6 +88,7 @@ export const allXRPCMethods = {
   ...metricsMethods,
   ...moderationMethods,
   ...notificationMethods,
+  ...resolveMethods,
   ...reviewMethods,
   ...syncMethods,
   ...tagMethods,

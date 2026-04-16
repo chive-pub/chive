@@ -1,0 +1,90 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collaboration.listInvites",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List collaboration invites, filtered by invitee, inviter, and/or subject. Typically used to populate an invitee's inbox.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "invitee": {
+            "type": "string",
+            "format": "did",
+            "description": "Filter to invites directed at this DID."
+          },
+          "inviter": {
+            "type": "string",
+            "format": "did",
+            "description": "Filter to invites authored by this DID."
+          },
+          "subjectUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Filter to invites for this subject record."
+          },
+          "subjectCollection": {
+            "type": "string",
+            "description": "Filter to invites where the subject's NSID matches (e.g., `pub.chive.graph.node` for collections)."
+          },
+          "state": {
+            "type": "string",
+            "knownValues": ["pending", "accepted", "rejected", "expired", "all"],
+            "default": "all",
+            "description": "Acceptance-derived state filter."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["invites"],
+          "properties": {
+            "invites": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#inviteView"
+              }
+            },
+            "cursor": { "type": "string" },
+            "hasMore": { "type": "boolean" },
+            "total": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "inviteView": {
+      "type": "object",
+      "required": ["uri", "inviter", "invitee", "subjectUri", "state", "createdAt"],
+      "properties": {
+        "uri": { "type": "string", "format": "at-uri" },
+        "inviter": { "type": "string", "format": "did" },
+        "invitee": { "type": "string", "format": "did" },
+        "subjectUri": { "type": "string", "format": "at-uri" },
+        "subjectCollection": { "type": "string" },
+        "role": { "type": "string" },
+        "message": { "type": "string" },
+        "state": {
+          "type": "string",
+          "knownValues": ["pending", "accepted", "rejected", "expired"]
+        },
+        "acceptanceUri": { "type": "string", "format": "at-uri" },
+        "createdAt": { "type": "string", "format": "datetime" },
+        "expiresAt": { "type": "string", "format": "datetime" },
+        "acceptedAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

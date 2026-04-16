@@ -3181,6 +3181,8 @@ export interface PersonalEdgeRecord {
   sourceUri: string;
   targetUri: string;
   relationSlug: string;
+  /** AT-URI of the relation-type node (graph lookup for inverse, externalIds). */
+  relationUri?: string;
   metadata: Record<string, unknown>;
   status: 'established';
   createdAt: string;
@@ -3198,6 +3200,12 @@ export interface PersonalNodeRecord {
   label: string;
   description?: string;
   metadata?: Record<string, unknown>;
+  externalIds?: Array<{
+    system: string;
+    identifier: string;
+    uri?: string;
+    matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+  }>;
   status: 'established';
   createdAt: string;
 }
@@ -3216,6 +3224,21 @@ export interface CreatePersonalNodeInput {
   description?: string;
   /** Optional metadata */
   metadata?: Record<string, unknown>;
+  /**
+   * External identifier mappings for cross-ecosystem references.
+   *
+   * @remarks
+   * Follows the same structure as community graph nodes. For relation-type
+   * nodes, entries declare how this relation maps to foreign vocabularies
+   * (e.g., `{ system: "cosmik", identifier: "REFERENCES" }` to say this
+   * relation corresponds to Semble's `REFERENCES` connection type).
+   */
+  externalIds?: Array<{
+    system: string;
+    identifier: string;
+    uri?: string;
+    matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+  }>;
 }
 
 /**
@@ -3317,6 +3340,9 @@ export async function createPersonalNode(
   if (input.metadata) {
     record.metadata = input.metadata;
   }
+  if (input.externalIds && input.externalIds.length > 0) {
+    record.externalIds = input.externalIds;
+  }
 
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
@@ -3341,6 +3367,12 @@ export interface CreatePersonalEdgeInput {
   targetUri: string;
   /** Relation type slug (e.g., 'related-to', 'depends-on') */
   relationSlug: string;
+  /**
+   * AT-URI of the relation-type node. Written to the edge record so
+   * consumers can look up the relation's `externalIds` for cross-app
+   * translations without re-resolving by slug.
+   */
+  relationUri?: string;
   /** Optional metadata */
   metadata?: Record<string, unknown>;
 }
@@ -3384,6 +3416,9 @@ export async function createPersonalEdge(
     status: 'established',
     createdAt: new Date().toISOString(),
   };
+  if (input.relationUri) {
+    record.relationUri = input.relationUri;
+  }
 
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
@@ -3525,6 +3560,16 @@ export interface CosmikUrlMetadata {
   author?: string;
   siteName?: string;
   type?: string;
+  /** Content MIME or identifier type for scholarly artifacts. */
+  publishedDate?: string;
+  /** Open Graph / preview image URL. */
+  imageUrl?: string;
+  /** Digital Object Identifier for academic content. */
+  doi?: string;
+  /** ISBN for books. */
+  isbn?: string;
+  /** Timestamp when the metadata was populated. */
+  retrievedAt?: string;
 }
 
 /**
@@ -3582,6 +3627,11 @@ export interface CosmikCardRecord {
 /**
  * Item metadata from the collection wizard, used to build rich Semble card content.
  */
+/**
+ * Metadata passed from the collection wizard or detail pages to
+ * `buildSembleCardMetadata`. These fields flow through to Cosmik/Semble's
+ * `network.cosmik.card#urlMetadata` record for rich card previews.
+ */
 interface ItemMetadata {
   subkind?: string;
   description?: string;
@@ -3590,6 +3640,23 @@ interface ItemMetadata {
   kind?: string;
   avatarUrl?: string;
   isPersonal?: boolean;
+  /** DOI extracted from eprint.publishedVersion.doi or externalIds.zenodoDoi. */
+  doi?: string;
+  /** ISBN for book items (if the graph node carries one). */
+  isbn?: string;
+  /** ISO date string for the publication event. */
+  publishedDate?: string;
+  /** Cover / preview image URL. */
+  imageUrl?: string;
+  /** All known external IDs on the item's graph node, in original form. */
+  externalIds?: Array<{
+    system: string;
+    identifier: string;
+    uri?: string;
+    matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+  }>;
+  /** Journal / publication venue for articles. */
+  journalTitle?: string;
 }
 
 /**
@@ -3609,35 +3676,94 @@ function buildSembleCardMetadata(
     $type: 'network.cosmik.card#urlMetadata',
     title: label,
     siteName: 'Chive',
+    retrievedAt: new Date().toISOString(),
   };
+
+  // Pull DOI / ISBN from dedicated fields first, then fall back to externalIds.
+  const doi = metadata?.doi ?? metadata?.externalIds?.find((id) => id.system === 'doi')?.identifier;
+  const isbn =
+    metadata?.isbn ?? metadata?.externalIds?.find((id) => id.system === 'isbn')?.identifier;
+  if (doi) result.doi = doi;
+  if (isbn) result.isbn = isbn;
+
+  if (metadata?.imageUrl) result.imageUrl = metadata.imageUrl;
+  if (metadata?.publishedDate) result.publishedDate = metadata.publishedDate;
 
   switch (subkind) {
     case 'eprint':
+      result.type = 'research';
       if (metadata?.authors?.length) {
         result.author = metadata.authors.join(', ');
       }
-      result.type = 'article';
+      if (metadata?.description) {
+        // Short plaintext excerpt of the abstract if present.
+        result.description = truncate(metadata.description, 500);
+      }
+      if (metadata?.journalTitle) {
+        result.siteName = metadata.journalTitle;
+      }
+      break;
+    case 'reference':
+    case 'external-work':
+      // DOI-only graph nodes referencing external works.
+      result.type = 'research';
+      if (metadata?.authors?.length) {
+        result.author = metadata.authors.join(', ');
+      }
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
+      break;
+    case 'person':
+      result.type = 'link';
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
       break;
     case 'field':
-      result.description = metadata?.description || 'Research field';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Research field', 500);
       break;
     case 'institution':
-      result.description = metadata?.description || 'Research institution';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Research institution', 500);
       break;
     case 'event':
-      result.description = metadata?.description || 'Academic event';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Academic event', 500);
       break;
     case 'concept':
-      result.description = metadata?.description || 'Concept';
+      result.type = 'link';
+      result.description = truncate(metadata?.description ?? 'Concept', 500);
+      break;
+    case 'collection':
+      result.type = 'link';
+      if (metadata?.description) {
+        result.description = truncate(metadata.description, 500);
+      }
       break;
     default:
       if (metadata?.description) {
-        result.description = metadata.description;
+        result.description = truncate(metadata.description, 500);
       }
       break;
   }
 
   return result;
+}
+
+/**
+ * Truncates text to a maximum length, breaking on word boundaries where
+ * possible and appending an ellipsis.
+ *
+ * @internal
+ */
+function truncate(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const slice = text.slice(0, maxLength);
+  const lastSpace = slice.lastIndexOf(' ');
+  const cut = lastSpace > maxLength * 0.6 ? slice.slice(0, lastSpace) : slice;
+  return `${cut.trimEnd()}…`;
 }
 
 /**
@@ -4462,6 +4588,516 @@ export async function deleteCosmikConnections(
       });
     }
   }
+}
+
+// =============================================================================
+// EDGE-TO-COSMIK SYNC
+// =============================================================================
+
+/**
+ * Input for `syncEdgeToCosmik`.
+ */
+export interface SyncEdgeToCosmikInput {
+  /**
+   * AT-URI of the Chive collection the edge lives within. Must be the
+   * personal-graph collection node (`pub.chive.graph.node`). Sync is a
+   * no-op if the collection has no Cosmik mirror (`cosmikCollectionUri`
+   * absent from the node metadata).
+   */
+  collectionUri: string;
+  /** AT-URI of the Chive edge record (`pub.chive.graph.edge`). */
+  chiveEdgeUri: string;
+  /** AT-URI of the edge's source personal-graph node. */
+  chiveEdgeSourceUri: string;
+  /** AT-URI of the edge's target personal-graph node. */
+  chiveEdgeTargetUri: string;
+  /** Slug of the edge's relation. */
+  relationSlug: string;
+  /** AT-URI of the relation-type node (for externalIds-based Cosmik mapping). */
+  relationUri?: string;
+  /** Optional note attached to the edge. */
+  note?: string;
+}
+
+/**
+ * Snapshot of a mirrored collection's state used by edge sync and repair.
+ *
+ * @public
+ */
+export interface EdgeSyncLookup {
+  /** Collection node record fetched fresh before mutation. */
+  node: CollectionNodeRecord;
+  /** Collection rkey. */
+  rkey: string;
+  /** Cosmik items metadata keyed by the original item URL. */
+  cosmikItems: Record<string, CosmikItemMapping>;
+  /** Cosmik connections metadata keyed by Chive edge URI. */
+  cosmikConnections: Record<string, CosmikConnectionMapping>;
+}
+
+/**
+ * Builds the `cosmikConnections` map key for an edge.
+ *
+ * @remarks
+ * We key by the Chive edge's AT-URI for correctness: every edge is a
+ * distinct record, and two edges with identical `(source, target, slug)`
+ * triples (rare but possible) must each have their own connection entry.
+ *
+ * @internal
+ */
+function cosmikConnectionKey(chiveEdgeUri: string): string {
+  return chiveEdgeUri;
+}
+
+/**
+ * Reads the collection node record and returns its Cosmik mirror state,
+ * or `null` if the collection isn't mirrored.
+ *
+ * @remarks
+ * Exported for use by repair flows that need access to the raw mirror
+ * metadata (e.g., `useRepairCosmikMirror`).
+ *
+ * @public
+ */
+export async function loadEdgeSyncLookup(
+  agent: Agent,
+  collectionUri: string
+): Promise<EdgeSyncLookup | null> {
+  const did = getAgentDid(agent);
+  if (!did) return null;
+
+  const parsed = parseAtUri(collectionUri);
+  if (!parsed || parsed.did !== did) return null;
+
+  const response = await agent.com.atproto.repo.getRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+  });
+
+  const node = response.data.value as CollectionNodeRecord;
+  if (!node.metadata || !('cosmikCollectionUri' in node.metadata)) {
+    return null;
+  }
+
+  const cosmikItems =
+    ((node.metadata.cosmikItems ?? {}) as Record<string, CosmikItemMapping>) ?? {};
+  const cosmikConnections =
+    ((node.metadata.cosmikConnections ?? {}) as Record<string, CosmikConnectionMapping>) ?? {};
+
+  return { node, rkey: parsed.rkey, cosmikItems, cosmikConnections };
+}
+
+/**
+ * Writes back the collection node with an updated `cosmikConnections` map.
+ *
+ * @public
+ */
+export async function writeBackCosmikConnections(
+  agent: Agent,
+  did: string,
+  rkey: string,
+  node: CollectionNodeRecord,
+  cosmikConnections: Record<string, CosmikConnectionMapping>
+): Promise<void> {
+  const updated: CollectionNodeRecord = {
+    ...node,
+    metadata: {
+      ...node.metadata,
+      cosmikConnections,
+    },
+  };
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey,
+    record: updated,
+  });
+}
+
+/**
+ * Resolves an item's Cosmik-visible URL for use as a connection endpoint.
+ *
+ * @remarks
+ * Semble's connection query layer only renders URL-typed endpoints
+ * (`sourceType = 'URL' AND targetType = 'URL'`). `at://` endpoints are
+ * stored but never rendered. We therefore use the Chive web URL that was
+ * emitted when the item's card was created. For edge endpoints pointing
+ * at items outside the collection (no card exists) we fall back to
+ * converting the item AT-URI via `toChiveUrl`.
+ *
+ * @internal
+ */
+function resolveEndpointUrl(
+  itemAtUri: string,
+  cosmikItems: Record<string, CosmikItemMapping>,
+  originalUriMap?: Map<string, string>
+): string {
+  // Prefer the URL used when the card was created (stored in cosmikItems keyed
+  // by original URL).
+  if (originalUriMap) {
+    for (const [originalUri, personalUri] of originalUriMap.entries()) {
+      if (personalUri === itemAtUri && cosmikItems[originalUri]) {
+        return originalUri;
+      }
+    }
+  }
+  // Fallback: direct lookup by the URI we were given.
+  const direct = cosmikItems[itemAtUri];
+  if (direct) {
+    // The stored key IS the URL we want to emit.
+    return itemAtUri;
+  }
+  // Last resort: synthesize a Chive URL from the AT-URI.
+  return toChiveUrl(itemAtUri);
+}
+
+/**
+ * Creates, updates, or deletes a `network.cosmik.connection` record to
+ * mirror a Chive inter-item edge.
+ *
+ * @remarks
+ * No-op when the parent collection isn't mirrored to Cosmik. For create:
+ * resolves the relation's declared Cosmik mapping from its node's
+ * `externalIds` (falls back to SCREAMING_SNAKE of the slug); creates the
+ * connection record in the user's PDS; updates the collection node's
+ * `cosmikConnections` metadata.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param input - Edge sync input
+ * @param originalUriMap - Optional map from wizard-original URIs to
+ *   personal-graph URIs; used to resolve card endpoint URLs without
+ *   guessing
+ * @returns Connection URI/CID on create, or undefined for update/delete
+ *
+ * @public
+ */
+export async function syncEdgeToCosmik(
+  agent: Agent,
+  action: 'create' | 'update' | 'delete',
+  input: SyncEdgeToCosmikInput,
+  originalUriMap?: Map<string, string>
+): Promise<CosmikConnectionMapping | undefined> {
+  const did = getAgentDid(agent);
+  if (!did) return undefined;
+
+  const lookup = await loadEdgeSyncLookup(agent, input.collectionUri);
+  if (!lookup) return undefined; // not mirrored
+
+  const key = cosmikConnectionKey(input.chiveEdgeUri);
+  const existing = lookup.cosmikConnections[key];
+
+  if (action === 'delete') {
+    if (!existing) return undefined;
+    try {
+      await deleteCosmikConnection(agent, existing.connectionUri);
+    } catch (err) {
+      recordLogger.warn('Cosmik connection delete failed', {
+        connectionUri: existing.connectionUri,
+        err,
+      });
+    }
+    const { [key]: _removed, ...rest } = lookup.cosmikConnections;
+    void _removed;
+    await writeBackCosmikConnections(agent, did, lookup.rkey, lookup.node, rest);
+    return undefined;
+  }
+
+  if (action === 'update') {
+    if (!existing) return undefined;
+    const connectionType = await resolveCosmikConnectionTypeViaAppView(
+      input.relationUri,
+      input.relationSlug
+    );
+    try {
+      await updateCosmikConnection(agent, existing.connectionUri, {
+        connectionType,
+        note: input.note,
+      });
+    } catch (err) {
+      recordLogger.warn('Cosmik connection update failed', {
+        connectionUri: existing.connectionUri,
+        err,
+      });
+    }
+    return existing;
+  }
+
+  // action === 'create'
+  if (existing) {
+    // Idempotent: already synced.
+    return existing;
+  }
+
+  const connectionType = await resolveCosmikConnectionTypeViaAppView(
+    input.relationUri,
+    input.relationSlug
+  );
+
+  const source = resolveEndpointUrl(input.chiveEdgeSourceUri, lookup.cosmikItems, originalUriMap);
+  const target = resolveEndpointUrl(input.chiveEdgeTargetUri, lookup.cosmikItems, originalUriMap);
+
+  let mapping: CosmikConnectionMapping;
+  try {
+    const result = await createCosmikConnection(agent, {
+      source,
+      target,
+      connectionType,
+      note: input.note,
+    });
+    mapping = {
+      connectionUri: result.uri,
+      connectionCid: result.cid,
+    };
+  } catch (err) {
+    recordLogger.warn('Cosmik connection create failed', {
+      source,
+      target,
+      relationSlug: input.relationSlug,
+      err,
+    });
+    return undefined;
+  }
+
+  const updatedConnections = { ...lookup.cosmikConnections, [key]: mapping };
+  await writeBackCosmikConnections(agent, did, lookup.rkey, lookup.node, updatedConnections);
+  return mapping;
+}
+
+/**
+ * Resolves a Cosmik connectionType via the AppView's relation-node lookup.
+ *
+ * @remarks
+ * Lazy-imports `relation-resolver` to keep this module usable from
+ * non-browser contexts (tests, Node scripts). The resolver hits the
+ * `pub.chive.graph.getNode` XRPC endpoint and reads `externalIds`.
+ *
+ * @internal
+ */
+async function resolveCosmikConnectionTypeViaAppView(
+  relationUri: string | undefined,
+  relationSlug: string
+): Promise<string> {
+  try {
+    const { resolveCosmikConnectionType } = await import('./relation-resolver.js');
+    return await resolveCosmikConnectionType(relationUri, relationSlug);
+  } catch {
+    // Fallback if dynamic import fails (e.g. in test harnesses)
+    return relationSlug.toUpperCase().replace(/-/g, '_');
+  }
+}
+
+/**
+ * Deletes all Cosmik connections that reference a removed item.
+ *
+ * @remarks
+ * Called when an item is removed from a mirrored collection. Scans the
+ * `cosmikConnections` metadata for entries whose `source` or `target`
+ * matches the removed item's URL, deletes those connection records, and
+ * removes them from the metadata map.
+ *
+ * @param agent - Authenticated ATProto Agent
+ * @param collectionUri - AT-URI of the collection node
+ * @param itemUrl - URL (or AT-URI) of the item being removed
+ *
+ * @public
+ */
+export async function deleteCosmikConnectionsForItem(
+  agent: Agent,
+  collectionUri: string,
+  itemUrl: string
+): Promise<void> {
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+  if (!lookup) return;
+
+  const keep: Record<string, CosmikConnectionMapping> = {};
+  const toDelete: CosmikConnectionMapping[] = [];
+
+  for (const [key, mapping] of Object.entries(lookup.cosmikConnections)) {
+    try {
+      const parsed = parseAtUri(mapping.connectionUri);
+      if (!parsed) {
+        keep[key] = mapping;
+        continue;
+      }
+      const response = await agent.com.atproto.repo.getRecord({
+        repo: parsed.did,
+        collection: 'network.cosmik.connection',
+        rkey: parsed.rkey,
+      });
+      const record = response.data.value as CosmikConnectionRecord;
+      if (record.source === itemUrl || record.target === itemUrl) {
+        toDelete.push(mapping);
+      } else {
+        keep[key] = mapping;
+      }
+    } catch {
+      // Treat read failures as "keep" — we can't verify, so don't delete.
+      keep[key] = mapping;
+    }
+  }
+
+  for (const mapping of toDelete) {
+    try {
+      await deleteCosmikConnection(agent, mapping.connectionUri);
+    } catch (err) {
+      recordLogger.warn('Failed to delete orphan Cosmik connection', {
+        connectionUri: mapping.connectionUri,
+        err,
+      });
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await writeBackCosmikConnections(agent, did, lookup.rkey, lookup.node, keep);
+  }
+}
+
+// =============================================================================
+// CHIVE COLLABORATION (invites + acceptances)
+// =============================================================================
+
+/**
+ * `pub.chive.collaboration.invite` record.
+ *
+ * @public
+ */
+export interface CollaborationInviteRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.collaboration.invite';
+  subject: { uri: string; cid: string };
+  invitee: string;
+  role?: string;
+  message?: string;
+  createdAt: string;
+  expiresAt?: string;
+}
+
+/**
+ * `pub.chive.collaboration.inviteAcceptance` record.
+ *
+ * @public
+ */
+export interface CollaborationInviteAcceptanceRecord {
+  [key: string]: unknown;
+  $type: 'pub.chive.collaboration.inviteAcceptance';
+  invite: { uri: string; cid: string };
+  subject: { uri: string; cid: string };
+  createdAt: string;
+}
+
+/**
+ * Creates a collaboration invite in the subject-record author's PDS.
+ *
+ * @public
+ */
+export async function createInviteRecord(
+  agent: Agent,
+  input: {
+    subjectUri: string;
+    subjectCid: string;
+    invitee: string;
+    role?: string;
+    message?: string;
+    expiresAt?: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CollaborationInviteRecord = {
+    $type: 'pub.chive.collaboration.invite',
+    subject: { uri: input.subjectUri, cid: input.subjectCid },
+    invitee: input.invitee,
+    createdAt: new Date().toISOString(),
+  };
+  if (input.role) record.role = input.role;
+  if (input.message) record.message = input.message;
+  if (input.expiresAt) record.expiresAt = input.expiresAt;
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.collaboration.invite',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a collaboration invite record.
+ *
+ * @public
+ */
+export async function deleteInviteRecord(agent: Agent, inviteUri: string): Promise<void> {
+  const parsed = parseAtUri(inviteUri);
+  if (!parsed) return;
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'pub.chive.collaboration.invite',
+    rkey: parsed.rkey,
+  });
+}
+
+/**
+ * Creates a collaboration acceptance in the invitee's PDS.
+ *
+ * @public
+ */
+export async function createInviteAcceptance(
+  agent: Agent,
+  input: {
+    inviteUri: string;
+    inviteCid: string;
+    subjectUri: string;
+    subjectCid: string;
+  }
+): Promise<CreateRecordResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const record: CollaborationInviteAcceptanceRecord = {
+    $type: 'pub.chive.collaboration.inviteAcceptance',
+    invite: { uri: input.inviteUri, cid: input.inviteCid },
+    subject: { uri: input.subjectUri, cid: input.subjectCid },
+    createdAt: new Date().toISOString(),
+  };
+
+  const response = await agent.com.atproto.repo.createRecord({
+    repo: did,
+    collection: 'pub.chive.collaboration.inviteAcceptance',
+    record,
+  });
+
+  return {
+    uri: response.data.uri,
+    cid: response.data.cid,
+  };
+}
+
+/**
+ * Deletes a collaboration acceptance record.
+ *
+ * @public
+ */
+export async function deleteInviteAcceptance(agent: Agent, acceptanceUri: string): Promise<void> {
+  const parsed = parseAtUri(acceptanceUri);
+  if (!parsed) return;
+  await agent.com.atproto.repo.deleteRecord({
+    repo: parsed.did,
+    collection: 'pub.chive.collaboration.inviteAcceptance',
+    rkey: parsed.rkey,
+  });
 }
 
 // =============================================================================

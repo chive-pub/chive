@@ -46,6 +46,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { AnnotationService } from '../annotation/annotation-service.js';
+import type { CollaborationService } from '../collaboration/collaboration-service.js';
 import type { CollectionService } from '../collection/collection-service.js';
 import type { EprintService, RecordMetadata } from '../eprint/eprint-service.js';
 import { transformPDSRecordWithSchema } from '../eprint/pds-record-transformer.js';
@@ -344,6 +345,21 @@ export interface EventProcessorOptions {
    * When provided, personal (non-governance) graph records are indexed.
    */
   readonly personalGraphService?: PersonalGraphService;
+  /**
+   * Optional collaboration service for indexing invites and acceptances.
+   * When provided, `pub.chive.collaboration.*` records flow through.
+   */
+  readonly collaborationService?: CollaborationService;
+  /**
+   * Optional plugin event bus. When provided, records from foreign
+   * namespaces (e.g., `network.cosmik.*`, `at.margin.*`) are forwarded to
+   * plugins subscribed on the corresponding `firehose.<collection>` event.
+   * Chive-native records (`pub.chive.*`) are NOT forwarded — they flow
+   * through the switch below with full service access instead.
+   */
+  readonly pluginEventBus?: {
+    emit: (event: string, payload: unknown) => void;
+  };
 }
 
 /**
@@ -381,10 +397,36 @@ export function createEventProcessor(
     citationExtractionJob,
     collectionService,
     personalGraphService,
+    collaborationService,
+    pluginEventBus,
   } = options;
 
   return async (event: ProcessedEvent): Promise<void> => {
     const { repo, collection, rkey, action, cid, seq, record } = event;
+
+    // Forward foreign-namespace records to plugins. Chive records (`pub.chive.*`)
+    // are handled inline by the switch below with direct service access; we
+    // don't emit them twice.
+    if (pluginEventBus && !collection.startsWith('pub.chive.')) {
+      const firehoseRecord = {
+        uri: `at://${repo}/${collection}/${rkey}`,
+        collection,
+        did: repo,
+        rkey,
+        record: record ?? null,
+        deleted: action === 'delete',
+        cid: cid ?? undefined,
+        timestamp: new Date(),
+      };
+      try {
+        pluginEventBus.emit(`firehose.${collection}`, firehoseRecord);
+      } catch (err) {
+        logger.warn('Plugin eventBus emit failed', {
+          collection,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    }
 
     logger.debug('Processing firehose event', {
       repo,
@@ -426,6 +468,7 @@ export function createEventProcessor(
         citationExtractionJob,
         collectionService,
         personalGraphService,
+        collaborationService,
       },
       {
         uri,
@@ -506,6 +549,7 @@ interface ProcessRecordContext {
   readonly citationExtractionJob?: CitationExtractionJob;
   readonly collectionService?: CollectionService;
   readonly personalGraphService?: PersonalGraphService;
+  readonly collaborationService?: CollaborationService;
 }
 
 interface RecordData {
@@ -550,6 +594,7 @@ async function processRecord(
     citationExtractionJob,
     collectionService,
     personalGraphService,
+    collaborationService,
   } = ctx;
   const { uri, cid, collection, action, record, pdsUrl } = data;
 
@@ -1529,6 +1574,66 @@ async function processRecord(
             new DatabaseError('INSERT', error.message, error)
           );
         }
+      }
+      return success();
+    }
+
+    case 'pub.chive.collaboration.invite': {
+      if (!collaborationService) return success();
+      if (action === 'delete') {
+        const res = await collaborationService.deleteInvite(uri);
+        if (!res.ok) return failure('Failed to delete invite', false, res.error);
+      } else if (record && typeof record === 'object') {
+        const r = record as {
+          subject?: { uri?: string; cid?: string };
+          invitee?: string;
+          role?: string;
+          message?: string;
+          createdAt?: string;
+          expiresAt?: string;
+        };
+        if (!r.subject?.uri || !r.invitee || !r.createdAt) {
+          return success();
+        }
+        const res = await collaborationService.indexInvite(
+          {
+            subject: { uri: r.subject.uri, cid: r.subject.cid },
+            invitee: r.invitee,
+            role: r.role,
+            message: r.message,
+            createdAt: r.createdAt,
+            expiresAt: r.expiresAt,
+          },
+          metadata
+        );
+        if (!res.ok) return failure('Failed to index invite', false, res.error);
+      }
+      return success();
+    }
+
+    case 'pub.chive.collaboration.inviteAcceptance': {
+      if (!collaborationService) return success();
+      if (action === 'delete') {
+        const res = await collaborationService.deleteAcceptance(uri);
+        if (!res.ok) return failure('Failed to delete acceptance', false, res.error);
+      } else if (record && typeof record === 'object') {
+        const r = record as {
+          invite?: { uri?: string; cid?: string };
+          subject?: { uri?: string; cid?: string };
+          createdAt?: string;
+        };
+        if (!r.invite?.uri || !r.subject?.uri || !r.createdAt) {
+          return success();
+        }
+        const res = await collaborationService.indexAcceptance(
+          {
+            invite: { uri: r.invite.uri, cid: r.invite.cid },
+            subject: { uri: r.subject.uri, cid: r.subject.cid },
+            createdAt: r.createdAt,
+          },
+          metadata
+        );
+        if (!res.ok) return failure('Failed to index acceptance', false, res.error);
       }
       return success();
     }

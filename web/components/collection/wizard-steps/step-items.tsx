@@ -85,6 +85,18 @@ interface NodeSearchResult {
   kind?: string;
   description?: string;
   isPersonal?: boolean;
+  /**
+   * External identifier mappings on the node — DOI, arXiv, ORCID, ROR, etc.
+   * Surfaced through so the collection wizard can carry them into
+   * `CollectionItemFormData.metadata.externalIds` for rich Cosmik card
+   * emission.
+   */
+  externalIds?: Array<{
+    system: string;
+    identifier: string;
+    uri?: string;
+    matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+  }>;
 }
 
 /**
@@ -125,6 +137,7 @@ export function useNodeSearch(query: string, options: { limit?: number; enabled?
           kind: n['kind'] as string | undefined,
           description: n['description'] as string | undefined,
           isPersonal: (n['isPersonal'] as boolean | undefined) ?? false,
+          externalIds: n['externalIds'] as NodeSearchResult['externalIds'],
         }));
       } catch {
         return [];
@@ -629,7 +642,10 @@ export function StepItems({ form }: StepItemsProps) {
                             type: 'eprint',
                             label: hit.title ?? 'Untitled',
                             metadata: {
+                              subkind: 'eprint',
                               authors: hit.authors?.map((a) => a.name ?? 'Unknown'),
+                              description: hit.abstract,
+                              publishedDate: hit.createdAt,
                             },
                           })
                         }
@@ -729,6 +745,14 @@ export function StepItems({ form }: StepItemsProps) {
                                 kind: node.kind,
                                 description: node.description,
                                 isPersonal: node.isPersonal,
+                                externalIds: node.externalIds,
+                                // Surface DOI / ISBN at the top level so
+                                // Cosmik card emission picks them up without
+                                // externalIds traversal.
+                                doi: node.externalIds?.find((id) => id.system === 'doi')
+                                  ?.identifier,
+                                isbn: node.externalIds?.find((id) => id.system === 'isbn')
+                                  ?.identifier,
                               },
                             })
                           }

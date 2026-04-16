@@ -233,8 +233,35 @@ export class NodeService {
     status?: NodeStatus;
     limit?: number;
     cursor?: string;
+    externalIdSystem?: string;
+    externalIdIdentifier?: string;
   }): Promise<NodeSearchResult> {
     return this.nodeRepository.listNodes(options);
+  }
+
+  /**
+   * Finds a relation-type node whose `externalIds` include a matching
+   * `(system, identifier)` pair.
+   *
+   * @remarks
+   * Used for reverse-resolving foreign ecosystem identifiers (e.g., Cosmik
+   * `connectionType`, SKOS URIs) to Chive relation slugs.
+   *
+   * @param system - External-id system name
+   * @param identifier - Identifier value in that system
+   * @returns First matching relation-type node, or null if none found
+   *
+   * @public
+   */
+  async findRelationByExternalId(system: string, identifier: string): Promise<GraphNode | null> {
+    const result = await this.nodeRepository.listNodes({
+      kind: 'type',
+      subkind: 'relation',
+      externalIdSystem: system,
+      externalIdIdentifier: identifier,
+      limit: 1,
+    });
+    return result.nodes[0] ?? null;
   }
 
   /**

@@ -101,6 +101,16 @@ export interface NodeSearchOptions {
   readonly status?: NodeStatus;
   readonly limit?: number;
   readonly cursor?: string;
+  /**
+   * Filter nodes whose `externalIds` array includes an entry matching both
+   * `externalIdSystem` and `externalIdIdentifier`. Must be used together.
+   *
+   * @remarks
+   * Example: `{ externalIdSystem: 'cosmik', externalIdIdentifier: 'REFERENCES' }`
+   * returns nodes whose `externalIds` includes `{ system: 'cosmik', identifier: 'REFERENCES' }`.
+   */
+  readonly externalIdSystem?: string;
+  readonly externalIdIdentifier?: string;
 }
 
 /**

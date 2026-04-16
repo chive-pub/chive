@@ -20,6 +20,7 @@ import {
   Calendar,
   User as UserIcon,
   Package,
+  Wrench,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,6 +64,14 @@ interface CollectionHeaderProps {
   subcollectionNames?: string[];
   onDelete: (deleteSubcollections: boolean) => void;
   isDeleting?: boolean;
+  /**
+   * Called when the owner clicks "Repair mirror". When provided AND the
+   * collection has an active Semble mirror, a repair button is shown next
+   * to the "View on Semble" action.
+   */
+  onRepairMirror?: () => void;
+  /** Whether the repair-mirror request is in flight. */
+  isRepairing?: boolean;
 }
 
 /**
@@ -78,6 +87,8 @@ export function CollectionHeader({
   subcollectionNames,
   onDelete,
   isDeleting,
+  onRepairMirror,
+  isRepairing,
 }: CollectionHeaderProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteSubcollections, setDeleteSubcollections] = useState(false);
@@ -281,6 +292,19 @@ export function CollectionHeader({
               </Button>
             );
           })()}
+
+        {isOwner && collection.cosmikCollectionUri && onRepairMirror && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onRepairMirror}
+            disabled={isRepairing}
+            title="Reconcile the Semble mirror with the current collection: create missing connections, prune orphans."
+          >
+            <Wrench className="h-4 w-4 mr-1.5" />
+            {isRepairing ? 'Repairing…' : 'Repair mirror'}
+          </Button>
+        )}
       </div>
     </header>
   );

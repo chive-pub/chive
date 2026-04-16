@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collaboration.listCollaborators",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List active collaborators on a subject record (DIDs that have both a non-deleted invite from the subject's author and a non-deleted acceptance of that invite).",
+      "parameters": {
+        "type": "params",
+        "required": ["subjectUri"],
+        "properties": {
+          "subjectUri": {
+            "type": "string",
+            "format": "at-uri"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["collaborators"],
+          "properties": {
+            "collaborators": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#collaboratorView"
+              }
+            }
+          }
+        }
+      }
+    },
+    "collaboratorView": {
+      "type": "object",
+      "required": ["did", "inviteUri", "acceptanceUri", "acceptedAt"],
+      "properties": {
+        "did": { "type": "string", "format": "did" },
+        "inviteUri": { "type": "string", "format": "at-uri" },
+        "acceptanceUri": { "type": "string", "format": "at-uri" },
+        "role": { "type": "string" },
+        "acceptedAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}
