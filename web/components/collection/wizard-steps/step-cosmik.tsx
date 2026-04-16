@@ -10,16 +10,19 @@
  * @packageDocumentation
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { FileText, X, Plus, Link2, Users } from 'lucide-react';
+import { FileText, X, Link2, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Button } from '@/components/ui/button';
+import {
+  DidAutocompleteInput,
+  type SelectedAtprotoUser,
+} from '@/components/forms/did-autocomplete-input';
 import { cn } from '@/lib/utils';
 
 import type { CollectionFormValues } from './types';
@@ -58,16 +61,13 @@ export function StepCosmik({ form }: StepCosmikProps) {
   const items = watch('items') ?? [];
   const edges = watch('edges') ?? [];
 
-  const [newCollaboratorDid, setNewCollaboratorDid] = useState('');
-
-  const addCollaborator = useCallback(() => {
-    const did = newCollaboratorDid.trim();
-    if (!did || !did.startsWith('did:')) return;
-    if (cosmikCollaborators.includes(did)) return;
-
-    setValue('cosmikCollaborators', [...cosmikCollaborators, did], { shouldDirty: true });
-    setNewCollaboratorDid('');
-  }, [newCollaboratorDid, cosmikCollaborators, setValue]);
+  const addCollaborator = useCallback(
+    (user: SelectedAtprotoUser) => {
+      if (cosmikCollaborators.includes(user.did)) return;
+      setValue('cosmikCollaborators', [...cosmikCollaborators, user.did], { shouldDirty: true });
+    },
+    [cosmikCollaborators, setValue]
+  );
 
   const removeCollaborator = useCallback(
     (did: string) => {
@@ -166,32 +166,17 @@ export function StepCosmik({ form }: StepCosmikProps) {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newCollaboratorDid}
-                    onChange={(e) => setNewCollaboratorDid(e.target.value)}
-                    placeholder="did:plc:..."
-                    className="flex h-8 flex-1 rounded-md border border-input bg-transparent px-2 py-1 text-xs font-mono"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        addCollaborator();
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={addCollaborator}
-                    disabled={!newCollaboratorDid.trim().startsWith('did:')}
-                    className="h-8"
-                  >
-                    <Plus className="h-3 w-3 mr-1" />
-                    Add
-                  </Button>
-                </div>
+                <DidAutocompleteInput
+                  onSelect={addCollaborator}
+                  onChange={(did) => {
+                    if (did.startsWith('did:') && !cosmikCollaborators.includes(did)) {
+                      setValue('cosmikCollaborators', [...cosmikCollaborators, did], {
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                  placeholder="Search by handle (e.g., alice.bsky.social)..."
+                />
               </div>
 
               <Separator />
