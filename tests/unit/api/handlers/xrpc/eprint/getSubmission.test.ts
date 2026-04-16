@@ -12,7 +12,7 @@
  * - ValidationError for invalid URIs
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { getSubmission } from '@/api/handlers/xrpc/eprint/getSubmission.js';
 import type { EprintView } from '@/services/eprint/eprint-service.js';
@@ -120,6 +120,10 @@ interface MockMetricsService {
   recordView: ReturnType<typeof vi.fn>;
 }
 
+interface MockNodeRepository {
+  getNodesByIds: ReturnType<typeof vi.fn>;
+}
+
 const createMockEprintService = (): MockEprintService => ({
   getEprint: vi.fn(),
 });
@@ -128,10 +132,15 @@ const createMockMetricsService = (): MockMetricsService => ({
   recordView: vi.fn().mockResolvedValue(undefined),
 });
 
+const createMockNodeRepository = (): MockNodeRepository => ({
+  getNodesByIds: vi.fn().mockResolvedValue(new Map()),
+});
+
 describe('XRPC getSubmission Handler', () => {
   let mockLogger: ILogger;
   let mockEprintService: MockEprintService;
   let mockMetricsService: MockMetricsService;
+  let mockNodeRepository: MockNodeRepository;
   let mockContext: {
     get: (key: string) => unknown;
     set: (key: string, value: unknown) => void;
@@ -146,6 +155,7 @@ describe('XRPC getSubmission Handler', () => {
           return {
             eprint: mockEprintService,
             metrics: mockMetricsService,
+            nodeRepository: mockNodeRepository,
           };
         case 'logger':
           return mockLogger;
@@ -162,7 +172,20 @@ describe('XRPC getSubmission Handler', () => {
     mockLogger = createMockLogger();
     mockEprintService = createMockEprintService();
     mockMetricsService = createMockMetricsService();
+    mockNodeRepository = createMockNodeRepository();
     mockContext = createMockContext(null);
+    // Mock global fetch to prevent real HTTP calls to Bluesky API
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ profiles: [] }),
+      })
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   describe('Successful Retrieval', () => {
