@@ -4538,6 +4538,7 @@ export async function createCosmikConnectionsForEdges(
     sourceUri: string;
     targetUri: string;
     relationSlug: string;
+    relationUri?: string;
     note?: string;
   }>,
   itemUrlMap: Map<string, string>
@@ -4547,11 +4548,15 @@ export async function createCosmikConnectionsForEdges(
   for (const edge of edges) {
     const sourceUrl = itemUrlMap.get(edge.sourceUri) ?? edge.sourceUri;
     const targetUrl = itemUrlMap.get(edge.targetUri) ?? edge.targetUri;
+    const connectionType = await resolveCosmikConnectionTypeViaAppView(
+      edge.relationUri,
+      edge.relationSlug
+    );
 
     const result = await createCosmikConnection(agent, {
       source: sourceUrl,
       target: targetUrl,
-      connectionType: edge.relationSlug,
+      connectionType,
       note: edge.note,
     });
 
@@ -4734,19 +4739,19 @@ function resolveEndpointUrl(
   originalUriMap?: Map<string, string>
 ): string {
   // Prefer the URL used when the card was created (stored in cosmikItems keyed
-  // by original URL).
+  // by original URL). cosmikItems keys are AT-URIs but Semble only renders
+  // connections with HTTP URL endpoints, so always convert via toChiveUrl.
   if (originalUriMap) {
     for (const [originalUri, personalUri] of originalUriMap.entries()) {
       if (personalUri === itemAtUri && cosmikItems[originalUri]) {
-        return originalUri;
+        return toChiveUrl(originalUri);
       }
     }
   }
   // Fallback: direct lookup by the URI we were given.
   const direct = cosmikItems[itemAtUri];
   if (direct) {
-    // The stored key IS the URL we want to emit.
-    return itemAtUri;
+    return toChiveUrl(itemAtUri);
   }
   // Last resort: synthesize a Chive URL from the AT-URI.
   return toChiveUrl(itemAtUri);
