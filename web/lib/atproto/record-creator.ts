@@ -4145,6 +4145,7 @@ export async function updateCosmikCollection(
     name?: string;
     description?: string;
     visibility?: string;
+    collaborators?: string[];
   }
 ): Promise<void> {
   const did = getAgentDid(agent);
@@ -4172,6 +4173,7 @@ export async function updateCosmikCollection(
   if (changes.description !== undefined) updatedRecord.description = changes.description;
   if (changes.visibility !== undefined)
     updatedRecord.accessType = toCosmikAccessType(changes.visibility);
+  if (changes.collaborators !== undefined) updatedRecord.collaborators = changes.collaborators;
 
   await agent.com.atproto.repo.putRecord({
     repo: parsed.did,

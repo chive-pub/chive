@@ -1319,6 +1319,59 @@ async function processRecord(
         } else if (record) {
           // Index collection edge if relation is contains or subcollection-of
           if (collectionService && isCollectionRelation) {
+            // Permission check: if the edge author differs from the collection
+            // owner, verify they are an active collaborator. Park the edge in
+            // pending_collection_edges otherwise and promote it when the
+            // collaboration state transitions to 'active'.
+            const edgeAuthorDid = data.repo;
+            const targetCollectionUri = edgeRecord.targetUri;
+            const sourceIsOwner = targetCollectionUri.startsWith(`at://${edgeAuthorDid}/`);
+
+            if (!sourceIsOwner && collaborationService) {
+              const isAuthorized = await collaborationService.isCollaborator(
+                targetCollectionUri as AtUri,
+                edgeAuthorDid
+              );
+              if (!isAuthorized) {
+                const edgeLabel =
+                  edgeRecord.metadata &&
+                  typeof edgeRecord.metadata === 'object' &&
+                  'label' in edgeRecord.metadata
+                    ? (edgeRecord.metadata as Record<string, unknown>).label
+                    : null;
+                await collaborationService.parkPendingCollectionEdge({
+                  edgeUri: uri,
+                  collectionUri: targetCollectionUri,
+                  sourceUri: edgeRecord.sourceUri,
+                  targetUri: edgeRecord.targetUri,
+                  addedByDid: edgeAuthorDid,
+                  relationSlug: edgeRecord.relationSlug,
+                  cid: metadata.cid,
+                  pdsUrl: metadata.pdsUrl,
+                  weight: edgeRecord.weight,
+                  label: typeof edgeLabel === 'string' ? edgeLabel : null,
+                });
+                logger.info('Parked collection edge from non-collaborator', {
+                  uri,
+                  addedBy: edgeAuthorDid,
+                  collection: targetCollectionUri,
+                });
+                // Still index in the personal graph but skip collection index
+                if (personalGraphService) {
+                  const pgResult =
+                    action === 'update'
+                      ? await personalGraphService.updateEdge(uri, record, metadata)
+                      : await personalGraphService.indexEdge(record, metadata);
+                  if (!pgResult.ok) {
+                    const err = pgResult.error;
+                    logger.error('Failed to index personal graph edge', err, { uri, action });
+                    return failure('Failed to index personal graph edge', false, err);
+                  }
+                }
+                return success();
+              }
+            }
+
             const collectionResult = await collectionService.indexCollectionEdge(record, metadata);
             if (!collectionResult.ok) {
               const err = collectionResult.error;

@@ -24,6 +24,8 @@ import {
   deleteInviteRecord,
   createInviteAcceptance,
   deleteInviteAcceptance,
+  loadEdgeSyncLookup,
+  updateCosmikCollection,
 } from '@/lib/atproto/record-creator';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import { APIError } from '@/lib/errors';
@@ -130,6 +132,45 @@ export function useListCollaborators(subjectUri: string, options?: { enabled?: b
 }
 
 // =============================================================================
+// HELPERS
+// =============================================================================
+
+/**
+ * Syncs the active collaborator DID list to the Semble mirror's
+ * `collaborators[]` field, if the collection has a Cosmik mirror.
+ * No-op when the collection is not mirrored.
+ */
+async function syncCosmikCollaborators(
+  agent: ReturnType<typeof getCurrentAgent>,
+  subjectUri: string,
+  collaboratorDids: string[]
+): Promise<void> {
+  if (!agent) return;
+  try {
+    const lookup = await loadEdgeSyncLookup(agent, subjectUri);
+    if (!lookup) return; // not mirrored
+    const cosmikCollectionUri = (lookup.node as Record<string, unknown>).metadata
+      ? ((lookup.node as Record<string, unknown>).metadata as Record<string, unknown>)
+          .cosmikCollectionUri
+      : undefined;
+    if (typeof cosmikCollectionUri !== 'string') return;
+    await updateCosmikCollection(agent, cosmikCollectionUri, {
+      collaborators: collaboratorDids,
+    });
+    logger.debug('Synced collaborators to Cosmik mirror', {
+      subjectUri,
+      cosmikCollectionUri,
+      count: collaboratorDids.length,
+    });
+  } catch (err) {
+    logger.warn('Failed to sync collaborators to Cosmik mirror', {
+      subjectUri,
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
+}
+
+// =============================================================================
 // MUTATIONS
 // =============================================================================
 
@@ -155,6 +196,20 @@ export function useCreateInvite() {
         throw new APIError('Not authenticated. Please log in again.', 401, 'createInvite');
       }
       const result = await createInviteRecord(agent, input);
+
+      // Sync the updated collaborator list to the Cosmik mirror (best-effort).
+      // The invite itself doesn't add a collaborator, but we sync the full list
+      // to keep the mirror current after any invite/accept/revoke cycle.
+      try {
+        const collabs = await api.pub.chive.collaboration.listCollaborators({
+          subjectUri: input.subjectUri,
+        });
+        const dids = (collabs.data.collaborators ?? []).map((c: { did: string }) => c.did);
+        await syncCosmikCollaborators(agent, input.subjectUri, dids);
+      } catch {
+        // best-effort
+      }
+
       return { inviteUri: result.uri, inviteCid: result.cid };
     },
     onSuccess: (_, variables) => {
@@ -181,6 +236,17 @@ export function useRevokeInvite() {
         throw new APIError('Not authenticated. Please log in again.', 401, 'revokeInvite');
       }
       await deleteInviteRecord(agent, input.inviteUri);
+
+      // Sync the updated collaborator list to the Cosmik mirror (best-effort)
+      try {
+        const collabs = await api.pub.chive.collaboration.listCollaborators({
+          subjectUri: input.subjectUri,
+        });
+        const dids = (collabs.data.collaborators ?? []).map((c: { did: string }) => c.did);
+        await syncCosmikCollaborators(agent, input.subjectUri, dids);
+      } catch {
+        // best-effort
+      }
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: collaborationKeys.all });

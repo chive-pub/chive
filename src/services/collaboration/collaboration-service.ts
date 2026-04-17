@@ -470,6 +470,99 @@ export class CollaborationService {
   }
 
   /**
+   * Parks a collection edge from a non-collaborator in `pending_collection_edges`.
+   * The edge is promoted to the collection index when the collaboration state
+   * transitions to 'active'.
+   */
+  async parkPendingCollectionEdge(input: {
+    edgeUri: string;
+    collectionUri: string;
+    sourceUri: string;
+    targetUri: string;
+    addedByDid: string;
+    relationSlug: string;
+    cid?: string;
+    pdsUrl?: string;
+    weight?: number | null;
+    label?: string | null;
+  }): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO pending_collection_edges
+        (edge_uri, collection_uri, source_uri, target_uri, added_by_did, relation_slug,
+         cid, pds_url, weight, label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       ON CONFLICT (edge_uri) DO NOTHING`,
+      [
+        input.edgeUri,
+        input.collectionUri,
+        input.sourceUri,
+        input.targetUri,
+        input.addedByDid,
+        input.relationSlug,
+        input.cid ?? null,
+        input.pdsUrl ?? null,
+        input.weight ?? null,
+        input.label ?? null,
+      ]
+    );
+  }
+
+  /**
+   * Returns unresolved pending collection edges for a (subject, did) pair.
+   */
+  async getPendingCollectionEdges(
+    subjectUri: string,
+    did: string
+  ): Promise<
+    {
+      edge_uri: string;
+      collection_uri: string;
+      source_uri: string;
+      target_uri: string;
+      added_by_did: string;
+      relation_slug: string;
+      cid: string | null;
+      pds_url: string | null;
+      weight: number | null;
+      label: string | null;
+      received_at: Date;
+    }[]
+  > {
+    const result = await this.pool.query<{
+      edge_uri: string;
+      collection_uri: string;
+      source_uri: string;
+      target_uri: string;
+      added_by_did: string;
+      relation_slug: string;
+      cid: string | null;
+      pds_url: string | null;
+      weight: number | null;
+      label: string | null;
+      received_at: Date;
+    }>(
+      `SELECT edge_uri, collection_uri, source_uri, target_uri, added_by_did,
+              relation_slug, cid, pds_url, weight, label, received_at
+       FROM pending_collection_edges
+       WHERE collection_uri = $1 AND added_by_did = $2 AND resolved_at IS NULL`,
+      [subjectUri, did]
+    );
+    return result.rows;
+  }
+
+  /**
+   * Marks pending collection edges as resolved after promotion.
+   */
+  async resolvePendingCollectionEdges(edgeUris: string[]): Promise<void> {
+    if (edgeUris.length === 0) return;
+    await this.pool.query(
+      `UPDATE pending_collection_edges SET resolved_at = NOW(), last_updated_at = NOW()
+       WHERE edge_uri = ANY($1)`,
+      [edgeUris]
+    );
+  }
+
+  /**
    * Re-evaluates the pending-state row for a (subject_uri, did) pair after
    * an invite or acceptance event.
    *
@@ -505,6 +598,13 @@ export class CollaborationService {
       state = 'inactive';
     }
 
+    // Check the previous state so we can detect transitions to 'active'
+    const prevResult = await this.pool.query<{ state: string }>(
+      `SELECT state FROM collaboration_pending_state WHERE subject_uri = $1 AND did = $2`,
+      [subjectUri, did]
+    );
+    const prevState = prevResult.rows[0]?.state;
+
     await this.pool.query(
       `INSERT INTO collaboration_pending_state (
         subject_uri, did, invite_uri, acceptance_uri, state, received_at, last_updated_at
@@ -516,6 +616,47 @@ export class CollaborationService {
         last_updated_at = NOW()`,
       [subjectUri, did, invite?.uri ?? null, acceptance?.uri ?? null, state]
     );
+
+    // Promote pending collection edges when transitioning to 'active'
+    if (state === 'active' && prevState !== 'active') {
+      const pending = await this.getPendingCollectionEdges(subjectUri, did);
+      if (pending.length > 0) {
+        this.logger.info('Promoting pending collection edges after collaboration activated', {
+          subjectUri,
+          did,
+          count: pending.length,
+        });
+        for (const row of pending) {
+          try {
+            await this.pool.query(
+              `INSERT INTO collection_edges_index
+                (uri, cid, owner_did, source_uri, target_uri, relation_slug,
+                 weight, label, created_at, pds_url, indexed_at, last_synced_at)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+               ON CONFLICT (uri) DO NOTHING`,
+              [
+                row.edge_uri,
+                row.cid ?? '',
+                row.added_by_did,
+                row.source_uri,
+                row.target_uri,
+                row.relation_slug,
+                row.weight,
+                row.label,
+                row.received_at,
+                row.pds_url ?? '',
+              ]
+            );
+          } catch (promoteErr) {
+            this.logger.warn('Failed to promote pending collection edge', {
+              edgeUri: row.edge_uri,
+              error: promoteErr instanceof Error ? promoteErr.message : String(promoteErr),
+            });
+          }
+        }
+        await this.resolvePendingCollectionEdges(pending.map((r) => r.edge_uri));
+      }
+    }
   }
 }
 
