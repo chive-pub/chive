@@ -348,6 +348,10 @@ function getWikidataId(externalIds?: NodeExternalId[]): string | undefined {
   return externalIds?.find((ext) => ext.system === 'wikidata')?.identifier;
 }
 
+function hasCosmikMapping(externalIds?: NodeExternalId[]): boolean {
+  return externalIds?.some((ext) => ext.system === 'cosmik') ?? false;
+}
+
 /**
  * Generates a default label from value when node is not found in results.
  */
@@ -787,6 +791,11 @@ export function NodeAutocomplete({
                           <span className="text-[10px] font-medium text-muted-foreground bg-muted px-1 py-0.5 rounded shrink-0">
                             Personal
                           </span>
+                          {hasCosmikMapping(suggestion.externalIds) && (
+                            <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1 py-0.5 rounded shrink-0">
+                              Semble
+                            </span>
+                          )}
                         </div>
                         {suggestion.description && (
                           <span className="text-xs text-muted-foreground ml-6 line-clamp-1">
@@ -832,6 +841,11 @@ export function NodeAutocomplete({
                               >
                                 <ExternalLink className="h-3 w-3" />
                               </a>
+                            )}
+                            {hasCosmikMapping(suggestion.externalIds) && (
+                              <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950 px-1 py-0.5 rounded shrink-0">
+                                Semble
+                              </span>
                             )}
                           </div>
                           {suggestion.description && (
