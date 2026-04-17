@@ -707,7 +707,7 @@ export function NodeAutocomplete({
           )}
           {wikidataId && (
             <a
-              href={`https://www.wikidata.org/wiki/${wikidataId}`}
+              href={`https://www.wikidata.org/wiki/${wikidataId.startsWith('P') ? 'Property:' : ''}${wikidataId}`}
               target="_blank"
               rel="noopener noreferrer"
               className="ml-1 text-muted-foreground hover:text-primary"
@@ -832,7 +832,7 @@ export function NodeAutocomplete({
                             <span>{suggestion.label}</span>
                             {wikidataId && (
                               <a
-                                href={`https://www.wikidata.org/wiki/${wikidataId}`}
+                                href={`https://www.wikidata.org/wiki/${wikidataId.startsWith('P') ? 'Property:' : ''}${wikidataId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-muted-foreground hover:text-primary"
