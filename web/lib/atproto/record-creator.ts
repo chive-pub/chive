@@ -4774,6 +4774,50 @@ export async function writeBackCosmikConnections(
 }
 
 /**
+ * Patches a collection node's cosmikItems metadata with personal-graph node URIs.
+ * Called after wizard step 2 creates personal nodes, so that subsequent card
+ * lookups (e.g., label rename sync) can match by personalNodeUri.
+ */
+export async function patchCosmikItemsWithPersonalNodeUris(
+  agent: Agent,
+  collectionUri: string,
+  uriMap: Map<string, string>
+): Promise<void> {
+  const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+  if (!lookup) return;
+
+  let patched = false;
+  for (const [originalUri, personalUri] of uriMap.entries()) {
+    if (originalUri !== personalUri && lookup.cosmikItems[originalUri]) {
+      lookup.cosmikItems[originalUri].personalNodeUri = personalUri;
+      patched = true;
+    }
+  }
+
+  if (!patched) return;
+
+  const did = getAgentDid(agent);
+  if (!did) return;
+
+  const parsed = parseAtUri(collectionUri);
+  if (!parsed) return;
+
+  const updated: CollectionNodeRecord = {
+    ...lookup.node,
+    metadata: {
+      ...lookup.node.metadata,
+      cosmikItems: lookup.cosmikItems,
+    },
+  };
+  await agent.com.atproto.repo.putRecord({
+    repo: did,
+    collection: 'pub.chive.graph.node',
+    rkey: parsed.rkey,
+    record: updated,
+  });
+}
+
+/**
  * Resolves an item's Cosmik-visible URL for use as a connection endpoint.
  *
  * @remarks
