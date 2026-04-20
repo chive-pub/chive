@@ -56,11 +56,12 @@ describe('frontend scopes', () => {
       expect(parts).toHaveLength(2);
     });
 
-    it('returns eight tokens for submit, review, and full intents', () => {
+    it('returns correct token count for submit, review, and full intents', () => {
+      // 1 (atproto) + 1 (permission set) + 13 (external repo scopes) = 15
       const intents: AuthIntent[] = ['submit', 'review', 'full'];
       for (const intent of intents) {
         const parts = getScopesForIntent(intent).split(' ');
-        expect(parts).toHaveLength(8);
+        expect(parts).toHaveLength(15);
       }
     });
 
