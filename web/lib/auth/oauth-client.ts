@@ -271,10 +271,11 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // TODO: Re-enable granular scopes when PDS support for permission sets lands
-    // const granularScope = getScopesForIntent(intent);
-    // const scope = `${granularScope} transition:generic`;
-    const scope = 'atproto transition:generic';
+    // Request granular scopes based on the user's intent, plus
+    // transition:generic for backward compatibility with PDSes that
+    // don't yet support granular permission sets.
+    const granularScope = getScopesForIntent(intent);
+    const scope = `${granularScope} transition:generic blob:*/*`;
 
     const url = await client.authorize(handle, { scope });
 
@@ -403,6 +404,24 @@ async function tryRestoreAnySession(client: BrowserOAuthClient): Promise<OAuthSe
  * @returns PDS endpoint URL string
  * @throws Error if session has no server information
  */
+/**
+ * Extracts the granted scope strings from an OAuth session.
+ *
+ * @param session - The authenticated OAuth session
+ * @returns Array of individual scope strings
+ */
+export async function getSessionScopes(session: OAuthSession): Promise<string[]> {
+  try {
+    const tokenInfo = await session.getTokenInfo(false);
+    if (tokenInfo.scope) {
+      return String(tokenInfo.scope).split(' ').filter(Boolean);
+    }
+  } catch {
+    // Fall back to legacy scopes if token info is unavailable
+  }
+  return ['atproto', 'transition:generic'];
+}
+
 function getPdsEndpoint(session: OAuthSession): string {
   const server = session.server;
 
