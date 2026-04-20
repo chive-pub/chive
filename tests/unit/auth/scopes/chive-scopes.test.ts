@@ -56,8 +56,9 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly nineteen collections', () => {
-      expect(Object.keys(REPO_SCOPES)).toHaveLength(19);
+    it('covers all pub.chive.* collections that the app writes to', () => {
+      // 19 original + actor.mute + collaboration.invite + collaboration.inviteAcceptance
+      expect(Object.keys(REPO_SCOPES)).toHaveLength(22);
     });
   });
 
@@ -85,8 +86,9 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly six external collections', () => {
-      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(6);
+    it('covers all external namespace collections that the app writes to', () => {
+      // 2 Bluesky + 1 Standard + 6 Cosmik + 4 Margin = 13
+      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(13);
     });
   });
 

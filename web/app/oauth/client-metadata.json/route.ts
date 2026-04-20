@@ -47,9 +47,29 @@ export async function GET(request: NextRequest) {
     // Response types this client uses
     response_types: ['code'],
 
-    // Scopes this client requests
-    // TODO: Re-enable granular permission sets when PDS support lands
-    scope: 'atproto transition:generic',
+    // Maximum set of scopes this client may request.
+    // Individual login flows request subsets via getScopesForIntent().
+    // Includes transition:generic for backward compatibility with PDSes
+    // that don't yet support granular permission sets.
+    scope: [
+      'atproto',
+      'transition:generic',
+      'include:pub.chive.auth.fullAccess',
+      'repo:app.bsky.feed.post',
+      'repo:app.bsky.actor.profile',
+      'repo:site.standard.document',
+      'repo:network.cosmik.card',
+      'repo:network.cosmik.collection',
+      'repo:network.cosmik.collectionLink',
+      'repo:network.cosmik.collectionLinkRemoval',
+      'repo:network.cosmik.connection',
+      'repo:network.cosmik.follow',
+      'repo:at.margin.annotation',
+      'repo:at.margin.bookmark',
+      'repo:at.margin.reply',
+      'repo:at.margin.like',
+      'blob:*/*',
+    ].join(' '),
 
     // DPoP (Demonstrating Proof of Possession) - required by ATProto
     dpop_bound_access_tokens: true,

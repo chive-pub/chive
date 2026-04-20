@@ -35,6 +35,7 @@ import {
   initializeOAuth,
   restoreSession,
   getCurrentAgent,
+  getSessionScopes,
   setE2EMockAgent,
 } from './oauth-client';
 import { clearServiceAuthTokens, getServiceAuthToken } from './service-auth';
@@ -224,7 +225,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               accessToken: '',
               refreshToken: '',
               expiresAt: 0,
-              scope: ['atproto', 'transition:generic'],
+              scope: await getSessionScopes(callbackResult.session),
             },
             error: null,
           });
@@ -267,7 +268,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
               accessToken: '',
               refreshToken: '',
               expiresAt: 0,
-              scope: ['atproto', 'transition:generic'],
+              scope: await getSessionScopes(restoredSession.session),
             },
             error: null,
           });

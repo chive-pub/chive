@@ -51,7 +51,22 @@
         {
           "type": "permission",
           "resource": "repo",
+          "collection": "pub.chive.actor.mute"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
           "collection": "pub.chive.discovery.settings"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.collaboration.invite"
+        },
+        {
+          "type": "permission",
+          "resource": "repo",
+          "collection": "pub.chive.collaboration.inviteAcceptance"
         },
         {
           "type": "permission",
@@ -202,6 +217,16 @@
           "type": "permission",
           "resource": "rpc",
           "lxm": "pub.chive.discovery.recordInteraction"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.collaboration.listInvites"
+        },
+        {
+          "type": "permission",
+          "resource": "rpc",
+          "lxm": "pub.chive.collaboration.listCollaborators"
         }
       ]
     }

@@ -25,12 +25,26 @@ export const PERMISSION_SETS = {
  * as individual scopes alongside the Chive permission sets.
  */
 export const EXTERNAL_REPO_SCOPES = {
+  // Bluesky
   BLUESKY_POST: 'repo:app.bsky.feed.post',
   BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
+
+  // Standard (site.standard)
   STANDARD_DOCUMENT: 'repo:site.standard.document',
+
+  // Semble (network.cosmik)
   COSMIK_CARD: 'repo:network.cosmik.card',
-  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
   COSMIK_COLLECTION: 'repo:network.cosmik.collection',
+  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
+  COSMIK_COLLECTION_LINK_REMOVAL: 'repo:network.cosmik.collectionLinkRemoval',
+  COSMIK_CONNECTION: 'repo:network.cosmik.connection',
+  COSMIK_FOLLOW: 'repo:network.cosmik.follow',
+
+  // Margin (at.margin)
+  MARGIN_ANNOTATION: 'repo:at.margin.annotation',
+  MARGIN_BOOKMARK: 'repo:at.margin.bookmark',
+  MARGIN_REPLY: 'repo:at.margin.reply',
+  MARGIN_LIKE: 'repo:at.margin.like',
 } as const;
 
 /** Legacy scope for backward compatibility. */
