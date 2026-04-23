@@ -51,10 +51,9 @@ export async function GET(request: NextRequest) {
     // Individual login flows request subsets via getScopesForIntent().
     // Uses individual repo: scopes rather than include: permission sets
     // because the PDS cannot resolve permission set lexicons until they
-    // are published. Includes transition:generic for backward compatibility.
+    // are published.
     scope: [
       'atproto',
-      'transition:generic',
       // pub.chive.* collections
       'repo:pub.chive.eprint.submission',
       'repo:pub.chive.eprint.version',

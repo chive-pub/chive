@@ -196,8 +196,9 @@ describe('chive-scopes', () => {
       expect(CLIENT_METADATA_SCOPE).toContain('atproto');
     });
 
-    it('includes the legacy scope for backward compatibility', () => {
-      expect(CLIENT_METADATA_SCOPE).toContain('transition:generic');
+    it('does not include transition:generic (defeats granular scopes)', () => {
+      const parts = CLIENT_METADATA_SCOPE.split(' ');
+      expect(parts).not.toContain('transition:generic');
     });
 
     it('includes every Chive repo scope', () => {
@@ -216,9 +217,8 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('is the product of buildScopeString with legacy, chive, and external repo scopes', () => {
+    it('is the product of buildScopeString with chive and external repo scopes', () => {
       const expected = buildScopeString([
-        LEGACY_SCOPE,
         ...Object.values(REPO_SCOPES),
         ...Object.values(EXTERNAL_REPO_SCOPES),
       ]);
