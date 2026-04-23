@@ -128,11 +128,14 @@ export function buildScopeString(scopes: readonly string[]): string {
  *
  * @remarks
  * Client metadata declares the maximum set of scopes the app may request.
- * Individual login requests use a subset. Includes transition:generic for
- * backward compatibility and external namespace scopes for cross-posting.
+ * Individual login requests use a subset. Uses individual `repo:` scopes
+ * rather than `include:` permission set references because the PDS cannot
+ * resolve our permission set lexicons until they are published. Once the
+ * permission set lexicons are published, this can be replaced with
+ * `PERMISSION_SETS.FULL_ACCESS`.
  */
 export const CLIENT_METADATA_SCOPE = buildScopeString([
   LEGACY_SCOPE,
-  PERMISSION_SETS.FULL_ACCESS,
+  ...Object.values(REPO_SCOPES),
   ...Object.values(EXTERNAL_REPO_SCOPES),
 ]);

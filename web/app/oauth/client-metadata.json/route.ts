@@ -49,12 +49,36 @@ export async function GET(request: NextRequest) {
 
     // Maximum set of scopes this client may request.
     // Individual login flows request subsets via getScopesForIntent().
-    // Includes transition:generic for backward compatibility with PDSes
-    // that don't yet support granular permission sets.
+    // Uses individual repo: scopes rather than include: permission sets
+    // because the PDS cannot resolve permission set lexicons until they
+    // are published. Includes transition:generic for backward compatibility.
     scope: [
       'atproto',
       'transition:generic',
-      'include:pub.chive.auth.fullAccess',
+      // pub.chive.* collections
+      'repo:pub.chive.eprint.submission',
+      'repo:pub.chive.eprint.version',
+      'repo:pub.chive.eprint.userTag',
+      'repo:pub.chive.eprint.citation',
+      'repo:pub.chive.eprint.relatedWork',
+      'repo:pub.chive.eprint.changelog',
+      'repo:pub.chive.actor.profile',
+      'repo:pub.chive.actor.profileConfig',
+      'repo:pub.chive.actor.mute',
+      'repo:pub.chive.discovery.settings',
+      'repo:pub.chive.review.comment',
+      'repo:pub.chive.review.endorsement',
+      'repo:pub.chive.annotation.comment',
+      'repo:pub.chive.annotation.entityLink',
+      'repo:pub.chive.graph.fieldProposal',
+      'repo:pub.chive.graph.nodeProposal',
+      'repo:pub.chive.graph.edgeProposal',
+      'repo:pub.chive.graph.vote',
+      'repo:pub.chive.graph.node',
+      'repo:pub.chive.graph.edge',
+      'repo:pub.chive.collaboration.invite',
+      'repo:pub.chive.collaboration.inviteAcceptance',
+      // External cross-post namespaces
       'repo:app.bsky.feed.post',
       'repo:app.bsky.actor.profile',
       'repo:site.standard.document',

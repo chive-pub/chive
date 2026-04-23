@@ -200,8 +200,14 @@ describe('chive-scopes', () => {
       expect(CLIENT_METADATA_SCOPE).toContain('transition:generic');
     });
 
-    it('includes the fullAccess permission set', () => {
-      expect(CLIENT_METADATA_SCOPE).toContain('include:pub.chive.auth.fullAccess');
+    it('includes every Chive repo scope', () => {
+      for (const scope of Object.values(REPO_SCOPES)) {
+        expect(CLIENT_METADATA_SCOPE).toContain(scope);
+      }
+    });
+
+    it('does not emit include: permission-set references', () => {
+      expect(CLIENT_METADATA_SCOPE).not.toContain('include:');
     });
 
     it('includes all external repo scopes', () => {
@@ -210,10 +216,10 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('is the product of buildScopeString with legacy, fullAccess, and external scopes', () => {
+    it('is the product of buildScopeString with legacy, chive, and external repo scopes', () => {
       const expected = buildScopeString([
         LEGACY_SCOPE,
-        PERMISSION_SETS.FULL_ACCESS,
+        ...Object.values(REPO_SCOPES),
         ...Object.values(EXTERNAL_REPO_SCOPES),
       ]);
       expect(CLIENT_METADATA_SCOPE).toBe(expected);

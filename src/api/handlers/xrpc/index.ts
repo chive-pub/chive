@@ -47,6 +47,7 @@ import { activityMethods } from './activity/index.js';
 import { actorMethods } from './actor/index.js';
 import { adminMethods } from './admin/index.js';
 import { annotationMethods } from './annotation/index.js';
+import { atprotoMethods } from './atproto/index.js';
 import { authorMethods } from './author/index.js';
 import { backlinkMethods } from './backlink/index.js';
 import { claimingMethods, claimingRestEndpoints } from './claiming/index.js';
@@ -74,6 +75,7 @@ export const allXRPCMethods = {
   ...actorMethods,
   ...adminMethods,
   ...annotationMethods,
+  ...atprotoMethods,
   ...authorMethods,
   ...backlinkMethods,
   ...claimingMethods,
