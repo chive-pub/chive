@@ -7,6 +7,63 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-24
+
+### Added
+
+#### ATProto Granular Scopes
+
+- Individual `repo:pub.chive.*` scopes for all 22 Chive collections (eprint, actor, review, annotation, graph, discovery, collaboration namespaces)
+- External cross-post scopes for `app.bsky.*`, `network.cosmik.*`, `at.margin.*`, and `site.standard.*` collections
+- Permission-set lexicon schemas at `pub.chive.auth.{basicReader,authorAccess,reviewerAccess,fullAccess}` (served but not yet requested in the OAuth flow)
+- `did:web:chive.pub` DID document at `/.well-known/did.json`, host-aware for staging vs production
+- Minimal `com.atproto.repo.*` XRPC surface (`getRecord`, `listRecords`, `describeRepo`) that serves Chive's 219 lexicon JSON files as `com.atproto.lexicon.schema` records with real DAG-CBOR CIDs, enabling NSID resolution for any ATProto service
+
+#### Collaboration
+
+- `pub.chive.collaboration.invite` and `pub.chive.collaboration.inviteAcceptance` lexicons
+- `CollaborationService` with full invite/acceptance lifecycle
+- Firehose indexing and XRPC endpoints for collaboration records
+- Collaboration invite flow in the submission wizard
+- Invitations inbox page for pending invites
+- `DidAutocompleteInput` component for collaborator selection (replaces raw DID text input)
+
+#### Semble / Cosmik Integration
+
+- Knowledge-graph-based Cosmik connection-type mapping
+- Firehose plugin bridge for cross-AppView sync
+- `syncEdgeToCosmik` wired through all edge paths
+- Repair-mirror UI for fixing out-of-sync edges
+- Enriched Cosmik card metadata (DOI, author, description, publishedDate, externalIds)
+- Semble badge on relation-type autocomplete suggestions
+- `pub.chive.*` lexicons and XRPC handlers for follow count, follow status, and Margin annotations
+
+#### External Identifiers
+
+- Canonical external-ID routes (`/doi/<id>`, `/arxiv/<id>`, `/orcid/<id>`, `/ror/<id>`, `/isbn/<id>`, `/pmid/<id>`, `/wikidata/<id>`)
+- Zotero/Citoid-compatible server metadata endpoint
+
+### Changed
+
+- OAuth client metadata no longer declares `transition:generic` — the legacy scope short-circuited granular permissions and caused consent screens to display "any public record" instead of Chive's specific collections
+- OAuth login requests use individual `repo:` scopes instead of `include:pub.chive.auth.fullAccess` references, because bsky.social cannot resolve permission-set lexicons until the DNS TXT records at `_lexicon.<sub>.chive.pub` are live
+- User profile is now fetched from the public Bluesky AppView (`public.api.bsky.app`) rather than through the authenticated session, so avatars and handles resolve correctly under granular scopes (session-bound `agent.getProfile()` returns 403 without an explicit `rpc:app.bsky.actor.getProfile` grant)
+- Container log rotation enabled across all services (JSON logs capped at 150 MB per container) to prevent unbounded disk growth
+- Cosmik dual-write edges now emit HTTP URLs and resolve connection types through the AppView
+
+### Fixed
+
+- Wikidata URLs for properties use the `Property:` prefix
+- Collaborators column migration no longer trips on dollar-quoting
+- Plugin DI dependencies registered in the indexer entry point so the plugin manager can resolve `ILogger`
+- Deploy App workflow no longer wipes `chive-docs` after a concurrent Deploy Docs (new step restores the container from `docker-compose.docs.yml` if a build exists)
+- React hook placement and `useCurrentUser` destructuring errors
+- Compliance test expected index/table counts updated for new collaboration tables
+
+### Security
+
+- Granular OAuth scopes limit Chive to writing only to its declared `pub.chive.*` collections plus the explicit external cross-post targets, instead of the blanket write access granted by `transition:generic`
+
 ## [0.5.1] - 2026-03-30
 
 ### Fixed
