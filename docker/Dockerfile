@@ -95,6 +95,10 @@ COPY --from=builder --chown=chive:chive /app/node_modules ./node_modules
 COPY --from=builder --chown=chive:chive /app/dist ./dist
 COPY --from=builder --chown=chive:chive /app/package.json ./
 
+# Lexicon schemas served via com.atproto.repo.getRecord for NSID resolution.
+COPY --from=builder --chown=chive:chive /app/lexicons ./lexicons
+ENV CHIVE_LEXICONS_DIR=/app/lexicons
+
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=3000

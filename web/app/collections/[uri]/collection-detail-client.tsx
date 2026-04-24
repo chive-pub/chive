@@ -39,6 +39,7 @@ import {
   useRemoveFromCollection,
   useUpdateCollectionItem,
   useReorderItems,
+  useRepairCosmikMirror,
   findContainsEdge,
   getSubcollectionUris,
   collectionKeys,
@@ -140,6 +141,7 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
   const deleteCollection = useDeleteCollection();
   const removeFromCollection = useRemoveFromCollection();
   const updateCollectionItem = useUpdateCollectionItem();
+  const repairCosmikMirror = useRepairCosmikMirror();
   const reorderItems = useReorderItems();
   const createPersonalEdge = useCreatePersonalEdge();
 
@@ -365,6 +367,28 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
     return groups;
   }, [sortableItems]);
 
+  const handleRepairMirror = useCallback(async () => {
+    if (!collection?.cosmikCollectionUri) return;
+    try {
+      const result = await repairCosmikMirror.mutateAsync({
+        collectionUri: collection.uri,
+        interItemEdges: interItemEdges.map((edge) => ({
+          edgeUri: edge.edgeUri,
+          sourceUri: edge.sourceUri,
+          targetUri: edge.targetUri,
+          relationSlug: edge.relationSlug,
+        })),
+        itemUrls: items.map((item) => item.itemUri),
+      });
+      toast.success(
+        `Mirror repaired — ${result.created} connections created, ${result.pruned} orphans pruned.`
+      );
+    } catch (err) {
+      logger.error('Repair mirror failed', err);
+      toast.error('Could not repair mirror.');
+    }
+  }, [collection, interItemEdges, items, repairCosmikMirror]);
+
   const handleReorder = useCallback(
     (reordered: Array<CollectionItemView & { id: string }>) => {
       if (!collection) return;
@@ -442,6 +466,8 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
         subcollectionNames={subcollections.map((s) => s.label)}
         onDelete={handleDelete}
         isDeleting={deleteCollection.isPending}
+        onRepairMirror={isOwner && collection.cosmikCollectionUri ? handleRepairMirror : undefined}
+        isRepairing={repairCosmikMirror.isPending}
       />
 
       <Separator />

@@ -199,7 +199,15 @@ export class Neo4jAdapter implements IGraphDatabase {
    * Lists nodes with filtering.
    */
   async listNodes(options: NodeSearchOptions): Promise<NodeSearchResult> {
-    const { kind, subkind, status, limit = 50, cursor } = options;
+    const {
+      kind,
+      subkind,
+      status,
+      limit = 50,
+      cursor,
+      externalIdSystem,
+      externalIdIdentifier,
+    } = options;
 
     // Build label filter
     let labelFilter = ':Node';
@@ -219,6 +227,17 @@ export class Neo4jAdapter implements IGraphDatabase {
     if (status) {
       conditions.push('n.status = $status');
       params.status = status;
+    }
+
+    if (externalIdSystem && externalIdIdentifier) {
+      // externalIds is stored as serialized JSON; match on both system and
+      // identifier via CONTAINS fragments. See neo4j/node-repository.ts for
+      // matching rationale.
+      conditions.push('n.externalIds IS NOT NULL');
+      conditions.push('n.externalIds CONTAINS $externalIdSystemFragment');
+      conditions.push('n.externalIds CONTAINS $externalIdIdentifierFragment');
+      params.externalIdSystemFragment = `"system":"${externalIdSystem}"`;
+      params.externalIdIdentifierFragment = `"identifier":"${externalIdIdentifier}"`;
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';

@@ -23,6 +23,14 @@
             "knownValues": ["proposed", "provisional", "established", "deprecated"],
             "description": "Filter by lifecycle status"
           },
+          "externalIdSystem": {
+            "type": "string",
+            "description": "Filter nodes whose externalIds array includes an entry with this system. Must be combined with externalIdIdentifier."
+          },
+          "externalIdIdentifier": {
+            "type": "string",
+            "description": "Filter nodes whose externalIds array includes an entry with this identifier. Must be combined with externalIdSystem."
+          },
           "limit": {
             "type": "integer",
             "minimum": 1,

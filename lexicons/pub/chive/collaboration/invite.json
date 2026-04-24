@@ -1,0 +1,48 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collaboration.invite",
+  "revision": 1,
+  "description": "Invitation record from a subject-record author to a potential collaborator. Lives in the inviter's PDS. Generic over any Chive record (collections in v1; eprints, reviews, and other records in the future).",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subject", "invitee", "createdAt"],
+        "properties": {
+          "subject": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "StrongRef to any Chive-authored record being shared (collection, eprint, review, etc.)."
+          },
+          "invitee": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the user being invited."
+          },
+          "role": {
+            "type": "string",
+            "knownValues": ["collaborator", "editor", "viewer", "co-author", "reviewer"],
+            "description": "Role granted by this invitation. Defaults to 'collaborator'."
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 500,
+            "maxGraphemes": 200,
+            "description": "Optional personal note shown to the invitee."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "Optional expiration after which the invite is no longer valid."
+          }
+        }
+      }
+    }
+  }
+}

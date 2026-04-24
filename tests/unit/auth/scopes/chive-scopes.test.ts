@@ -56,8 +56,9 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly nineteen collections', () => {
-      expect(Object.keys(REPO_SCOPES)).toHaveLength(19);
+    it('covers all pub.chive.* collections that the app writes to', () => {
+      // 19 original + actor.mute + collaboration.invite + collaboration.inviteAcceptance
+      expect(Object.keys(REPO_SCOPES)).toHaveLength(22);
     });
   });
 
@@ -85,8 +86,9 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('covers exactly six external collections', () => {
-      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(6);
+    it('covers all external namespace collections that the app writes to', () => {
+      // 2 Bluesky + 1 Standard + 6 Cosmik + 4 Margin = 13
+      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(13);
     });
   });
 
@@ -194,12 +196,19 @@ describe('chive-scopes', () => {
       expect(CLIENT_METADATA_SCOPE).toContain('atproto');
     });
 
-    it('includes the legacy scope for backward compatibility', () => {
-      expect(CLIENT_METADATA_SCOPE).toContain('transition:generic');
+    it('does not include transition:generic (defeats granular scopes)', () => {
+      const parts = CLIENT_METADATA_SCOPE.split(' ');
+      expect(parts).not.toContain('transition:generic');
     });
 
-    it('includes the fullAccess permission set', () => {
-      expect(CLIENT_METADATA_SCOPE).toContain('include:pub.chive.auth.fullAccess');
+    it('includes every Chive repo scope', () => {
+      for (const scope of Object.values(REPO_SCOPES)) {
+        expect(CLIENT_METADATA_SCOPE).toContain(scope);
+      }
+    });
+
+    it('does not emit include: permission-set references', () => {
+      expect(CLIENT_METADATA_SCOPE).not.toContain('include:');
     });
 
     it('includes all external repo scopes', () => {
@@ -208,10 +217,9 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('is the product of buildScopeString with legacy, fullAccess, and external scopes', () => {
+    it('is the product of buildScopeString with chive and external repo scopes', () => {
       const expected = buildScopeString([
-        LEGACY_SCOPE,
-        PERMISSION_SETS.FULL_ACCESS,
+        ...Object.values(REPO_SCOPES),
         ...Object.values(EXTERNAL_REPO_SCOPES),
       ]);
       expect(CLIENT_METADATA_SCOPE).toBe(expected);

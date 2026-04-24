@@ -1,0 +1,38 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getFollowStatus",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Check if a user follows a collection (via network.cosmik.follow records)",
+      "parameters": {
+        "type": "params",
+        "required": ["followerDid", "subject"],
+        "properties": {
+          "followerDid": {
+            "type": "string",
+            "description": "DID of the potential follower"
+          },
+          "subject": {
+            "type": "string",
+            "description": "AT-URI of the collection"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["followUri"],
+          "properties": {
+            "followUri": {
+              "type": "string",
+              "description": "AT-URI of the follow record, or empty string if not following"
+            }
+          }
+        }
+      }
+    }
+  }
+}

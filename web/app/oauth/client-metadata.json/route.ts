@@ -47,9 +47,52 @@ export async function GET(request: NextRequest) {
     // Response types this client uses
     response_types: ['code'],
 
-    // Scopes this client requests
-    // TODO: Re-enable granular permission sets when PDS support lands
-    scope: 'atproto transition:generic',
+    // Maximum set of scopes this client may request.
+    // Individual login flows request subsets via getScopesForIntent().
+    // Uses individual repo: scopes rather than include: permission sets
+    // because the PDS cannot resolve permission set lexicons until they
+    // are published.
+    scope: [
+      'atproto',
+      // pub.chive.* collections
+      'repo:pub.chive.eprint.submission',
+      'repo:pub.chive.eprint.version',
+      'repo:pub.chive.eprint.userTag',
+      'repo:pub.chive.eprint.citation',
+      'repo:pub.chive.eprint.relatedWork',
+      'repo:pub.chive.eprint.changelog',
+      'repo:pub.chive.actor.profile',
+      'repo:pub.chive.actor.profileConfig',
+      'repo:pub.chive.actor.mute',
+      'repo:pub.chive.discovery.settings',
+      'repo:pub.chive.review.comment',
+      'repo:pub.chive.review.endorsement',
+      'repo:pub.chive.annotation.comment',
+      'repo:pub.chive.annotation.entityLink',
+      'repo:pub.chive.graph.fieldProposal',
+      'repo:pub.chive.graph.nodeProposal',
+      'repo:pub.chive.graph.edgeProposal',
+      'repo:pub.chive.graph.vote',
+      'repo:pub.chive.graph.node',
+      'repo:pub.chive.graph.edge',
+      'repo:pub.chive.collaboration.invite',
+      'repo:pub.chive.collaboration.inviteAcceptance',
+      // External cross-post namespaces
+      'repo:app.bsky.feed.post',
+      'repo:app.bsky.actor.profile',
+      'repo:site.standard.document',
+      'repo:network.cosmik.card',
+      'repo:network.cosmik.collection',
+      'repo:network.cosmik.collectionLink',
+      'repo:network.cosmik.collectionLinkRemoval',
+      'repo:network.cosmik.connection',
+      'repo:network.cosmik.follow',
+      'repo:at.margin.annotation',
+      'repo:at.margin.bookmark',
+      'repo:at.margin.reply',
+      'repo:at.margin.like',
+      'blob:*/*',
+    ].join(' '),
 
     // DPoP (Demonstrating Proof of Possession) - required by ATProto
     dpop_bound_access_tokens: true,

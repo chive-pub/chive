@@ -4,19 +4,25 @@
  * Semble integration step for the collection wizard.
  *
  * @remarks
- * Step 5: Toggle Semble mirroring and preview what will be created.
+ * Step 5: Toggle Semble mirroring, configure collaborators, edge sync,
+ * and preview what will be created.
  *
  * @packageDocumentation
  */
 
+import { useCallback } from 'react';
 import type { UseFormReturn } from 'react-hook-form';
-import { FileText } from 'lucide-react';
+import { FileText, X, Link2, Users } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  DidAutocompleteInput,
+  type SelectedAtprotoUser,
+} from '@/components/forms/did-autocomplete-input';
 import { cn } from '@/lib/utils';
 
 import type { CollectionFormValues } from './types';
@@ -39,7 +45,7 @@ export interface StepCosmikProps {
 // =============================================================================
 
 /**
- * Semble integration step: toggle mirroring and preview.
+ * Semble integration step: toggle mirroring, collaborators, edge sync, and preview.
  *
  * @param props - Component props
  * @returns Cosmik step element
@@ -47,10 +53,32 @@ export interface StepCosmikProps {
 export function StepCosmik({ form }: StepCosmikProps) {
   const { setValue, watch } = form;
   const enableCosmikMirror = watch('enableCosmikMirror');
+  const syncEdgesAsConnections = watch('syncEdgesAsConnections');
+  const cosmikCollaborators = watch('cosmikCollaborators') ?? [];
   const name = watch('name');
   const description = watch('description');
   const visibility = watch('visibility');
   const items = watch('items') ?? [];
+  const edges = watch('edges') ?? [];
+
+  const addCollaborator = useCallback(
+    (user: SelectedAtprotoUser) => {
+      if (cosmikCollaborators.includes(user.did)) return;
+      setValue('cosmikCollaborators', [...cosmikCollaborators, user.did], { shouldDirty: true });
+    },
+    [cosmikCollaborators, setValue]
+  );
+
+  const removeCollaborator = useCallback(
+    (did: string) => {
+      setValue(
+        'cosmikCollaborators',
+        cosmikCollaborators.filter((d) => d !== did),
+        { shouldDirty: true }
+      );
+    },
+    [cosmikCollaborators, setValue]
+  );
 
   return (
     <div className="space-y-6">
@@ -84,6 +112,76 @@ export function StepCosmik({ form }: StepCosmikProps) {
 
           {enableCosmikMirror && (
             <div className="mt-4 space-y-4">
+              {/* Edge sync toggle */}
+              {edges.length > 0 && (
+                <div className="flex items-start gap-3">
+                  <Checkbox
+                    id="sync-edges"
+                    checked={syncEdgesAsConnections}
+                    onCheckedChange={(checked) => {
+                      setValue('syncEdgesAsConnections', !!checked, { shouldDirty: true });
+                    }}
+                  />
+                  <div className="space-y-1">
+                    <Label htmlFor="sync-edges" className="cursor-pointer flex items-center gap-1">
+                      <Link2 className="h-3.5 w-3.5" />
+                      Sync edges as Semble connections
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Mirror {edges.length} edge{edges.length !== 1 ? 's' : ''} as{' '}
+                      <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
+                        network.cosmik.connection
+                      </code>{' '}
+                      records so relationships are visible in Semble.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Collaborators section */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1">
+                  <Users className="h-3.5 w-3.5" />
+                  Collaborators
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Add DIDs of users who can contribute to this collection on Semble.
+                </p>
+
+                {cosmikCollaborators.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {cosmikCollaborators.map((did) => (
+                      <Badge key={did} variant="secondary" className="gap-1 py-0.5 pl-2 pr-1">
+                        <span className="text-[10px] font-mono truncate max-w-[200px]">{did}</span>
+                        <button
+                          type="button"
+                          onClick={() => removeCollaborator(did)}
+                          className="ml-0.5 rounded-full p-0.5 hover:bg-muted"
+                          aria-label={`Remove collaborator ${did}`}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+
+                <DidAutocompleteInput
+                  onSelect={addCollaborator}
+                  onChange={(did) => {
+                    if (did.startsWith('did:') && !cosmikCollaborators.includes(did)) {
+                      setValue('cosmikCollaborators', [...cosmikCollaborators, did], {
+                        shouldDirty: true,
+                      });
+                    }
+                  }}
+                  placeholder="Search by handle (e.g., alice.bsky.social)..."
+                />
+              </div>
+
+              <Separator />
+
+              {/* Mirror preview */}
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                 <h4 className="text-sm font-medium">Semble Mirror Preview</h4>
 
@@ -104,6 +202,12 @@ export function StepCosmik({ form }: StepCosmikProps) {
                       {visibility}
                     </Badge>
                   </div>
+                  {cosmikCollaborators.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Collaborators:</span>{' '}
+                      <span className="font-medium">{cosmikCollaborators.length}</span>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
@@ -115,6 +219,15 @@ export function StepCosmik({ form }: StepCosmikProps) {
                       {items.length} card{items.length !== 1 ? 's' : ''}
                     </span>
                   </div>
+
+                  {syncEdgesAsConnections && edges.length > 0 && (
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Connections to create:</span>{' '}
+                      <span className="font-medium">
+                        {edges.length} connection{edges.length !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  )}
 
                   {items.length > 0 ? (
                     <div className="space-y-1 max-h-[200px] overflow-y-auto">
@@ -159,7 +272,16 @@ export function StepCosmik({ form }: StepCosmikProps) {
                 records and grouped into a{' '}
                 <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
                   network.cosmik.collection
-                </code>{' '}
+                </code>
+                {syncEdgesAsConnections && edges.length > 0 && (
+                  <>
+                    {' '}
+                    with edges as{' '}
+                    <code className="rounded bg-muted px-1 py-0.5 text-[10px]">
+                      network.cosmik.connection
+                    </code>
+                  </>
+                )}{' '}
                 in your PDS.
               </p>
             </div>

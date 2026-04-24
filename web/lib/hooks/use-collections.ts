@@ -55,12 +55,24 @@ import {
   deleteCosmikMirror,
   addCosmikItem,
   removeCosmikItem,
+  createCosmikFollow,
+  deleteCosmikFollow,
+  createCosmikCollectionLinkRemoval,
+  createMarginAnnotation,
+  deleteMarginAnnotation,
+  updateMarginAnnotation,
+  createMarginBookmark,
+  deleteMarginBookmark,
+  createMarginReply,
+  createMarginLike,
+  deleteMarginLike,
   type CreateCollectionNodeInput,
   type UpdateCollectionNodeInput,
   type AddItemToCollectionInput,
   type AddSubcollectionInput,
   type MoveSubcollectionInput,
   type CosmikItemMapping,
+  type CosmikConnectionMapping,
 } from '@/lib/atproto/record-creator';
 
 const logger = createLogger({ context: { component: 'use-collections' } });
@@ -477,6 +489,8 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
     note?: string;
     /** Item type */
     type?: string;
+    /** Personal-graph node URI when item was cloned into the user's PDS */
+    personalNodeUri?: string;
     /** Additional metadata for rich Semble card content */
     metadata?: {
       subkind?: string;
@@ -486,8 +500,29 @@ export interface CreateCollectionMutationInput extends CreateCollectionNodeInput
       kind?: string;
       avatarUrl?: string;
       isPersonal?: boolean;
+      doi?: string;
+      isbn?: string;
+      publishedDate?: string;
+      imageUrl?: string;
+      journalTitle?: string;
+      externalIds?: Array<{
+        system: string;
+        identifier: string;
+        uri?: string;
+        matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+      }>;
     };
   }>;
+  /** Inter-item edges to mirror as Cosmik connections when enableCosmikMirror is true */
+  edges?: Array<{
+    sourceUri: string;
+    targetUri: string;
+    relationSlug: string;
+    relationUri?: string;
+    note?: string;
+  }>;
+  /** Collaborator DIDs for shared Cosmik collections */
+  collaborators?: string[];
 }
 
 /**
@@ -547,13 +582,16 @@ export function useCreateCollection() {
             title: input.name,
             description: input.description,
             visibility: input.visibility,
+            collaborators: input.collaborators,
             items: (input.items ?? []).map((item) => ({
               url: item.uri,
               title: item.label,
               subkind: item.metadata?.subkind,
               itemType: item.type,
               metadata: item.metadata,
+              personalNodeUri: item.personalNodeUri,
             })),
+            edges: input.edges,
           });
 
           cosmikCollectionUri = cosmikResult.cosmikCollectionUri;
@@ -569,6 +607,7 @@ export function useCreateCollection() {
           logger.info('Cosmik mirror created', {
             cosmikCollectionUri: cosmikResult.cosmikCollectionUri,
             itemCount: Object.keys(cosmikResult.cosmikItems).length,
+            connectionCount: Object.keys(cosmikResult.cosmikConnections).length,
           });
         } catch (cosmikError) {
           logger.warn('Cosmik mirror creation failed; collection was created without mirror', {
@@ -976,6 +1015,20 @@ export function useRemoveFromCollection() {
             linkUri: cosmikLinkUri,
           });
 
+          // Also prune any orphan inter-item Cosmik connections that
+          // referenced the removed item. Without this, Semble would still
+          // display edges pointing at a card that no longer exists.
+          try {
+            const { deleteCosmikConnectionsForItem } = await import('@/lib/atproto/record-creator');
+            await deleteCosmikConnectionsForItem(agent, collectionUri, cosmikItemUrl);
+          } catch (connectionErr) {
+            logger.warn('Failed to prune orphan Cosmik connections', {
+              collectionUri,
+              cosmikItemUrl,
+              error: connectionErr instanceof Error ? connectionErr.message : String(connectionErr),
+            });
+          }
+
           // Re-index so server picks up updated metadata
           try {
             await authApi.pub.chive.sync.indexRecord({ uri: collectionUri });
@@ -1175,6 +1228,7 @@ export function useUpdateCollectionItem() {
   return useMutation({
     mutationFn: async ({
       edgeUri,
+      collectionUri,
       itemUri,
       label,
       note,
@@ -1213,6 +1267,36 @@ export function useUpdateCollectionItem() {
         await new Promise((resolve) => setTimeout(resolve, 100));
       } catch {
         logger.warn('Immediate re-indexing failed; firehose will handle', { uri: result.uri });
+      }
+
+      // Sync label change to Cosmik card if the collection has a mirror
+      if (label !== undefined && itemUri) {
+        try {
+          const { loadEdgeSyncLookup, updateCosmikCard } =
+            await import('@/lib/atproto/record-creator');
+          const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+          if (lookup) {
+            // cosmikItems is keyed by original item URI. Find the entry by:
+            // 1. Direct key match (itemUri IS the original URI)
+            // 2. personalNodeUri field (itemUri is the personal-graph clone)
+            const directMatch = lookup.cosmikItems[itemUri];
+            if (directMatch) {
+              await updateCosmikCard(agent, directMatch.cardUri, { title: label });
+            } else {
+              const entry = Object.values(lookup.cosmikItems).find(
+                (m) => m.personalNodeUri === itemUri
+              );
+              if (entry) {
+                await updateCosmikCard(agent, entry.cardUri, { title: label });
+              }
+            }
+          }
+        } catch (syncErr) {
+          logger.warn('Cosmik card label sync failed', {
+            itemUri,
+            error: syncErr instanceof Error ? syncErr.message : String(syncErr),
+          });
+        }
       }
     },
     onSuccess: (_, variables) => {
@@ -1353,4 +1437,410 @@ export function useMoveSubcollection() {
       });
     },
   });
+}
+
+// =============================================================================
+// COSMIK FOLLOW HOOKS
+// =============================================================================
+
+/**
+ * Query key factory for follow queries.
+ */
+export const followKeys = {
+  all: ['follows'] as const,
+  status: (followerDid: string, subject: string) =>
+    [...followKeys.all, 'status', followerDid, subject] as const,
+  count: (subject: string) => [...followKeys.all, 'count', subject] as const,
+};
+
+/**
+ * Fetches the follower count for a collection.
+ *
+ * @param collectionUri - AT-URI of the collection
+ * @param options - Hook options
+ * @returns Query result with follower count
+ */
+export function useFollowerCount(collectionUri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: followKeys.count(collectionUri),
+    queryFn: async (): Promise<{ count: number }> => {
+      const response = await api.pub.chive.collection.getFollowerCount({
+        uri: collectionUri,
+      });
+      return response.data as unknown as { count: number };
+    },
+    enabled: !!collectionUri && (options?.enabled ?? true),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Checks if the current user follows a collection.
+ *
+ * @param followerDid - DID of the current user
+ * @param subject - AT-URI of the collection to check
+ * @param options - Hook options
+ * @returns Query result with follow URI or null
+ */
+export function useFollowStatus(
+  followerDid: string,
+  subject: string,
+  options?: { enabled?: boolean }
+) {
+  return useQuery({
+    queryKey: followKeys.status(followerDid, subject),
+    queryFn: async (): Promise<{ followUri: string | null }> => {
+      const response = await api.pub.chive.collection.getFollowStatus({
+        followerDid,
+        subject,
+      });
+      return response.data as unknown as { followUri: string | null };
+    },
+    enabled: !!followerDid && !!subject && (options?.enabled ?? true),
+    staleTime: 30 * 1000,
+  });
+}
+
+/**
+ * Mutation hook for following a collection.
+ *
+ * @returns Mutation object for creating a follow
+ */
+export function useFollowCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      subject,
+    }: {
+      subject: string;
+      followerDid: string;
+    }): Promise<{ followUri: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'followCollection');
+      }
+
+      const result = await createCosmikFollow(agent, subject);
+      return { followUri: result.uri };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: followKeys.status(variables.followerDid, variables.subject),
+      });
+      queryClient.invalidateQueries({
+        queryKey: followKeys.count(variables.subject),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for unfollowing a collection.
+ *
+ * @returns Mutation object for deleting a follow
+ */
+export function useUnfollowCollection() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      followUri,
+    }: {
+      followUri: string;
+      subject: string;
+      followerDid: string;
+    }): Promise<void> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'unfollowCollection');
+      }
+
+      await deleteCosmikFollow(agent, followUri);
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: followKeys.status(variables.followerDid, variables.subject),
+      });
+      queryClient.invalidateQueries({
+        queryKey: followKeys.count(variables.subject),
+      });
+    },
+  });
+}
+
+// =============================================================================
+// MARGIN ANNOTATION HOOKS
+// =============================================================================
+
+/**
+ * Query key factory for Margin annotation queries.
+ */
+export const marginKeys = {
+  all: ['margin'] as const,
+  annotations: (eprintUri: string) => [...marginKeys.all, 'annotations', eprintUri] as const,
+};
+
+/**
+ * Fetches Margin annotations for an eprint.
+ *
+ * @param eprintUri - AT-URI of the eprint
+ * @param options - Hook options
+ * @returns Query result with annotations
+ */
+export function useMarginAnnotations(eprintUri: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: marginKeys.annotations(eprintUri),
+    queryFn: async () => {
+      const response = await api.pub.chive.collection.getMarginAnnotations({
+        eprintUri,
+        limit: 50,
+      });
+      return response.data;
+    },
+    enabled: !!eprintUri && (options?.enabled ?? true),
+    staleTime: 60 * 1000,
+  });
+}
+
+/**
+ * Mutation hook for creating a Margin annotation (dual-write from Chive review).
+ *
+ * @returns Mutation object for creating annotations
+ */
+export function useCreateMarginAnnotation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      sourceUrl: string;
+      pageTitle?: string;
+      body?: string;
+      bodyFormat?: string;
+      motivation?: 'commenting' | 'assessing' | 'highlighting';
+      tags?: string[];
+      eprintUri: string;
+    }): Promise<{ annotationUri: string; annotationCid: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError(
+          'Not authenticated. Please log in again.',
+          401,
+          'createMarginAnnotation'
+        );
+      }
+
+      const result = await createMarginAnnotation(agent, {
+        sourceUrl: input.sourceUrl,
+        pageTitle: input.pageTitle,
+        body: input.body,
+        bodyFormat: input.bodyFormat,
+        motivation: input.motivation,
+        tags: input.tags,
+      });
+
+      return { annotationUri: result.uri, annotationCid: result.cid };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: marginKeys.annotations(variables.eprintUri),
+      });
+    },
+  });
+}
+
+/**
+ * Mutation hook for creating a Margin bookmark (dual-write from Chive bookmark).
+ *
+ * @returns Mutation object for creating bookmarks
+ */
+export function useCreateMarginBookmark() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      sourceUrl: string;
+      title?: string;
+      description?: string;
+      tags?: string[];
+    }): Promise<{ bookmarkUri: string; bookmarkCid: string }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'createMarginBookmark');
+      }
+
+      const result = await createMarginBookmark(agent, input);
+      return { bookmarkUri: result.uri, bookmarkCid: result.cid };
+    },
+  });
+}
+
+// =============================================================================
+// REPAIR MIRROR HOOK
+// =============================================================================
+
+/**
+ * Mutation hook for repairing an existing Cosmik mirror.
+ *
+ * @remarks
+ * Reconciles the collection's `cosmikConnections` metadata with the actual
+ * state of the graph: creates Cosmik connection records for inter-item
+ * edges that should be mirrored but aren't, and deletes orphan connections
+ * whose endpoints are no longer in the collection.
+ *
+ * Used to recover from pre-rigorous-integration mirrors that were created
+ * without connections, and from drift introduced by partial-failure edge
+ * operations.
+ *
+ * @returns Mutation object; input takes the collection URI, inter-item
+ *   edges returned from the collection query, and the items currently in
+ *   the collection.
+ *
+ * @public
+ */
+export function useRepairCosmikMirror() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: {
+      collectionUri: string;
+      interItemEdges: Array<{
+        edgeUri?: string;
+        sourceUri: string;
+        targetUri: string;
+        relationSlug: string;
+      }>;
+      itemUrls: string[];
+    }): Promise<{ created: number; pruned: number }> => {
+      const agent = getCurrentAgent();
+      if (!agent) {
+        throw new APIError('Not authenticated. Please log in again.', 401, 'repairCosmikMirror');
+      }
+
+      const { syncEdgeToCosmik, deleteCosmikConnectionsForItem } =
+        await import('@/lib/atproto/record-creator');
+
+      let created = 0;
+      for (const edge of input.interItemEdges) {
+        if (!edge.edgeUri) continue;
+        try {
+          const mapping = await syncEdgeToCosmik(agent, 'create', {
+            collectionUri: input.collectionUri,
+            chiveEdgeUri: edge.edgeUri,
+            chiveEdgeSourceUri: edge.sourceUri,
+            chiveEdgeTargetUri: edge.targetUri,
+            relationSlug: edge.relationSlug,
+          });
+          if (mapping) created++;
+        } catch (err) {
+          logger.warn('Repair: failed to sync edge', {
+            edgeUri: edge.edgeUri,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
+
+      // Prune Cosmik connections whose endpoints are no longer in the
+      // collection. We look up each connection record, check whether either
+      // endpoint URL matches a current item, and delete if neither does.
+      const itemUrlSet = new Set(input.itemUrls);
+      const pruned = await pruneOrphanConnections(agent, input.collectionUri, itemUrlSet);
+
+      return { created, pruned };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: collectionKeys.detail(variables.collectionUri),
+      });
+    },
+  });
+}
+
+/**
+ * Helper for `useRepairCosmikMirror`: deletes Cosmik connections whose
+ * source and target are both absent from the current item set.
+ *
+ * @remarks
+ * Reads the collection node's `cosmikConnections` metadata, fetches each
+ * connection record to inspect its `source` and `target`, and deletes any
+ * connection whose endpoints no longer correspond to items in the
+ * collection. Updates the `cosmikConnections` metadata to reflect the
+ * surviving set.
+ *
+ * @internal
+ */
+async function pruneOrphanConnections(
+  agent: import('@atproto/api').Agent,
+  collectionUri: string,
+  itemUrlSet: Set<string>
+): Promise<number> {
+  const { loadEdgeSyncLookup, writeBackCosmikConnections, deleteCosmikConnection } =
+    await import('@/lib/atproto/record-creator');
+
+  const lookup = await loadEdgeSyncLookup(agent, collectionUri);
+  if (!lookup) return 0;
+
+  const did = (agent as unknown as { did?: string }).did;
+  if (!did) return 0;
+
+  const keep: Record<string, import('@/lib/atproto/record-creator').CosmikConnectionMapping> = {};
+  const toDelete: import('@/lib/atproto/record-creator').CosmikConnectionMapping[] = [];
+
+  for (const [key, mapping] of Object.entries(lookup.cosmikConnections)) {
+    try {
+      const parsed = parseAtUri(mapping.connectionUri);
+      if (!parsed) {
+        keep[key] = mapping;
+        continue;
+      }
+      const response = await agent.com.atproto.repo.getRecord({
+        repo: parsed.did,
+        collection: 'network.cosmik.connection',
+        rkey: parsed.rkey,
+      });
+      const record = response.data.value as {
+        source?: string;
+        target?: string;
+      };
+      if (
+        (record.source && itemUrlSet.has(record.source)) ||
+        (record.target && itemUrlSet.has(record.target))
+      ) {
+        keep[key] = mapping;
+      } else {
+        toDelete.push(mapping);
+      }
+    } catch {
+      // Can't read the record — err on the side of keeping it.
+      keep[key] = mapping;
+    }
+  }
+
+  for (const mapping of toDelete) {
+    try {
+      await deleteCosmikConnection(agent, mapping.connectionUri);
+    } catch (err) {
+      logger.warn('Repair: failed to delete orphan connection', {
+        connectionUri: mapping.connectionUri,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await writeBackCosmikConnections(agent, did, lookup.rkey, lookup.node, keep);
+  }
+
+  return toDelete.length;
+}
+
+/**
+ * Minimal AT-URI parser used by the repair helper.
+ *
+ * @internal
+ */
+function parseAtUri(uri: string): { did: string; collection: string; rkey: string } | null {
+  const match = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(uri);
+  if (!match) return null;
+  return { did: match[1]!, collection: match[2]!, rkey: match[3]! };
 }

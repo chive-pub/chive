@@ -83,6 +83,8 @@ export const listNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
       kind: params.kind,
       subkind: params.subkind,
       status: params.status,
+      externalIdSystem: params.externalIdSystem,
+      externalIdIdentifier: params.externalIdIdentifier,
       limit: params.limit,
     });
 
@@ -95,6 +97,8 @@ export const listNodes: XRPCMethod<QueryParams, void, OutputSchema> = {
         | 'established'
         | 'deprecated'
         | undefined,
+      externalIdSystem: params.externalIdSystem,
+      externalIdIdentifier: params.externalIdIdentifier,
       limit: params.limit,
       cursor: params.cursor,
     });

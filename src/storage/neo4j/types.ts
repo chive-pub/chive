@@ -40,7 +40,11 @@ export type ExternalIdSystem =
   | 'mesh'
   | 'aat'
   | 'gnd'
-  | 'anzsrc';
+  | 'anzsrc'
+  | 'skos'
+  | 'cosmik'
+  | 'schema-org'
+  | 'dublin-core';
 
 /**
  * SKOS match type for external ID mapping

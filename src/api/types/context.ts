@@ -20,6 +20,7 @@ import type { BacklinkService } from '../../services/backlink/backlink-service.j
 import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { CitationExtractionService } from '../../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
+import type { CollaborationService } from '../../services/collaboration/collaboration-service.js';
 import type { CollectionService } from '../../services/collection/collection-service.js';
 import type { DiscoveryService } from '../../services/discovery/discovery-service.js';
 import type { EprintService } from '../../services/eprint/eprint-service.js';
@@ -85,6 +86,7 @@ export interface ChiveServices {
   readonly indexRetryWorker?: IndexRetryWorker;
   readonly personalGraph?: PersonalGraphService;
   readonly collection?: CollectionService;
+  readonly collaborationService?: CollaborationService;
   readonly admin?: AdminService;
   readonly backfillManager?: BackfillManager;
   readonly citationExtraction?: CitationExtractionService;

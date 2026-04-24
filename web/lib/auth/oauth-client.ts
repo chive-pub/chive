@@ -271,10 +271,14 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // TODO: Re-enable granular scopes when PDS support for permission sets lands
-    // const granularScope = getScopesForIntent(intent);
-    // const scope = `${granularScope} transition:generic`;
-    const scope = 'atproto transition:generic';
+    // Request granular scopes based on the user's intent. We deliberately
+    // do NOT include `transition:generic` here: that scope short-circuits
+    // granular permissions and causes PDSes (e.g. bsky.social) to show
+    // "any public record" on the consent screen instead of our specific
+    // repo scopes. The atproto-base scope + individual repo:/blob: scopes
+    // fully express what the app needs.
+    const granularScope = getScopesForIntent(intent);
+    const scope = `${granularScope} blob:*/*`;
 
     const url = await client.authorize(handle, { scope });
 
@@ -403,6 +407,24 @@ async function tryRestoreAnySession(client: BrowserOAuthClient): Promise<OAuthSe
  * @returns PDS endpoint URL string
  * @throws Error if session has no server information
  */
+/**
+ * Extracts the granted scope strings from an OAuth session.
+ *
+ * @param session - The authenticated OAuth session
+ * @returns Array of individual scope strings
+ */
+export async function getSessionScopes(session: OAuthSession): Promise<string[]> {
+  try {
+    const tokenInfo = await session.getTokenInfo(false);
+    if (tokenInfo.scope) {
+      return String(tokenInfo.scope).split(' ').filter(Boolean);
+    }
+  } catch {
+    // Fall back to legacy scopes if token info is unavailable
+  }
+  return ['atproto', 'transition:generic'];
+}
+
 function getPdsEndpoint(session: OAuthSession): string {
   const server = session.server;
 

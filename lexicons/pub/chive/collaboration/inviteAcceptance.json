@@ -1,0 +1,32 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collaboration.inviteAcceptance",
+  "revision": 1,
+  "description": "Acceptance record created by an invitee, acknowledging a collaboration invite. Lives in the invitee's PDS. The combination of an existing invite and a matching acceptance — both non-deleted — is what grants the invitee's writes to be surfaced against the subject record.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["invite", "subject", "createdAt"],
+        "properties": {
+          "invite": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "StrongRef to the corresponding pub.chive.collaboration.invite record."
+          },
+          "subject": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "StrongRef to the subject record of the invite (collection, eprint, etc.). Redundant with the invite reference but convenient for firehose-time indexing before the invite is resolved."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

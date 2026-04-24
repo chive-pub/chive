@@ -26,7 +26,7 @@ export interface CollectionItemFormData {
   label: string;
   /** Optional annotation note */
   note?: string;
-  /** Optional metadata for richer rendering */
+  /** Optional metadata for richer rendering + Cosmik card emission */
   metadata?: {
     avatarUrl?: string;
     handle?: string;
@@ -35,7 +35,24 @@ export interface CollectionItemFormData {
     kind?: string;
     description?: string;
     isPersonal?: boolean;
-    [key: string]: string | string[] | boolean | undefined;
+    /** Digital Object Identifier (DOI). */
+    doi?: string;
+    /** ISBN for books. */
+    isbn?: string;
+    /** Publication / creation date (ISO 8601). */
+    publishedDate?: string;
+    /** Cover / preview image URL. */
+    imageUrl?: string;
+    /** Journal or venue title for scholarly artifacts. */
+    journalTitle?: string;
+    /** Additional external IDs from the item's graph node. */
+    externalIds?: Array<{
+      system: string;
+      identifier: string;
+      uri?: string;
+      matchType?: 'exact' | 'close' | 'broader' | 'narrower' | 'related';
+    }>;
+    [key: string]: unknown;
   };
 }
 
@@ -49,6 +66,16 @@ export interface CollectionEdgeFormData {
   targetUri: string;
   /** Relation type slug */
   relationSlug: string;
+  /**
+   * AT-URI of the relation-type node.
+   *
+   * @remarks
+   * Captured when the user picks a relation so downstream edge creation
+   * can pass it through to the `pub.chive.graph.edge` record and to
+   * `syncEdgeToCosmik` for foreign-ecosystem mapping lookups via the
+   * relation's `externalIds`.
+   */
+  relationUri?: string;
   /** Display label for the relation */
   relationLabel: string;
   /** Optional note */
@@ -57,8 +84,12 @@ export interface CollectionEdgeFormData {
   isBidirectional?: boolean;
   /** Slug of the inverse relation (for paired edges) */
   inverseRelationSlug?: string;
+  /** AT-URI of the inverse relation-type node. */
+  inverseRelationUri?: string;
   /** Display label for the inverse relation */
   inverseRelationLabel?: string;
+  /** Whether the relation has a declared Semble (Cosmik) connection type mapping */
+  hasSembleMapping?: boolean;
 }
 
 /**
@@ -84,6 +115,10 @@ export interface CollectionFormValues {
   edges: CollectionEdgeFormData[];
   subcollections: SubcollectionFormData[];
   enableCosmikMirror: boolean;
+  /** Collaborator DIDs for shared Cosmik collections */
+  cosmikCollaborators: string[];
+  /** Whether to sync edges as Cosmik connections */
+  syncEdgesAsConnections: boolean;
 }
 
 // =============================================================================
@@ -135,10 +170,12 @@ export const collectionFormSchema = z.object({
         sourceUri: z.string(),
         targetUri: z.string(),
         relationSlug: z.string(),
+        relationUri: z.string().optional(),
         relationLabel: z.string(),
         note: z.string().optional(),
         isBidirectional: z.boolean().optional(),
         inverseRelationSlug: z.string().optional(),
+        inverseRelationUri: z.string().optional(),
         inverseRelationLabel: z.string().optional(),
       })
     )
@@ -152,6 +189,8 @@ export const collectionFormSchema = z.object({
     )
     .optional(),
   enableCosmikMirror: z.boolean().default(false),
+  cosmikCollaborators: z.array(z.string()).default([]),
+  syncEdgesAsConnections: z.boolean().default(true),
 });
 
 /**

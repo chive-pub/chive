@@ -125,7 +125,11 @@
             "mesh",
             "aat",
             "gnd",
-            "anzsrc"
+            "anzsrc",
+            "skos",
+            "cosmik",
+            "schema-org",
+            "dublin-core"
           ],
           "description": "Identifier system"
         },

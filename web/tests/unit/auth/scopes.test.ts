@@ -10,6 +10,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   ATPROTO_BASE_SCOPE,
+  CHIVE_REPO_SCOPES,
   EXTERNAL_REPO_SCOPES,
   getScopesForIntent,
   hasScope,
@@ -20,28 +21,27 @@ import {
 
 describe('frontend scopes', () => {
   describe('getScopesForIntent', () => {
-    it('returns basicReader scope for browse intent', () => {
+    it('returns only atproto base scope for browse intent', () => {
       const result = getScopesForIntent('browse');
-      expect(result).toContain(ATPROTO_BASE_SCOPE);
-      expect(result).toContain(PERMISSION_SETS.BASIC_READER);
+      expect(result).toBe(ATPROTO_BASE_SCOPE);
     });
 
-    it('returns authorAccess scope for submit intent', () => {
+    it('includes chive repo scopes for submit intent', () => {
       const result = getScopesForIntent('submit');
       expect(result).toContain(ATPROTO_BASE_SCOPE);
-      expect(result).toContain(PERMISSION_SETS.AUTHOR_ACCESS);
+      expect(result).toContain(CHIVE_REPO_SCOPES.EPRINT_SUBMISSION);
     });
 
-    it('returns reviewerAccess scope for review intent', () => {
+    it('includes chive repo scopes for review intent', () => {
       const result = getScopesForIntent('review');
       expect(result).toContain(ATPROTO_BASE_SCOPE);
-      expect(result).toContain(PERMISSION_SETS.REVIEWER_ACCESS);
+      expect(result).toContain(CHIVE_REPO_SCOPES.REVIEW_COMMENT);
     });
 
-    it('returns fullAccess scope for full intent', () => {
+    it('includes chive repo scopes for full intent', () => {
       const result = getScopesForIntent('full');
       expect(result).toContain(ATPROTO_BASE_SCOPE);
-      expect(result).toContain(PERMISSION_SETS.FULL_ACCESS);
+      expect(result).toContain(CHIVE_REPO_SCOPES.GRAPH_NODE);
     });
 
     it('always starts with the atproto base scope', () => {
@@ -51,16 +51,26 @@ describe('frontend scopes', () => {
       }
     });
 
-    it('returns two tokens for browse intent', () => {
+    it('returns one token for browse intent', () => {
       const parts = getScopesForIntent('browse').split(' ');
-      expect(parts).toHaveLength(2);
+      expect(parts).toHaveLength(1);
     });
 
-    it('returns eight tokens for submit, review, and full intents', () => {
+    it('returns correct token count for submit, review, and full intents', () => {
+      const chiveCount = Object.values(CHIVE_REPO_SCOPES).length;
+      const externalCount = Object.values(EXTERNAL_REPO_SCOPES).length;
+      const expected = 1 + chiveCount + externalCount;
       const intents: AuthIntent[] = ['submit', 'review', 'full'];
       for (const intent of intents) {
         const parts = getScopesForIntent(intent).split(' ');
-        expect(parts).toHaveLength(8);
+        expect(parts).toHaveLength(expected);
+      }
+    });
+
+    it('does not emit include: permission-set scopes', () => {
+      const intents: AuthIntent[] = ['browse', 'submit', 'review', 'full'];
+      for (const intent of intents) {
+        expect(getScopesForIntent(intent)).not.toContain('include:');
       }
     });
 
