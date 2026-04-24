@@ -131,19 +131,60 @@ const CHIVE_SCOPES_STRING = Object.values(CHIVE_REPO_SCOPES).join(' ');
 const CHIVE_READ_SCOPES_STRING = '';
 
 /**
+ * Whether to emit `include:pub.chive.auth.*` permission-set references
+ * instead of individual `repo:pub.chive.*` scopes.
+ *
+ * @remarks
+ * Controlled by the `NEXT_PUBLIC_USE_PERMISSION_SETS` build-time env var.
+ * Safe to flip to `true` only after both conditions hold:
+ *
+ * 1. Chive is serving lexicon records for `pub.chive.auth.*` NSIDs (the
+ *    `com.atproto.repo.getRecord` endpoints landed in #74 — already live).
+ * 2. A DNS TXT record exists at `_lexicon.auth.chive.pub` pointing at
+ *    `did=did:web:chive.pub`, so resolving services (bsky.social) can
+ *    find the DID that owns the `pub.chive.auth.*` namespace.
+ *
+ * Requesting `include:` scopes without (2) causes the OAuth PAR request
+ * to fail with `invalid_scope / Could not resolve Lexicon for NSID`.
+ */
+const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'true';
+
+/**
+ * Map an auth intent to the matching permission-set reference.
+ */
+function permissionSetForIntent(intent: AuthIntent): string {
+  switch (intent) {
+    case 'browse':
+      return PERMISSION_SETS.BASIC_READER;
+    case 'submit':
+      return PERMISSION_SETS.AUTHOR_ACCESS;
+    case 'review':
+      return PERMISSION_SETS.REVIEWER_ACCESS;
+    case 'full':
+      return PERMISSION_SETS.FULL_ACCESS;
+  }
+}
+
+/**
  * Get the OAuth scope string for a given authorization intent.
  *
  * @remarks
- * Uses individual `repo:pub.chive.*` scopes rather than `include:` permission
- * set references, since the PDS cannot resolve permission set lexicons until
- * they are published. All write intents currently request the full set of
- * Chive collections plus external namespaces for cross-posting.
+ * By default emits individual `repo:pub.chive.*` scopes, because PDSes
+ * can't yet resolve our permission-set lexicons. Set
+ * `NEXT_PUBLIC_USE_PERMISSION_SETS=true` at build time to switch to
+ * `include:pub.chive.auth.*` references once DNS TXT records for
+ * lexicon resolution are in place.
  *
  * @param intent - The user's intent (browse, submit, review, full)
  * @returns Space-separated scope string including atproto base scope
  */
 export function getScopesForIntent(intent: AuthIntent): string {
   const base = ATPROTO_BASE_SCOPE;
+  if (USE_PERMISSION_SETS) {
+    const permSet = permissionSetForIntent(intent);
+    if (intent === 'browse') return `${base} ${permSet}`;
+    return `${base} ${permSet} ${EXTERNAL_SCOPES_STRING}`;
+  }
   switch (intent) {
     case 'browse':
       return CHIVE_READ_SCOPES_STRING ? `${base} ${CHIVE_READ_SCOPES_STRING}` : base;
