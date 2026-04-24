@@ -461,8 +461,6 @@ function getPdsEndpoint(session: OAuthSession): string {
  * @returns User profile
  */
 async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
-  const agent = new Agent(session);
-
   // Try to get PDS endpoint from session, fall back to DID resolution
   let pdsEndpoint: string;
   try {
@@ -477,15 +475,32 @@ async function fetchUserProfile(session: OAuthSession): Promise<ChiveUser> {
     }
   }
 
+  // Fetch the profile from the public Bluesky AppView instead of through
+  // the authenticated session. `app.bsky.actor.getProfile` is a public
+  // query; under the legacy `transition:generic` scope it happened to
+  // work through the session, but under granular scopes the session-bound
+  // call returns 403 unless an explicit `rpc:` scope is granted. The
+  // public AppView has no such restriction and works for any DID.
   try {
-    const profile = await agent.getProfile({ actor: session.did });
+    const res = await fetch(
+      `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=${encodeURIComponent(session.did)}`
+    );
+    if (!res.ok) {
+      throw new Error(`getProfile HTTP ${res.status}`);
+    }
+    const profile = (await res.json()) as {
+      handle: string;
+      displayName?: string;
+      avatar?: string;
+      description?: string;
+    };
 
     return {
       did: session.did as DID,
-      handle: profile.data.handle,
-      displayName: profile.data.displayName,
-      avatar: profile.data.avatar,
-      description: profile.data.description,
+      handle: profile.handle,
+      displayName: profile.displayName,
+      avatar: profile.avatar,
+      description: profile.description,
       pdsEndpoint,
     };
   } catch (error) {

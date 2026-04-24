@@ -250,6 +250,19 @@ jobs:
               docker compose -f docker-compose.prod.yml --profile observability logs --tail=50 2>&1 | head -100
             fi
 
+            # Restore chive-docs container.
+            # The `docker rm -f chive-*` cleanup above wipes chive-docs (it's
+            # owned by docker-compose.docs.yml, not the main prod compose), and
+            # the main compose doesn't bring it back. If Deploy Docs has ever
+            # placed a build at /opt/chive/docs/build, bring the container up
+            # now so docs.${DOMAIN} stays reachable. This step is idempotent.
+            if [ -d /opt/chive/docs/build ]; then
+              echo "Restoring chive-docs container..."
+              DOMAIN="${DOMAIN}" docker compose -f docker-compose.docs.yml up -d chive-docs
+            else
+              echo "No docs build found at /opt/chive/docs/build; skipping docs restore (Deploy Docs has not run yet)."
+            fi
+
             # Cleanup old images, build cache, and containerd layers
             # CRITICAL: -a flag removes ALL unused images (not just dangling)
             # docker builder prune cleans buildkit cache stored in containerd
