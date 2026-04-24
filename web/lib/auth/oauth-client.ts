@@ -271,11 +271,14 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // Request granular scopes based on the user's intent, plus
-    // transition:generic for backward compatibility with PDSes that
-    // don't yet support granular permission sets.
+    // Request granular scopes based on the user's intent. We deliberately
+    // do NOT include `transition:generic` here: that scope short-circuits
+    // granular permissions and causes PDSes (e.g. bsky.social) to show
+    // "any public record" on the consent screen instead of our specific
+    // repo scopes. The atproto-base scope + individual repo:/blob: scopes
+    // fully express what the app needs.
     const granularScope = getScopesForIntent(intent);
-    const scope = `${granularScope} transition:generic blob:*/*`;
+    const scope = `${granularScope} blob:*/*`;
 
     const url = await client.authorize(handle, { scope });
 
