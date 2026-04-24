@@ -89,8 +89,10 @@ export async function GET(request: NextRequest) {
     // Client homepage
     client_uri: baseUrl,
 
-    // Logo URL (optional, but nice to have)
-    logo_uri: `${baseUrl}/logo.png`,
+    // Logo URL. Rendered in the PDS consent screen header (per
+    // @atproto/oauth-provider-ui's ClientImage component), not beside
+    // individual scope cards. Must be an asset that actually exists.
+    logo_uri: `${baseUrl}/chive-logo.svg`,
 
     // Terms of service URL
     tos_uri: `${baseUrl}/about/terms`,
