@@ -23,22 +23,58 @@ import { logger } from '@/lib/observability';
 const oauthLogger = logger.child({ component: 'oauth-client' });
 
 /**
- * Handle resolver using ATProto's official DNS-over-HTTPS resolver.
+ * Handle resolver supporting BOTH ATProto handle resolution methods.
  *
  * @remarks
- * Uses Google's DoH JSON API endpoint which supports the application/dns-json
- * format required by AtprotoDohHandleResolver.
- *
- * The resolver implements ATProto standard handle resolution:
- * 1. HTTP method: GET https://<handle>/.well-known/atproto-did
- * 2. DNS method: _atproto.<handle> TXT record (via DNS-over-HTTPS)
+ * The ATProto handle spec allows either resolution path, and a handle is
+ * valid if either succeeds. `AtprotoDohHandleResolver` (the upstream
+ * helper) only implements the DNS path, which means handles served only
+ * via the HTTPS `.well-known/atproto-did` route (e.g., the Eurosky
+ * network's custom-domain users) fail to resolve. We try DoH first
+ * (cheap, cached) and fall back to the HTTPS path on miss.
  *
  * @see {@link https://atproto.com/specs/handle | ATProto Handle Specification}
- * @see {@link https://developers.google.com/speed/public-dns/docs/doh/json | Google DoH JSON API}
  */
-const handleResolver = new AtprotoDohHandleResolver({
+const dohResolver = new AtprotoDohHandleResolver({
   dohEndpoint: 'https://dns.google/resolve',
 });
+
+const handleResolver: typeof dohResolver = {
+  ...dohResolver,
+  resolve: async (handle, options) => {
+    try {
+      const dohResult = await dohResolver.resolve(handle, options);
+      if (dohResult) return dohResult;
+    } catch (error) {
+      oauthLogger.warn('DoH handle resolution failed; falling back to HTTPS', {
+        handle,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return (await resolveHandleViaHttps(handle)) as Awaited<ReturnType<typeof dohResolver.resolve>>;
+  },
+} as typeof dohResolver;
+
+/**
+ * Resolve a handle via the HTTPS `.well-known/atproto-did` method.
+ *
+ * @remarks
+ * Per the ATProto handle spec, a GET to `https://<handle>/.well-known/atproto-did`
+ * must return a single DID as `text/plain`. We bound the response size and
+ * verify the value parses as a DID before returning it.
+ */
+async function resolveHandleViaHttps(handle: string): Promise<string | null> {
+  const url = `https://${encodeURIComponent(handle)}/.well-known/atproto-did`;
+  try {
+    const res = await fetch(url, { redirect: 'error' });
+    if (!res.ok) return null;
+    const text = (await res.text()).trim();
+    if (!/^did:[a-z]+:[A-Za-z0-9._:%-]+$/.test(text)) return null;
+    return text;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Get the base URL for OAuth endpoints.
