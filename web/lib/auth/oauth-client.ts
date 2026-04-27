@@ -26,12 +26,15 @@ const oauthLogger = logger.child({ component: 'oauth-client' });
  * Handle resolver supporting BOTH ATProto handle resolution methods.
  *
  * @remarks
- * The ATProto handle spec allows either resolution path, and a handle is
- * valid if either succeeds. `AtprotoDohHandleResolver` (the upstream
- * helper) only implements the DNS path, which means handles served only
- * via the HTTPS `.well-known/atproto-did` route (e.g., the Eurosky
- * network's custom-domain users) fail to resolve. We try DoH first
- * (cheap, cached) and fall back to the HTTPS path on miss.
+ * The ATProto handle spec allows either resolution path. `AtprotoDohHandleResolver`
+ * only implements the DNS path, so handles served only via the HTTPS
+ * `.well-known/atproto-did` route (e.g. Eurosky users) fail.
+ *
+ * Direct browser fetch of `https://<handle>/.well-known/atproto-did` is blocked
+ * by CORS in nearly every case (most identity-publishing servers don't set
+ * `Access-Control-Allow-Origin`). To get HTTPS-method resolution working in the
+ * browser, we fall back to the public Bluesky AppView's `resolveHandle` XRPC
+ * endpoint, which performs both methods server-side and serves CORS headers.
  *
  * @see {@link https://atproto.com/specs/handle | ATProto Handle Specification}
  */
@@ -46,31 +49,37 @@ const handleResolver: typeof dohResolver = {
       const dohResult = await dohResolver.resolve(handle, options);
       if (dohResult) return dohResult;
     } catch (error) {
-      oauthLogger.warn('DoH handle resolution failed; falling back to HTTPS', {
+      oauthLogger.warn('DoH handle resolution failed; falling back to AppView', {
         handle,
         error: error instanceof Error ? error.message : String(error),
       });
     }
-    return (await resolveHandleViaHttps(handle)) as Awaited<ReturnType<typeof dohResolver.resolve>>;
+    return (await resolveHandleViaAppView(handle)) as Awaited<
+      ReturnType<typeof dohResolver.resolve>
+    >;
   },
 } as typeof dohResolver;
 
 /**
- * Resolve a handle via the HTTPS `.well-known/atproto-did` method.
+ * Resolve a handle via the public Bluesky AppView's `resolveHandle` XRPC.
  *
  * @remarks
- * Per the ATProto handle spec, a GET to `https://<handle>/.well-known/atproto-did`
- * must return a single DID as `text/plain`. We bound the response size and
- * verify the value parses as a DID before returning it.
+ * The AppView runs both ATProto handle resolution methods (DNS TXT and HTTPS
+ * `.well-known/atproto-did`) on the server side and serves a permissive CORS
+ * policy, so it works in the browser even when the user's identity is
+ * published only via a non-CORS HTTPS endpoint.
  */
-async function resolveHandleViaHttps(handle: string): Promise<string | null> {
-  const url = `https://${encodeURIComponent(handle)}/.well-known/atproto-did`;
+async function resolveHandleViaAppView(handle: string): Promise<string | null> {
+  const url =
+    'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle' +
+    `?handle=${encodeURIComponent(handle)}`;
   try {
-    const res = await fetch(url, { redirect: 'error' });
+    const res = await fetch(url);
     if (!res.ok) return null;
-    const text = (await res.text()).trim();
-    if (!/^did:[a-z]+:[A-Za-z0-9._:%-]+$/.test(text)) return null;
-    return text;
+    const body = (await res.json()) as { did?: unknown };
+    if (typeof body.did !== 'string') return null;
+    if (!/^did:[a-z]+:[A-Za-z0-9._:%-]+$/.test(body.did)) return null;
+    return body.did;
   } catch {
     return null;
   }
