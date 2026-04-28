@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-28
+
+### Added
+
+- `NEXT_PUBLIC_USE_PERMISSION_SETS` build-time env var. When set, both client metadata and the OAuth login request emit `include:pub.chive.auth.*` permission-set references instead of individual `repo:pub.chive.*` scopes. Staging ships with the flag on so we can validate the permission-set flow against the now-live `_lexicon.<sub>.chive.pub` DNS TXT records.
+
+### Changed
+
+- Handle resolution falls back to the public Bluesky AppView's `com.atproto.identity.resolveHandle` XRPC when DNS-over-HTTPS returns no record. Direct browser fetches of `https://<handle>/.well-known/atproto-did` are blocked by CORS in nearly every case (most identity-publishing servers don't set `Access-Control-Allow-Origin`); the AppView runs both ATProto resolution methods server-side and serves a permissive CORS policy. Unblocks Eurosky users (`luismmontilla.com` and similar) who publish identity only via the HTTPS path.
+- OAuth client metadata `logo_uri` now points at `/chive-logo.svg` (was pointing at `/logo.png` which 404'd), so the consent screen header renders the Chive logo instead of a generic placeholder.
+
+### Fixed
+
+- "Failed to resolve identity: <handle>" sign-in error for users whose handle is published only via `.well-known/atproto-did` rather than a DNS TXT record.
+
 ## [0.6.0] - 2026-04-24
 
 ### Added
