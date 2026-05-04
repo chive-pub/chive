@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Whether client metadata should declare `include:pub.chive.auth.*`
+ * Whether client metadata should declare `include:pub.chive.* permission sets`
  * permission-set references instead of individual `repo:pub.chive.*`
  * scopes.
  *
@@ -13,10 +13,10 @@ import { NextRequest, NextResponse } from 'next/server';
 const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'true';
 
 const PERMISSION_SET_SCOPES = [
-  'include:pub.chive.auth.basicReader',
-  'include:pub.chive.auth.authorAccess',
-  'include:pub.chive.auth.reviewerAccess',
-  'include:pub.chive.auth.fullAccess',
+  'include:pub.chive.basicReader',
+  'include:pub.chive.authorAccess',
+  'include:pub.chive.reviewerAccess',
+  'include:pub.chive.fullAccess',
 ];
 
 const CHIVE_REPO_SCOPES = [
