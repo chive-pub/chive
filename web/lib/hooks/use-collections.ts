@@ -270,7 +270,7 @@ export function useCollection(
   return useQuery({
     queryKey: [...collectionKeys.detail(uri), options?.excludeSubcollectionItems ?? false],
     queryFn: async (): Promise<CollectionDetailResponse> => {
-      const response = await api.pub.chive.collection.get({
+      const response = await authApi.pub.chive.collection.get({
         uri,
         excludeSubcollectionItems: options?.excludeSubcollectionItems,
       });
@@ -298,7 +298,7 @@ export function useMyCollections(did: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: collectionKeys.myCollections(did),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      const response = await api.pub.chive.collection.listByOwner({ did, limit: 100 });
+      const response = await authApi.pub.chive.collection.listByOwner({ did, limit: 100 });
       return response.data as unknown as ListCollectionsResponse;
     },
     enabled: !!did && (options?.enabled ?? true),
@@ -355,7 +355,7 @@ export function useCollectionsContaining(itemUri: string, options?: { enabled?: 
   return useQuery({
     queryKey: collectionKeys.containing(itemUri),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      const response = await api.pub.chive.collection.getContaining({ itemUri });
+      const response = await authApi.pub.chive.collection.getContaining({ itemUri });
       return response.data as unknown as ListCollectionsResponse;
     },
     enabled: !!itemUri && (options?.enabled ?? true),
@@ -399,7 +399,7 @@ export function useSubcollections(uri: string, options?: { enabled?: boolean }) 
   return useQuery({
     queryKey: collectionKeys.subcollections(uri),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      const response = await api.pub.chive.collection.getSubcollections({ uri });
+      const response = await authApi.pub.chive.collection.getSubcollections({ uri });
       const data = response.data;
       return {
         collections: data.subcollections,
@@ -423,7 +423,7 @@ export function useParentCollection(uri: string, options?: { enabled?: boolean }
     queryKey: collectionKeys.parent(uri),
     queryFn: async (): Promise<CollectionView | null> => {
       try {
-        const response = await api.pub.chive.collection.getParent({ uri });
+        const response = await authApi.pub.chive.collection.getParent({ uri });
         return (response.data.parent as unknown as CollectionView) ?? null;
       } catch {
         return null;
@@ -453,7 +453,7 @@ export function useCollectionFeed(uri: string, options?: { limit?: number; enabl
   return useInfiniteQuery({
     queryKey: collectionKeys.feed(uri),
     queryFn: async ({ pageParam }): Promise<CollectionFeedResponse> => {
-      const response = await api.pub.chive.collection.getFeed({
+      const response = await authApi.pub.chive.collection.getFeed({
         uri,
         limit,
         cursor: pageParam as string | undefined,
