@@ -23,22 +23,67 @@ import { logger } from '@/lib/observability';
 const oauthLogger = logger.child({ component: 'oauth-client' });
 
 /**
- * Handle resolver using ATProto's official DNS-over-HTTPS resolver.
+ * Handle resolver supporting BOTH ATProto handle resolution methods.
  *
  * @remarks
- * Uses Google's DoH JSON API endpoint which supports the application/dns-json
- * format required by AtprotoDohHandleResolver.
+ * The ATProto handle spec allows either resolution path. `AtprotoDohHandleResolver`
+ * only implements the DNS path, so handles served only via the HTTPS
+ * `.well-known/atproto-did` route (e.g. Eurosky users) fail.
  *
- * The resolver implements ATProto standard handle resolution:
- * 1. HTTP method: GET https://<handle>/.well-known/atproto-did
- * 2. DNS method: _atproto.<handle> TXT record (via DNS-over-HTTPS)
+ * Direct browser fetch of `https://<handle>/.well-known/atproto-did` is blocked
+ * by CORS in nearly every case (most identity-publishing servers don't set
+ * `Access-Control-Allow-Origin`). To get HTTPS-method resolution working in the
+ * browser, we fall back to the public Bluesky AppView's `resolveHandle` XRPC
+ * endpoint, which performs both methods server-side and serves CORS headers.
  *
  * @see {@link https://atproto.com/specs/handle | ATProto Handle Specification}
- * @see {@link https://developers.google.com/speed/public-dns/docs/doh/json | Google DoH JSON API}
  */
-const handleResolver = new AtprotoDohHandleResolver({
+const dohResolver = new AtprotoDohHandleResolver({
   dohEndpoint: 'https://dns.google/resolve',
 });
+
+const handleResolver: typeof dohResolver = {
+  ...dohResolver,
+  resolve: async (handle, options) => {
+    try {
+      const dohResult = await dohResolver.resolve(handle, options);
+      if (dohResult) return dohResult;
+    } catch (error) {
+      oauthLogger.warn('DoH handle resolution failed; falling back to AppView', {
+        handle,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+    return (await resolveHandleViaAppView(handle)) as Awaited<
+      ReturnType<typeof dohResolver.resolve>
+    >;
+  },
+} as typeof dohResolver;
+
+/**
+ * Resolve a handle via the public Bluesky AppView's `resolveHandle` XRPC.
+ *
+ * @remarks
+ * The AppView runs both ATProto handle resolution methods (DNS TXT and HTTPS
+ * `.well-known/atproto-did`) on the server side and serves a permissive CORS
+ * policy, so it works in the browser even when the user's identity is
+ * published only via a non-CORS HTTPS endpoint.
+ */
+async function resolveHandleViaAppView(handle: string): Promise<string | null> {
+  const url =
+    'https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle' +
+    `?handle=${encodeURIComponent(handle)}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const body = (await res.json()) as { did?: unknown };
+    if (typeof body.did !== 'string') return null;
+    if (!/^did:[a-z]+:[A-Za-z0-9._:%-]+$/.test(body.did)) return null;
+    return body.did;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Get the base URL for OAuth endpoints.
