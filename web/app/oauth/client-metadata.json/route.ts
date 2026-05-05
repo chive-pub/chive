@@ -44,28 +44,34 @@ const CHIVE_REPO_SCOPES = [
   'repo:pub.chive.collaboration.inviteAcceptance',
 ];
 
-// app.bsky.* doesn't currently publish a single permission set covering
-// posts + profile, so we keep these as repo scopes.
-const BSKY_REPO_SCOPES = ['repo:app.bsky.feed.post', 'repo:app.bsky.actor.profile'];
-
-// Each of the cooperating apps below publishes its own canonical permission
-// set, which we prefer over enumerating individual collections — the consent
-// screen renders one named entry per app instead of a wall of opaque scopes.
-const EXTERNAL_PERMISSION_SET_SCOPES = [
-  'include:network.cosmik.authFull',
+// External-namespace scopes for cooperating apps.
+//
+// Hybrid layout: prefer `include:<nsid>` permission sets where they cover
+// everything Chive writes, fall back to `repo:` scopes only for gaps and for
+// apps that don't publish a permission set at all.
+//
+// - Margin: at.margin.authFull covers all of note/reply/like/collection (we
+//   migrated the dual-write to use at.margin.note for everything).
+// - Standard.site: site.standard.authFull covers document + publication +
+//   recommend + subscription. Chive only writes document; permission set
+//   is sufficient.
+// - Semble: network.cosmik.authFull covers card/collection/collectionLink/
+//   collectionLinkRemoval but OMITS connection and follow which Chive
+//   dual-writes. Supplement with repo scopes until Semble expands authFull.
+// - Bluesky: no permission set published; use repo scopes.
+const EXTERNAL_SCOPES = [
   'include:at.margin.authFull',
   'include:site.standard.authFull',
+  'include:network.cosmik.authFull',
+  'repo:network.cosmik.connection',
+  'repo:network.cosmik.follow',
+  'repo:app.bsky.feed.post',
+  'repo:app.bsky.actor.profile',
 ];
 
 function buildScope(): string {
   const chive = USE_PERMISSION_SETS ? PERMISSION_SET_SCOPES : CHIVE_REPO_SCOPES;
-  return [
-    'atproto',
-    ...chive,
-    ...EXTERNAL_PERMISSION_SET_SCOPES,
-    ...BSKY_REPO_SCOPES,
-    'blob:*/*',
-  ].join(' ');
+  return ['atproto', ...chive, ...EXTERNAL_SCOPES, 'blob:*/*'].join(' ');
 }
 
 /**

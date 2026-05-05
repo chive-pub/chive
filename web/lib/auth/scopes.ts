@@ -85,17 +85,25 @@ export const CHIVE_REPO_SCOPES = {
  * post + profile, so those remain individual repo scopes.
  */
 export const EXTERNAL_REPO_SCOPES = {
-  // Bluesky (no permission set published)
+  // Bluesky -- no permission set published
   BLUESKY_POST: 'repo:app.bsky.feed.post',
   BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
 
-  // Standard (site.standard) -- includes site.standard.document and friends
+  // Standard.site -- authFull covers document, publication, graph.recommend,
+  // graph.subscription. Chive only writes document, so this is sufficient.
   STANDARD_FULL: 'include:site.standard.authFull',
 
-  // Semble (network.cosmik) -- includes card, collection, connection, follow, etc.
+  // Semble -- authFull covers card, collection, collectionLink,
+  // collectionLinkRemoval but is missing connection + follow that Chive
+  // writes. Hybrid: include + supplementary repo scopes for the gaps.
   COSMIK_FULL: 'include:network.cosmik.authFull',
+  COSMIK_CONNECTION: 'repo:network.cosmik.connection',
+  COSMIK_FOLLOW: 'repo:network.cosmik.follow',
 
-  // Margin (at.margin) -- includes annotation, bookmark, reply, like
+  // Margin -- authFull covers note/reply/like/collection/collectionItem/
+  // profile/preferences/apikey. Chive's notes write at.margin.note (W3C
+  // web annotations) for both reviews and bookmarks via the `motivation`
+  // field; replies go to at.margin.reply, likes to at.margin.like.
   MARGIN_FULL: 'include:at.margin.authFull',
 } as const;
 

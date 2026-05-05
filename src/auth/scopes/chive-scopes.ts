@@ -54,33 +54,34 @@ export const REPO_SCOPES = {
 } as const;
 
 /**
- * Repo scopes for external namespaces that Chive cross-posts to.
+ * External-namespace scopes for cross-posting and cooperating apps.
  *
  * @remarks
- * These are outside the pub.chive.* namespace and must be requested
- * as individual scopes alongside the Chive permission sets.
+ * Where the cooperating app publishes a `permission-set` lexicon (Margin,
+ * site.standard), we prefer `include:<nsid>` so the consent screen renders
+ * one named entry with publisher-authored copy. For Semble the published
+ * `network.cosmik.authFull` set is missing two collections (`connection`,
+ * `follow`) that Chive writes, so we use a hybrid: include + supplementary
+ * repo scopes for the gaps. Bluesky has no covering permission set.
  */
 export const EXTERNAL_REPO_SCOPES = {
-  // Bluesky
+  // Bluesky -- no permission set published
   BLUESKY_POST: 'repo:app.bsky.feed.post',
   BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
 
-  // Standard (site.standard)
-  STANDARD_DOCUMENT: 'repo:site.standard.document',
+  // Standard (site.standard) -- covered by the published authFull set
+  STANDARD_FULL: 'include:site.standard.authFull',
 
-  // Semble (network.cosmik)
-  COSMIK_CARD: 'repo:network.cosmik.card',
-  COSMIK_COLLECTION: 'repo:network.cosmik.collection',
-  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
-  COSMIK_COLLECTION_LINK_REMOVAL: 'repo:network.cosmik.collectionLinkRemoval',
+  // Semble (network.cosmik) -- authFull covers card/collection/collectionLink/
+  // collectionLinkRemoval; the two below are needed because Semble's authFull
+  // omits them.
+  COSMIK_FULL: 'include:network.cosmik.authFull',
   COSMIK_CONNECTION: 'repo:network.cosmik.connection',
   COSMIK_FOLLOW: 'repo:network.cosmik.follow',
 
-  // Margin (at.margin)
-  MARGIN_ANNOTATION: 'repo:at.margin.annotation',
-  MARGIN_BOOKMARK: 'repo:at.margin.bookmark',
-  MARGIN_REPLY: 'repo:at.margin.reply',
-  MARGIN_LIKE: 'repo:at.margin.like',
+  // Margin (at.margin) -- authFull covers note/reply/like/collection/
+  // collectionItem/profile/preferences/apikey
+  MARGIN_FULL: 'include:at.margin.authFull',
 } as const;
 
 /** Blob scopes for file uploads. */

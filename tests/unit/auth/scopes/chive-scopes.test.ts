@@ -63,32 +63,32 @@ describe('chive-scopes', () => {
   });
 
   describe('EXTERNAL_REPO_SCOPES', () => {
-    it('defines scopes for external namespace collections', () => {
+    it('defines scopes for external namespaces', () => {
       expect(EXTERNAL_REPO_SCOPES.BLUESKY_POST).toBe('repo:app.bsky.feed.post');
-      expect(EXTERNAL_REPO_SCOPES.STANDARD_DOCUMENT).toBe('repo:site.standard.document');
-      expect(EXTERNAL_REPO_SCOPES.COSMIK_CARD).toBe('repo:network.cosmik.card');
-      expect(EXTERNAL_REPO_SCOPES.COSMIK_COLLECTION_LINK).toBe(
-        'repo:network.cosmik.collectionLink'
-      );
-      expect(EXTERNAL_REPO_SCOPES.COSMIK_COLLECTION).toBe('repo:network.cosmik.collection');
       expect(EXTERNAL_REPO_SCOPES.BLUESKY_PROFILE).toBe('repo:app.bsky.actor.profile');
+      expect(EXTERNAL_REPO_SCOPES.STANDARD_FULL).toBe('include:site.standard.authFull');
+      expect(EXTERNAL_REPO_SCOPES.MARGIN_FULL).toBe('include:at.margin.authFull');
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_FULL).toBe('include:network.cosmik.authFull');
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_CONNECTION).toBe('repo:network.cosmik.connection');
+      expect(EXTERNAL_REPO_SCOPES.COSMIK_FOLLOW).toBe('repo:network.cosmik.follow');
     });
 
-    it('prefixes all scopes with repo:', () => {
+    it('prefixes all scopes with repo: or include:', () => {
       for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
-        expect(scope).toMatch(/^repo:/);
+        expect(scope).toMatch(/^(repo|include):/);
       }
     });
 
     it('does not use the pub.chive.* namespace', () => {
       for (const scope of Object.values(EXTERNAL_REPO_SCOPES)) {
-        expect(scope).not.toMatch(/^repo:pub\.chive\./);
+        expect(scope).not.toMatch(/pub\.chive\./);
       }
     });
 
-    it('covers all external namespace collections that the app writes to', () => {
-      // 2 Bluesky + 1 Standard + 6 Cosmik + 4 Margin = 13
-      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(13);
+    it('covers every external namespace Chive writes to', () => {
+      // 2 Bluesky repo + 1 Standard.site include + 1 Margin include
+      //   + 1 Semble include + 2 Semble repo (gaps in authFull)
+      expect(Object.keys(EXTERNAL_REPO_SCOPES)).toHaveLength(7);
     });
   });
 

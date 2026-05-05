@@ -5419,12 +5419,19 @@ export async function createCosmikNoteCard(
 // =============================================================================
 // MARGIN ANNOTATION RECORDS (at.margin.*)
 // =============================================================================
+//
+// Margin uses a single record collection -- `at.margin.note` -- for
+// W3C-style web annotations. The `motivation` field distinguishes
+// commenting / highlighting / bookmarking / etc. There is no separate
+// `at.margin.annotation` or `at.margin.bookmark` collection on Margin's
+// AppView; earlier names that Chive used are unrecognized and were not
+// being indexed.
 
 /**
- * Margin annotation target structure (W3C SpecificResource).
+ * Margin note target structure (W3C SpecificResource).
  */
-export interface MarginAnnotationTarget {
-  $type: 'at.margin.annotation#target';
+export interface MarginNoteTarget {
+  $type: 'at.margin.note#target';
   source: string;
   sourceHash?: string;
   title?: string;
@@ -5468,10 +5475,10 @@ export type MarginSelector =
   | MarginFragmentSelector;
 
 /**
- * Margin annotation body (W3C AnnotationBody).
+ * Margin note body (W3C AnnotationBody).
  */
-export interface MarginAnnotationBody {
-  $type: 'at.margin.annotation#body';
+export interface MarginNoteBody {
+  $type: 'at.margin.note#body';
   value: string;
   format?: string;
   language?: string;
@@ -5493,16 +5500,23 @@ export type MarginMotivation =
   | 'assessing';
 
 /**
- * Margin annotation record matching `at.margin.annotation` lexicon.
+ * Margin note record matching `at.margin.note` lexicon.
+ *
+ * @remarks
+ * `motivation` is required by the upstream lexicon. Use 'commenting' or
+ * 'highlighting' for review/inline annotations, 'bookmarking' for saving
+ * a page without a body, etc.
  */
-export interface MarginAnnotationRecord {
+export interface MarginNoteRecord {
   [key: string]: unknown;
-  $type: 'at.margin.annotation';
-  target: MarginAnnotationTarget;
-  body?: MarginAnnotationBody;
-  motivation?: MarginMotivation;
+  $type: 'at.margin.note';
+  target: MarginNoteTarget;
+  motivation: MarginMotivation;
+  body?: MarginNoteBody;
   tags?: string[];
+  color?: string;
   createdAt: string;
+  modifiedAt?: string;
 }
 
 /**
@@ -5521,27 +5535,32 @@ async function computeSourceHash(url: string): Promise<string> {
 }
 
 /**
- * Creates a Margin annotation record in the user's PDS.
+ * Creates a Margin note (W3C web annotation) record in the user's PDS.
  *
  * @remarks
- * Used for dual-writing Chive reviews as W3C Web Annotations. Maps
- * review body text to annotation body, and inline selections to
- * TextQuoteSelector.
+ * Used for dual-writing Chive reviews/inline annotations as W3C Web
+ * Annotations. Maps review body text to annotation body, inline selections
+ * to a `TextQuoteSelector`. The `motivation` field controls semantics:
+ * 'commenting' for reviews, 'highlighting' for highlights, 'bookmarking'
+ * for bookmarks, 'replying' for thread replies (note that `at.margin.reply`
+ * is the canonical way to express threading -- use `motivation: replying`
+ * here only when an annotation is itself a reply target).
  *
  * @param agent - Authenticated ATProto Agent
- * @param input - Annotation data
+ * @param input - Note data
  * @returns Created record result
  */
-export async function createMarginAnnotation(
+export async function createMarginNote(
   agent: Agent,
   input: {
     sourceUrl: string;
     pageTitle?: string;
     body?: string;
     bodyFormat?: string;
-    motivation?: MarginMotivation;
+    motivation: MarginMotivation;
     selector?: MarginSelector;
     tags?: string[];
+    color?: string;
   }
 ): Promise<CreateRecordResult> {
   const did = getAgentDid(agent);
@@ -5551,8 +5570,8 @@ export async function createMarginAnnotation(
 
   const sourceHash = await computeSourceHash(input.sourceUrl);
 
-  const target: MarginAnnotationTarget = {
-    $type: 'at.margin.annotation#target',
+  const target: MarginNoteTarget = {
+    $type: 'at.margin.note#target',
     source: input.sourceUrl,
     sourceHash,
   };
@@ -5560,26 +5579,27 @@ export async function createMarginAnnotation(
   if (input.pageTitle) target.title = input.pageTitle;
   if (input.selector) target.selector = input.selector;
 
-  const record: MarginAnnotationRecord = {
-    $type: 'at.margin.annotation',
+  const record: MarginNoteRecord = {
+    $type: 'at.margin.note',
     target,
+    motivation: input.motivation,
     createdAt: new Date().toISOString(),
   };
 
   if (input.body) {
     record.body = {
-      $type: 'at.margin.annotation#body',
+      $type: 'at.margin.note#body',
       value: input.body,
       format: input.bodyFormat ?? 'text/plain',
     };
   }
 
-  if (input.motivation) record.motivation = input.motivation;
   if (input.tags && input.tags.length > 0) record.tags = input.tags.slice(0, 10);
+  if (input.color) record.color = input.color;
 
   const response = await agent.com.atproto.repo.createRecord({
     repo: did,
-    collection: 'at.margin.annotation',
+    collection: 'at.margin.note',
     record,
   });
 
@@ -5590,13 +5610,13 @@ export async function createMarginAnnotation(
 }
 
 /**
- * Deletes a Margin annotation record.
+ * Deletes a Margin note record.
  *
  * @param agent - Authenticated ATProto Agent
- * @param annotationUri - AT-URI of the annotation record
+ * @param noteUri - AT-URI of the note record
  */
-export async function deleteMarginAnnotation(agent: Agent, annotationUri: string): Promise<void> {
-  const parsed = parseAtUri(annotationUri);
+export async function deleteMarginNote(agent: Agent, noteUri: string): Promise<void> {
+  const parsed = parseAtUri(noteUri);
   if (!parsed) return;
 
   await agent.com.atproto.repo.deleteRecord({
@@ -5607,20 +5627,21 @@ export async function deleteMarginAnnotation(agent: Agent, annotationUri: string
 }
 
 /**
- * Updates a Margin annotation record.
+ * Updates a Margin note record.
  *
  * @param agent - Authenticated ATProto Agent
- * @param annotationUri - AT-URI of the annotation record
+ * @param noteUri - AT-URI of the note record
  * @param changes - Fields to update
  */
-export async function updateMarginAnnotation(
+export async function updateMarginNote(
   agent: Agent,
-  annotationUri: string,
+  noteUri: string,
   changes: {
     body?: string;
     bodyFormat?: string;
     motivation?: MarginMotivation;
     tags?: string[];
+    color?: string;
   }
 ): Promise<void> {
   const did = getAgentDid(agent);
@@ -5628,21 +5649,21 @@ export async function updateMarginAnnotation(
     throw new Error('Agent is not authenticated');
   }
 
-  const parsed = parseAtUri(annotationUri);
+  const parsed = parseAtUri(noteUri);
   if (!parsed) return;
 
   const existingResponse = await agent.com.atproto.repo.getRecord({
     repo: parsed.did,
-    collection: 'at.margin.annotation',
+    collection: 'at.margin.note',
     rkey: parsed.rkey,
   });
 
-  const existing = existingResponse.data.value as MarginAnnotationRecord;
-  const updated: MarginAnnotationRecord = { ...existing };
+  const existing = existingResponse.data.value as MarginNoteRecord;
+  const updated: MarginNoteRecord = { ...existing, modifiedAt: new Date().toISOString() };
 
   if (changes.body !== undefined) {
     updated.body = {
-      $type: 'at.margin.annotation#body',
+      $type: 'at.margin.note#body',
       value: changes.body,
       format: changes.bodyFormat ?? existing.body?.format ?? 'text/plain',
     };
@@ -5650,35 +5671,24 @@ export async function updateMarginAnnotation(
 
   if (changes.motivation !== undefined) updated.motivation = changes.motivation;
   if (changes.tags !== undefined) updated.tags = changes.tags.slice(0, 10);
+  if (changes.color !== undefined) updated.color = changes.color;
 
   await agent.com.atproto.repo.putRecord({
     repo: parsed.did,
-    collection: 'at.margin.annotation',
+    collection: 'at.margin.note',
     rkey: parsed.rkey,
     record: updated,
   });
 }
 
 /**
- * Margin bookmark record matching `at.margin.bookmark` lexicon.
- */
-export interface MarginBookmarkRecord {
-  [key: string]: unknown;
-  $type: 'at.margin.bookmark';
-  source: string;
-  sourceHash?: string;
-  title?: string;
-  description?: string;
-  tags?: string[];
-  createdAt: string;
-}
-
-/**
- * Creates a Margin bookmark record in the user's PDS.
+ * Creates a Margin bookmark in the user's PDS.
  *
- * @param agent - Authenticated ATProto Agent
- * @param input - Bookmark data
- * @returns Created record result
+ * @remarks
+ * In Margin's lexicon a bookmark is an `at.margin.note` with
+ * `motivation: 'bookmarking'`; there is no separate bookmark collection.
+ * This wrapper exists for callsite clarity; it forwards to
+ * {@link createMarginNote}, mapping `description` to a plaintext body.
  */
 export async function createMarginBookmark(
   agent: Agent,
@@ -5689,51 +5699,24 @@ export async function createMarginBookmark(
     tags?: string[];
   }
 ): Promise<CreateRecordResult> {
-  const did = getAgentDid(agent);
-  if (!did) {
-    throw new Error('Agent is not authenticated');
-  }
-
-  const sourceHash = await computeSourceHash(input.sourceUrl);
-
-  const record: MarginBookmarkRecord = {
-    $type: 'at.margin.bookmark',
-    source: input.sourceUrl,
-    sourceHash,
-    createdAt: new Date().toISOString(),
-  };
-
-  if (input.title) record.title = input.title;
-  if (input.description) record.description = input.description;
-  if (input.tags && input.tags.length > 0) record.tags = input.tags.slice(0, 10);
-
-  const response = await agent.com.atproto.repo.createRecord({
-    repo: did,
-    collection: 'at.margin.bookmark',
-    record,
+  return createMarginNote(agent, {
+    sourceUrl: input.sourceUrl,
+    pageTitle: input.title,
+    body: input.description,
+    motivation: 'bookmarking',
+    tags: input.tags,
   });
-
-  return {
-    uri: response.data.uri,
-    cid: response.data.cid,
-  };
 }
 
 /**
- * Deletes a Margin bookmark record.
+ * Deletes a Margin bookmark.
  *
- * @param agent - Authenticated ATProto Agent
- * @param bookmarkUri - AT-URI of the bookmark record
+ * @remarks
+ * Margin bookmarks live in the same `at.margin.note` collection as other
+ * annotations -- the AT-URI's collection segment encodes that.
  */
 export async function deleteMarginBookmark(agent: Agent, bookmarkUri: string): Promise<void> {
-  const parsed = parseAtUri(bookmarkUri);
-  if (!parsed) return;
-
-  await agent.com.atproto.repo.deleteRecord({
-    repo: parsed.did,
-    collection: 'at.margin.bookmark',
-    rkey: parsed.rkey,
-  });
+  return deleteMarginNote(agent, bookmarkUri);
 }
 
 /**

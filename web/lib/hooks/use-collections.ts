@@ -58,9 +58,9 @@ import {
   createCosmikFollow,
   deleteCosmikFollow,
   createCosmikCollectionLinkRemoval,
-  createMarginAnnotation,
-  deleteMarginAnnotation,
-  updateMarginAnnotation,
+  createMarginNote,
+  deleteMarginNote,
+  updateMarginNote,
   createMarginBookmark,
   deleteMarginBookmark,
   createMarginReply,
@@ -1630,12 +1630,12 @@ export function useCreateMarginAnnotation() {
         );
       }
 
-      const result = await createMarginAnnotation(agent, {
+      const result = await createMarginNote(agent, {
         sourceUrl: input.sourceUrl,
         pageTitle: input.pageTitle,
         body: input.body,
         bodyFormat: input.bodyFormat,
-        motivation: input.motivation,
+        motivation: input.motivation ?? 'commenting',
         tags: input.tags,
       });
 
