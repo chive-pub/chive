@@ -5,7 +5,7 @@
     "main": {
       "type": "permission-set",
       "title": "Full Access to Chive",
-      "detail": "All Chive operations including knowledge-graph governance: propose fields, vote on proposals, and contribute personal graph nodes and edges. Includes everything in Review.",
+      "detail": "Submit, review, and curate eprints (preprints) on Chive, plus participate in knowledge-graph governance: propose new fields and authority records, vote on community proposals, and contribute personal graph nodes and edges. Includes everything in Review (which includes Author and Browse).",
       "permissions": [
         {
           "type": "permission",

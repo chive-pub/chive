@@ -5,7 +5,7 @@
     "main": {
       "type": "permission-set",
       "title": "Review on Chive",
-      "detail": "Create reviews, endorsements, and inline annotations on eprints. Includes everything in Author.",
+      "detail": "Post peer reviews, endorsements, and inline PDF annotations on other authors' eprints. Includes everything in Author (submitting and managing your own eprints).",
       "permissions": [
         {
           "type": "permission",

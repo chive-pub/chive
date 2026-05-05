@@ -5,7 +5,7 @@
     "main": {
       "type": "permission-set",
       "title": "Browse Chive",
-      "detail": "Read eprints, reviews, endorsements, authors, and the public knowledge graph.",
+      "detail": "Read eprints (open-access scholarly preprints and their associated reviews, endorsements, citations, and tags), browse author profiles, and explore the community knowledge graph of fields and authority records.",
       "permissions": [
         {
           "type": "permission",
