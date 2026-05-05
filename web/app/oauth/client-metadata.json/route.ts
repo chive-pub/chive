@@ -44,25 +44,28 @@ const CHIVE_REPO_SCOPES = [
   'repo:pub.chive.collaboration.inviteAcceptance',
 ];
 
-const EXTERNAL_REPO_SCOPES = [
-  'repo:app.bsky.feed.post',
-  'repo:app.bsky.actor.profile',
-  'repo:site.standard.document',
-  'repo:network.cosmik.card',
-  'repo:network.cosmik.collection',
-  'repo:network.cosmik.collectionLink',
-  'repo:network.cosmik.collectionLinkRemoval',
-  'repo:network.cosmik.connection',
-  'repo:network.cosmik.follow',
-  'repo:at.margin.annotation',
-  'repo:at.margin.bookmark',
-  'repo:at.margin.reply',
-  'repo:at.margin.like',
+// app.bsky.* doesn't currently publish a single permission set covering
+// posts + profile, so we keep these as repo scopes.
+const BSKY_REPO_SCOPES = ['repo:app.bsky.feed.post', 'repo:app.bsky.actor.profile'];
+
+// Each of the cooperating apps below publishes its own canonical permission
+// set, which we prefer over enumerating individual collections — the consent
+// screen renders one named entry per app instead of a wall of opaque scopes.
+const EXTERNAL_PERMISSION_SET_SCOPES = [
+  'include:network.cosmik.authFull',
+  'include:at.margin.authFull',
+  'include:site.standard.authFull',
 ];
 
 function buildScope(): string {
   const chive = USE_PERMISSION_SETS ? PERMISSION_SET_SCOPES : CHIVE_REPO_SCOPES;
-  return ['atproto', ...chive, ...EXTERNAL_REPO_SCOPES, 'blob:*/*'].join(' ');
+  return [
+    'atproto',
+    ...chive,
+    ...EXTERNAL_PERMISSION_SET_SCOPES,
+    ...BSKY_REPO_SCOPES,
+    'blob:*/*',
+  ].join(' ');
 }
 
 /**

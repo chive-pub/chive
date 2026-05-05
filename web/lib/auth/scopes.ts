@@ -73,33 +73,30 @@ export const CHIVE_REPO_SCOPES = {
 } as const;
 
 /**
- * External namespace repo scopes for cross-posting.
+ * External namespace scopes for cross-posting and cooperating apps.
  *
  * @remarks
- * These are outside the pub.chive.* namespace. They must always be requested
- * as individual scopes (never inside permission sets, per ATProto spec).
+ * Each cooperating app (Semble, Margin, site.standard) publishes its own
+ * canonical `permission-set` lexicon, which we prefer over enumerating
+ * individual collections — the consent screen renders one named entry per
+ * app, with that publisher's own title and detail copy.
+ *
+ * `app.bsky.*` does not currently publish a single permission set covering
+ * post + profile, so those remain individual repo scopes.
  */
 export const EXTERNAL_REPO_SCOPES = {
-  // Bluesky
+  // Bluesky (no permission set published)
   BLUESKY_POST: 'repo:app.bsky.feed.post',
   BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
 
-  // Standard (site.standard)
-  STANDARD_DOCUMENT: 'repo:site.standard.document',
+  // Standard (site.standard) -- includes site.standard.document and friends
+  STANDARD_FULL: 'include:site.standard.authFull',
 
-  // Semble (network.cosmik)
-  COSMIK_CARD: 'repo:network.cosmik.card',
-  COSMIK_COLLECTION: 'repo:network.cosmik.collection',
-  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
-  COSMIK_COLLECTION_LINK_REMOVAL: 'repo:network.cosmik.collectionLinkRemoval',
-  COSMIK_CONNECTION: 'repo:network.cosmik.connection',
-  COSMIK_FOLLOW: 'repo:network.cosmik.follow',
+  // Semble (network.cosmik) -- includes card, collection, connection, follow, etc.
+  COSMIK_FULL: 'include:network.cosmik.authFull',
 
-  // Margin (at.margin)
-  MARGIN_ANNOTATION: 'repo:at.margin.annotation',
-  MARGIN_BOOKMARK: 'repo:at.margin.bookmark',
-  MARGIN_REPLY: 'repo:at.margin.reply',
-  MARGIN_LIKE: 'repo:at.margin.like',
+  // Margin (at.margin) -- includes annotation, bookmark, reply, like
+  MARGIN_FULL: 'include:at.margin.authFull',
 } as const;
 
 /** Legacy scope for backward compatibility. */
