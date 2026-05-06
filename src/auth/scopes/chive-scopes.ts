@@ -101,10 +101,10 @@ export const BLOB_SCOPES = {
  * Lexicon schemas that bundle multiple granular scopes.
  */
 export const PERMISSION_SETS = {
-  BASIC_READER: 'include:pub.chive.auth.basicReader',
-  AUTHOR_ACCESS: 'include:pub.chive.auth.authorAccess',
-  REVIEWER_ACCESS: 'include:pub.chive.auth.reviewerAccess',
-  FULL_ACCESS: 'include:pub.chive.auth.fullAccess',
+  BASIC_READER: 'include:pub.chive.basicReader',
+  AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
+  REVIEWER_ACCESS: 'include:pub.chive.reviewerAccess',
+  FULL_ACCESS: 'include:pub.chive.fullAccess',
 } as const;
 
 /** Legacy scope for backward compatibility with PDSes that don't support granular scopes. */

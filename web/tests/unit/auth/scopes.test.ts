@@ -67,10 +67,20 @@ describe('frontend scopes', () => {
       }
     });
 
-    it('does not emit include: permission-set scopes', () => {
+    it('emits include: only for cooperating-app permission sets, not for Chive scopes', () => {
+      // Chive's own scopes are emitted as repo: entries unless
+      // NEXT_PUBLIC_USE_PERMISSION_SETS=true (set per build, not per
+      // test). External-namespace permission sets (Margin, Standard.site,
+      // Semble's network.cosmik.authFull) are emitted as include: scopes
+      // so the consent screen renders one named entry per app.
       const intents: AuthIntent[] = ['browse', 'submit', 'review', 'full'];
       for (const intent of intents) {
-        expect(getScopesForIntent(intent)).not.toContain('include:');
+        const includeScopes = getScopesForIntent(intent)
+          .split(' ')
+          .filter((p) => p.startsWith('include:'));
+        for (const scope of includeScopes) {
+          expect(scope).not.toMatch(/^include:pub\.chive\./);
+        }
       }
     });
 

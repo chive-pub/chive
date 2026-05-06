@@ -114,10 +114,10 @@ describe('chive-scopes', () => {
 
   describe('PERMISSION_SETS', () => {
     it('defines four permission set references', () => {
-      expect(PERMISSION_SETS.BASIC_READER).toBe('include:pub.chive.auth.basicReader');
-      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe('include:pub.chive.auth.authorAccess');
-      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe('include:pub.chive.auth.reviewerAccess');
-      expect(PERMISSION_SETS.FULL_ACCESS).toBe('include:pub.chive.auth.fullAccess');
+      expect(PERMISSION_SETS.BASIC_READER).toBe('include:pub.chive.basicReader');
+      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe('include:pub.chive.authorAccess');
+      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe('include:pub.chive.reviewerAccess');
+      expect(PERMISSION_SETS.FULL_ACCESS).toBe('include:pub.chive.fullAccess');
     });
 
     it('prefixes all sets with include:', () => {
@@ -126,9 +126,13 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('restricts all sets to the pub.chive.auth.* namespace', () => {
+    it('uses three-segment NSIDs so the namespace-prefix authorizes all of pub.chive.*', () => {
+      // ATProto's IncludeScope.isAllowedPermission only honors collection /
+      // lxm references that share the permission set's group prefix
+      // (everything up to its last dot). A 4-segment NSID like
+      // `pub.chive.auth.fullAccess` would only authorize `pub.chive.auth.*`.
       for (const scope of Object.values(PERMISSION_SETS)) {
-        expect(scope).toMatch(/^include:pub\.chive\.auth\./);
+        expect(scope).toMatch(/^include:pub\.chive\.[a-zA-Z]+$/);
       }
     });
 
@@ -162,7 +166,7 @@ describe('chive-scopes', () => {
       const parts = result.split(' ');
       expect(parts).toContain('atproto');
       expect(parts).toContain('transition:generic');
-      expect(parts).toContain('include:pub.chive.auth.fullAccess');
+      expect(parts).toContain('include:pub.chive.fullAccess');
     });
 
     it('deduplicates atproto if passed explicitly', () => {
@@ -207,8 +211,17 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('does not emit include: permission-set references', () => {
-      expect(CLIENT_METADATA_SCOPE).not.toContain('include:');
+    it('emits include: only for cooperating apps that publish a covering permission set', () => {
+      // External-namespace permission sets (Margin, Standard.site, Semble's
+      // network.cosmik.authFull) are emitted as include: scopes so the
+      // consent screen renders one named entry per app. Chive's own
+      // scopes are still emitted as individual repo: entries.
+      const includeScopes = CLIENT_METADATA_SCOPE.split(' ').filter((p) =>
+        p.startsWith('include:')
+      );
+      for (const scope of includeScopes) {
+        expect(scope).not.toMatch(/^include:pub\.chive\./);
+      }
     });
 
     it('includes all external repo scopes', () => {
