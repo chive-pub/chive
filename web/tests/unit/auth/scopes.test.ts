@@ -21,9 +21,13 @@ import {
 
 describe('frontend scopes', () => {
   describe('getScopesForIntent', () => {
-    it('returns only atproto base scope for browse intent', () => {
+    it('returns the atproto base scope plus the rpc wildcard for browse intent', () => {
+      // The rpc wildcard scope is required even on the read-only path so
+      // public XRPC calls that go through getServiceAuthToken (e.g.
+      // metrics.recordSearchClick) can mint a service-auth JWT.
       const result = getScopesForIntent('browse');
-      expect(result).toBe(ATPROTO_BASE_SCOPE);
+      expect(result.startsWith(ATPROTO_BASE_SCOPE)).toBe(true);
+      expect(result).toMatch(/\brpc:\*\?aud=did:web:[^\s]+/);
     });
 
     it('includes chive repo scopes for submit intent', () => {

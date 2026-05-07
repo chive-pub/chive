@@ -51,7 +51,6 @@ vi.mock('@/lib/api/client', () => ({
           requestElevation: mockRequestElevation,
           grantDelegation: mockGrantDelegation,
           revokeDelegation: mockRevokeDelegation,
-          revokeRole: mockRevokeRole,
         },
       },
     },
@@ -62,6 +61,7 @@ vi.mock('@/lib/api/client', () => ({
         governance: {
           getEditorStatus: mockAuthGetEditorStatus,
           listTrustedEditors: mockListTrustedEditors,
+          revokeRole: mockRevokeRole,
         },
       },
     },
