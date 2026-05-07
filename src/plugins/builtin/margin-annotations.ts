@@ -1,11 +1,13 @@
 /**
- * Margin annotations tracking plugin.
+ * Margin notes tracking plugin.
  *
  * @remarks
- * Tracks `at.margin.annotation`, `at.margin.highlight`, and `at.margin.bookmark`
- * records from the firehose. When these records reference Chive eprint URLs
- * (via `target.source` or `source`), this plugin creates backlinks for
- * aggregation and displays annotations alongside native Chive reviews.
+ * Tracks `at.margin.note` records (W3C Web Annotations) and `at.margin.reply`
+ * records from the firehose. The `motivation` field on a note distinguishes
+ * commenting / highlighting / bookmarking / etc. -- there are no separate
+ * collections for those concepts. When a note's `target.source` references a
+ * Chive eprint URL (or AT URI), this plugin creates a backlink so the
+ * annotation appears alongside native Chive reviews.
  *
  * Margin implements the W3C Web Annotation Data Model on ATProto, making it
  * a natural complement to Chive's review system.
@@ -33,7 +35,7 @@ import type { FirehoseRecord } from '../core/backlink-plugin.js';
 // =============================================================================
 
 /**
- * Margin annotation target (W3C SpecificResource).
+ * Margin note target (W3C SpecificResource).
  *
  * @internal
  */
@@ -45,219 +47,78 @@ interface MarginTarget {
 }
 
 /**
- * Margin annotation record structure.
+ * Margin note record structure (W3C web annotation).
  *
  * @internal
  */
-interface MarginAnnotation {
-  $type: 'at.margin.annotation';
+interface MarginNote {
+  $type: 'at.margin.note';
   target: MarginTarget;
+  motivation: string;
   body?: {
     value: string;
     format?: string;
   };
-  motivation?: string;
   tags?: string[];
-  createdAt: string;
-}
-
-/**
- * Margin highlight record structure.
- *
- * @internal
- */
-interface MarginHighlight {
-  $type: 'at.margin.highlight';
-  target: MarginTarget;
   color?: string;
-  tags?: string[];
-  createdAt: string;
-}
-
-/**
- * Margin bookmark record structure.
- *
- * @internal
- */
-interface MarginBookmark {
-  $type: 'at.margin.bookmark';
-  source: string;
-  sourceHash?: string;
-  title?: string;
-  description?: string;
-  tags?: string[];
   createdAt: string;
 }
 
 // =============================================================================
-// ANNOTATION PLUGIN (handles at.margin.annotation)
+// NOTES PLUGIN (handles at.margin.note for all motivations)
 // =============================================================================
 
 /**
- * Margin annotations tracking plugin.
+ * Margin notes tracking plugin.
  *
  * @remarks
- * Tracks W3C Web Annotations from Margin that reference Chive eprint URLs.
+ * Tracks W3C Web Annotations from Margin (`at.margin.note`) that reference
+ * Chive eprint URLs. Margin uses one collection for all motivation values
+ * (commenting, highlighting, bookmarking, etc.); the motivation is encoded
+ * in the per-record context string for downstream consumers that want to
+ * differentiate.
  *
  * @public
  */
-export class MarginAnnotationsPlugin extends BacklinkTrackingPlugin {
-  readonly id = 'pub.chive.plugin.margin-annotations';
+export class MarginNotesPlugin extends BacklinkTrackingPlugin {
+  readonly id = 'pub.chive.plugin.margin-notes';
 
-  readonly trackedCollection = 'at.margin.annotation';
+  readonly trackedCollection = 'at.margin.note';
 
   readonly sourceType: BacklinkSourceType = 'margin.annotation';
 
   readonly manifest: IPluginManifest = {
-    id: 'pub.chive.plugin.margin-annotations',
-    name: 'Margin Annotations',
-    version: '0.5.2',
+    id: 'pub.chive.plugin.margin-notes',
+    name: 'Margin Notes',
+    version: '0.6.2',
     description: 'Tracks W3C Web Annotations from Margin referencing Chive eprints',
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.at.margin.annotation'],
+      hooks: ['firehose.at.margin.note'],
       storage: {
         maxSize: 10 * 1024 * 1024,
       },
     },
-    entrypoint: 'margin-annotations.js',
+    entrypoint: 'margin-notes.js',
   };
 
   extractEprintRefs(record: unknown): string[] {
-    const annotation = record as MarginAnnotation;
+    const note = record as MarginNote;
     const refs: string[] = [];
-
-    if (annotation.target?.source && this.isChiveReference(annotation.target.source)) {
-      refs.push(annotation.target.source);
+    if (note.target?.source && this.isChiveReference(note.target.source)) {
+      refs.push(note.target.source);
     }
-
     return refs;
   }
 
   protected override extractContext(record: unknown): string | undefined {
-    const annotation = record as MarginAnnotation;
+    const note = record as MarginNote;
     const parts: string[] = [];
-    if (annotation.motivation) parts.push(annotation.motivation);
-    if (annotation.body?.value) {
-      parts.push(annotation.body.value.slice(0, 200));
-    }
+    if (note.motivation) parts.push(note.motivation);
+    if (note.color) parts.push(`color=${note.color}`);
+    if (note.body?.value) parts.push(note.body.value.slice(0, 200));
     return parts.length > 0 ? parts.join(': ') : undefined;
-  }
-
-  protected override shouldProcess(_record: unknown): boolean {
-    return true;
-  }
-
-  private isChiveReference(url: string): boolean {
-    return url.includes('chive.pub/eprints/') || this.isEprintUri(url);
-  }
-}
-
-// =============================================================================
-// HIGHLIGHT PLUGIN (handles at.margin.highlight)
-// =============================================================================
-
-/**
- * Margin highlights tracking plugin.
- *
- * @public
- */
-export class MarginHighlightsPlugin extends BacklinkTrackingPlugin {
-  readonly id = 'pub.chive.plugin.margin-highlights';
-
-  readonly trackedCollection = 'at.margin.highlight';
-
-  readonly sourceType: BacklinkSourceType = 'margin.highlight';
-
-  readonly manifest: IPluginManifest = {
-    id: 'pub.chive.plugin.margin-highlights',
-    name: 'Margin Highlights',
-    version: '0.5.2',
-    description: 'Tracks highlights from Margin on Chive eprints',
-    author: 'Aaron Steven White',
-    license: 'MIT',
-    permissions: {
-      hooks: ['firehose.at.margin.highlight'],
-      storage: {
-        maxSize: 5 * 1024 * 1024,
-      },
-    },
-    entrypoint: 'margin-highlights.js',
-  };
-
-  extractEprintRefs(record: unknown): string[] {
-    const highlight = record as MarginHighlight;
-    const refs: string[] = [];
-
-    if (highlight.target?.source && this.isChiveReference(highlight.target.source)) {
-      refs.push(highlight.target.source);
-    }
-
-    return refs;
-  }
-
-  protected override extractContext(record: unknown): string | undefined {
-    const highlight = record as MarginHighlight;
-    if (highlight.color) return `highlight (${highlight.color})`;
-    return 'highlight';
-  }
-
-  protected override shouldProcess(_record: unknown): boolean {
-    return true;
-  }
-
-  private isChiveReference(url: string): boolean {
-    return url.includes('chive.pub/eprints/') || this.isEprintUri(url);
-  }
-}
-
-// =============================================================================
-// BOOKMARK PLUGIN (handles at.margin.bookmark)
-// =============================================================================
-
-/**
- * Margin bookmarks tracking plugin.
- *
- * @public
- */
-export class MarginBookmarksPlugin extends BacklinkTrackingPlugin {
-  readonly id = 'pub.chive.plugin.margin-bookmarks';
-
-  readonly trackedCollection = 'at.margin.bookmark';
-
-  readonly sourceType: BacklinkSourceType = 'margin.bookmark';
-
-  readonly manifest: IPluginManifest = {
-    id: 'pub.chive.plugin.margin-bookmarks',
-    name: 'Margin Bookmarks',
-    version: '0.5.2',
-    description: 'Tracks bookmarks from Margin for Chive eprints',
-    author: 'Aaron Steven White',
-    license: 'MIT',
-    permissions: {
-      hooks: ['firehose.at.margin.bookmark'],
-      storage: {
-        maxSize: 5 * 1024 * 1024,
-      },
-    },
-    entrypoint: 'margin-bookmarks.js',
-  };
-
-  extractEprintRefs(record: unknown): string[] {
-    const bookmark = record as MarginBookmark;
-    const refs: string[] = [];
-
-    if (bookmark.source && this.isChiveReference(bookmark.source)) {
-      refs.push(bookmark.source);
-    }
-
-    return refs;
-  }
-
-  protected override extractContext(record: unknown): string | undefined {
-    const bookmark = record as MarginBookmark;
-    return bookmark.title || bookmark.description || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- intentionally coerces empty string
   }
 
   protected override shouldProcess(_record: unknown): boolean {
@@ -367,4 +228,4 @@ export class MarginRepliesPlugin extends BacklinkTrackingPlugin {
   }
 }
 
-export { MarginAnnotationsPlugin as default };
+export { MarginNotesPlugin as default };

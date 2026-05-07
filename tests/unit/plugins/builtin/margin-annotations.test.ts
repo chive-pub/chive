@@ -1,9 +1,10 @@
 /**
- * Unit tests for Margin annotation plugins.
+ * Unit tests for the Margin notes plugin.
  *
  * @remarks
- * Tests backlink tracking from Margin annotations, highlights, and bookmarks
- * to Chive eprints.
+ * Tests backlink tracking from Margin's `at.margin.note` records (W3C web
+ * annotations) to Chive eprints. The single collection covers commenting,
+ * highlighting, bookmarking, etc. via the W3C `motivation` field.
  *
  * @packageDocumentation
  */
@@ -11,11 +12,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import {
-  MarginAnnotationsPlugin,
-  MarginHighlightsPlugin,
-  MarginBookmarksPlugin,
-} from '../../../../src/plugins/builtin/margin-annotations.js';
+import { MarginNotesPlugin } from '../../../../src/plugins/builtin/margin-annotations.js';
 import type { FirehoseRecord } from '../../../../src/plugins/core/backlink-plugin.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type {
@@ -70,7 +67,7 @@ const createMockEventBus = (): IPluginEventBus => ({
 const createMockBacklinkService = (): IBacklinkService => ({
   createBacklink: vi.fn().mockResolvedValue({
     id: 1,
-    sourceUri: 'at://did:plc:user/at.margin.annotation/abc123',
+    sourceUri: 'at://did:plc:user/at.margin.note/abc123',
     sourceType: 'margin.annotation',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
     context: 'commenting: Great paper!',
@@ -102,30 +99,31 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 });
 
 // ============================================================================
-// MarginAnnotationsPlugin Tests
+// MarginNotesPlugin Tests
 // ============================================================================
 
-describe('MarginAnnotationsPlugin', () => {
-  let plugin: MarginAnnotationsPlugin;
+describe('MarginNotesPlugin', () => {
+  let plugin: MarginNotesPlugin;
 
   beforeEach(() => {
-    plugin = new MarginAnnotationsPlugin();
+    plugin = new MarginNotesPlugin();
   });
 
   describe('handleFirehoseRecord', () => {
-    it('creates backlinks for annotations targeting Chive eprints', async () => {
+    it('creates a backlink for a comment targeting a Chive eprint', async () => {
       const context = createMockContext();
       await plugin.initialize(context);
 
       const backlinkService = context.config.backlinkService as IBacklinkService;
 
       const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/at.margin.annotation/abc',
-        collection: 'at.margin.annotation',
+        uri: 'at://did:plc:user/at.margin.note/abc',
+        collection: 'at.margin.note',
         did: 'did:plc:user',
         rkey: 'abc',
         record: {
-          $type: 'at.margin.annotation',
+          $type: 'at.margin.note',
+          motivation: 'commenting',
           target: {
             source:
               'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aauthor%2Fpub.chive.eprint.submission%2Fxyz',
@@ -136,7 +134,6 @@ describe('MarginAnnotationsPlugin', () => {
             value: 'This is a well-written paper with novel results.',
             format: 'text/plain',
           },
-          motivation: 'commenting',
           createdAt: '2026-01-01T00:00:00Z',
         },
         deleted: false,
@@ -146,87 +143,27 @@ describe('MarginAnnotationsPlugin', () => {
       await plugin.handleFirehoseRecord(firehoseRecord);
 
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/at.margin.annotation/abc',
+        sourceUri: 'at://did:plc:user/at.margin.note/abc',
         sourceType: 'margin.annotation',
         targetUri: expect.stringContaining('chive.pub/eprints/'),
         context: expect.stringContaining('commenting'),
       });
     });
 
-    it('handles annotation deletions', async () => {
+    it('creates a backlink for a highlight (motivation: highlighting)', async () => {
       const context = createMockContext();
       await plugin.initialize(context);
 
       const backlinkService = context.config.backlinkService as IBacklinkService;
 
       await plugin.handleFirehoseRecord({
-        uri: 'at://did:plc:user/at.margin.annotation/abc',
-        collection: 'at.margin.annotation',
+        uri: 'at://did:plc:user/at.margin.note/hl1',
+        collection: 'at.margin.note',
         did: 'did:plc:user',
-        rkey: 'abc',
-        record: null,
-        deleted: true,
-        timestamp: new Date(),
-      });
-
-      expect(backlinkService.deleteBacklink).toHaveBeenCalledWith(
-        'at://did:plc:user/at.margin.annotation/abc'
-      );
-    });
-
-    it('skips annotations targeting non-Chive URLs', async () => {
-      const context = createMockContext();
-      await plugin.initialize(context);
-
-      const backlinkService = context.config.backlinkService as IBacklinkService;
-
-      await plugin.handleFirehoseRecord({
-        uri: 'at://did:plc:user/at.margin.annotation/abc',
-        collection: 'at.margin.annotation',
-        did: 'did:plc:user',
-        rkey: 'abc',
+        rkey: 'hl1',
         record: {
-          $type: 'at.margin.annotation',
-          target: {
-            source: 'https://arxiv.org/abs/1234.5678',
-          },
-          body: { value: 'Nice paper' },
-          createdAt: '2026-01-01T00:00:00Z',
-        },
-        deleted: false,
-        timestamp: new Date(),
-      });
-
-      expect(backlinkService.createBacklink).not.toHaveBeenCalled();
-    });
-  });
-});
-
-// ============================================================================
-// MarginHighlightsPlugin Tests
-// ============================================================================
-
-describe('MarginHighlightsPlugin', () => {
-  let plugin: MarginHighlightsPlugin;
-
-  beforeEach(() => {
-    plugin = new MarginHighlightsPlugin();
-  });
-
-  describe('handleFirehoseRecord', () => {
-    it('creates backlinks for highlights on Chive eprints', async () => {
-      const context = createMockContext();
-      await plugin.initialize(context);
-
-      const backlinkService = context.config.backlinkService as IBacklinkService;
-
-      await plugin.handleFirehoseRecord({
-        uri: 'at://did:plc:user/at.margin.highlight/abc',
-        collection: 'at.margin.highlight',
-        did: 'did:plc:user',
-        rkey: 'abc',
-        record: {
-          $type: 'at.margin.highlight',
+          $type: 'at.margin.note',
+          motivation: 'highlighting',
           target: {
             source:
               'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aauthor%2Fpub.chive.eprint.submission%2Fxyz',
@@ -244,76 +181,39 @@ describe('MarginHighlightsPlugin', () => {
         timestamp: new Date(),
       });
 
-      expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/at.margin.highlight/abc',
-        sourceType: 'margin.highlight',
-        targetUri: expect.stringContaining('chive.pub/eprints/'),
-        context: 'highlight (#ffeb3b)',
-      });
+      expect(backlinkService.createBacklink).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourceUri: 'at://did:plc:user/at.margin.note/hl1',
+          targetUri: expect.stringContaining('chive.pub/eprints/'),
+          context: expect.stringContaining('highlighting'),
+        })
+      );
+      const call = (backlinkService.createBacklink as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+      expect(call?.context).toContain('#ffeb3b');
     });
-  });
-});
 
-// ============================================================================
-// MarginBookmarksPlugin Tests
-// ============================================================================
-
-describe('MarginBookmarksPlugin', () => {
-  let plugin: MarginBookmarksPlugin;
-
-  beforeEach(() => {
-    plugin = new MarginBookmarksPlugin();
-  });
-
-  describe('handleFirehoseRecord', () => {
-    it('creates backlinks for bookmarks of Chive eprints', async () => {
+    it('creates a backlink for a bookmark (motivation: bookmarking)', async () => {
       const context = createMockContext();
       await plugin.initialize(context);
 
       const backlinkService = context.config.backlinkService as IBacklinkService;
 
       await plugin.handleFirehoseRecord({
-        uri: 'at://did:plc:user/at.margin.bookmark/abc',
-        collection: 'at.margin.bookmark',
+        uri: 'at://did:plc:user/at.margin.note/bm1',
+        collection: 'at.margin.note',
         did: 'did:plc:user',
-        rkey: 'abc',
+        rkey: 'bm1',
         record: {
-          $type: 'at.margin.bookmark',
-          source:
-            'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aauthor%2Fpub.chive.eprint.submission%2Fxyz',
-          sourceHash: 'abc123',
-          title: 'Important NLP Paper',
-          description: 'A groundbreaking study on language models',
+          $type: 'at.margin.note',
+          motivation: 'bookmarking',
+          target: {
+            source:
+              'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aauthor%2Fpub.chive.eprint.submission%2Fxyz',
+            sourceHash: 'abc123',
+            title: 'Important NLP Paper',
+          },
+          body: { value: 'A groundbreaking study on language models' },
           tags: ['nlp', 'language-models'],
-          createdAt: '2026-01-01T00:00:00Z',
-        },
-        deleted: false,
-        timestamp: new Date(),
-      });
-
-      expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/at.margin.bookmark/abc',
-        sourceType: 'margin.bookmark',
-        targetUri: expect.stringContaining('chive.pub/eprints/'),
-        context: 'Important NLP Paper',
-      });
-    });
-
-    it('uses description as context when title is missing', async () => {
-      const context = createMockContext();
-      await plugin.initialize(context);
-
-      const backlinkService = context.config.backlinkService as IBacklinkService;
-
-      await plugin.handleFirehoseRecord({
-        uri: 'at://did:plc:user/at.margin.bookmark/abc',
-        collection: 'at.margin.bookmark',
-        did: 'did:plc:user',
-        rkey: 'abc',
-        record: {
-          $type: 'at.margin.bookmark',
-          source: 'https://chive.pub/eprints/test',
-          description: 'Interesting read on semantics',
           createdAt: '2026-01-01T00:00:00Z',
         },
         deleted: false,
@@ -322,9 +222,56 @@ describe('MarginBookmarksPlugin', () => {
 
       expect(backlinkService.createBacklink).toHaveBeenCalledWith(
         expect.objectContaining({
-          context: 'Interesting read on semantics',
+          sourceUri: 'at://did:plc:user/at.margin.note/bm1',
+          context: expect.stringContaining('bookmarking'),
         })
       );
+    });
+
+    it('handles note deletions', async () => {
+      const context = createMockContext();
+      await plugin.initialize(context);
+
+      const backlinkService = context.config.backlinkService as IBacklinkService;
+
+      await plugin.handleFirehoseRecord({
+        uri: 'at://did:plc:user/at.margin.note/abc',
+        collection: 'at.margin.note',
+        did: 'did:plc:user',
+        rkey: 'abc',
+        record: null,
+        deleted: true,
+        timestamp: new Date(),
+      });
+
+      expect(backlinkService.deleteBacklink).toHaveBeenCalledWith(
+        'at://did:plc:user/at.margin.note/abc'
+      );
+    });
+
+    it('skips notes targeting non-Chive URLs', async () => {
+      const context = createMockContext();
+      await plugin.initialize(context);
+
+      const backlinkService = context.config.backlinkService as IBacklinkService;
+
+      await plugin.handleFirehoseRecord({
+        uri: 'at://did:plc:user/at.margin.note/abc',
+        collection: 'at.margin.note',
+        did: 'did:plc:user',
+        rkey: 'abc',
+        record: {
+          $type: 'at.margin.note',
+          motivation: 'commenting',
+          target: { source: 'https://arxiv.org/abs/1234.5678' },
+          body: { value: 'Nice paper' },
+          createdAt: '2026-01-01T00:00:00Z',
+        },
+        deleted: false,
+        timestamp: new Date(),
+      });
+
+      expect(backlinkService.createBacklink).not.toHaveBeenCalled();
     });
   });
 });

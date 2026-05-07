@@ -34,12 +34,7 @@ import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
 import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
-import {
-  MarginAnnotationsPlugin,
-  MarginBookmarksPlugin,
-  MarginHighlightsPlugin,
-  MarginRepliesPlugin,
-} from './plugins/builtin/margin-annotations.js';
+import { MarginNotesPlugin, MarginRepliesPlugin } from './plugins/builtin/margin-annotations.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
@@ -517,9 +512,7 @@ async function main(): Promise<void> {
 
     // Margin (W3C Web Annotation) ecosystem plugins
     try {
-      await pluginManager.loadBuiltinPlugin(new MarginAnnotationsPlugin(), pluginContext);
-      await pluginManager.loadBuiltinPlugin(new MarginHighlightsPlugin(), pluginContext);
-      await pluginManager.loadBuiltinPlugin(new MarginBookmarksPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new MarginNotesPlugin(), pluginContext);
       await pluginManager.loadBuiltinPlugin(new MarginRepliesPlugin(), pluginContext);
       logger.info('Margin ecosystem plugins loaded');
     } catch (err) {

@@ -5,7 +5,7 @@
     "main": {
       "type": "permission-set",
       "title": "Author on Chive",
-      "detail": "Submit and manage your own eprints, edit your profile, and claim authorship of papers. Includes everything in Browse Chive.",
+      "detail": "Submit and manage your own eprints (post preprints, upload PDFs and supplementary files, version them, attach citations and related work, tag them), claim authorship of existing papers, manage co-author requests, and edit your profile. Includes everything in Browse Chive.",
       "permissions": [
         {
           "type": "permission",
