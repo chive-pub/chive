@@ -923,7 +923,7 @@ export function useRevokeRole() {
   return useMutation({
     mutationFn: async (input: RevokeRoleInput): Promise<ElevationResult> => {
       try {
-        const response = await api.pub.chive.governance.revokeRole({
+        const response = await authApi.pub.chive.governance.revokeRole({
           did: input.did,
           reason: input.reason,
         });
