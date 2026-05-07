@@ -18,7 +18,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
 import {
   createInviteRecord,
   deleteInviteRecord,
@@ -104,7 +104,7 @@ export function useListInvites(
   return useQuery({
     queryKey: collaborationKeys.invites(filters),
     queryFn: async (): Promise<{ invites: CollaborationInviteView[] }> => {
-      const response = await api.pub.chive.collaboration.listInvites(filters);
+      const response = await authApi.pub.chive.collaboration.listInvites(filters);
       return response.data as unknown as { invites: CollaborationInviteView[] };
     },
     enabled: options?.enabled ?? true,

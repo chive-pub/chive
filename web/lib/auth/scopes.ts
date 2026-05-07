@@ -20,10 +20,10 @@ export type AuthIntent = 'browse' | 'submit' | 'review' | 'full';
  * replace the individual `repo:` scopes below.
  */
 export const PERMISSION_SETS = {
-  BASIC_READER: 'include:pub.chive.auth.basicReader',
-  AUTHOR_ACCESS: 'include:pub.chive.auth.authorAccess',
-  REVIEWER_ACCESS: 'include:pub.chive.auth.reviewerAccess',
-  FULL_ACCESS: 'include:pub.chive.auth.fullAccess',
+  BASIC_READER: 'include:pub.chive.basicReader',
+  AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
+  REVIEWER_ACCESS: 'include:pub.chive.reviewerAccess',
+  FULL_ACCESS: 'include:pub.chive.fullAccess',
 } as const;
 
 /**
@@ -31,7 +31,7 @@ export const PERMISSION_SETS = {
  *
  * @remarks
  * Used directly in OAuth scope strings until we can publish permission set
- * lexicons that the PDS can resolve. Once `include:pub.chive.auth.*` works,
+ * lexicons that the PDS can resolve. Once `include:pub.chive.* permission sets` works,
  * these can be replaced by the permission set references.
  */
 export const CHIVE_REPO_SCOPES = {
@@ -73,33 +73,38 @@ export const CHIVE_REPO_SCOPES = {
 } as const;
 
 /**
- * External namespace repo scopes for cross-posting.
+ * External namespace scopes for cross-posting and cooperating apps.
  *
  * @remarks
- * These are outside the pub.chive.* namespace. They must always be requested
- * as individual scopes (never inside permission sets, per ATProto spec).
+ * Each cooperating app (Semble, Margin, site.standard) publishes its own
+ * canonical `permission-set` lexicon, which we prefer over enumerating
+ * individual collections — the consent screen renders one named entry per
+ * app, with that publisher's own title and detail copy.
+ *
+ * `app.bsky.*` does not currently publish a single permission set covering
+ * post + profile, so those remain individual repo scopes.
  */
 export const EXTERNAL_REPO_SCOPES = {
-  // Bluesky
+  // Bluesky -- no permission set published
   BLUESKY_POST: 'repo:app.bsky.feed.post',
   BLUESKY_PROFILE: 'repo:app.bsky.actor.profile',
 
-  // Standard (site.standard)
-  STANDARD_DOCUMENT: 'repo:site.standard.document',
+  // Standard.site -- authFull covers document, publication, graph.recommend,
+  // graph.subscription. Chive only writes document, so this is sufficient.
+  STANDARD_FULL: 'include:site.standard.authFull',
 
-  // Semble (network.cosmik)
-  COSMIK_CARD: 'repo:network.cosmik.card',
-  COSMIK_COLLECTION: 'repo:network.cosmik.collection',
-  COSMIK_COLLECTION_LINK: 'repo:network.cosmik.collectionLink',
-  COSMIK_COLLECTION_LINK_REMOVAL: 'repo:network.cosmik.collectionLinkRemoval',
+  // Semble -- authFull covers card, collection, collectionLink,
+  // collectionLinkRemoval but is missing connection + follow that Chive
+  // writes. Hybrid: include + supplementary repo scopes for the gaps.
+  COSMIK_FULL: 'include:network.cosmik.authFull',
   COSMIK_CONNECTION: 'repo:network.cosmik.connection',
   COSMIK_FOLLOW: 'repo:network.cosmik.follow',
 
-  // Margin (at.margin)
-  MARGIN_ANNOTATION: 'repo:at.margin.annotation',
-  MARGIN_BOOKMARK: 'repo:at.margin.bookmark',
-  MARGIN_REPLY: 'repo:at.margin.reply',
-  MARGIN_LIKE: 'repo:at.margin.like',
+  // Margin -- authFull covers note/reply/like/collection/collectionItem/
+  // profile/preferences/apikey. Chive's notes write at.margin.note (W3C
+  // web annotations) for both reviews and bookmarks via the `motivation`
+  // field; replies go to at.margin.reply, likes to at.margin.like.
+  MARGIN_FULL: 'include:at.margin.authFull',
 } as const;
 
 /** Legacy scope for backward compatibility. */
@@ -131,18 +136,18 @@ const CHIVE_SCOPES_STRING = Object.values(CHIVE_REPO_SCOPES).join(' ');
 const CHIVE_READ_SCOPES_STRING = '';
 
 /**
- * Whether to emit `include:pub.chive.auth.*` permission-set references
+ * Whether to emit `include:pub.chive.* permission sets` permission-set references
  * instead of individual `repo:pub.chive.*` scopes.
  *
  * @remarks
  * Controlled by the `NEXT_PUBLIC_USE_PERMISSION_SETS` build-time env var.
  * Safe to flip to `true` only after both conditions hold:
  *
- * 1. Chive is serving lexicon records for `pub.chive.auth.*` NSIDs (the
+ * 1. Chive is serving lexicon records for `pub.chive.* permission sets` NSIDs (the
  *    `com.atproto.repo.getRecord` endpoints landed in #74 — already live).
  * 2. A DNS TXT record exists at `_lexicon.auth.chive.pub` pointing at
  *    `did=did:web:chive.pub`, so resolving services (bsky.social) can
- *    find the DID that owns the `pub.chive.auth.*` namespace.
+ *    find the DID that owns the `pub.chive.* permission sets` namespace.
  *
  * Requesting `include:` scopes without (2) causes the OAuth PAR request
  * to fail with `invalid_scope / Could not resolve Lexicon for NSID`.
@@ -172,7 +177,7 @@ function permissionSetForIntent(intent: AuthIntent): string {
  * By default emits individual `repo:pub.chive.*` scopes, because PDSes
  * can't yet resolve our permission-set lexicons. Set
  * `NEXT_PUBLIC_USE_PERMISSION_SETS=true` at build time to switch to
- * `include:pub.chive.auth.*` references once DNS TXT records for
+ * `include:pub.chive.* permission sets` references once DNS TXT records for
  * lexicon resolution are in place.
  *
  * @param intent - The user's intent (browse, submit, review, full)

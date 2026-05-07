@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * Whether client metadata should declare `include:pub.chive.auth.*`
+ * Whether client metadata should declare `include:pub.chive.* permission sets`
  * permission-set references instead of individual `repo:pub.chive.*`
  * scopes.
  *
@@ -13,10 +13,10 @@ import { NextRequest, NextResponse } from 'next/server';
 const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'true';
 
 const PERMISSION_SET_SCOPES = [
-  'include:pub.chive.auth.basicReader',
-  'include:pub.chive.auth.authorAccess',
-  'include:pub.chive.auth.reviewerAccess',
-  'include:pub.chive.auth.fullAccess',
+  'include:pub.chive.basicReader',
+  'include:pub.chive.authorAccess',
+  'include:pub.chive.reviewerAccess',
+  'include:pub.chive.fullAccess',
 ];
 
 const CHIVE_REPO_SCOPES = [
@@ -44,25 +44,34 @@ const CHIVE_REPO_SCOPES = [
   'repo:pub.chive.collaboration.inviteAcceptance',
 ];
 
-const EXTERNAL_REPO_SCOPES = [
-  'repo:app.bsky.feed.post',
-  'repo:app.bsky.actor.profile',
-  'repo:site.standard.document',
-  'repo:network.cosmik.card',
-  'repo:network.cosmik.collection',
-  'repo:network.cosmik.collectionLink',
-  'repo:network.cosmik.collectionLinkRemoval',
+// External-namespace scopes for cooperating apps.
+//
+// Hybrid layout: prefer `include:<nsid>` permission sets where they cover
+// everything Chive writes, fall back to `repo:` scopes only for gaps and for
+// apps that don't publish a permission set at all.
+//
+// - Margin: at.margin.authFull covers all of note/reply/like/collection (we
+//   migrated the dual-write to use at.margin.note for everything).
+// - Standard.site: site.standard.authFull covers document + publication +
+//   recommend + subscription. Chive only writes document; permission set
+//   is sufficient.
+// - Semble: network.cosmik.authFull covers card/collection/collectionLink/
+//   collectionLinkRemoval but OMITS connection and follow which Chive
+//   dual-writes. Supplement with repo scopes until Semble expands authFull.
+// - Bluesky: no permission set published; use repo scopes.
+const EXTERNAL_SCOPES = [
+  'include:at.margin.authFull',
+  'include:site.standard.authFull',
+  'include:network.cosmik.authFull',
   'repo:network.cosmik.connection',
   'repo:network.cosmik.follow',
-  'repo:at.margin.annotation',
-  'repo:at.margin.bookmark',
-  'repo:at.margin.reply',
-  'repo:at.margin.like',
+  'repo:app.bsky.feed.post',
+  'repo:app.bsky.actor.profile',
 ];
 
 function buildScope(): string {
   const chive = USE_PERMISSION_SETS ? PERMISSION_SET_SCOPES : CHIVE_REPO_SCOPES;
-  return ['atproto', ...chive, ...EXTERNAL_REPO_SCOPES, 'blob:*/*'].join(' ');
+  return ['atproto', ...chive, ...EXTERNAL_SCOPES, 'blob:*/*'].join(' ');
 }
 
 /**
