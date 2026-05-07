@@ -18,6 +18,7 @@ import {
   LEGACY_SCOPE,
   PERMISSION_SETS,
   REPO_SCOPES,
+  RPC_WILDCARD_SCOPE,
 } from '@/auth/scopes/chive-scopes.js';
 
 describe('chive-scopes', () => {
@@ -113,11 +114,23 @@ describe('chive-scopes', () => {
   });
 
   describe('PERMISSION_SETS', () => {
-    it('defines four permission set references', () => {
-      expect(PERMISSION_SETS.BASIC_READER).toBe('include:pub.chive.basicReader');
-      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe('include:pub.chive.authorAccess');
-      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe('include:pub.chive.reviewerAccess');
-      expect(PERMISSION_SETS.FULL_ACCESS).toBe('include:pub.chive.fullAccess');
+    it('defines four permission set references with the Chive service DID as audience', () => {
+      // Each `include:` carries `?aud=did:web:chive.pub` so that rpc
+      // permissions inside the set (which all set `inheritAud: true`)
+      // inherit the Chive service DID as audience -- the PDS can then
+      // mint service-auth JWTs whose `aud` matches what the API expects.
+      expect(PERMISSION_SETS.BASIC_READER).toBe(
+        'include:pub.chive.basicReader?aud=did:web:chive.pub'
+      );
+      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe(
+        'include:pub.chive.authorAccess?aud=did:web:chive.pub'
+      );
+      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe(
+        'include:pub.chive.reviewerAccess?aud=did:web:chive.pub'
+      );
+      expect(PERMISSION_SETS.FULL_ACCESS).toBe(
+        'include:pub.chive.fullAccess?aud=did:web:chive.pub'
+      );
     });
 
     it('prefixes all sets with include:', () => {
@@ -132,7 +145,7 @@ describe('chive-scopes', () => {
       // (everything up to its last dot). A 4-segment NSID like
       // `pub.chive.auth.fullAccess` would only authorize `pub.chive.auth.*`.
       for (const scope of Object.values(PERMISSION_SETS)) {
-        expect(scope).toMatch(/^include:pub\.chive\.[a-zA-Z]+$/);
+        expect(scope).toMatch(/^include:pub\.chive\.[a-zA-Z]+(\?aud=.+)?$/);
       }
     });
 
@@ -166,7 +179,7 @@ describe('chive-scopes', () => {
       const parts = result.split(' ');
       expect(parts).toContain('atproto');
       expect(parts).toContain('transition:generic');
-      expect(parts).toContain('include:pub.chive.fullAccess');
+      expect(parts).toContain('include:pub.chive.fullAccess?aud=did:web:chive.pub');
     });
 
     it('deduplicates atproto if passed explicitly', () => {
@@ -230,12 +243,17 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('is the product of buildScopeString with chive and external repo scopes', () => {
+    it('is the product of buildScopeString with chive repo scopes, the rpc wildcard, and external repo scopes', () => {
       const expected = buildScopeString([
         ...Object.values(REPO_SCOPES),
+        RPC_WILDCARD_SCOPE,
         ...Object.values(EXTERNAL_REPO_SCOPES),
       ]);
       expect(CLIENT_METADATA_SCOPE).toBe(expected);
+    });
+
+    it('grants the rpc wildcard for the chive service DID', () => {
+      expect(CLIENT_METADATA_SCOPE).toContain(`rpc:*?aud=${CHIVE_SERVICE_DID}`);
     });
   });
 });

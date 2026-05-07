@@ -209,7 +209,9 @@ function loadConfig(): EnvConfig {
     oauthRedirectUri: process.env.OAUTH_REDIRECT_URI ?? 'https://chive.pub/oauth/callback',
     sessionEncryptionKey: process.env.SESSION_ENCRYPTION_KEY,
 
-    // ATProto Service Auth
+    // ATProto Service Auth -- audience must be `<did>#<fragment>` per the
+    // atproto-audience spec (`@atproto/did.isAtprotoAudience`); the fragment
+    // matches the `chive_appview` service entry in the did:web:<host> DID doc.
     serviceDid: process.env.ATPROTO_SERVICE_DID ?? 'did:web:chive.pub',
 
     // Relevance logging

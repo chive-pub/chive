@@ -19,6 +19,7 @@
             "pub.chive.eprint.relatedWork",
             "pub.chive.eprint.changelog",
             "pub.chive.actor.profile",
+            "pub.chive.actor.profileConfig",
             "pub.chive.actor.mute",
             "pub.chive.discovery.settings",
             "pub.chive.collaboration.invite",
@@ -37,7 +38,6 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "inheritAud": true,
           "lxm": [
             "pub.chive.eprint.getSubmission",
             "pub.chive.eprint.searchSubmissions",
@@ -57,10 +57,23 @@
             "pub.chive.endorsement.listForUser",
             "pub.chive.author.getProfile",
             "pub.chive.author.searchAuthors",
+            "pub.chive.author.initiateOrcidVerification",
+            "pub.chive.collection.get",
+            "pub.chive.collection.getContaining",
+            "pub.chive.collection.getFeed",
+            "pub.chive.collection.getParent",
+            "pub.chive.collection.getSubcollections",
+            "pub.chive.collection.listByOwner",
+            "pub.chive.collection.listPublic",
+            "pub.chive.collection.search",
             "pub.chive.actor.getMyRoles",
             "pub.chive.actor.getMyProfile",
             "pub.chive.actor.getDiscoverySettings",
+            "pub.chive.actor.discoverAuthorIds",
             "pub.chive.claiming.startClaim",
+            "pub.chive.claiming.fetchExternalPdf",
+            "pub.chive.claiming.dismissSuggestion",
+            "pub.chive.moderation.createReport",
             "pub.chive.claiming.completeClaim",
             "pub.chive.claiming.findClaimable",
             "pub.chive.claiming.getClaim",
@@ -86,7 +99,8 @@
             "pub.chive.collaboration.listCollaborators",
             "pub.chive.notification.listReviewsOnMyPapers",
             "pub.chive.notification.listEndorsementsOnMyPapers"
-          ]
+          ],
+          "aud": "*"
         }
       ]
     }

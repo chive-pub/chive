@@ -19,6 +19,20 @@ export type AuthIntent = 'browse' | 'submit' | 'review' | 'full';
  * lexicons via `/.well-known/atproto-lexicons/` or equivalent, these can
  * replace the individual `repo:` scopes below.
  */
+/**
+ * Chive's service DID. Each `include:<nsid>` is suffixed with
+ * `?aud=<CHIVE_SERVICE_DID>` so the rpc permissions inside the permission
+ * set (all of which carry `inheritAud: true`) inherit this audience.
+ * Without it, issued tokens carry rpc scopes with audience `undefined`
+ * and the PDS rejects service-auth JWT requests where the JWT specifies
+ * `aud=did:web:<host>`.
+ */
+// Atproto audiences require a `#fragment` per `@atproto/did.isAtprotoAudience`.
+// Without it, oauth-scopes rejects the aud as malformed and rpc scopes using
+// it are silently dropped from the issued access token. The fragment matches
+// the `chive_appview` service entry in the did:web:<host> DID document.
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+
 export const PERMISSION_SETS = {
   BASIC_READER: 'include:pub.chive.basicReader',
   AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
@@ -183,6 +197,12 @@ function permissionSetForIntent(intent: AuthIntent): string {
  * @param intent - The user's intent (browse, submit, review, full)
  * @returns Space-separated scope string including atproto base scope
  */
+// `rpc:*?aud=<chive-did>` grants all RPC calls scoped to Chive's API DID.
+// Required on the legacy `repo:`-only path so the frontend's
+// `getServiceAuthToken` calls (ORCID, admin, claiming, profile config)
+// can mint a service-auth JWT. The forbidden form is `rpc:*?aud=*`.
+const RPC_WILDCARD_SCOPE = `rpc:*?aud=${CHIVE_SERVICE_DID}`;
+
 export function getScopesForIntent(intent: AuthIntent): string {
   const base = ATPROTO_BASE_SCOPE;
   if (USE_PERMISSION_SETS) {
@@ -192,11 +212,13 @@ export function getScopesForIntent(intent: AuthIntent): string {
   }
   switch (intent) {
     case 'browse':
-      return CHIVE_READ_SCOPES_STRING ? `${base} ${CHIVE_READ_SCOPES_STRING}` : base;
+      return CHIVE_READ_SCOPES_STRING
+        ? `${base} ${CHIVE_READ_SCOPES_STRING} ${RPC_WILDCARD_SCOPE}`
+        : `${base} ${RPC_WILDCARD_SCOPE}`;
     case 'submit':
     case 'review':
     case 'full':
-      return `${base} ${CHIVE_SCOPES_STRING} ${EXTERNAL_SCOPES_STRING}`;
+      return `${base} ${CHIVE_SCOPES_STRING} ${RPC_WILDCARD_SCOPE} ${EXTERNAL_SCOPES_STRING}`;
   }
 }
 

@@ -10,7 +10,6 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "inheritAud": true,
           "lxm": [
             "pub.chive.eprint.getSubmission",
             "pub.chive.eprint.searchSubmissions",
@@ -25,8 +24,17 @@
             "pub.chive.endorsement.getSummary",
             "pub.chive.endorsement.listForEprint",
             "pub.chive.author.getProfile",
-            "pub.chive.author.searchAuthors"
-          ]
+            "pub.chive.author.searchAuthors",
+            "pub.chive.collection.get",
+            "pub.chive.collection.getContaining",
+            "pub.chive.collection.getFeed",
+            "pub.chive.collection.getParent",
+            "pub.chive.collection.getSubcollections",
+            "pub.chive.collection.listByOwner",
+            "pub.chive.collection.listPublic",
+            "pub.chive.collection.search"
+          ],
+          "aud": "*"
         }
       ]
     }
