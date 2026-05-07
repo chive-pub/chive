@@ -43,7 +43,6 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "inheritAud": true,
           "lxm": [
             "pub.chive.eprint.getSubmission",
             "pub.chive.eprint.searchSubmissions",
@@ -163,7 +162,8 @@
             "pub.chive.admin.triggerFullReindex",
             "pub.chive.admin.triggerGovernanceSync",
             "pub.chive.admin.triggerPDSScan"
-          ]
+          ],
+          "aud": "*"
         }
       ]
     }

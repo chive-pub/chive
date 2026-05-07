@@ -16,7 +16,7 @@
 // Without it the OAuth scope library rejects rpc scopes targeting this aud and
 // silently drops them from issued tokens. The fragment matches the
 // `chive_appview` service entry in chive.pub's DID document.
-export const CHIVE_SERVICE_DID = 'did:web:chive.pub#chive_appview';
+export const CHIVE_SERVICE_DID = 'did:web:chive.pub';
 
 /** Individual repo scopes for pub.chive.* collections. */
 export const REPO_SCOPES = {
@@ -105,10 +105,10 @@ export const BLOB_SCOPES = {
  * Lexicon schemas that bundle multiple granular scopes.
  */
 export const PERMISSION_SETS = {
-  BASIC_READER: `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,
-  AUTHOR_ACCESS: `include:pub.chive.authorAccess?aud=${CHIVE_SERVICE_DID}`,
-  REVIEWER_ACCESS: `include:pub.chive.reviewerAccess?aud=${CHIVE_SERVICE_DID}`,
-  FULL_ACCESS: `include:pub.chive.fullAccess?aud=${CHIVE_SERVICE_DID}`,
+  BASIC_READER: 'include:pub.chive.basicReader',
+  AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
+  REVIEWER_ACCESS: 'include:pub.chive.reviewerAccess',
+  FULL_ACCESS: 'include:pub.chive.fullAccess',
 } as const;
 
 /** Legacy scope for backward compatibility with PDSes that don't support granular scopes. */

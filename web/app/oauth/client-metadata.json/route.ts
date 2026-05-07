@@ -22,14 +22,13 @@ const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'tru
  */
 // Atproto audiences require a `#fragment` per @atproto/did. The fragment
 // matches the `chive_appview` service entry in the did:web:<host> DID doc.
-const CHIVE_SERVICE_DID =
-  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
 
 const PERMISSION_SET_SCOPES = [
-  `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,
-  `include:pub.chive.authorAccess?aud=${CHIVE_SERVICE_DID}`,
-  `include:pub.chive.reviewerAccess?aud=${CHIVE_SERVICE_DID}`,
-  `include:pub.chive.fullAccess?aud=${CHIVE_SERVICE_DID}`,
+  'include:pub.chive.basicReader',
+  'include:pub.chive.authorAccess',
+  'include:pub.chive.reviewerAccess',
+  'include:pub.chive.fullAccess',
 ];
 
 const CHIVE_REPO_SCOPES = [

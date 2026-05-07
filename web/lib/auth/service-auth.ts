@@ -41,8 +41,7 @@ const serviceAuthLogger = logger.child({ component: 'service-auth' });
 // treated as malformed and any OAuth scope using it is silently dropped at
 // token-issuance time. The fragment matches the `chive_appview` service entry
 // in the did:web:<host> DID document.
-const CHIVE_SERVICE_DID =
-  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
 
 /**
  * Service auth JWT response from PDS.

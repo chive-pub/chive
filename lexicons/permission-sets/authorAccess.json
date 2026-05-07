@@ -34,7 +34,6 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "inheritAud": true,
           "lxm": [
             "pub.chive.eprint.getSubmission",
             "pub.chive.eprint.searchSubmissions",
@@ -92,7 +91,8 @@
             "pub.chive.discovery.recordInteraction",
             "pub.chive.collaboration.listInvites",
             "pub.chive.collaboration.listCollaborators"
-          ]
+          ],
+          "aud": "*"
         }
       ]
     }

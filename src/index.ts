@@ -212,7 +212,7 @@ function loadConfig(): EnvConfig {
     // ATProto Service Auth -- audience must be `<did>#<fragment>` per the
     // atproto-audience spec (`@atproto/did.isAtprotoAudience`); the fragment
     // matches the `chive_appview` service entry in the did:web:<host> DID doc.
-    serviceDid: process.env.ATPROTO_SERVICE_DID ?? 'did:web:chive.pub#chive_appview',
+    serviceDid: process.env.ATPROTO_SERVICE_DID ?? 'did:web:chive.pub',
 
     // Relevance logging
     relevanceLoggingEnabled: process.env.RELEVANCE_LOGGING_ENABLED !== 'false',

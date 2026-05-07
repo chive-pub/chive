@@ -31,14 +31,13 @@ export type AuthIntent = 'browse' | 'submit' | 'review' | 'full';
 // Without it, oauth-scopes rejects the aud as malformed and rpc scopes using
 // it are silently dropped from the issued access token. The fragment matches
 // the `chive_appview` service entry in the did:web:<host> DID document.
-const CHIVE_SERVICE_DID =
-  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
 
 export const PERMISSION_SETS = {
-  BASIC_READER: `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,
-  AUTHOR_ACCESS: `include:pub.chive.authorAccess?aud=${CHIVE_SERVICE_DID}`,
-  REVIEWER_ACCESS: `include:pub.chive.reviewerAccess?aud=${CHIVE_SERVICE_DID}`,
-  FULL_ACCESS: `include:pub.chive.fullAccess?aud=${CHIVE_SERVICE_DID}`,
+  BASIC_READER: 'include:pub.chive.basicReader',
+  AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
+  REVIEWER_ACCESS: 'include:pub.chive.reviewerAccess',
+  FULL_ACCESS: 'include:pub.chive.fullAccess',
 } as const;
 
 /**

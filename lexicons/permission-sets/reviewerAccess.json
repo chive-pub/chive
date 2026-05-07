@@ -38,7 +38,6 @@
         {
           "type": "permission",
           "resource": "rpc",
-          "inheritAud": true,
           "lxm": [
             "pub.chive.eprint.getSubmission",
             "pub.chive.eprint.searchSubmissions",
@@ -100,7 +99,8 @@
             "pub.chive.collaboration.listCollaborators",
             "pub.chive.notification.listReviewsOnMyPapers",
             "pub.chive.notification.listEndorsementsOnMyPapers"
-          ]
+          ],
+          "aud": "*"
         }
       ]
     }
