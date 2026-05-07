@@ -114,23 +114,15 @@ describe('chive-scopes', () => {
   });
 
   describe('PERMISSION_SETS', () => {
-    it('defines four permission set references with the Chive service DID as audience', () => {
-      // Each `include:` carries `?aud=did:web:chive.pub` so that rpc
-      // permissions inside the set (which all set `inheritAud: true`)
-      // inherit the Chive service DID as audience -- the PDS can then
-      // mint service-auth JWTs whose `aud` matches what the API expects.
-      expect(PERMISSION_SETS.BASIC_READER).toBe(
-        'include:pub.chive.basicReader?aud=did:web:chive.pub'
-      );
-      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe(
-        'include:pub.chive.authorAccess?aud=did:web:chive.pub'
-      );
-      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe(
-        'include:pub.chive.reviewerAccess?aud=did:web:chive.pub'
-      );
-      expect(PERMISSION_SETS.FULL_ACCESS).toBe(
-        'include:pub.chive.fullAccess?aud=did:web:chive.pub'
-      );
+    it('defines four permission set references without audience qualifiers', () => {
+      // The `?aud=` qualifier on `include:` was dropped because the rpc
+      // permissions inside the lexicons declare `aud: "*"` directly, and
+      // `IncludeScope` rejects an aud without `#fragment` per
+      // `@atproto/did.isAtprotoAudience`.
+      expect(PERMISSION_SETS.BASIC_READER).toBe('include:pub.chive.basicReader');
+      expect(PERMISSION_SETS.AUTHOR_ACCESS).toBe('include:pub.chive.authorAccess');
+      expect(PERMISSION_SETS.REVIEWER_ACCESS).toBe('include:pub.chive.reviewerAccess');
+      expect(PERMISSION_SETS.FULL_ACCESS).toBe('include:pub.chive.fullAccess');
     });
 
     it('prefixes all sets with include:', () => {
@@ -179,7 +171,7 @@ describe('chive-scopes', () => {
       const parts = result.split(' ');
       expect(parts).toContain('atproto');
       expect(parts).toContain('transition:generic');
-      expect(parts).toContain('include:pub.chive.fullAccess?aud=did:web:chive.pub');
+      expect(parts).toContain('include:pub.chive.fullAccess');
     });
 
     it('deduplicates atproto if passed explicitly', () => {
