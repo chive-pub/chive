@@ -18,6 +18,7 @@ import {
   LEGACY_SCOPE,
   PERMISSION_SETS,
   REPO_SCOPES,
+  RPC_WILDCARD_SCOPE,
 } from '@/auth/scopes/chive-scopes.js';
 
 describe('chive-scopes', () => {
@@ -242,12 +243,17 @@ describe('chive-scopes', () => {
       }
     });
 
-    it('is the product of buildScopeString with chive and external repo scopes', () => {
+    it('is the product of buildScopeString with chive repo scopes, the rpc wildcard, and external repo scopes', () => {
       const expected = buildScopeString([
         ...Object.values(REPO_SCOPES),
+        RPC_WILDCARD_SCOPE,
         ...Object.values(EXTERNAL_REPO_SCOPES),
       ]);
       expect(CLIENT_METADATA_SCOPE).toBe(expected);
+    });
+
+    it('grants the rpc wildcard for the chive service DID', () => {
+      expect(CLIENT_METADATA_SCOPE).toContain(`rpc:*?aud=${CHIVE_SERVICE_DID}`);
     });
   });
 });
