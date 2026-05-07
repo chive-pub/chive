@@ -214,7 +214,8 @@ jobs:
               --build-arg NEXT_PUBLIC_API_URL=https://${DOMAIN}/api \
               --build-arg NEXT_PUBLIC_FARO_URL=https://faro.${DOMAIN}/collect \
               --build-arg NEXT_PUBLIC_APP_VERSION=${DEPLOY_SHA} \
-              --build-arg NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${DOMAIN} \
+              --build-arg NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${DOMAIN}#chive_appview \
+              --build-arg NEXT_PUBLIC_USE_PERMISSION_SETS=true \
               .. || {
               echo "::error::Failed to build chive-web image"
               exit 1

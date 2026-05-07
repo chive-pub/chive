@@ -146,7 +146,7 @@ jobs:
             NEXT_PUBLIC_API_URL=https://${{ vars.STAGING_DOMAIN }}/api
             NEXT_PUBLIC_FARO_URL=https://faro.${{ vars.STAGING_DOMAIN }}/collect
             NEXT_PUBLIC_APP_VERSION=staging-${{ env.DEPLOY_SHA }}
-            NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${{ vars.STAGING_DOMAIN }}
+            NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${{ vars.STAGING_DOMAIN }}#chive_appview
             NEXT_PUBLIC_USE_PERMISSION_SETS=true
           cache-from: type=gha,scope=web-staging
           cache-to: type=gha,mode=max,scope=web-staging

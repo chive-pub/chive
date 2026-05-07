@@ -20,7 +20,10 @@ const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'tru
  * `undefined` and the PDS would reject service-auth JWT requests where
  * `aud=did:web:<host>` is required.
  */
-const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+// Atproto audiences require a `#fragment` per @atproto/did. The fragment
+// matches the `chive_appview` service entry in the did:web:<host> DID doc.
+const CHIVE_SERVICE_DID =
+  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
 
 const PERMISSION_SET_SCOPES = [
   `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,

@@ -36,7 +36,13 @@ const serviceAuthLogger = logger.child({ component: 'service-auth' });
  * This must match the SERVICE_DID environment variable on the backend.
  * For development, use a test DID. For production, use did:web:chive.pub.
  */
-const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+// Atproto audiences require a fragment (`<did>#<service-id>`) per
+// `@atproto/did`'s `isAtprotoAudience`; an audience without the fragment is
+// treated as malformed and any OAuth scope using it is silently dropped at
+// token-issuance time. The fragment matches the `chive_appview` service entry
+// in the did:web:<host> DID document.
+const CHIVE_SERVICE_DID =
+  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
 
 /**
  * Service auth JWT response from PDS.

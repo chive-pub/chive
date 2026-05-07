@@ -27,7 +27,12 @@ export type AuthIntent = 'browse' | 'submit' | 'review' | 'full';
  * and the PDS rejects service-auth JWT requests where the JWT specifies
  * `aud=did:web:<host>`.
  */
-const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+// Atproto audiences require a `#fragment` per `@atproto/did.isAtprotoAudience`.
+// Without it, oauth-scopes rejects the aud as malformed and rpc scopes using
+// it are silently dropped from the issued access token. The fragment matches
+// the `chive_appview` service entry in the did:web:<host> DID document.
+const CHIVE_SERVICE_DID =
+  process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub#chive_appview';
 
 export const PERMISSION_SETS = {
   BASIC_READER: `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,

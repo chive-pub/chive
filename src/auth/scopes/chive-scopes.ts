@@ -12,7 +12,11 @@
  */
 
 /** Chive's service DID for audience targeting in RPC scopes. */
-export const CHIVE_SERVICE_DID = 'did:web:chive.pub';
+// Atproto audiences require a `#fragment` per `@atproto/did.isAtprotoAudience`.
+// Without it the OAuth scope library rejects rpc scopes targeting this aud and
+// silently drops them from issued tokens. The fragment matches the
+// `chive_appview` service entry in chive.pub's DID document.
+export const CHIVE_SERVICE_DID = 'did:web:chive.pub#chive_appview';
 
 /** Individual repo scopes for pub.chive.* collections. */
 export const REPO_SCOPES = {

@@ -29,6 +29,15 @@ export async function GET(request: NextRequest) {
         type: 'AtprotoPersonalDataServer',
         serviceEndpoint,
       },
+      // Service entry referenced by `<did>#chive_appview` audiences in OAuth
+      // scopes and service-auth JWTs. Atproto audiences require a fragment;
+      // we use this one consistently across the frontend, backend, and
+      // published permission-set lexicons.
+      {
+        id: '#chive_appview',
+        type: 'ChiveAppView',
+        serviceEndpoint,
+      },
     ],
   };
 
