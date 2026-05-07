@@ -79,9 +79,30 @@ const EXTERNAL_SCOPES = [
   'repo:app.bsky.actor.profile',
 ];
 
+/**
+ * RPC wildcard scope for all `pub.chive.*` query/procedure calls.
+ *
+ * @remarks
+ * The granular `repo:` scopes only cover repository writes; any frontend
+ * call that goes through `getServiceAuthToken` (e.g. ORCID verification,
+ * admin endpoints, claiming flows, profile-config writes) needs an
+ * `rpc:<lxm>?aud=<chive-did>` scope on the user's session for the PDS
+ * to mint a service-auth JWT.
+ *
+ * `rpc:*?aud=<chive-did>` grants "any rpc method, but only when the
+ * audience is Chive's API DID" -- one scope string instead of enumerating
+ * 60+ lxms. The forbidden form is `rpc:*?aud=*` (any rpc to any service).
+ *
+ * Required on the legacy `repo:`-scope path because that path emits no
+ * rpc scopes; on the `include:` permission-set path the rpc scopes are
+ * inherited from each set's `inheritAud: true` rpc permission and this
+ * wildcard isn't strictly required but is harmless.
+ */
+const RPC_WILDCARD_SCOPE = `rpc:*?aud=${CHIVE_SERVICE_DID}`;
+
 function buildScope(): string {
   const chive = USE_PERMISSION_SETS ? PERMISSION_SET_SCOPES : CHIVE_REPO_SCOPES;
-  return ['atproto', ...chive, ...EXTERNAL_SCOPES, 'blob:*/*'].join(' ');
+  return ['atproto', ...chive, RPC_WILDCARD_SCOPE, ...EXTERNAL_SCOPES, 'blob:*/*'].join(' ');
 }
 
 /**

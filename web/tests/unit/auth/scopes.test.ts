@@ -51,19 +51,30 @@ describe('frontend scopes', () => {
       }
     });
 
-    it('returns one token for browse intent', () => {
+    it('returns atproto + the rpc wildcard for browse intent', () => {
       const parts = getScopesForIntent('browse').split(' ');
-      expect(parts).toHaveLength(1);
+      // atproto + rpc:*?aud=<chive-did>
+      expect(parts).toHaveLength(2);
+      expect(parts[0]).toBe('atproto');
+      expect(parts[1]).toMatch(/^rpc:\*\?aud=did:web:/);
     });
 
     it('returns correct token count for submit, review, and full intents', () => {
       const chiveCount = Object.values(CHIVE_REPO_SCOPES).length;
       const externalCount = Object.values(EXTERNAL_REPO_SCOPES).length;
-      const expected = 1 + chiveCount + externalCount;
+      // atproto + chive repo scopes + rpc wildcard + external scopes
+      const expected = 1 + chiveCount + 1 + externalCount;
       const intents: AuthIntent[] = ['submit', 'review', 'full'];
       for (const intent of intents) {
         const parts = getScopesForIntent(intent).split(' ');
         expect(parts).toHaveLength(expected);
+      }
+    });
+
+    it('grants the rpc wildcard for the chive service DID on every authenticated intent', () => {
+      const intents: AuthIntent[] = ['browse', 'submit', 'review', 'full'];
+      for (const intent of intents) {
+        expect(getScopesForIntent(intent)).toMatch(/\brpc:\*\?aud=did:web:[^\s]+/);
       }
     });
 

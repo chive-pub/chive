@@ -138,7 +138,22 @@ export function buildScopeString(scopes: readonly string[]): string {
  * permission set lexicons are published, this can be replaced with
  * `PERMISSION_SETS.FULL_ACCESS`.
  */
+/**
+ * Wildcard rpc scope for any `pub.chive.*` query/procedure call against
+ * Chive's API service DID.
+ *
+ * @remarks
+ * The granular `repo:` scopes only cover repository writes; any frontend
+ * call that goes through `getServiceAuthToken` (e.g. ORCID verification,
+ * admin endpoints, claiming flows, profile-config writes) needs an
+ * `rpc:<lxm>?aud=<chive-did>` scope. `rpc:*?aud=<chive-did>` grants every
+ * lxm at this audience -- one scope string instead of enumerating 60+
+ * lxms. The forbidden form is `rpc:*?aud=*`.
+ */
+export const RPC_WILDCARD_SCOPE = `rpc:*?aud=${CHIVE_SERVICE_DID}`;
+
 export const CLIENT_METADATA_SCOPE = buildScopeString([
   ...Object.values(REPO_SCOPES),
+  RPC_WILDCARD_SCOPE,
   ...Object.values(EXTERNAL_REPO_SCOPES),
 ]);
