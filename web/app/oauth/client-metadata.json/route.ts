@@ -12,11 +12,21 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 const USE_PERMISSION_SETS = process.env.NEXT_PUBLIC_USE_PERMISSION_SETS === 'true';
 
+/**
+ * Chive's service DID. Each `include:<nsid>` is suffixed with
+ * `?aud=<CHIVE_SERVICE_DID>` so that the rpc permissions inside the
+ * permission set (which all carry `inheritAud: true`) inherit this audience.
+ * Without it, the issued tokens would carry rpc scopes with audience
+ * `undefined` and the PDS would reject service-auth JWT requests where
+ * `aud=did:web:<host>` is required.
+ */
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+
 const PERMISSION_SET_SCOPES = [
-  'include:pub.chive.basicReader',
-  'include:pub.chive.authorAccess',
-  'include:pub.chive.reviewerAccess',
-  'include:pub.chive.fullAccess',
+  `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,
+  `include:pub.chive.authorAccess?aud=${CHIVE_SERVICE_DID}`,
+  `include:pub.chive.reviewerAccess?aud=${CHIVE_SERVICE_DID}`,
+  `include:pub.chive.fullAccess?aud=${CHIVE_SERVICE_DID}`,
 ];
 
 const CHIVE_REPO_SCOPES = [

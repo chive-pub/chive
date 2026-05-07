@@ -19,11 +19,21 @@ export type AuthIntent = 'browse' | 'submit' | 'review' | 'full';
  * lexicons via `/.well-known/atproto-lexicons/` or equivalent, these can
  * replace the individual `repo:` scopes below.
  */
+/**
+ * Chive's service DID. Each `include:<nsid>` is suffixed with
+ * `?aud=<CHIVE_SERVICE_DID>` so the rpc permissions inside the permission
+ * set (all of which carry `inheritAud: true`) inherit this audience.
+ * Without it, issued tokens carry rpc scopes with audience `undefined`
+ * and the PDS rejects service-auth JWT requests where the JWT specifies
+ * `aud=did:web:<host>`.
+ */
+const CHIVE_SERVICE_DID = process.env.NEXT_PUBLIC_CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+
 export const PERMISSION_SETS = {
-  BASIC_READER: 'include:pub.chive.basicReader',
-  AUTHOR_ACCESS: 'include:pub.chive.authorAccess',
-  REVIEWER_ACCESS: 'include:pub.chive.reviewerAccess',
-  FULL_ACCESS: 'include:pub.chive.fullAccess',
+  BASIC_READER: `include:pub.chive.basicReader?aud=${CHIVE_SERVICE_DID}`,
+  AUTHOR_ACCESS: `include:pub.chive.authorAccess?aud=${CHIVE_SERVICE_DID}`,
+  REVIEWER_ACCESS: `include:pub.chive.reviewerAccess?aud=${CHIVE_SERVICE_DID}`,
+  FULL_ACCESS: `include:pub.chive.fullAccess?aud=${CHIVE_SERVICE_DID}`,
 } as const;
 
 /**
