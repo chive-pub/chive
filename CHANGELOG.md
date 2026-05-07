@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-05-06
+
+### Added
+
+- Hybrid OAuth scope layout: client metadata now emits `include:` scopes for cooperating apps that publish a covering permission-set lexicon (Margin's `at.margin.authFull`, Standard.site's `site.standard.authFull`, Semble's `network.cosmik.authFull`), and falls back to individual `repo:` scopes only for gaps Semble's authFull omits (`network.cosmik.connection`, `network.cosmik.follow`) and for Bluesky (which publishes no covering set). Collapses the consent screen from a wall of opaque collection names to one named entry per cooperating app, each with publisher-authored title and detail copy.
+
+### Changed
+
+- Renamed Chive's permission-set lexicons from `pub.chive.auth.{basicReader,authorAccess,reviewerAccess,fullAccess}` to `pub.chive.{basicReader,authorAccess,reviewerAccess,fullAccess}`. ATProto's `IncludeScope.isAllowedPermission` only honors `lxm`/`collection` references that share the permission set's group prefix (everything up to its last dot). The four-segment names had a group prefix of `pub.chive.auth.` and silently dropped every referenced collection; the three-segment names authorize the full `pub.chive.*` namespace, matching Bluesky's `chat.bsky.authFullChatClient` precedent. Permission set records now live in `lexicons/permission-sets/` (excluded from `@atproto/lex-cli` codegen, which can't generate types for `permission-set` definitions).
+- Conformed Chive's Margin dual-write to Margin's actual published lexicons: a single `at.margin.note` collection (W3C Web Annotation Data Model) with the `motivation` field distinguishing comment, highlight, and bookmark. Replaces the Chive-fictional `at.margin.annotation` and `at.margin.bookmark` collections that Margin's AppView never indexed. `MarginAnnotationsPlugin`, `MarginHighlightsPlugin`, and `MarginBookmarksPlugin` consolidated into a single `MarginNotesPlugin`. The `record-creator.ts` `MarginAnnotation*` types/functions renamed to `MarginNote*`; `createMarginBookmark` / `deleteMarginBookmark` collapse to thin wrappers that forward to the note machinery with `motivation: 'bookmarking'`.
+- Lead permission-set detail strings with eprints (the primary Chive use case) instead of knowledge-graph governance.
+- Owner-private collection reads in the dashboard hooks (`useMyCollections`, `useCollection`, `useCollectionsContaining`, `useSubcollections`, `useParentCollection`, `useCollectionFeed`) now use the authenticated client. The owner-side visibility filter on `pub.chive.collection.listByOwner` and friends gates `unlisted` collections to the authenticated owner; the unauthenticated client masked the viewer as anonymous and hid their own collections after reload.
+- `pub.chive.collaboration.listInvites` now requires authentication and rejects queries that aren't scoped to the caller (`invitee = me`, `inviter = me`, or `subjectUri` authored by me). Closes an enumeration gap.
+
+### Fixed
+
+- "Created a new community/collection but it disappears on reload" (#79) for users who picked the `unlisted` visibility option in the wizard.
+
 ## [0.6.1] - 2026-04-28
 
 ### Added
