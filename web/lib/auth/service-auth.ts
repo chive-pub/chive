@@ -115,11 +115,15 @@ export async function getServiceAuthToken(agent: Agent, lxm?: string): Promise<s
     return cached.token;
   }
 
-  // Request new service auth token from PDS
-  const response = await agent.com.atproto.server.getServiceAuth({
-    aud: CHIVE_SERVICE_DID,
-    lxm,
-  });
+  // Request new service auth token from PDS.
+  // The first call against a given PDS can fail with `use_dpop_nonce` when the
+  // OAuth client's stored nonce is empty or stale for that origin. The
+  // @atproto/oauth-client-browser fetch handler is supposed to auto-retry once,
+  // but in practice the retry can leak through as a thrown error -- the
+  // response *does* return a fresh `DPoP-Nonce`, so a second call succeeds.
+  // Wrapping in a single explicit retry guarantees the user-visible request
+  // succeeds when the only obstacle is the nonce-priming step.
+  const response = await callGetServiceAuthWithNonceRetry(agent, lxm);
 
   const { token } = response.data as ServiceAuthResponse;
 
@@ -131,6 +135,40 @@ export async function getServiceAuthToken(agent: Agent, lxm?: string): Promise<s
   tokenCache.set(cacheKey, { token, expiresAt, lxm });
 
   return token;
+}
+
+async function callGetServiceAuthWithNonceRetry(
+  agent: Agent,
+  lxm?: string
+): Promise<{ data: ServiceAuthResponse }> {
+  try {
+    return await agent.com.atproto.server.getServiceAuth({
+      aud: CHIVE_SERVICE_DID,
+      lxm,
+    });
+  } catch (error) {
+    if (isNonceMismatchError(error)) {
+      serviceAuthLogger.debug('getServiceAuth hit DPoP nonce mismatch; retrying once', { lxm });
+      return await agent.com.atproto.server.getServiceAuth({
+        aud: CHIVE_SERVICE_DID,
+        lxm,
+      });
+    }
+    throw error;
+  }
+}
+
+function isNonceMismatchError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const message = (error as { message?: string }).message ?? '';
+  const data = (error as { data?: unknown }).data;
+  const dataError =
+    data && typeof data === 'object' ? (data as { error?: string }).error : undefined;
+  return (
+    dataError === 'use_dpop_nonce' ||
+    /use_dpop_nonce/i.test(message) ||
+    /dpop.*nonce.*mismatch/i.test(message)
+  );
 }
 
 /**
