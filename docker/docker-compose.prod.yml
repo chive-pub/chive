@@ -356,6 +356,7 @@ services:
       - OTEL_SERVICE_NAME=chive-indexer
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://alloy:4318
       - GROBID_URL=http://grobid:8070
+      - INDEXER_HEALTH_PORT=3001
     depends_on:
       postgres:
         condition: service_healthy
@@ -377,10 +378,16 @@ services:
         reservations:
           cpus: '0.25'
           memory: 512M
-    # Disable inherited health check - indexer doesn't run HTTP server
+    # Liveness of the firehose consumer is exposed over HTTP by the indexer's
+    # health server. /health returns 503 once a relay has been disconnected
+    # past the watchdog's tolerance, so a wedged firehose is detected here
+    # instead of being silently reported "healthy".
     healthcheck:
-      test: ["CMD-SHELL", "true"]
-      interval: 60s
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ---------------------------------------------------------------------------
   # PostgreSQL 16 - Primary metadata store

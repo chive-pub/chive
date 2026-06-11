@@ -115,6 +115,49 @@ export interface FirehoseConsumerOptions {
    * If not provided, logging is silently skipped.
    */
   readonly logger?: ILogger;
+
+  /**
+   * Interval, in milliseconds, between WebSocket keepalive pings.
+   *
+   * @remarks
+   * Jetstream does not push periodic keepalives on a filtered stream, so a
+   * half-open TCP connection can otherwise sit "open" forever delivering no
+   * events and emitting no `close`. Each interval sends a `ping`; if no `pong`
+   * or message arrived since the previous interval the socket is terminated so
+   * the reconnection loop can recover it. Set to `0` to disable.
+   *
+   * @defaultValue 30000 (30 seconds)
+   */
+  readonly heartbeatIntervalMs?: number;
+}
+
+/**
+ * Point-in-time liveness snapshot for a firehose consumer.
+ *
+ * @public
+ */
+export interface FirehoseHealth {
+  /**
+   * Current connection state.
+   */
+  readonly state: ConnectionState;
+
+  /**
+   * Whether the WebSocket is currently open and subscribed.
+   */
+  readonly connected: boolean;
+
+  /**
+   * Epoch milliseconds of the most recent successful connection, or `null`
+   * if the consumer has never connected.
+   */
+  readonly lastConnectedAt: number | null;
+
+  /**
+   * Epoch milliseconds of the most recent inbound message, or `null` if no
+   * message has been received yet.
+   */
+  readonly lastEventAt: number | null;
 }
 
 /**
@@ -210,6 +253,47 @@ export class FirehoseConsumer implements IEventStreamConsumer {
   private shouldReconnect = true;
 
   /**
+   * Whether a reconnection loop is currently running. Guards against the
+   * overlapping `error` + `close` events of a single failed connection
+   * spawning two competing reconnect loops.
+   */
+  private reconnecting = false;
+
+  /**
+   * Whether the active-connection gauge has been incremented for the current
+   * socket. Keeps the gauge balanced when a connection attempt fails before
+   * ever opening (no matching `onOpen`).
+   */
+  private connectionCounted = false;
+
+  /**
+   * Epoch milliseconds of the most recent successful connection.
+   */
+  private lastConnectedAt: number | null = null;
+
+  /**
+   * Epoch milliseconds of the most recent inbound message.
+   */
+  private lastEventAt: number | null = null;
+
+  /**
+   * Liveness flag toggled by the heartbeat: set true on any message or pong,
+   * cleared before each ping. A cleared flag at ping time means the peer went
+   * silent and the socket is terminated to force reconnection.
+   */
+  private isAlive = true;
+
+  /**
+   * Active keepalive interval handle, or `null` when not connected.
+   */
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+
+  /**
+   * Keepalive ping interval in milliseconds (`0` disables the heartbeat).
+   */
+  private readonly heartbeatIntervalMs: number;
+
+  /**
    * Creates a firehose consumer.
    *
    * @param options - Configuration options
@@ -225,6 +309,7 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         enableJitter: true,
       });
     this.logger = options.logger ?? null;
+    this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 30_000;
   }
 
   /**
@@ -284,8 +369,20 @@ export class FirehoseConsumer implements IEventStreamConsumer {
       done: false,
     };
 
-    // Connect
-    await this.connect();
+    // Establish the initial connection. On failure we do NOT throw out of the
+    // generator: that would tear down the whole consumer if the relay happens
+    // to be down at startup. Instead we hand off to the reconnection loop,
+    // which retries with backoff while the event loop below waits for the
+    // first buffered event.
+    try {
+      await this.connect();
+    } catch (error) {
+      this.logger?.error(
+        'Initial firehose connection failed; entering reconnection loop',
+        error instanceof Error ? error : new Error(String(error))
+      );
+      void this.onClose();
+    }
 
     // Yield events as they arrive
     while (!this.eventBuffer.done) {
@@ -370,6 +467,8 @@ export class FirehoseConsumer implements IEventStreamConsumer {
     this.shouldReconnect = false;
     this.state = ConnectionState.DISCONNECTING;
 
+    this.stopHeartbeat();
+
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -402,6 +501,33 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    */
   getState(): ConnectionState {
     return this.state;
+  }
+
+  /**
+   * Returns a liveness snapshot for health checks.
+   *
+   * @returns Current connection state plus last-connected / last-event timestamps
+   *
+   * @remarks
+   * Used by the indexer's health endpoint and watchdog to decide whether the
+   * firehose is alive. `connected` reflects the live WebSocket state, which the
+   * keepalive heartbeat keeps honest even on half-open connections.
+   *
+   * @example
+   * ```typescript
+   * const { connected, lastConnectedAt } = consumer.getHealth();
+   * if (!connected) {
+   *   console.warn('Firehose not connected');
+   * }
+   * ```
+   */
+  getHealth(): FirehoseHealth {
+    return {
+      state: this.state,
+      connected: this.state === ConnectionState.CONNECTED,
+      lastConnectedAt: this.lastConnectedAt,
+      lastEventAt: this.lastEventAt,
+    };
   }
 
   /**
@@ -483,9 +609,15 @@ export class FirehoseConsumer implements IEventStreamConsumer {
   private onOpen(): void {
     this.state = ConnectionState.CONNECTED;
     this.reconnectionManager.reset();
+    this.lastConnectedAt = Date.now();
+    this.isAlive = true;
 
-    // Track active connection
-    firehoseMetrics.activeConnections.inc();
+    // Track active connection (balanced via connectionCounted so a failed
+    // attempt that never opens can't drive the gauge negative).
+    if (!this.connectionCounted) {
+      firehoseMetrics.activeConnections.inc();
+      this.connectionCounted = true;
+    }
 
     if (!this.ws) {
       return;
@@ -494,6 +626,11 @@ export class FirehoseConsumer implements IEventStreamConsumer {
     // Listen for messages
     this.ws.on('message', (data: Buffer) => {
       this.onMessage(data);
+    });
+
+    // Keepalive: a pong (or any message) proves the connection is alive.
+    this.ws.on('pong', () => {
+      this.isAlive = true;
     });
 
     // Listen for errors
@@ -505,6 +642,8 @@ export class FirehoseConsumer implements IEventStreamConsumer {
     this.ws.on('close', () => {
       void this.onClose();
     });
+
+    this.startHeartbeat();
   }
 
   /**
@@ -533,6 +672,11 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    * @internal
    */
   private onMessage(data: Buffer): void {
+    // Any inbound traffic proves the connection is alive and keeps the
+    // heartbeat from terminating it.
+    this.isAlive = true;
+    this.lastEventAt = Date.now();
+
     try {
       // Parse Jetstream JSON event
       const jetstreamEvent = JSON.parse(data.toString('utf-8')) as JetstreamEvent;
@@ -603,8 +747,12 @@ export class FirehoseConsumer implements IEventStreamConsumer {
    * @internal
    */
   private async onClose(): Promise<void> {
-    // Decrement active connections
-    firehoseMetrics.activeConnections.dec();
+    // Stop the keepalive for the dead socket and balance the gauge.
+    this.stopHeartbeat();
+    if (this.connectionCounted) {
+      firehoseMetrics.activeConnections.dec();
+      this.connectionCounted = false;
+    }
 
     if (this.state === ConnectionState.DISCONNECTING) {
       // Graceful shutdown: don't reconnect
@@ -617,35 +765,103 @@ export class FirehoseConsumer implements IEventStreamConsumer {
       return;
     }
 
-    // Attempt reconnection
-    if (this.reconnectionManager.shouldRetry()) {
-      const delay = this.reconnectionManager.calculateDelay();
-      const attempt = this.reconnectionManager.getAttempts() + 1;
-      this.logger?.warn('Scheduling firehose reconnection', {
-        delayMs: delay,
-        attempt,
-      });
+    // Guard against overlapping reconnect loops: a single failed connection can
+    // emit both 'error' and 'close'.
+    if (this.reconnecting) {
+      return;
+    }
+    this.reconnecting = true;
 
-      await this.sleep(delay);
-      this.reconnectionManager.recordAttempt();
+    try {
+      // Retry indefinitely with capped exponential backoff. A firehose consumer
+      // must survive arbitrarily long relay outages: a transient relay 503 must
+      // never permanently wedge ingestion (the previous single-shot logic gave
+      // up after one failed attempt because the failed reconnect never re-armed
+      // the 'close' handler). A successful connect() runs onOpen(), which resets
+      // the backoff and re-arms the handlers, so the loop exits via the return
+      // below on the first successful connect.
+      while (this.shouldReconnect) {
+        const delay = this.reconnectionManager.calculateDelay();
+        const attempt = this.reconnectionManager.getAttempts() + 1;
+        this.logger?.warn('Scheduling firehose reconnection', {
+          delayMs: delay,
+          attempt,
+        });
 
-      try {
-        await this.connect();
-      } catch (error) {
-        this.logger?.error(
-          'Reconnection failed',
-          error instanceof Error ? error : new Error(String(error)),
-          { attempt }
-        );
+        await this.sleep(delay);
 
-        if (!this.reconnectionManager.shouldRetry()) {
-          // Max retries exceeded: terminate stream
-          this.terminateStream(new Error('Max reconnection attempts exceeded'));
+        if (!this.shouldReconnect) {
+          break;
+        }
+
+        this.reconnectionManager.recordAttempt();
+
+        try {
+          await this.connect();
+          this.logger?.info('Firehose reconnected', { attempt });
+          return;
+        } catch (error) {
+          this.logger?.error(
+            'Reconnection failed',
+            error instanceof Error ? error : new Error(String(error)),
+            { attempt }
+          );
+          // Loop continues; calculateDelay() grows the backoff up to maxDelay.
         }
       }
-    } else {
-      // Max retries exceeded: terminate stream
-      this.terminateStream(new Error('Max reconnection attempts exceeded'));
+    } finally {
+      this.reconnecting = false;
+    }
+  }
+
+  /**
+   * Starts the WebSocket keepalive heartbeat.
+   *
+   * @internal
+   */
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+
+    if (this.heartbeatIntervalMs <= 0) {
+      return;
+    }
+
+    this.heartbeatTimer = setInterval(() => {
+      const ws = this.ws;
+      if (!ws) {
+        return;
+      }
+
+      if (!this.isAlive) {
+        // No pong or message since the previous tick: the connection is
+        // half-open. Force-terminate it so the 'close' handler reconnects.
+        this.logger?.warn('Firehose heartbeat timed out; terminating stale connection');
+        ws.terminate();
+        return;
+      }
+
+      this.isAlive = false;
+      try {
+        ws.ping();
+      } catch {
+        // ping() can throw on an already-closing socket; let the close
+        // handler drive reconnection.
+      }
+    }, this.heartbeatIntervalMs);
+
+    // The heartbeat must not by itself keep the process alive.
+    this.heartbeatTimer.unref?.();
+  }
+
+  /**
+   * Stops the WebSocket keepalive heartbeat.
+   *
+   * @internal
+   */
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
     }
   }
 
@@ -706,21 +922,6 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         }
       });
     });
-  }
-
-  /**
-   * Terminates event stream with error.
-   *
-   * @internal
-   */
-  private terminateStream(error: Error): void {
-    if (!this.eventBuffer) {
-      return;
-    }
-
-    this.eventBuffer.done = true;
-    this.eventBuffer.error = error;
-    this.resolveAllPending();
   }
 
   /**
