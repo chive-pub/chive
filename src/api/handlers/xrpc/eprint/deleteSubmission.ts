@@ -40,9 +40,11 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
  * For paper-centric eprints (paperDid is set), the user must be authenticated
  * as the paper account to delete.
  *
- * After successful authorization, the frontend should:
- * 1. Call com.atproto.repo.deleteRecord on the appropriate PDS
- * 2. The firehose will propagate the deletion to Chive's index
+ * After successful authorization, this handler removes the eprint from Chive's
+ * own indexes immediately (deleting from the AppView's index is compliant; we
+ * never write to the user's PDS). The frontend then:
+ * 1. Calls com.atproto.repo.deleteRecord on the appropriate PDS
+ * 2. The firehose delete reconciles the index (idempotent with the above)
  *
  * @example
  * ```http
@@ -118,10 +120,21 @@ export const deleteSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
       isPaperCentric: !!eprintData.paperDid,
     });
 
-    // Authorization successful. The frontend should now:
-    // 1. Call com.atproto.repo.deleteRecord on recordOwner's PDS
-    // 2. The deletion will propagate through the firehose
-    // 3. Chive will remove the record from its index via indexEprintDelete
+    // Remove the eprint from Chive's own indexes immediately rather than
+    // waiting for the firehose delete event. Deleting from the AppView's own
+    // index is ATProto-compliant (we never touch the user's PDS), and it makes
+    // deletion reliable even when firehose ingestion is lagging or down: the
+    // firehose delete remains the source of truth and is idempotent with this.
+    const deleteResult = await eprint.indexEprintDelete(uri as AtUri);
+    if (!deleteResult.ok) {
+      // Surface the failure so the frontend does not report success while the
+      // eprint is still indexed.
+      logger.error('Failed to remove eprint from index', deleteResult.error, { uri });
+      throw deleteResult.error;
+    }
+
+    // The frontend still deletes the record from the owner's PDS via
+    // com.atproto.repo.deleteRecord; the firehose delete reconciles the index.
 
     return {
       encoding: 'application/json',
