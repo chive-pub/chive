@@ -2143,6 +2143,68 @@ export async function createStandardDocument(
 }
 
 /**
+ * Find and delete every `site.standard.document` record in a repo that points
+ * at a given eprint.
+ *
+ * @remarks
+ * Standard documents are dual-written alongside an eprint at submission time
+ * (see {@link createStandardDocument}) and are linked back only by their
+ * `content.uri` field. When the eprint is deleted these must be removed too,
+ * otherwise they are orphaned in the PDS and continue to surface the deleted
+ * eprint to standard.site readers.
+ *
+ * Only the agent's own repo is scanned. For a traditional eprint the document
+ * lives in the submitter's PDS; for a paper-centric eprint it lives in the
+ * paper account's PDS, so pass the matching agent.
+ *
+ * @param agent - Authenticated ATProto Agent for the repo holding the documents
+ * @param eprintUri - AT-URI of the eprint whose documents should be removed
+ * @returns AT-URIs of the standard document records that were deleted
+ *
+ * @throws Error if the agent is not authenticated
+ *
+ * @example
+ * ```typescript
+ * const removed = await deleteStandardDocumentsForEprint(agent, eprintUri);
+ * console.log(`Removed ${removed.length} standard document(s)`);
+ * ```
+ */
+export async function deleteStandardDocumentsForEprint(
+  agent: Agent,
+  eprintUri: string
+): Promise<string[]> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const deleted: string[] = [];
+  let cursor: string | undefined;
+
+  // Page through the collection: a prolific author can have many documents.
+  do {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'site.standard.document',
+      limit: 100,
+      cursor,
+    });
+
+    for (const record of response.data.records) {
+      const value = record.value as StandardDocumentRecord;
+      if (value.content?.uri === eprintUri) {
+        await deleteRecord(agent, record.uri);
+        deleted.push(record.uri);
+      }
+    }
+
+    cursor = response.data.cursor;
+  } while (cursor);
+
+  return deleted;
+}
+
+/**
  * Input for updating a standard.site document.
  */
 export interface UpdateStandardDocumentInput {

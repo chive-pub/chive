@@ -25,6 +25,7 @@ import {
   parseAtUri,
   createStandardDocument,
   updateStandardDocument,
+  deleteStandardDocumentsForEprint,
 } from './record-creator';
 
 // =============================================================================
@@ -370,6 +371,98 @@ describe('deleteRecord', () => {
 
     await expect(deleteRecord(agent, uri)).rejects.toThrow(
       'Cannot delete records belonging to other users'
+    );
+  });
+});
+
+describe('deleteStandardDocumentsForEprint', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/paper123`;
+
+  /**
+   * Build a mock agent whose listRecords returns the supplied pages of
+   * site.standard.document records.
+   */
+  function createListingAgent(pages: Array<{ records: unknown[]; cursor?: string }>) {
+    const agent = createMockAgent({ did });
+    const listRecords = vi.fn();
+    pages.forEach((page) => {
+      listRecords.mockResolvedValueOnce({ data: { records: page.records, cursor: page.cursor } });
+    });
+    (agent.com.atproto.repo as unknown as { listRecords: typeof listRecords }).listRecords =
+      listRecords;
+    return { agent, listRecords };
+  }
+
+  it('deletes only the documents pointing at the eprint', async () => {
+    const { agent } = createListingAgent([
+      {
+        records: [
+          {
+            uri: `at://${did}/site.standard.document/match1`,
+            value: { content: { uri: eprintUri } },
+          },
+          {
+            uri: `at://${did}/site.standard.document/other`,
+            value: { content: { uri: `at://${did}/pub.chive.eprint.submission/different` } },
+          },
+        ],
+      },
+    ]);
+
+    const deleted = await deleteStandardDocumentsForEprint(agent, eprintUri);
+
+    expect(deleted).toEqual([`at://${did}/site.standard.document/match1`]);
+    expect(agent.com.atproto.repo.deleteRecord).toHaveBeenCalledTimes(1);
+    expect(agent.com.atproto.repo.deleteRecord).toHaveBeenCalledWith({
+      repo: did,
+      collection: 'site.standard.document',
+      rkey: 'match1',
+    });
+  });
+
+  it('pages through the collection until the cursor is exhausted', async () => {
+    const { agent, listRecords } = createListingAgent([
+      {
+        records: [
+          {
+            uri: `at://${did}/site.standard.document/match1`,
+            value: { content: { uri: eprintUri } },
+          },
+        ],
+        cursor: 'page2',
+      },
+      {
+        records: [
+          {
+            uri: `at://${did}/site.standard.document/match2`,
+            value: { content: { uri: eprintUri } },
+          },
+        ],
+      },
+    ]);
+
+    const deleted = await deleteStandardDocumentsForEprint(agent, eprintUri);
+
+    expect(deleted).toHaveLength(2);
+    expect(listRecords).toHaveBeenCalledTimes(2);
+    expect(listRecords.mock.calls[1][0]).toMatchObject({ cursor: 'page2' });
+  });
+
+  it('returns an empty array when no documents match', async () => {
+    const { agent } = createListingAgent([{ records: [] }]);
+
+    const deleted = await deleteStandardDocumentsForEprint(agent, eprintUri);
+
+    expect(deleted).toEqual([]);
+    expect(agent.com.atproto.repo.deleteRecord).not.toHaveBeenCalled();
+  });
+
+  it('throws when the agent is not authenticated', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(deleteStandardDocumentsForEprint(agent, eprintUri)).rejects.toThrow(
+      'Agent is not authenticated'
     );
   });
 });

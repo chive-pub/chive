@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-05-12
+
+### Fixed
+
+- OAuth permission sets now grant the rpc lexicons backing ORCID verification, admin endpoints, claiming flows, and profile-config writes. Production had been silently rejecting every `getServiceAuthToken` call since 0.6.0 dropped `transition:generic` without enumerating the rpc grants the corresponding lxm need. Closes #85.
+- Resolved the audience-format contradiction between `@atproto/oauth-scopes` (whose `isAtprotoAudience` validator requires `<did>#fragment`) and `com.atproto.server.getServiceAuth` (whose lexicon rejects an `aud` containing a fragment) by setting `aud: "*"` on the rpc permissions inside the four `pub.chive.{basicReader,authorAccess,reviewerAccess,fullAccess}` permission-set lexicons. Frontend now requests `getServiceAuth` with the plain DID and matches the wildcard rpc grant at the PDS.
+- Retry `com.atproto.server.getServiceAuth` once when the user's PDS responds with `use_dpop_nonce`. The OAuth client's auto-retry occasionally leaks the nonce-mismatch error through to caller code on the first request against a previously-unseen origin; the explicit retry consumes the freshly-issued `DPoP-Nonce` header on the second attempt.
+
+### Changed
+
+- Bumped `@atproto/oauth-client-browser` from 0.3.37 to 0.3.42 to pick up DPoP-handling fixes from `@atproto/oauth-client` 0.5.12–0.6.1.
+- Production now emits `include:pub.chive.*` permission-set references instead of individual `repo:pub.chive.*` scopes (`NEXT_PUBLIC_USE_PERMISSION_SETS=true`). The consent screen shows one named entry per Chive permission set rather than one row per collection.
+
 ## [0.6.2] - 2026-05-06
 
 ### Added

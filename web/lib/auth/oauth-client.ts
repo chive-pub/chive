@@ -16,7 +16,7 @@ import {
 } from '@atproto/oauth-client-browser';
 import { Agent } from '@atproto/api';
 import type { DID, Handle, ChiveUser, LoginOptions } from './types';
-import { getScopesForIntent } from './scopes';
+import { getScopesForIntent, LEGACY_SCOPE } from './scopes';
 import { AuthenticationError, NetworkError } from '@/lib/errors';
 import { logger } from '@/lib/observability';
 
@@ -316,14 +316,20 @@ export async function startLogin(options: LoginOptions): Promise<string> {
   const client = await getOAuthClient();
 
   try {
-    // Request granular scopes based on the user's intent. We deliberately
-    // do NOT include `transition:generic` here: that scope short-circuits
-    // granular permissions and causes PDSes (e.g. bsky.social) to show
-    // "any public record" on the consent screen instead of our specific
-    // repo scopes. The atproto-base scope + individual repo:/blob: scopes
-    // fully express what the app needs.
+    // Request granular scopes based on the user's intent, PLUS
+    // `transition:generic`.
+    //
+    // The granular permission-set `rpc` grants (aud:"*") are correct, but the
+    // deployed bsky PDS does not yet authorize `com.atproto.server.getServiceAuth`
+    // against them: every getServiceAuth call 401s, so the frontend cannot mint
+    // the service-auth JWTs the AppView requires and all authenticated calls
+    // (getMyProfile, getDiscoverySettings, collection.*) fall back to anonymous
+    // → 401. `transition:generic` is the scope the PDS does honor for
+    // getServiceAuth, so it restores service-auth minting. We keep the granular
+    // scopes too: they drive the consent screen and the repo writes, and they
+    // take over automatically once the PDS honors rpc grants for service auth.
     const granularScope = getScopesForIntent(intent);
-    const scope = `${granularScope} blob:*/*`;
+    const scope = `${granularScope} ${LEGACY_SCOPE} blob:*/*`;
 
     const url = await client.authorize(handle, { scope });
 

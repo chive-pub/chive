@@ -98,10 +98,12 @@ const createMockEprint = (overrides?: Partial<EprintView>): EprintView => ({
 
 interface MockEprintService {
   getEprint: ReturnType<typeof vi.fn>;
+  indexEprintDelete: ReturnType<typeof vi.fn>;
 }
 
 const createMockEprintService = (): MockEprintService => ({
   getEprint: vi.fn(),
+  indexEprintDelete: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
 });
 
 describe('XRPC deleteSubmission Handler', () => {
@@ -153,6 +155,9 @@ describe('XRPC deleteSubmission Handler', () => {
       expect(result.encoding).toBe('application/json');
       expect(result.body.success).toBe(true);
       expect(mockEprintService.getEprint).toHaveBeenCalledWith(eprint.uri);
+      // Removes the eprint from Chive's own index immediately rather than
+      // relying solely on the firehose delete event.
+      expect(mockEprintService.indexEprintDelete).toHaveBeenCalledWith(eprint.uri);
       expect(mockLogger.info).toHaveBeenCalledWith(
         'Delete submission authorized',
         expect.objectContaining({
@@ -161,6 +166,22 @@ describe('XRPC deleteSubmission Handler', () => {
           isPaperCentric: false,
         })
       );
+    });
+
+    it('propagates an error when index deletion fails', async () => {
+      const eprint = createMockEprint();
+      mockEprintService.getEprint.mockResolvedValue(eprint);
+      const dbError = new Error('index delete failed');
+      mockEprintService.indexEprintDelete.mockResolvedValue({ ok: false, error: dbError });
+
+      await expect(
+        deleteSubmission.handler({
+          params: undefined as unknown as void,
+          input: { uri: eprint.uri },
+          auth: { did: SUBMITTER_DID, iss: 'https://bsky.social' } as AuthContext,
+          c: mockContext as never,
+        })
+      ).rejects.toThrow('index delete failed');
     });
 
     it('throws AuthorizationError when non-owner tries to delete', async () => {
