@@ -66,9 +66,34 @@ interface ReindexStats {
   success: number;
   failed: number;
   skipped: number;
+  /**
+   * Records that no longer exist in their PDS and were therefore removed from
+   * the index (orphans left behind when a firehose delete was missed). These
+   * are a successful outcome, not a failure.
+   */
+  pruned: number;
   startTime: number;
   endTime?: number;
   failedRecords: ReindexResult[];
+  prunedRecords: string[];
+}
+
+/**
+ * Whether an error from `getRecord` means the record is definitively gone from
+ * its PDS (deleted), as opposed to a transient failure (timeout, network, 5xx).
+ *
+ * @remarks
+ * Only a definitive "not found" justifies pruning the index row. Transient
+ * errors must keep retrying/failing so a flaky PDS never causes data loss.
+ */
+function isRecordGoneError(error: Error): boolean {
+  const message = error.message.toLowerCase();
+  const name = (error as { error?: string }).error?.toLowerCase() ?? '';
+  return (
+    name === 'recordnotfound' ||
+    message.includes('could not locate record') ||
+    message.includes('record not found')
+  );
 }
 
 // =============================================================================
@@ -269,6 +294,35 @@ async function reindexSingleRecord(
 // BATCH PROCESSING
 // =============================================================================
 
+/**
+ * Remove an orphaned eprint (deleted from its PDS but still indexed) from the
+ * Postgres and Elasticsearch indexes.
+ *
+ * @remarks
+ * Deleting from the AppView's own indexes is ATProto-compliant: the PDS remains
+ * the source of truth and the record is already gone there. This is the same
+ * cleanup the firehose delete performs; doing it here makes a full reindex
+ * self-healing for orphans a missed firehose event left behind.
+ */
+async function pruneEprintFromIndex(
+  uri: string,
+  esClient: ElasticsearchClient,
+  pgPool: Pool,
+  indexName: string
+): Promise<void> {
+  await pgPool.query(`DELETE FROM eprints_index WHERE uri = $1`, [uri]);
+
+  try {
+    await esClient.delete({ index: indexName, id: uri });
+  } catch (error) {
+    // A 404 here just means it was never indexed in ES; ignore it.
+    const status = (error as { meta?: { statusCode?: number } }).meta?.statusCode;
+    if (status !== 404) {
+      throw error;
+    }
+  }
+}
+
 async function processBatch(
   batch: Array<{ uri: string; pds_url: string; paper_did: string; submitted_by: string }>,
   esClient: ElasticsearchClient,
@@ -295,6 +349,7 @@ async function processBatch(
 
     let lastError: Error | undefined;
     let retries = 0;
+    let pruned = false;
 
     // Retry loop with exponential backoff
     for (let attempt = 0; attempt <= CONFIG.maxRetries; attempt++) {
@@ -316,6 +371,17 @@ async function processBatch(
         lastError = error instanceof Error ? error : new Error(String(error));
         retries = attempt;
 
+        // The record is gone from its PDS (deleted): retrying won't help. Prune
+        // the orphaned index row instead of failing the whole reindex.
+        if (isRecordGoneError(lastError)) {
+          await pruneEprintFromIndex(uri, esClient, pgPool, indexName);
+          stats.pruned++;
+          stats.prunedRecords.push(uri);
+          console.log(`  PRUNE: ${uri} - deleted from PDS, removed from index`);
+          pruned = true;
+          break;
+        }
+
         if (attempt < CONFIG.maxRetries) {
           const delay = getBackoffDelay(attempt);
           console.log(`  RETRY ${attempt + 1}/${CONFIG.maxRetries}: ${uri} - ${lastError.message}`);
@@ -324,8 +390,8 @@ async function processBatch(
       }
     }
 
-    // Record failure if all retries exhausted
-    if (lastError && retries >= CONFIG.maxRetries) {
+    // Record failure if all retries exhausted (pruned records are not failures)
+    if (!pruned && lastError && retries >= CONFIG.maxRetries) {
       stats.failed++;
       stats.failedRecords.push({
         uri,
@@ -480,8 +546,10 @@ async function main() {
     success: 0,
     failed: 0,
     skipped: 0,
+    pruned: 0,
     startTime: Date.now(),
     failedRecords: [],
+    prunedRecords: [],
   };
 
   console.log('Starting reindexing...');
@@ -527,7 +595,21 @@ async function main() {
   );
   console.log(`  Failed: ${stats.failed} (${((stats.failed / stats.total) * 100).toFixed(1)}%)`);
   console.log(`  Skipped: ${stats.skipped} (${((stats.skipped / stats.total) * 100).toFixed(1)}%)`);
+  console.log(
+    `  Pruned (deleted from PDS): ${stats.pruned} (${((stats.pruned / stats.total) * 100).toFixed(1)}%)`
+  );
   console.log(`Field labels cached: ${nodeLookup.cacheSize}`);
+
+  if (stats.prunedRecords.length > 0) {
+    console.log();
+    console.log('Pruned orphaned records (no longer in PDS):');
+    for (const uri of stats.prunedRecords.slice(0, 20)) {
+      console.log(`  ${uri}`);
+    }
+    if (stats.prunedRecords.length > 20) {
+      console.log(`  ... and ${stats.prunedRecords.length - 20} more`);
+    }
+  }
 
   if (stats.failedRecords.length > 0) {
     console.log();
