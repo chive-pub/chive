@@ -43,7 +43,7 @@ export interface OAuthClientMetadataConfig {
    * @remarks
    * Must include 'atproto' for PDS access.
    *
-   * @defaultValue ['atproto', 'transition:generic', 'include:pub.chive.auth.fullAccess']
+   * @defaultValue ['atproto', 'include:pub.chive.fullAccess', ...repo/blob scopes]
    */
   readonly scopes?: readonly string[];
 }
@@ -150,8 +150,7 @@ export function createATProtoOAuthClient(options: ATProtoOAuthClientOptions): No
 
   const scopes = config.clientMetadata.scopes ?? [
     'atproto',
-    'transition:generic',
-    'include:pub.chive.auth.fullAccess',
+    'include:pub.chive.fullAccess',
     'repo:app.bsky.feed.post',
     'repo:app.bsky.actor.profile',
     'repo:site.standard.document',
