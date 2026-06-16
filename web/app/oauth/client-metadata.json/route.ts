@@ -97,31 +97,9 @@ const EXTERNAL_SCOPES = [
  */
 const RPC_WILDCARD_SCOPE = `rpc:*?aud=${CHIVE_SERVICE_DID}`;
 
-/**
- * Legacy catch-all scope that authorizes `com.atproto.server.getServiceAuth`.
- *
- * @remarks
- * The granular permission-set `rpc` grants (aud:"*") express service-auth
- * minting, but the deployed bsky PDS does not yet authorize getServiceAuth
- * against them, so every getServiceAuth call 401s and the AppView falls back
- * to anonymous (getMyProfile, discovery settings, collections all 401).
- *
- * `transition:generic` is the scope the PDS does honor for getServiceAuth, so
- * the client must be allowed to request it. The granular scopes remain and
- * supersede this automatically once the PDS honors rpc grants for service auth.
- */
-const LEGACY_SERVICE_AUTH_SCOPE = 'transition:generic';
-
 function buildScope(): string {
   const chive = USE_PERMISSION_SETS ? PERMISSION_SET_SCOPES : CHIVE_REPO_SCOPES;
-  return [
-    'atproto',
-    ...chive,
-    RPC_WILDCARD_SCOPE,
-    LEGACY_SERVICE_AUTH_SCOPE,
-    ...EXTERNAL_SCOPES,
-    'blob:*/*',
-  ].join(' ');
+  return ['atproto', ...chive, RPC_WILDCARD_SCOPE, ...EXTERNAL_SCOPES, 'blob:*/*'].join(' ');
 }
 
 /**
