@@ -34,7 +34,11 @@ import neo4j, { Driver } from 'neo4j-driver';
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { mapEprintToDocument } from '../src/storage/elasticsearch/document-mapper.js';
 import { setupElasticsearch } from '../src/storage/elasticsearch/setup.js';
-import { resolveFieldLabels, type NodeLookup } from '../src/utils/field-label.js';
+import {
+  needsLabelResolution,
+  resolveFieldLabels,
+  type NodeLookup,
+} from '../src/utils/field-label.js';
 import type { AtUri, CID } from '../src/types/atproto.js';
 
 // =============================================================================
@@ -51,7 +55,7 @@ const CONFIG = {
    * aborting. Deploys recreate Neo4j and repopulate it asynchronously, so the
    * graph is routinely empty for the first few seconds after a restart.
    */
-  graphWaitMs: parseInt(process.env.REINDEX_GRAPH_WAIT_MS ?? '180000', 10),
+  graphWaitMs: parseInt(process.env.REINDEX_GRAPH_WAIT_MS ?? '60000', 10),
   indexAlias: 'eprints',
   indexName: 'eprints-v1', // Fallback if alias doesn't exist
 };
@@ -310,8 +314,11 @@ async function reindexSingleRecord(
     response.data.cid as CID
   );
 
-  // Resolve field labels from Neo4j knowledge graph
-  const fieldsWithLabels = await resolveFieldLabels(eprint.fields, nodeLookup);
+  // Resolve field labels from Neo4j knowledge graph. If the graph cannot resolve
+  // a label, fall back to whatever PostgreSQL already holds for that field id:
+  // an unresolvable lookup must never downgrade a good label to a raw UUID.
+  const resolved = await resolveFieldLabels(eprint.fields, nodeLookup);
+  const fieldsWithLabels = await preserveResolvedLabels(pgPool, uri, resolved);
 
   // Update PostgreSQL with fields (including resolved labels)
   await pgPool.query(
@@ -334,6 +341,56 @@ async function reindexSingleRecord(
     id: uri,
     document: esDocument,
   });
+}
+
+/**
+ * Keeps labels that PostgreSQL already resolved when the graph cannot resolve them.
+ *
+ * @param pool - PostgreSQL pool
+ * @param uri - AT-URI of the eprint being reindexed
+ * @param fields - Fields as returned by the knowledge graph lookup
+ * @returns Fields with any unresolved label replaced by the stored one, when present
+ *
+ * @remarks
+ * `resolveFieldLabels` returns the original value — typically a raw UUID — when
+ * Neo4j has no matching node, and swallows the error that caused it. Writing
+ * that straight back replaces a correct label with a UUID, which is what put
+ * UUIDs on production eprint cards after a deploy wiped the graph. Preserving
+ * the stored label makes a failed or racing lookup a no-op instead of damage.
+ */
+async function preserveResolvedLabels(
+  pool: Pool,
+  uri: string,
+  fields: { uri: string; label: string; id: string }[]
+): Promise<{ uri: string; label: string; id: string }[]> {
+  if (fields.length === 0) return fields;
+  if (!fields.some((f) => needsLabelResolution(f.label))) return fields;
+
+  try {
+    const existing = await pool.query<{ fields: string | null }>(
+      'SELECT fields::text AS fields FROM eprints_index WHERE uri = $1',
+      [uri]
+    );
+
+    const raw = existing.rows[0]?.fields;
+    if (!raw) return fields;
+
+    const stored = JSON.parse(raw) as { id?: string; label?: string }[];
+    const byId = new Map(
+      stored
+        .filter((f) => f.id && f.label && !needsLabelResolution(f.label))
+        .map((f) => [f.id as string, f.label as string])
+    );
+    if (byId.size === 0) return fields;
+
+    return fields.map((f) =>
+      needsLabelResolution(f.label) && byId.has(f.id)
+        ? { ...f, label: byId.get(f.id) as string }
+        : f
+    );
+  } catch {
+    return fields;
+  }
 }
 
 // =============================================================================
@@ -530,15 +587,17 @@ async function main() {
   }
   console.log('  ✓ Neo4j is healthy');
 
+  // Deploys recreate Neo4j and repopulate it asynchronously, so give the graph a
+  // moment before resolving anything against it.
   const graphNodeCount = await waitForPopulatedGraph(neo4jDriver, CONFIG.graphWaitMs);
   if (graphNodeCount === 0) {
-    throw new Error(
-      `Neo4j knowledge graph is still empty after ${Math.round(CONFIG.graphWaitMs / 1000)}s - ` +
-        'aborting rather than reindexing every field label as a raw UUID. ' +
-        'Check that the governance sync ran and populated pub.chive.graph.node records.'
+    console.warn(
+      `  ! Knowledge graph is empty after ${Math.round(CONFIG.graphWaitMs / 1000)}s. Field labels ` +
+        'cannot be resolved; already-resolved labels will be preserved rather than overwritten.'
     );
+  } else {
+    console.log(`  ✓ Knowledge graph is populated (${graphNodeCount} nodes)`);
   }
-  console.log(`  ✓ Knowledge graph is populated (${graphNodeCount} nodes)`);
 
   // ==========================================================================
   // RECREATE ELASTICSEARCH INDEX
@@ -668,16 +727,21 @@ async function main() {
   );
   const unresolvedCount = parseInt(unresolved.rows[0]?.count ?? '0', 10);
   let unresolvedLabels = false;
-  if (unresolvedCount > 0) {
+  if (unresolvedCount > 0 && graphNodeCount > 0) {
     console.error();
     console.error(
-      `ERROR: ${unresolvedCount} eprint(s) still carry raw UUIDs as field labels after reindexing.`
+      `ERROR: ${unresolvedCount} eprint(s) still carry raw UUIDs as field labels after reindexing,`
     );
     console.error(
-      'The knowledge graph lookup returned nothing for those field ids. Check that the'
+      `even though the knowledge graph holds ${graphNodeCount} nodes. Those field ids are missing`
     );
-    console.error('governance sync populated Neo4j before this script ran.');
+    console.error('from the graph, or the lookup failed silently.');
     unresolvedLabels = true;
+  } else if (unresolvedCount > 0) {
+    console.warn(
+      `  ! ${unresolvedCount} eprint(s) carry unresolved field labels because the knowledge graph ` +
+        'is empty. Populate it via the governance sync, then reindex.'
+    );
   } else {
     console.log('Field labels: all resolved');
   }
