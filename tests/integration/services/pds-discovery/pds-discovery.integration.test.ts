@@ -272,13 +272,46 @@ describe('PDS Discovery Integration', () => {
         `);
       });
 
-      it('only returns non-relay-connected PDSes', async () => {
+      it('includes relay-connected PDSes, ranked after direct ones', async () => {
         const result = await registry.getPDSesForScan(10);
 
         const urls = result.map((r) => r.pdsUrl);
         expect(urls).toContain('https://test-scannable-1.example.com');
         expect(urls).toContain('https://test-scannable-2.example.com');
-        expect(urls).not.toContain('https://test-relay-skip.bsky.network');
+
+        // Relay-connected PDSes must be reachable by a scan. Their records
+        // normally arrive over the firehose, but a relay outage longer than the
+        // relay's backfill window skips a range of events permanently, and this
+        // scan is the only mechanism that can find what was missed. They are
+        // ranked last rather than excluded.
+        expect(urls).toContain('https://test-relay-skip.bsky.network');
+        expect(urls.indexOf('https://test-relay-skip.bsky.network')).toBeGreaterThan(
+          urls.indexOf('https://test-scannable-1.example.com')
+        );
+      });
+
+      it('reclaims a PDS wedged in scanning by a crashed scan', async () => {
+        // Nothing clears 'scanning', so before this a process that died
+        // mid-scan excluded that PDS from every subsequent cycle.
+        await pool.query(`
+          INSERT INTO pds_registry (pds_url, discovery_source, status, is_relay_connected, consecutive_failures, updated_at)
+          VALUES ('https://test-wedged.example.com', 'user_registration', 'scanning', FALSE, 0, NOW() - INTERVAL '2 hours')
+        `);
+
+        const result = await registry.getPDSesForScan(10);
+
+        expect(result.map((r) => r.pdsUrl)).toContain('https://test-wedged.example.com');
+      });
+
+      it('leaves a scan that started recently alone', async () => {
+        await pool.query(`
+          INSERT INTO pds_registry (pds_url, discovery_source, status, is_relay_connected, consecutive_failures, updated_at)
+          VALUES ('https://test-in-flight.example.com', 'user_registration', 'scanning', FALSE, 0, NOW())
+        `);
+
+        const result = await registry.getPDSesForScan(10);
+
+        expect(result.map((r) => r.pdsUrl)).not.toContain('https://test-in-flight.example.com');
       });
 
       it('excludes PDSes with too many failures', async () => {
