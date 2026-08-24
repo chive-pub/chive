@@ -651,7 +651,14 @@ export class KnowledgeGraphService {
    */
   async getProposalById(proposalId: string): Promise<ProposalView | null> {
     try {
-      const proposal = await this.graph.getProposal(proposalId as AtUri);
+      // Callers pass whichever identifier they hold. Routes and list links
+      // carry the record key, because an AT-URI cannot occupy a single dynamic
+      // route segment; internal callers hold the full URI. Casting a record key
+      // to an AtUri and matching on `uri` never matched, which made every
+      // proposal detail page and every vote lookup fail.
+      const proposal = proposalId.startsWith('at://')
+        ? await this.graph.getProposal(proposalId as AtUri)
+        : await this.graph.getProposalByRkey(proposalId);
 
       if (!proposal) {
         return null;

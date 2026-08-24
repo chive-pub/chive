@@ -275,6 +275,11 @@ describe('XRPC Governance Handlers', () => {
         },
       ];
 
+      // listVotes resolves the proposal first so it can use the real URI.
+      mockGraphAdapter.getProposalById.mockResolvedValue({
+        ...createMockProposal(),
+        uri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
+      });
       mockGraphAdapter.getVotesForProposal.mockResolvedValue(votes);
 
       const result = await listVotes.handler({
@@ -302,6 +307,11 @@ describe('XRPC Governance Handlers', () => {
         },
       ];
 
+      // listVotes resolves the proposal first so it can use the real URI.
+      mockGraphAdapter.getProposalById.mockResolvedValue({
+        ...createMockProposal(),
+        uri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
+      });
       mockGraphAdapter.getVotesForProposal.mockResolvedValue(votes);
 
       const result = await listVotes.handler({
@@ -315,6 +325,11 @@ describe('XRPC Governance Handlers', () => {
     });
 
     it('returns empty array when no votes exist', async () => {
+      // listVotes resolves the proposal first so it can use the real URI.
+      mockGraphAdapter.getProposalById.mockResolvedValue({
+        ...createMockProposal(),
+        uri: `at://did:plc:chive/pub.chive.graph.proposal/${PROPOSAL_UUIDS.abc123}`,
+      });
       mockGraphAdapter.getVotesForProposal.mockResolvedValue([]);
 
       const result = await listVotes.handler({
