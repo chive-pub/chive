@@ -27,8 +27,12 @@ import type { DID } from '../types/atproto.js';
  *
  * @public
  */
-export const GRAPH_PDS_DID: DID =
-  (process.env.GRAPH_PDS_DID as DID | undefined) ?? ('did:plc:5wzpn4a4nbqtz3q45hyud6hd' as DID);
+export const GRAPH_PDS_DID: DID = ((): DID => {
+  // A deploy step that interpolates an undefined repository variable yields an
+  // empty string, which nullish coalescing would accept as a real value.
+  const configured = process.env.GRAPH_PDS_DID?.trim();
+  return configured ? (configured as DID) : ('did:plc:5wzpn4a4nbqtz3q45hyud6hd' as DID);
+})();
 
 /**
  * Returns the graph PDS DID.
