@@ -15,8 +15,22 @@
 import { AtpAgent } from '@atproto/api';
 import neo4j from 'neo4j-driver';
 
-const PDS_URL = process.env.GRAPH_PDS_URL ?? 'https://governance.chive.pub';
-const GRAPH_PDS_DID = process.env.GRAPH_PDS_DID ?? 'did:plc:5wzpn4a4nbqtz3q45hyud6hd';
+/**
+ * Reads an environment variable, treating blank values as unset.
+ *
+ * @remarks
+ * Deploy steps interpolate repository variables that may not be defined,
+ * producing an empty string rather than an absent variable. Nullish coalescing
+ * accepts `''` as a real value, which silently replaced the graph PDS DID with
+ * nothing and made every `listRecords` call fail.
+ */
+function envOrDefault(name: string, fallback: string): string {
+  const value = process.env[name];
+  return value !== undefined && value.trim().length > 0 ? value.trim() : fallback;
+}
+
+const PDS_URL = envOrDefault('GRAPH_PDS_URL', 'https://governance.chive.pub');
+const GRAPH_PDS_DID = envOrDefault('GRAPH_PDS_DID', 'did:plc:5wzpn4a4nbqtz3q45hyud6hd');
 
 const NEO4J_URI = process.env.NEO4J_URI ?? 'bolt://localhost:7687';
 const NEO4J_USER = process.env.NEO4J_USER ?? 'neo4j';
@@ -107,25 +121,43 @@ async function main(): Promise<void> {
   console.log('Connected.\n');
 
   try {
-    // Clear existing nodes and edges
-    console.log('Clearing existing graph data...');
-    await session.run('MATCH (n:Node) DETACH DELETE n');
-    console.log('Cleared.\n');
-
-    // Fetch and index nodes
-    console.log('=== Indexing Nodes ===');
-    let nodeCount = 0;
-    let cursor: string | undefined;
+    // Fetch every node before mutating Neo4j. The graph must never be cleared
+    // on a run that then fails to repopulate it: an empty graph silently turns
+    // every eprint field label into a raw UUID at the next reindex.
+    console.log('=== Fetching Nodes ===');
+    const nodeRecords: { uri: string; value: unknown }[] = [];
+    let fetchCursor: string | undefined;
 
     do {
       const response = await agent.com.atproto.repo.listRecords({
         repo: GRAPH_PDS_DID,
         collection: 'pub.chive.graph.node',
         limit: 100,
-        cursor,
+        cursor: fetchCursor,
       });
+      nodeRecords.push(...response.data.records);
+      fetchCursor = response.data.cursor;
+    } while (fetchCursor);
 
-      for (const record of response.data.records) {
+    console.log(`  ${nodeRecords.length} node records fetched\n`);
+
+    if (nodeRecords.length === 0) {
+      throw new Error(
+        `No pub.chive.graph.node records found in ${GRAPH_PDS_DID}. Refusing to clear the ` +
+          'knowledge graph, which would leave every eprint field label showing a raw UUID.'
+      );
+    }
+
+    // Only now is it safe to replace the graph.
+    console.log('Clearing existing graph data...');
+    await session.run('MATCH (n:Node) DETACH DELETE n');
+    console.log('Cleared.\n');
+
+    console.log('=== Indexing Nodes ===');
+    let nodeCount = 0;
+
+    {
+      for (const record of nodeRecords) {
         if (!isNodeRecord(record.value)) {
           console.warn(`Skipping invalid node record: ${record.uri}`);
           continue;
@@ -175,16 +207,14 @@ async function main(): Promise<void> {
           process.stdout.write(`  ${nodeCount} nodes indexed\r`);
         }
       }
-
-      cursor = response.data.cursor;
-    } while (cursor);
+    }
 
     console.log(`  ${nodeCount} nodes indexed\n`);
 
     // Fetch and index edges
     console.log('=== Indexing Edges ===');
     let edgeCount = 0;
-    cursor = undefined;
+    let cursor: string | undefined;
 
     do {
       const response = await agent.com.atproto.repo.listRecords({
