@@ -14,6 +14,7 @@ import type { Context } from 'hono';
 import type { Hono } from 'hono';
 
 import type { DID } from '../../../types/atproto.js';
+import { getAppVersion } from '../../../utils/app-version.js';
 import { HEALTH_PATHS } from '../../config.js';
 import type { ChiveEnv } from '../../types/context.js';
 
@@ -65,7 +66,7 @@ export function livenessHandler(c: Context<ChiveEnv>): Response {
   const response: HealthResponse = {
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version ?? '0.0.0',
+    version: getAppVersion(),
     uptime: Math.floor((Date.now() - startTime) / 1000),
   };
 
@@ -215,7 +216,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
   const response: HealthResponse = {
     status: overallStatus,
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version ?? '0.0.0',
+    version: getAppVersion(),
     uptime: Math.floor((Date.now() - startTime) / 1000),
     checks,
   };

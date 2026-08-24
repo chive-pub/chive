@@ -16,6 +16,7 @@ import pino from 'pino';
 import type { Logger as PinoBaseLogger, LoggerOptions as PinoOptions } from 'pino';
 
 import type { ILogger, LogContext, LogLevel } from '../types/interfaces/logger.interface.js';
+import { getAppVersion } from '../utils/app-version.js';
 
 /**
  * Sensitive field names to redact from logs.
@@ -84,7 +85,7 @@ export interface PinoLoggerOptions {
    * @remarks
    * Appears in every log entry as `version` field.
    *
-   * @defaultValue process.env.npm_package_version || '0.0.0'
+   * @defaultValue The release version from `getAppVersion()`
    */
   readonly version?: string;
 
@@ -233,7 +234,7 @@ export class PinoLogger implements ILogger {
       level = process.env.LOG_LEVEL ?? 'info',
       service = process.env.OTEL_SERVICE_NAME ?? 'chive-appview',
       environment = process.env.NODE_ENV ?? 'development',
-      version = process.env.npm_package_version ?? '0.0.0',
+      version = getAppVersion(),
       pretty = false,
     } = options;
 

@@ -27,6 +27,8 @@ import {
   SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
 } from '@opentelemetry/semantic-conventions';
 
+import { getAppVersion } from '../utils/app-version.js';
+
 /**
  * Configuration options for OpenTelemetry initialization.
  *
@@ -49,7 +51,7 @@ export interface TelemetryOptions {
    * @remarks
    * Appears in traces and metrics as `service.version`.
    *
-   * @defaultValue process.env.OTEL_SERVICE_VERSION || process.env.npm_package_version || '0.0.0'
+   * @defaultValue process.env.OTEL_SERVICE_VERSION, else the release version from `getAppVersion()`
    */
   readonly serviceVersion?: string;
 
@@ -131,10 +133,7 @@ const telemetryState: TelemetryState = {
 function createResource(options: TelemetryOptions): Resource {
   const serviceName = options.serviceName ?? process.env.OTEL_SERVICE_NAME ?? 'chive-appview';
   const serviceVersion =
-    options.serviceVersion ??
-    process.env.OTEL_SERVICE_VERSION ??
-    process.env.npm_package_version ??
-    '0.0.0';
+    options.serviceVersion ?? process.env.OTEL_SERVICE_VERSION ?? getAppVersion();
   const environment = options.environment ?? process.env.NODE_ENV ?? 'development';
 
   return resourceFromAttributes({
