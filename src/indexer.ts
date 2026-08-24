@@ -55,6 +55,10 @@ import { GovernancePDSWriter } from './services/governance/governance-pds-writer
 import { NodeService } from './services/governance/node-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
+import {
+  type FirehoseHealthServer,
+  startFirehoseHealthServer,
+} from './services/indexing/firehose-health-server.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
@@ -172,7 +176,14 @@ interface IndexerState {
   indexingService?: IndexingService;
   fieldPromotionJob?: FieldPromotionJob;
   fieldLabelResolutionJob?: FieldLabelResolutionJob;
+  healthServer?: FirehoseHealthServer;
 }
+
+/**
+ * Guards against the watchdog and a termination signal both triggering
+ * shutdown concurrently.
+ */
+let shuttingDown = false;
 
 /**
  * Initializes all database connections.
@@ -241,7 +252,17 @@ function parseRedisUrl(url: string): RedisOptions {
  * Gracefully shuts down all connections.
  */
 async function shutdown(state: IndexerState, signal: string): Promise<void> {
+  if (shuttingDown) {
+    return;
+  }
+  shuttingDown = true;
+
   state.logger.info(`Received ${signal}, starting graceful shutdown...`);
+
+  // Stop the health server and watchdog first so it can't fire mid-shutdown.
+  if (state.healthServer) {
+    await state.healthServer.close();
+  }
 
   // Stop jobs
   if (state.fieldPromotionJob) {
@@ -553,6 +574,20 @@ async function main(): Promise<void> {
     });
 
     state.indexingService = indexingService;
+
+    // Expose firehose liveness over HTTP for the container healthcheck, and run
+    // a watchdog that restarts the process if the consumer stays wedged past the
+    // recovery threshold (the consumer reconnects itself first; this is the last
+    // resort). Without this, a dead firehose is invisible and never recovers.
+    const healthPort = parseInt(process.env.INDEXER_HEALTH_PORT ?? '3001', 10);
+    state.healthServer = startFirehoseHealthServer({
+      indexingService,
+      logger,
+      port: healthPort,
+      onUnrecoverable: () => {
+        void shutdown(state, 'firehose-watchdog');
+      },
+    });
 
     // Start indexing
     logger.info('Starting firehose consumption...', {

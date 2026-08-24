@@ -25,6 +25,8 @@
             "pub.chive.endorsement.listForEprint",
             "pub.chive.author.getProfile",
             "pub.chive.author.searchAuthors",
+            "pub.chive.actor.getMyProfile",
+            "pub.chive.actor.getDiscoverySettings",
             "pub.chive.collection.get",
             "pub.chive.collection.getContaining",
             "pub.chive.collection.getFeed",

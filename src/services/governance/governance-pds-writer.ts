@@ -113,7 +113,7 @@ export interface GovernancePDSWriterOptions {
  * ```typescript
  * const writer = new GovernancePDSWriter({
  *   graphPdsDid: 'did:plc:chive-governance' as DID,
- *   pdsUrl: 'https://pds.chive.pub',
+ *   pdsUrl: 'https://governance.chive.pub',
  *   signingKey: process.env.GOVERNANCE_SIGNING_KEY!,
  *   pool,
  *   cache: redis,

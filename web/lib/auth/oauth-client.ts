@@ -317,11 +317,12 @@ export async function startLogin(options: LoginOptions): Promise<string> {
 
   try {
     // Request granular scopes based on the user's intent. We deliberately
-    // do NOT include `transition:generic` here: that scope short-circuits
-    // granular permissions and causes PDSes (e.g. bsky.social) to show
+    // do NOT include `transition:generic`: that scope short-circuits the
+    // granular permission model and causes PDSes (e.g. bsky.social) to show
     // "any public record" on the consent screen instead of our specific
-    // repo scopes. The atproto-base scope + individual repo:/blob: scopes
-    // fully express what the app needs.
+    // permission sets. The published `pub.chive.*` permission-set lexicons
+    // (with `aud:"*"` rpc grants) fully express what the app needs, including
+    // minting service-auth JWTs for `pub.chive.*` rpc methods.
     const granularScope = getScopesForIntent(intent);
     const scope = `${granularScope} blob:*/*`;
 
@@ -465,9 +466,12 @@ export async function getSessionScopes(session: OAuthSession): Promise<string[]>
       return String(tokenInfo.scope).split(' ').filter(Boolean);
     }
   } catch {
-    // Fall back to legacy scopes if token info is unavailable
+    // Token info unavailable: fail closed with only the base scope rather than
+    // assuming `transition:generic`. Assuming the legacy catch-all would make
+    // hasScope() report every permission as granted; an under-reported scope
+    // just surfaces an upgrade prompt, which is the safe degradation.
   }
-  return ['atproto', 'transition:generic'];
+  return ['atproto'];
 }
 
 function getPdsEndpoint(session: OAuthSession): string {

@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-08-24
+
+### Added
+
+- Firehose consumer reconnects indefinitely with capped backoff and a WebSocket keepalive heartbeat, so a relay outage or a half-open socket can no longer wedge ingestion permanently. A single relay `503` on 2026-05-18 killed the production consumer for three weeks without surfacing anywhere.
+- Indexer health endpoint on `INDEXER_HEALTH_PORT` (default 3001) reporting per-relay connection state, with a watchdog that exits the process when the consumer stays unhealthy past its tolerance. The container healthcheck probes it instead of running `true`.
+- `scripts/publish-lexicons.ts` publishes the `pub.chive.*` lexicon schemas idempotently, so permission-set edits reach the PDS that resolves them.
+
+### Changed
+
+- The lexicon publisher targets the dedicated lexicon account on the governance PDS (`lexicons.governance.chive.pub`) rather than the `chive.pub` Bluesky bot account, which exists only for posts. `LEXICON_PDS_URL` and `LEXICON_PUBLISH_IDENTIFIER` still override both.
+- `transition:generic` is no longer requested anywhere. Scope resolution fails closed to the ATProto base scope when session scopes are unavailable, leaving authorization entirely on the `pub.chive.*` permission sets. Existing sessions keep their old scopes, so users must re-authenticate.
+
+### Fixed
+
+- Deleting an eprint removes it from Chive's index immediately rather than waiting on the firehose, and the frontend deletes the dual-written `site.standard.document` records alongside it.
+- The deploy's Elasticsearch reindex prunes eprints that are gone from their PDS instead of failing on orphaned index rows, which had made the production deploy unrunnable.
+- Backend services report their real release version. `npm_package_version` is unset when a container starts Node directly, so `/health`, structured logs, and OpenTelemetry resources had all reported `0.0.0` in every deployed environment.
+
 ## [0.6.3] - 2026-05-12
 
 ### Fixed
@@ -20,7 +39,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped `@atproto/oauth-client-browser` from 0.3.37 to 0.3.42 to pick up DPoP-handling fixes from `@atproto/oauth-client` 0.5.12–0.6.1.
 - Production now emits `include:pub.chive.*` permission-set references instead of individual `repo:pub.chive.*` scopes (`NEXT_PUBLIC_USE_PERMISSION_SETS=true`). The consent screen shows one named entry per Chive permission set rather than one row per collection.
 
-## [0.6.2] - 2026-05-06
+## [0.6.2] - 2026-05-07
 
 ### Added
 
@@ -38,7 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - "Created a new community/collection but it disappears on reload" (#79) for users who picked the `unlisted` visibility option in the wizard.
 
-## [0.6.1] - 2026-04-28
+## [0.6.1] - 2026-05-04
 
 ### Added
 
@@ -181,7 +200,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Description length limit (2000 chars) enforced on frontend and backend for content reports
 - ORCID client secret kept server-side only; state parameter is crypto-random, single-use, Redis-backed with TTL
 
-## [0.4.0] - 2026-03-11
+## [0.4.1] - 2026-03-19
+
+### Fixed
+
+- `pub.chive.eprint.listCitations` returned 500 when a citation carried structured author objects. Authors are formatted as strings, as the lexicon requires.
+
+## [0.4.0] - 2026-03-18
 
 ### Added
 
@@ -220,7 +245,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Profile record creator missing `institutionUri` and `children` fields, silently stripping tree structure on profile save
 - Eprint submission Zod schema missing `institutionUri`, stripping institution graph links on submit
 
-## [0.3.1] - 2026-03-10
+## [0.3.1] - 2026-03-11
 
 ### Fixed
 
@@ -644,7 +669,15 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/chive-pub/chive/compare/v0.6.3...v0.7.0
+[0.6.3]: https://github.com/chive-pub/chive/compare/v0.6.2...v0.6.3
+[0.6.2]: https://github.com/chive-pub/chive/compare/v0.6.1...v0.6.2
+[0.6.1]: https://github.com/chive-pub/chive/compare/v0.6.0...v0.6.1
+[0.6.0]: https://github.com/chive-pub/chive/compare/v0.5.1...v0.6.0
+[0.5.1]: https://github.com/chive-pub/chive/compare/v0.5.0...v0.5.1
+[0.5.0]: https://github.com/chive-pub/chive/compare/v0.4.1...v0.5.0
+[0.4.1]: https://github.com/chive-pub/chive/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/chive-pub/chive/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/chive-pub/chive/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/chive-pub/chive/compare/v0.2.0...v0.3.0

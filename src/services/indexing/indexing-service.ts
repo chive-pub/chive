@@ -60,7 +60,7 @@ import { CursorManager } from './cursor-manager.js';
 import { DeadLetterQueue, type AlertService, type DLQEvent } from './dlq-handler.js';
 import { EventFilter } from './event-filter.js';
 import { EventQueue, BackpressureError } from './event-queue.js';
-import { FirehoseConsumer } from './firehose-consumer.js';
+import { type ConnectionState, FirehoseConsumer } from './firehose-consumer.js';
 import { ReconnectionManager } from './reconnection-manager.js';
 
 /**
@@ -258,6 +258,60 @@ export interface RelayStatus {
    * Last event timestamp from this relay.
    */
   readonly lastEvent: Date | null;
+}
+
+/**
+ * Liveness of a single relay's firehose consumer.
+ *
+ * @public
+ */
+export interface RelayHealth {
+  /**
+   * Relay name.
+   */
+  readonly relay: string;
+
+  /**
+   * Live WebSocket connection state.
+   */
+  readonly state: ConnectionState;
+
+  /**
+   * Whether the WebSocket is currently open and subscribed.
+   */
+  readonly connected: boolean;
+
+  /**
+   * Epoch milliseconds of the most recent successful connection, or `null`.
+   */
+  readonly lastConnectedAt: number | null;
+
+  /**
+   * Epoch milliseconds of the most recent inbound message, or `null`.
+   */
+  readonly lastEventAt: number | null;
+}
+
+/**
+ * Aggregate firehose liveness snapshot across all relays.
+ *
+ * @public
+ */
+export interface IndexingHealth {
+  /**
+   * Whether the indexing service is running.
+   */
+  readonly running: boolean;
+
+  /**
+   * When the service started, or `null` if not started.
+   */
+  readonly startedAt: Date | null;
+
+  /**
+   * Per-relay liveness.
+   */
+  readonly relays: readonly RelayHealth[];
 }
 
 export interface IndexingStatus {
@@ -764,6 +818,45 @@ export class IndexingService {
       startedAt: this.startedAt,
       relayStatuses: relayStatuses.length > 1 ? relayStatuses : undefined,
       duplicatesFiltered: this.duplicatesFiltered > 0 ? this.duplicatesFiltered : undefined,
+    };
+  }
+
+  /**
+   * Returns a liveness snapshot for health checks and the firehose watchdog.
+   *
+   * @returns Per-relay connection state derived from the live WebSocket(s)
+   *
+   * @remarks
+   * Unlike {@link getStatus}, which reports the subscribe loop's `connected`
+   * flag, this reflects each consumer's real WebSocket state. The keepalive
+   * heartbeat keeps that state honest even on half-open connections, so a
+   * disconnected (or wedged-and-reconnecting) firehose is observable here.
+   *
+   * @example
+   * ```typescript
+   * const health = service.getHealth();
+   * if (!health.relays.every((r) => r.connected)) {
+   *   logger.warn('Firehose degraded', health);
+   * }
+   * ```
+   */
+  getHealth(): IndexingHealth {
+    const relays: RelayHealth[] = [];
+    for (const state of this.relayStates.values()) {
+      const consumerHealth = state.consumer.getHealth();
+      relays.push({
+        relay: this.getRelayName(state.relay),
+        state: consumerHealth.state,
+        connected: consumerHealth.connected,
+        lastConnectedAt: consumerHealth.lastConnectedAt,
+        lastEventAt: consumerHealth.lastEventAt,
+      });
+    }
+
+    return {
+      running: this.running,
+      startedAt: this.startedAt,
+      relays,
     };
   }
 

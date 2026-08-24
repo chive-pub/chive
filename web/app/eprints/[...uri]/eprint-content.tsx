@@ -86,6 +86,7 @@ import {
   useDeleteEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
+import { deleteStandardDocumentsForEprint } from '@/lib/atproto/record-creator';
 import { getPaperSession } from '@/lib/auth/paper-session';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
@@ -374,6 +375,26 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             repo,
             collection,
             rkey,
+          });
+        }
+
+        // Step 3: Delete the site.standard.document record(s) dual-written for
+        // this eprint. They live in the same repo and are linked only by
+        // content.uri, so deleting the eprint alone orphans them in the PDS.
+        // Best-effort: the eprint itself is already gone, so a failure here is
+        // logged but does not fail the deletion.
+        try {
+          const removed = await deleteStandardDocumentsForEprint(effectiveAgent, uri);
+          if (removed.length > 0) {
+            eprintLogger.info('Deleted associated standard documents', {
+              eprintUri: uri,
+              count: removed.length,
+            });
+          }
+        } catch (standardError) {
+          eprintLogger.warn('Failed to delete associated standard documents', {
+            eprintUri: uri,
+            error: standardError instanceof Error ? standardError.message : String(standardError),
           });
         }
       }
