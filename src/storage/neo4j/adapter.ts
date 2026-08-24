@@ -26,6 +26,7 @@ import type {
 } from '../../types/interfaces/graph.interface.js';
 
 import { Neo4jConnection } from './connection.js';
+import { subkindToLabel } from './labels.js';
 import type {
   GraphNode,
   GraphEdge,
@@ -43,16 +44,6 @@ import type {
   UserRole,
   VoteType,
 } from './types.js';
-
-/**
- * Map subkind slugs to Neo4j labels (PascalCase).
- */
-function subkindToLabel(subkind: string): string {
-  return subkind
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-}
 
 /**
  * Neo4j adapter implementing the IGraphDatabase interface.
