@@ -1,20 +1,27 @@
 #!/usr/bin/env npx tsx
 /**
- * Publish Chive's lexicon schemas to the `chive.pub` account's PDS.
+ * Publish Chive's lexicon schemas to the dedicated lexicon account on the
+ * governance PDS.
  *
  * @remarks
- * `pub.chive.*` NSIDs resolve via DNS (`_lexicon.chive.pub`) to the `chive.pub`
- * account on a real PDS, which serves each schema as a `com.atproto.lexicon.schema`
- * record (rkey = the NSID). Editing a lexicon JSON file in this repo does NOT
- * update those records — they must be re-`putRecord`ed. This script does that,
+ * The `pub.chive.*` lexicons live in their own account on Chive's governance
+ * PDS (`governance.chive.pub`), NOT in the `chive.pub` Bluesky account on
+ * `pds.chive.pub` (that account is only for Bluesky posts; an earlier run
+ * mistakenly published the lexicons there). `_lexicon.chive.pub` must point at
+ * this lexicon account's DID so external services resolve `pub.chive.*` from
+ * the governance PDS.
+ *
+ * The PDS serves each schema as a `com.atproto.lexicon.schema` record
+ * (rkey = the NSID). Editing a lexicon JSON file in this repo does NOT update
+ * those records — they must be re-`putRecord`ed. This script does that,
  * idempotently: it reads the same files the lexicon server serves (via
- * {@link getLexiconRecords}), compares each against what the PDS currently holds,
- * and writes only the ones that changed.
+ * {@link getLexiconRecords}), compares each against what the PDS currently
+ * holds, and writes only the ones that changed.
  *
  * Configuration (env):
- * - `LEXICON_PDS_URL`           PDS endpoint (default `https://pds.chive.pub`)
- * - `LEXICON_PUBLISH_IDENTIFIER` account handle/DID (default `chive.pub`)
- * - `LEXICON_PUBLISH_PASSWORD`  app password (required unless `--dry-run`)
+ * - `LEXICON_PDS_URL`           PDS endpoint (default `https://governance.chive.pub`)
+ * - `LEXICON_PUBLISH_IDENTIFIER` account handle/DID (default `lexicons.governance.chive.pub`)
+ * - `LEXICON_PUBLISH_PASSWORD`  account/app password (required unless `--dry-run`)
  *
  * Usage:
  *   pnpm tsx scripts/publish-lexicons.ts [--dry-run] [nsid ...]
@@ -40,8 +47,8 @@ import {
   getLexiconRecords,
 } from '../src/atproto/lexicon-server/loader.js';
 
-const PDS_URL = process.env.LEXICON_PDS_URL ?? 'https://pds.chive.pub';
-const IDENTIFIER = process.env.LEXICON_PUBLISH_IDENTIFIER ?? 'chive.pub';
+const PDS_URL = process.env.LEXICON_PDS_URL ?? 'https://governance.chive.pub';
+const IDENTIFIER = process.env.LEXICON_PUBLISH_IDENTIFIER ?? 'lexicons.governance.chive.pub';
 const PASSWORD = process.env.LEXICON_PUBLISH_PASSWORD;
 
 interface Plan {
@@ -96,7 +103,7 @@ async function main(): Promise<void> {
   const dryRun = args.includes('--dry-run');
   const nsidFilter = new Set(args.filter((a) => !a.startsWith('--')));
 
-  // The `chive.pub` account is only the authority for `pub.chive.*` NSIDs.
+  // The lexicon account is only the authority for `pub.chive.*` NSIDs.
   // Other namespaces present in lexicons/ (com.atproto.*, site.standard.*) are
   // vendored copies for local codegen/validation and belong to other
   // authorities — publishing them under this account would be incorrect.
