@@ -240,6 +240,20 @@ export interface IGraphDatabase {
   getProposal(uri: AtUri): Promise<NodeProposal | null>;
 
   /**
+   * Gets a proposal by its record key.
+   *
+   * @param rkey - Record key, the last segment of the proposal's AT-URI
+   * @returns The proposal, or null if no proposal has that record key
+   *
+   * @remarks
+   * Every proposal link in the UI carries the record key rather than the full
+   * AT-URI, because an AT-URI cannot sit in a single dynamic route segment.
+   * Without this lookup those links resolve against `getProposal`, which
+   * matches on the full URI and therefore never matches.
+   */
+  getProposalByRkey(rkey: string): Promise<NodeProposal | null>;
+
+  /**
    * Creates a vote on a proposal.
    */
   createVote(vote: Vote): Promise<void>;

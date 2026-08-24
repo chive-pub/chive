@@ -183,6 +183,8 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       'pub.chive.eprint.relatedWork',
       'pub.chive.graph.node',
       'pub.chive.graph.edge',
+      'pub.chive.graph.nodeProposal',
+      'pub.chive.graph.vote',
       'pub.chive.actor.profileConfig',
     ];
 
@@ -317,6 +319,19 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
           // No personal graph service available, treat as success
           result = { ok: true as const, value: undefined };
         }
+      } else if (collection === 'pub.chive.graph.nodeProposal') {
+        // Knowledge graph proposal. Indexed here as well as from the firehose
+        // so the proposal is readable as soon as the user is redirected to it,
+        // rather than only once the firehose event arrives.
+        const graphService = c.get('services').graph;
+        result = graphService
+          ? await graphService.indexNodeProposal(record.value, metadata)
+          : { ok: true as const, value: undefined };
+      } else if (collection === 'pub.chive.graph.vote') {
+        const graphService = c.get('services').graph;
+        result = graphService
+          ? await graphService.indexVote(record.value, metadata)
+          : { ok: true as const, value: undefined };
       } else if (collection === 'pub.chive.graph.edge') {
         // Personal graph edge (including collection CONTAINS/SUBCOLLECTION_OF)
         const personalGraphService = c.get('services').personalGraph;
