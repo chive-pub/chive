@@ -46,6 +46,12 @@ const CONFIG = {
   delayBetweenBatchesMs: parseInt(process.env.REINDEX_DELAY_MS ?? '1000', 10),
   maxRetries: parseInt(process.env.REINDEX_MAX_RETRIES ?? '3', 10),
   pdsTimeoutMs: 30000,
+  /**
+   * How long to wait for the Neo4j knowledge graph to become populated before
+   * aborting. Deploys recreate Neo4j and repopulate it asynchronously, so the
+   * graph is routinely empty for the first few seconds after a restart.
+   */
+  graphWaitMs: parseInt(process.env.REINDEX_GRAPH_WAIT_MS ?? '180000', 10),
   indexAlias: 'eprints',
   indexName: 'eprints-v1', // Fallback if alias doesn't exist
 };
@@ -198,6 +204,46 @@ async function checkElasticsearchHealth(client: ElasticsearchClient): Promise<bo
   } catch (error) {
     console.error('Elasticsearch health check failed:', error);
     return false;
+  }
+}
+
+/**
+ * Waits until the Neo4j knowledge graph actually contains nodes.
+ *
+ * @param driver - Neo4j driver
+ * @param timeoutMs - How long to wait before giving up
+ * @returns The node count once non-zero, or 0 if the timeout elapsed
+ *
+ * @remarks
+ * A passing health check only proves Neo4j is reachable, not that the graph is
+ * populated. Deploys recreate Neo4j and repopulate it asynchronously, so this
+ * script can otherwise win the race and resolve every field label against an
+ * empty graph — silently persisting UUIDs into PostgreSQL and Elasticsearch,
+ * where they stay visible in the UI until someone reindexes by hand.
+ */
+async function waitForPopulatedGraph(driver: Driver, timeoutMs: number): Promise<number> {
+  const deadline = Date.now() + timeoutMs;
+  let reported = false;
+
+  for (;;) {
+    const session = driver.session();
+    try {
+      const result = await session.run('MATCH (n:Node) RETURN count(n) AS count');
+      const count = result.records[0]?.get('count')?.toNumber?.() ?? 0;
+      if (count > 0) return count;
+    } catch (error) {
+      console.error('  Neo4j node count query failed:', error);
+    } finally {
+      await session.close();
+    }
+
+    if (Date.now() >= deadline) return 0;
+
+    if (!reported) {
+      console.log('  Knowledge graph is empty, waiting for it to populate...');
+      reported = true;
+    }
+    await sleep(5000);
   }
 }
 
@@ -484,6 +530,16 @@ async function main() {
   }
   console.log('  ✓ Neo4j is healthy');
 
+  const graphNodeCount = await waitForPopulatedGraph(neo4jDriver, CONFIG.graphWaitMs);
+  if (graphNodeCount === 0) {
+    throw new Error(
+      `Neo4j knowledge graph is still empty after ${Math.round(CONFIG.graphWaitMs / 1000)}s - ` +
+        'aborting rather than reindexing every field label as a raw UUID. ' +
+        'Check that the governance sync ran and populated pub.chive.graph.node records.'
+    );
+  }
+  console.log(`  ✓ Knowledge graph is populated (${graphNodeCount} nodes)`);
+
   // ==========================================================================
   // RECREATE ELASTICSEARCH INDEX
   // ==========================================================================
@@ -600,6 +656,32 @@ async function main() {
   );
   console.log(`Field labels cached: ${nodeLookup.cacheSize}`);
 
+  // A run that resolved nothing while unresolved labels remain means the
+  // knowledge graph lookups silently failed: resolveFieldLabels swallows all
+  // errors and returns the original UUID. Surface it instead of reporting a
+  // clean reindex over visibly broken data.
+  const unresolved = await pgPool.query<{ count: string }>(
+    `SELECT count(*) AS count
+     FROM eprints_index
+     WHERE fields::text ~ '"label": "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+       AND deleted_at IS NULL`
+  );
+  const unresolvedCount = parseInt(unresolved.rows[0]?.count ?? '0', 10);
+  let unresolvedLabels = false;
+  if (unresolvedCount > 0) {
+    console.error();
+    console.error(
+      `ERROR: ${unresolvedCount} eprint(s) still carry raw UUIDs as field labels after reindexing.`
+    );
+    console.error(
+      'The knowledge graph lookup returned nothing for those field ids. Check that the'
+    );
+    console.error('governance sync populated Neo4j before this script ran.');
+    unresolvedLabels = true;
+  } else {
+    console.log('Field labels: all resolved');
+  }
+
   if (stats.prunedRecords.length > 0) {
     console.log();
     console.log('Pruned orphaned records (no longer in PDS):');
@@ -632,6 +714,12 @@ async function main() {
   if (stats.failed > 0) {
     console.log();
     console.log('WARNING: Some records failed to reindex. Check logs above.');
+    process.exit(1);
+  }
+
+  // Unresolved labels mean the index is live with raw UUIDs where field names
+  // belong. Fail so the deploy surfaces it rather than reporting success.
+  if (unresolvedLabels) {
     process.exit(1);
   }
 }

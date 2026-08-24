@@ -481,10 +481,12 @@ async function main(): Promise<void> {
       logger.info('Automatic proposal service disabled (graph PDS not configured)');
     }
 
-    // Start field label resolution job (hourly scan for UUID labels in PostgreSQL)
+    // Start field label resolution job (hourly scan for UUID labels, repairing
+    // both PostgreSQL and the search index that browse and search read from)
     state.fieldLabelResolutionJob = new FieldLabelResolutionJob({
       pool: pgPool,
       nodeLookup: graphAdapter,
+      indexWriter: searchAdapter,
       logger,
       intervalMs: 3_600_000, // 1 hour
       runOnStartup: true,

@@ -183,6 +183,52 @@ export class ElasticsearchAdapter implements ISearchEngine {
   }
 
   /**
+   * Updates only the field labels on an already-indexed eprint.
+   *
+   * @param uri - AT-URI of the eprint, used as the document ID
+   * @param fields - Field nodes carrying resolved human-readable labels
+   *
+   * @remarks
+   * A partial update, so it cannot clobber other document content. Used by the
+   * field label resolution job to repair documents that were indexed while the
+   * Neo4j knowledge graph was empty or still populating — without it, labels
+   * repaired in PostgreSQL would never reach the search index that the browse
+   * and search UI actually reads from.
+   *
+   * A missing document is not an error: the eprint may have been pruned
+   * between the PostgreSQL scan and this update.
+   *
+   * @throws {IndexError} On any failure other than a missing document
+   *
+   * @public
+   */
+  async updateFieldLabels(
+    uri: string,
+    fields: readonly { id: string; label: string }[]
+  ): Promise<void> {
+    try {
+      await this.client.update({
+        index: this.config.indexName,
+        id: uri,
+        doc: { field_nodes: fields.map((f) => ({ id: f.id, label: f.label })) },
+        retry_on_conflict: 3,
+        refresh: false,
+      });
+    } catch (error) {
+      if (error instanceof errors.ResponseError) {
+        if (error.statusCode === 404) return;
+
+        throw new IndexError(`Failed to update field labels for ${uri}: ${error.message}`, error);
+      }
+
+      throw new IndexError(
+        `Unexpected error updating field labels for ${uri}`,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
    * Searches eprints.
    *
    * @param query - Search query
