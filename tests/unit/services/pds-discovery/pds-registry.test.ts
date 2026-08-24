@@ -163,7 +163,7 @@ describe('PDSRegistry', () => {
   });
 
   describe('getPDSesForScan', () => {
-    it('only returns non-relay-connected PDSes', async () => {
+    it('returns relay-connected PDSes too, ranked after direct ones', async () => {
       const mockRows = [
         {
           pds_url: 'https://custom-pds.example.com',
@@ -194,11 +194,25 @@ describe('PDSRegistry', () => {
         expect(firstResult.isRelayConnected).toBe(false);
       }
 
-      // Verify query includes relay filter
-      expect(mockPool.query).toHaveBeenCalledWith(
-        expect.stringContaining('is_relay_connected = FALSE'),
-        [10]
-      );
+      // Relay-connected PDSes must not be filtered out: a relay outage longer
+      // than the relay's backfill window silently skips events, and this scan
+      // is the only mechanism that can find the records that were missed.
+      // They are ranked last instead.
+      const [sql] = mockPool.query.mock.calls[0] as [string, unknown];
+      expect(sql).not.toContain('is_relay_connected = FALSE');
+      expect(sql).toContain('ORDER BY is_relay_connected ASC');
+    });
+
+    it('recovers PDSes wedged in scanning by a crashed scan', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await registry.getPDSesForScan(10);
+
+      // Nothing else clears 'scanning', so without this a process that died
+      // mid-scan excludes that PDS from every future cycle.
+      const [sql] = mockPool.query.mock.calls[0] as [string, unknown];
+      expect(sql).toContain("status = 'scanning'");
+      expect(sql).toContain('updated_at <');
     });
 
     it('excludes PDSes with too many consecutive failures', async () => {
