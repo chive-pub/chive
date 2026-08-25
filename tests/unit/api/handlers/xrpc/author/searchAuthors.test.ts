@@ -28,6 +28,7 @@ interface MockSearch {
 
 interface MockEprint {
   getEprint: ReturnType<typeof vi.fn>;
+  getEprints: ReturnType<typeof vi.fn>;
 }
 
 // =============================================================================
@@ -52,8 +53,22 @@ describe('searchAuthors', () => {
     mockSearch = {
       search: vi.fn().mockResolvedValue({ hits: [], total: 0 }),
     };
+    // The handler fetches the page in one call now. The batch mock resolves
+    // through `getEprint` so the per-test stubs below still describe what each
+    // case returns, rather than every case having to build a Map.
     mockEprint = {
       getEprint: vi.fn().mockResolvedValue(null),
+      getEprints: vi.fn(async (uris: readonly string[]) => {
+        const found = new Map<string, unknown>();
+        for (const uri of uris) {
+          const fetchOne = mockEprint.getEprint as (u: string) => Promise<unknown>;
+          const eprint: unknown = await fetchOne(uri);
+          if (eprint) {
+            found.set(uri, eprint);
+          }
+        }
+        return found;
+      }),
     };
     mockRedis = {
       get: vi.fn().mockResolvedValue(null),

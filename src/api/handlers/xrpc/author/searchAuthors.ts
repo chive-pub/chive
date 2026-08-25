@@ -49,9 +49,16 @@ async function searchAuthorsInIndex(
     const queryLower = query.toLowerCase();
     const queryWords = queryLower.split(/\s+/).filter(Boolean);
 
+    // One query for the whole page rather than one per hit. This ran on every
+    // keystroke of author autocomplete with a limit of `limit * 3`, so it cost
+    // up to 75 sequential database round trips per character typed, each
+    // waiting on the one before it.
+    const eprintsByUri = await c
+      .get('services')
+      .eprint.getEprints(searchResults.hits.map((hit) => hit.uri));
+
     for (const hit of searchResults.hits) {
-      // Get the full eprint data to access authors
-      const eprint = await c.get('services').eprint.getEprint(hit.uri);
+      const eprint = eprintsByUri.get(hit.uri);
       if (!eprint) continue;
 
       for (const author of eprint.authors) {

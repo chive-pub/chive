@@ -11,6 +11,25 @@
  *
  * Reading list schema: xyz.leaflet.list
  *
+ * WARNING: `xyz.leaflet.list` does not exist. Leaflet publishes
+ * `pub.leaflet.document` and `pub.leaflet.comment`; this NSID, and the
+ * `LeafletList` interface below with its `items` / `visibility` / `tags`
+ * fields, were invented rather than taken from a published lexicon. The plugin
+ * therefore matches no record that any repository actually holds, and indexes
+ * nothing however it is wired up.
+ *
+ * It is left pointing at the fictional NSID deliberately. Repointing it at
+ * `pub.leaflet.document` while the parser still expects this invented shape
+ * would turn "indexes nothing" into "indexes wrong backlinks", which is the
+ * worse failure — a real record would be read against a schema it does not
+ * have. Fixing this properly means reading Leaflet's published lexicon and
+ * rewriting the record handling against it, which is integration work rather
+ * than remediation.
+ *
+ * Note also that nothing loads this plugin today, and the event filter drops
+ * every non-`pub.chive.*` record before the plugin bus in any case (INT-1), so
+ * no wiring change alone would bring it to life.
+ *
  * ATProto Compliance:
  * - All backlinks indexed from firehose (rebuildable via replay)
  * - Tracks deletions to honor record removal
