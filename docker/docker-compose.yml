@@ -1,9 +1,9 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: chive-postgres
+    container_name: chive-test-postgres
     environment:
-      POSTGRES_DB: chive
+      POSTGRES_DB: chive_test
       POSTGRES_USER: chive
       POSTGRES_PASSWORD: chive_test_password
     ports:
@@ -18,7 +18,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: chive-redis
+    container_name: chive-test-redis
     ports:
       - "6379:6379"
     volumes:
@@ -31,7 +31,7 @@ services:
 
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    container_name: chive-elasticsearch
+    container_name: chive-test-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -49,7 +49,7 @@ services:
 
   neo4j:
     image: neo4j:5-community
-    container_name: chive-neo4j
+    container_name: chive-test-neo4j
     environment:
       NEO4J_AUTH: neo4j/chive_test_password
       NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
@@ -69,7 +69,7 @@ services:
 
   grobid:
     image: lfoppiano/grobid:0.8.2.1-crf
-    container_name: chive-grobid
+    container_name: chive-test-grobid
     restart: unless-stopped
     environment:
       - GROBID_MAX_CONCURRENCY=4

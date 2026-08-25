@@ -33,7 +33,7 @@
     "dev:indexer": "tsx watch src/indexer.ts",
     "dev:turbo": "turbo dev",
     "build": "turbo build",
-    "test": "turbo test",
+    "test": "pnpm run test:unit && turbo test",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
     "test:unit:ui": "vitest --ui --config vitest.unit.config.ts",
