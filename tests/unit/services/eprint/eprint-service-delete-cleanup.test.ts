@@ -32,6 +32,8 @@ const createMockLogger = (): ILogger => ({
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 const createMockStorage = () => ({
   deleteEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  softDeleteEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  listDeletedEprintUris: vi.fn().mockResolvedValue([]),
   deleteByUri: vi.fn().mockResolvedValue(undefined),
   deleteCitation: vi.fn().mockResolvedValue(undefined),
   deleteRelatedWork: vi.fn().mockResolvedValue(undefined),

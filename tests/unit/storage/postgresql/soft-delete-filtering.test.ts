@@ -96,3 +96,45 @@ describe('tag and keyword browse excludes soft-deleted eprints', () => {
     expect(query.mock.calls.length).toBeGreaterThanOrEqual(2);
   });
 });
+
+describe('eprint soft deletion', () => {
+  let query: Mock;
+  let repository: EprintsRepository;
+
+  beforeEach(() => {
+    query = vi.fn().mockResolvedValue({ rows: [], rowCount: 1 });
+    repository = new EprintsRepository({ query } as never);
+  });
+
+  const URI = 'at://did:plc:izttpdp3l6vss5crelt5kcux/pub.chive.eprint.submission/abc';
+
+  it('stamps deleted_at and the deletion source instead of removing the row', async () => {
+    await repository.softDelete(URI as never, 'firehose_tombstone');
+    const sql = flat(query.mock.calls[0]?.[0] as string);
+    expect(sql).toMatch(/UPDATE eprints_index SET deleted_at = NOW\(\), deletion_source = \$2/);
+    expect(sql).not.toMatch(/DELETE FROM/);
+    expect(query.mock.calls[0]?.[1]).toEqual([URI, 'firehose_tombstone']);
+  });
+
+  // Re-deleting an already deleted eprint must not move its deletion timestamp.
+  it('does not touch a row that is already deleted', async () => {
+    await repository.softDelete(URI as never, 'admin');
+    expect(flat(query.mock.calls[0]?.[0] as string)).toMatch(/AND deleted_at IS NULL/);
+  });
+
+  it('reports an error when no row matched', async () => {
+    query.mockResolvedValue({ rows: [], rowCount: 0 });
+    const result = await repository.softDelete(URI as never, 'pds_404');
+    expect(result.ok).toBe(false);
+  });
+
+  it('lists deleted URIs most recently deleted first', async () => {
+    query.mockResolvedValue({ rows: [{ uri: URI }], rowCount: 1 });
+    const uris = await repository.listDeletedUris(10);
+    const sql = flat(query.mock.calls[0]?.[0] as string);
+    expect(sql).toMatch(/WHERE deleted_at IS NOT NULL/);
+    expect(sql).toMatch(/ORDER BY deleted_at DESC/);
+    expect(query.mock.calls[0]?.[1]).toEqual([10]);
+    expect(uris).toEqual([URI]);
+  });
+});

@@ -440,6 +440,52 @@ export class EprintService {
   }
 
   /**
+   * Re-issues search deletions for eprints already marked deleted.
+   *
+   * @param limit - Maximum eprints to reconcile in one pass
+   * @returns Count of documents re-deleted and of failures
+   *
+   * @remarks
+   * A search delete that failed during {@link EprintService.indexEprintDelete}
+   * used to be unrecoverable. Now the PostgreSQL row survives with `deleted_at`
+   * set, so a sweep can find every deleted eprint and re-issue the removal.
+   *
+   * Deleting a document that is already gone is a no-op in Elasticsearch, so
+   * this does not need to track which deletions previously succeeded — which
+   * would mean another column whose own writes could fail in the same way.
+   *
+   * @public
+   */
+  async reconcileDeletedFromSearch(limit = 500): Promise<{ reconciled: number; failed: number }> {
+    const uris = await this.storage.listDeletedEprintUris(limit);
+    let reconciled = 0;
+    let failed = 0;
+
+    for (const uri of uris) {
+      try {
+        await this.search.deleteDocument(uri);
+        reconciled++;
+      } catch (error) {
+        failed++;
+        this.logger.warn('Search reconciliation failed for deleted eprint', {
+          uri,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    if (uris.length > 0) {
+      this.logger.info('Reconciled deleted eprints against the search index', {
+        considered: uris.length,
+        reconciled,
+        failed,
+      });
+    }
+
+    return { reconciled, failed };
+  }
+
+  /**
    * Rolls back completed indexing stages on failure (compensation pattern).
    *
    * @param uri - AT URI of the eprint to rollback
@@ -503,10 +549,19 @@ export class EprintService {
 
   async indexEprintDelete(uri: AtUri): Promise<Result<void, DatabaseError>> {
     try {
-      // Delete from PostgreSQL first (source of truth for indexed data)
-      const storageResult = await this.storage.deleteEprint(uri);
+      // Mark deleted in PostgreSQL rather than removing the row.
+      //
+      // This used to hard-delete the row and then drop the Elasticsearch
+      // document on a best-effort basis. When the Elasticsearch call failed the
+      // row was already gone, so nothing recorded that a document still needed
+      // removing — the search index kept serving a record that existed nowhere
+      // else, and no sweep could find it, because finding it needed the row
+      // that had just been deleted. The soft-delete migration added
+      // `deleted_at` and `deletion_source` for exactly this, and the read paths
+      // already filter on them.
+      const storageResult = await this.storage.softDeleteEprint(uri, 'firehose_tombstone');
       if (!storageResult.ok) {
-        this.logger.warn('PostgreSQL deletion failed', {
+        this.logger.warn('PostgreSQL soft-delete failed', {
           uri,
           error: storageResult.error.message,
         });

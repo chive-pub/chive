@@ -457,6 +457,30 @@ export interface IStorageBackend {
   getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, StoredEprint>>;
 
   /**
+   * Marks an eprint deleted without removing its row.
+   *
+   * @param uri - Eprint URI
+   * @param source - How the deletion was detected
+   * @returns Ok on success, Err when the row does not exist
+   *
+   * @remarks
+   * Removing the row outright leaves nothing to reconcile against if a derived
+   * index (Elasticsearch, Neo4j) fails to drop the record.
+   */
+  softDeleteEprint(
+    uri: AtUri,
+    source: 'pds_404' | 'firehose_tombstone' | 'admin'
+  ): Promise<Result<void, Error>>;
+
+  /**
+   * Lists eprints marked deleted, for reconciling derived indexes.
+   *
+   * @param limit - Maximum rows to return
+   * @returns URIs of soft-deleted eprints
+   */
+  listDeletedEprintUris(limit?: number): Promise<readonly AtUri[]>;
+
+  /**
    * Queries eprints by author.
    *
    * @param author - Author DID
