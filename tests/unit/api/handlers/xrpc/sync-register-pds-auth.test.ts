@@ -17,6 +17,14 @@ import type { DID } from '@/types/atproto.js';
 import { AuthenticationError, ValidationError } from '@/types/errors.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+// The registerPDS handler runs every candidate URL through the SSRF guard,
+// which resolves the hostname before any fetch. Test hostnames do not exist in
+// DNS, so resolution is stubbed to a public address; the guard's own rejection
+// paths are covered in tests/unit/utils/ssrf-guard.test.ts.
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn().mockResolvedValue([{ address: '93.184.216.34' }]),
+}));
+
 const createMockLogger = (): ILogger => ({
   debug: vi.fn(),
   info: vi.fn(),
@@ -126,6 +134,29 @@ describe('registerPDS authentication and ownership', () => {
         c: createContext(mockUser),
       })
     ).rejects.toThrow(ValidationError);
+
+    expect(mockPDSRegistry.registerPDS).not.toHaveBeenCalled();
+  });
+
+  // The registered host is stored and revisited by the scanner, so a URL
+  // pointing at cloud metadata or loopback would give the caller a persistent
+  // request generator aimed inside the deployment. An IP literal needs no DNS,
+  // so this reaches the guard regardless of how resolution is stubbed.
+  it.each([
+    ['cloud metadata', 'https://169.254.169.254/latest/meta-data/'],
+    ['loopback', 'https://127.0.0.1:5432'],
+    ['IPv6 loopback', 'https://[::1]/admin'],
+  ])('refuses to register a %s address', async (_label, pdsUrl) => {
+    global.fetch = mockFetchWithPlcEndpoint(null);
+
+    await expect(
+      registerPDS.handler({
+        params: undefined,
+        input: { pdsUrl },
+        auth: null,
+        c: createContext(mockUser),
+      })
+    ).rejects.toThrow(/non-public address/);
 
     expect(mockPDSRegistry.registerPDS).not.toHaveBeenCalled();
   });

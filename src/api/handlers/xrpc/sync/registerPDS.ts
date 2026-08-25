@@ -25,6 +25,7 @@ import {
   ServiceUnavailableError,
   ValidationError,
 } from '../../../../types/errors.js';
+import { assertFetchableUrl, SsrfBlockedError } from '../../../../utils/ssrf-guard.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -44,6 +45,7 @@ async function resolvePdsEndpoint(did: DID): Promise<string | null> {
     if (did.startsWith('did:plc:')) {
       const response = await fetch(`https://plc.directory/${did}`, {
         signal: AbortSignal.timeout(10000),
+        redirect: 'error',
       });
       if (!response.ok) {
         return null;
@@ -59,8 +61,11 @@ async function resolvePdsEndpoint(did: DID): Promise<string | null> {
 
     if (did.startsWith('did:web:')) {
       const domain = did.replace('did:web:', '').replace(/%3A/g, ':');
-      const response = await fetch(`https://${domain}/.well-known/did.json`, {
+      // The domain comes from the caller's DID, so it is user-controlled.
+      const didDocUrl = await assertFetchableUrl(`https://${domain}/.well-known/did.json`);
+      const response = await fetch(didDocUrl, {
         signal: AbortSignal.timeout(10000),
+        redirect: 'error',
       });
       if (!response.ok) {
         return null;
@@ -200,10 +205,33 @@ export const registerPDS: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     // Validate that the URL is reachable
+    // The submitted URL is fetched by the server and, once registered, revisited
+    // by the scanner. Reject anything that would point that reach at hosts the
+    // caller cannot get to themselves — cloud metadata, loopback, RFC 1918 —
+    // before the first request goes out. Plain HTTP is tolerated outside
+    // production so local test stacks keep working.
+    let probeUrl: URL;
     try {
-      const response = await fetch(`${pdsUrl}/xrpc/com.atproto.server.describeServer`, {
+      probeUrl = await assertFetchableUrl(`${pdsUrl}/xrpc/com.atproto.server.describeServer`, {
+        allowHttp: process.env.NODE_ENV !== 'production',
+      });
+    } catch (error) {
+      if (error instanceof SsrfBlockedError) {
+        logger.warn('Rejected PDS registration for a non-public URL', {
+          pdsUrl,
+          did: user.did,
+          reason: error.message,
+        });
+        throw new ValidationError(error.message, 'pdsUrl', 'not_publicly_routable');
+      }
+      throw error;
+    }
+
+    try {
+      const response = await fetch(probeUrl, {
         headers: { Accept: 'application/json' },
         signal: AbortSignal.timeout(10000),
+        redirect: 'error',
       });
 
       if (!response.ok) {
