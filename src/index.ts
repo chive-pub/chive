@@ -88,6 +88,7 @@ import { CollaborativeFilteringStore } from './storage/neo4j/collaborative-filte
 import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
+import { GraphAlgorithmCache } from './storage/neo4j/graph-algorithm-cache.js';
 import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { RecommendationService } from './storage/neo4j/recommendations.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
@@ -487,6 +488,13 @@ function createServices(
   // Create relevance logger for LTR training data
   // Can be disabled via environment variable for development
   const relevanceLoggingEnabled = config.relevanceLoggingEnabled ?? true;
+  // The graph algorithm job writes precomputed community and trending results
+  // into this cache. Nothing read them: two handlers look for
+  // `services.graphAlgorithmCache`, but it was never constructed here, so
+  // `getCommunities` returned an empty list on every request and `getTrending`
+  // never used its cache. Same Redis, same key space as the job.
+  const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
+
   const relevanceLogger = relevanceLoggingEnabled
     ? new RelevanceLogger({
         pool: pgPool,
@@ -611,6 +619,7 @@ function createServices(
     claimingService,
     importService,
     pdsSyncService,
+    graphAlgorithmCache,
     relevanceLogger,
     activityService,
     discoveryService,

@@ -55,6 +55,7 @@ import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
 import type { SearchService } from '../services/search/search-service.js';
 import type { EdgeRepository } from '../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../storage/neo4j/facet-manager.js';
+import type { GraphAlgorithmCache } from '../storage/neo4j/graph-algorithm-cache.js';
 import type { NodeRepository } from '../storage/neo4j/node-repository.js';
 import type { RecommendationService } from '../storage/neo4j/recommendations.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
@@ -228,6 +229,18 @@ export interface ServerConfig {
   readonly redis: Redis;
 
   /**
+   * Cache of precomputed graph algorithm results.
+   *
+   * @remarks
+   * Two handlers read `services.graphAlgorithmCache`, but `ServerConfig` had no
+   * field for it and nothing ever set it, so it was always undefined:
+   * `getCommunities` returned an empty list on every request and `getTrending`
+   * never used its cache. The graph algorithm job builds and populates the very
+   * same cache — nothing was reading what it wrote.
+   */
+  readonly graphAlgorithmCache?: GraphAlgorithmCache;
+
+  /**
    * Logger instance.
    */
   readonly logger: ILogger;
@@ -387,6 +400,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       claiming: config.claimingService,
       import: config.importService,
       pdsSync: config.pdsSyncService,
+      graphAlgorithmCache: config.graphAlgorithmCache,
       relevanceLogger: config.relevanceLogger,
       ranking: config.rankingService,
       discovery: config.discoveryService,
