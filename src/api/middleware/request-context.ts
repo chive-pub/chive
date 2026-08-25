@@ -13,6 +13,7 @@
 
 import type { MiddlewareHandler } from 'hono';
 
+import { httpMetrics } from '../../observability/prometheus-registry.js';
 import type { ChiveEnv } from '../types/context.js';
 
 /**
@@ -161,6 +162,19 @@ export function requestContext(): MiddlewareHandler<ChiveEnv> {
           durationMs: duration,
         });
       }
+
+      // Record the request in Prometheus. The counter and histogram existed
+      // with no emission site anywhere, so the service exposed no request rate,
+      // latency or error-rate metrics at all — the middleware computed exactly
+      // these numbers and then only logged them.
+      //
+      // The endpoint label uses the matched route pattern rather than the raw
+      // path: labelling by path would mint a new time series per URI and blow
+      // up cardinality within a day of real traffic.
+      const endpoint = c.req.routePath ?? 'unmatched';
+      const labels = { method: c.req.method, endpoint, status: String(status) };
+      httpMetrics.requestsTotal.inc(labels);
+      httpMetrics.requestDuration.observe(labels, duration / 1000);
 
       // Set server timing header
       c.header('Server-Timing', `total;dur=${duration}`);

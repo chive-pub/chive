@@ -31,7 +31,7 @@ import type { EventEmitter2 as EventEmitter2Type } from 'eventemitter2';
 
 import { workerMetrics } from '../observability/prometheus-registry.js';
 import type { PDSRateLimiter } from '../services/pds-sync/pds-rate-limiter.js';
-import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
+import type { DeletionSource, PDSSyncService } from '../services/pds-sync/sync-service.js';
 import type { AtUri } from '../types/atproto.js';
 import { RateLimitError } from '../types/errors.js';
 import type { ILogger } from '../types/interfaces/logger.interface.js';
@@ -398,7 +398,7 @@ export class FreshnessWorker {
         // Check if this is a 404 (record deleted from PDS)
         if (error.name === 'NotFoundError') {
           // Mark as deleted
-          this.markAsDeleted(uri, 'pds_404');
+          await this.markAsDeleted(uri, 'pds_404');
 
           return {
             uri,
@@ -437,10 +437,22 @@ export class FreshnessWorker {
    *
    * @param uri - Record URI
    * @param source - Deletion source
+   * @returns Resolves once the record is marked deleted in the index
    */
-  private markAsDeleted(uri: AtUri, source: string): void {
-    // This would call a method on PDSSyncService or storage to mark deleted
-    // For now, emit event for handler to process
+  private async markAsDeleted(uri: AtUri, source: DeletionSource): Promise<void> {
+    // This used to only emit `record.deletion_detected` and rely on a handler
+    // to do the work. No subscriber was ever written, so a record the freshness
+    // scan found gone from its PDS stayed in the index indefinitely — the scan
+    // reported a successful deletion detection and nothing was deleted.
+    // `PDSSyncService.markAsDeleted` was available on this worker the whole
+    // time. The event is still emitted, for plugins that want to observe it,
+    // but it is no longer what performs the deletion.
+    const result = await this.syncService.markAsDeleted(uri, source);
+
+    if (!result.ok) {
+      this.logger.error('Failed to mark record as deleted', result.error, { uri, source });
+    }
+
     this.eventBus.emit('record.deletion_detected', {
       uri,
       source,

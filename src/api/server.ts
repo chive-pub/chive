@@ -64,6 +64,7 @@ import type { ILogger } from '../types/interfaces/logger.interface.js';
 import type { IndexRetryWorker } from '../workers/index-retry-worker.js';
 
 import { CORS_CONFIG, HEALTH_PATHS } from './config.js';
+import { METRICS_PATH } from './handlers/rest/metrics.js';
 import { authenticateServiceAuth, requireAuth, requireAdmin } from './middleware/auth.js';
 import { errorHandler } from './middleware/error-handler.js';
 import { conditionalRateLimiter, autocompleteRateLimiter } from './middleware/rate-limit.js';
@@ -426,8 +427,11 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
   const isAutocompleteEndpoint = (path: string): boolean =>
     AUTOCOMPLETE_RATE_LIMIT_PATHS.some((pattern) => path.startsWith(pattern));
 
+  // The metrics endpoint is scraped on a fixed interval, so counting it against
+  // a rate limit would eventually starve the scraper of the very data that
+  // would show it happening.
   const isHealthCheck = (path: string): boolean =>
-    path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness;
+    path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness || path === METRICS_PATH;
 
   // Apply autocomplete rate limiter to search/autocomplete endpoints
   // Note: Hono matches exact paths; query strings are not part of the path
