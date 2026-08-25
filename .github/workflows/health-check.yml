@@ -50,6 +50,27 @@ jobs:
           echo "Response: $response"
           echo "status=healthy" >> $GITHUB_OUTPUT
 
+      # `/api/health` is a static 200 that reports nothing about dependencies.
+      # `/ready` is the readiness probe Kubernetes uses and the only endpoint
+      # that actually checks PostgreSQL, Elasticsearch, Neo4j and Redis, so
+      # without it a datastore outage was invisible to this workflow: the API
+      # answered 200 from a pod that could not serve a single query.
+      - name: Check API Readiness
+        id: api_ready
+        continue-on-error: true
+        run: |
+          domain="${{ vars.DOMAIN }}"
+          echo "Checking API readiness at https://$domain/api/ready..."
+
+          response=$(curl -sf --max-time 30 "https://$domain/api/ready" 2>&1) || {
+            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "error=API readiness check failed (a datastore is unreachable)" >> $GITHUB_OUTPUT
+            exit 1
+          }
+
+          echo "Response: $response"
+          echo "status=ready" >> $GITHUB_OUTPUT
+
       - name: Check Admin API
         id: admin_health
         continue-on-error: true
@@ -397,6 +418,13 @@ jobs:
           else
             echo "| Admin API | :x: Failed |" >> $GITHUB_STEP_SUMMARY
             failures="${failures}AdminAPI,"
+          fi
+
+          if [ "${{ steps.api_ready.outcome }}" = "success" ]; then
+            echo "| API Readiness | :white_check_mark: Ready |" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "| API Readiness | :x: Failed |" >> $GITHUB_STEP_SUMMARY
+            failures="${failures}APIReadiness,"
           fi
 
           if [ "${{ steps.web_health.outcome }}" = "success" ]; then

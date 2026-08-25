@@ -1,0 +1,55 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.claiming.dismissSuggestion",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "description": "Record that the authenticated user does not want to see a particular paper suggestion. The paper is filtered out of future suggestions.",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["source", "externalId"],
+          "properties": {
+            "source": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "description": "External catalogue the suggestion came from, for example openalex or crossref"
+            },
+            "externalId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 512,
+              "description": "Identifier of the suggested work within that catalogue"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["success"],
+          "properties": {
+            "success": {
+              "type": "boolean",
+              "description": "Whether the suggestion was recorded as dismissed"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired",
+          "description": "Authentication is required to dismiss a suggestion"
+        },
+        {
+          "name": "InvalidRequest",
+          "description": "The source or external identifier was missing or malformed"
+        }
+      ]
+    }
+  }
+}

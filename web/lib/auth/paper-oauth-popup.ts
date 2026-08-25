@@ -50,6 +50,38 @@ interface PopupState {
   reject: (error: Error) => void;
   popup: Window | null;
   handle: string;
+  /**
+   * Timers belonging to this attempt.
+   *
+   * @remarks
+   * These used to live only in the promise closure, so the success path could
+   * not clear them. The poll interval then ran forever, and the five-minute
+   * timeout stayed armed against whatever attempt was pending when it finally
+   * fired — a second authentication started within five minutes had its popup
+   * closed and its promise left unsettled, which the UI showed as a spinner
+   * that never stopped.
+   */
+  checkClosedTimer: ReturnType<typeof setInterval> | null;
+  timeoutTimer: ReturnType<typeof setTimeout> | null;
+}
+
+/**
+ * Clears the pending attempt and both of its timers.
+ *
+ * @returns The state that was pending, or null if there was none
+ */
+function takePendingPopup(): PopupState | null {
+  const state = pendingPopup;
+  pendingPopup = null;
+
+  if (state?.checkClosedTimer) {
+    clearInterval(state.checkClosedTimer);
+  }
+  if (state?.timeoutTimer) {
+    clearTimeout(state.timeoutTimer);
+  }
+
+  return state;
 }
 
 /**
@@ -96,7 +128,7 @@ function handlePaperOAuthMessage(event: MessageEvent): void {
   }
 
   const { resolve, reject, popup } = pendingPopup;
-  pendingPopup = null;
+  takePendingPopup();
 
   // Close the popup if still open
   if (popup && !popup.closed) {
@@ -188,23 +220,23 @@ export async function authenticatePaperInPopup(paperHandle: string): Promise<Pap
       reject,
       popup,
       handle: paperHandle,
+      checkClosedTimer: null,
+      timeoutTimer: null,
     };
 
     // Check if popup was closed without completing auth
     const checkClosed = setInterval(() => {
       if (popup.closed && pendingPopup) {
-        clearInterval(checkClosed);
-        pendingPopup = null;
+        takePendingPopup();
         reject(new Error('Popup was closed before authentication completed'));
       }
     }, 500);
 
     // Timeout after 5 minutes
-    setTimeout(
+    const timeoutTimer = setTimeout(
       () => {
         if (pendingPopup) {
-          clearInterval(checkClosed);
-          pendingPopup = null;
+          takePendingPopup();
           if (!popup.closed) {
             popup.close();
           }
@@ -213,6 +245,11 @@ export async function authenticatePaperInPopup(paperHandle: string): Promise<Pap
       },
       5 * 60 * 1000
     );
+
+    if (pendingPopup) {
+      pendingPopup.checkClosedTimer = checkClosed;
+      pendingPopup.timeoutTimer = timeoutTimer;
+    }
   });
 }
 
@@ -227,7 +264,7 @@ export async function authenticatePaperInPopup(paperHandle: string): Promise<Pap
 export function cancelPaperAuthentication(): void {
   if (pendingPopup) {
     const { popup, reject } = pendingPopup;
-    pendingPopup = null;
+    takePendingPopup();
 
     if (popup && !popup.closed) {
       popup.close();
