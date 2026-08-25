@@ -212,13 +212,19 @@ export interface FieldProposalRecord {
 
 /**
  * Vote record as stored in ATProto.
+ *
+ * @remarks
+ * The free-text justification is named `comment` on the wire because that is
+ * what the `pub.chive.graph.vote` lexicon defines and what the indexer reads.
+ * The UI and form schemas call it `rationale`; {@link createVoteRecord} maps
+ * between the two so the naming divergence stops at this boundary.
  */
 export interface VoteRecord {
   [key: string]: unknown;
   $type: 'pub.chive.graph.vote';
   proposalUri: string;
   vote: 'approve' | 'reject' | 'abstain' | 'request-changes';
-  rationale?: string;
+  comment?: string;
   createdAt: string;
 }
 
@@ -702,6 +708,10 @@ export async function createFieldProposalRecord(
  * Records a vote on a governance proposal.
  * The vote is stored in the voter's PDS and indexed by Chive for tallying.
  *
+ * The caller supplies `rationale`, matching the form and UI vocabulary; it is
+ * written to the lexicon's `comment` field, which is the only one the indexer
+ * reads.
+ *
  * @param agent - Authenticated ATProto Agent
  * @param data - Vote data
  * @returns Created record result
@@ -735,7 +745,7 @@ export async function createVoteRecord(
   };
 
   if (data.rationale) {
-    record.rationale = data.rationale;
+    record.comment = data.rationale;
   }
 
   const response = await agent.com.atproto.repo.createRecord({

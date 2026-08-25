@@ -12,24 +12,16 @@
  */
 
 import { createClient, type RedisClientType } from 'redis';
+import { getAdminDids } from '../src/config/admin.js';
 
-const DEFAULT_ADMIN_DIDS = 'did:plc:34mbm5v3umztwvvgnttvcz6e';
 const ROLE_PREFIX = 'chive:authz:roles:';
 const ASSIGNMENT_PREFIX = 'chive:authz:assignments:';
 
 async function main(): Promise<void> {
   const redisUrl = process.env.REDIS_URL ?? 'redis://localhost:6379';
-  const adminDidsRaw = process.env.ADMIN_DIDS ?? DEFAULT_ADMIN_DIDS;
-
-  const adminDids = adminDidsRaw
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
-
-  if (adminDids.length === 0) {
-    console.log('No admin DIDs to seed.');
-    return;
-  }
+  // Resolved through the shared helper so the seeded platform admins and the
+  // governance role service can never disagree about who the admins are.
+  const adminDids = getAdminDids();
 
   console.log(`Connecting to Redis at ${redisUrl}...`);
   const redis: RedisClientType = createClient({ url: redisUrl });

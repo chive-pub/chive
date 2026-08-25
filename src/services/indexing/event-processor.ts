@@ -504,6 +504,15 @@ export function createEventProcessor(
             }
           );
         }
+      } else {
+        // Non-critical failures are not rethrown, and the cursor has already
+        // advanced past this event, so without a DLQ the record is dropped for
+        // good. Say so loudly rather than letting a missing option look benign.
+        logger.warn('Event failed with no DLQ configured; record will not be indexed', {
+          uri,
+          collection,
+          error: result.error.message,
+        });
       }
 
       // Throw for critical failures to halt processing
@@ -1871,6 +1880,12 @@ export function createBatchEventProcessor(
               }
             );
           }
+        } else {
+          logger.warn('Event failed with no DLQ configured; record will not be indexed', {
+            uri,
+            collection: event.collection,
+            error: result.error.message,
+          });
         }
 
         // Track critical failures

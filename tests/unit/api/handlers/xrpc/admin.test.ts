@@ -755,16 +755,22 @@ describe('XRPC Admin Handlers', () => {
       expect(result.body).toMatchObject({ success: true, did: 'did:plc:user1', role: 'moderator' });
     });
 
+    it('rejects governance roles with a pointer to the governance endpoint', async () => {
+      for (const role of ['graph-editor', 'trusted-editor', 'administrator']) {
+        await expect(
+          assignRole.handler({
+            params: undefined,
+            input: { did: 'did:plc:user1', role },
+            auth: null,
+            c: mockContext as never,
+          })
+        ).rejects.toThrow('pub.chive.governance.approveElevation');
+      }
+      expect(mockRedis.sadd).not.toHaveBeenCalled();
+    });
+
     it('accepts all valid roles', async () => {
-      const validRoles = [
-        'admin',
-        'moderator',
-        'graph-editor',
-        'author',
-        'reader',
-        'alpha-tester',
-        'premium',
-      ];
+      const validRoles = ['admin', 'moderator', 'author', 'reader', 'alpha-tester', 'premium'];
       for (const role of validRoles) {
         vi.clearAllMocks();
         mockContext = buildContext(adminUser);

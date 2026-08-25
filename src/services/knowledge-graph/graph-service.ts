@@ -577,6 +577,13 @@ export class KnowledgeGraphService {
    *
    * @param options - Filter and pagination options
    * @returns Paginated proposals
+   * @throws {DatabaseError} If the graph query fails
+   *
+   * @remarks
+   * A read failure propagates rather than degrading to an empty page. An empty
+   * page is a meaningful answer — the UI renders it as "no proposals found"
+   * with HTTP 200, and the moderation badge reads `total` — so swallowing an
+   * outage here made a broken graph indistinguishable from an empty backlog.
    *
    * @public
    */
@@ -632,12 +639,11 @@ export class KnowledgeGraphService {
         total: result.total,
       };
     } catch (error) {
-      this.logger.error('Failed to list proposals', error instanceof Error ? error : undefined);
-      return {
-        proposals: [],
-        hasMore: false,
-        total: 0,
-      };
+      this.logger.error('Failed to list proposals', error instanceof Error ? error : undefined, {
+        status: options.status,
+        type: options.type,
+      });
+      throw this.asReadError('Failed to list proposals', error);
     }
   }
 
@@ -645,7 +651,12 @@ export class KnowledgeGraphService {
    * Gets a proposal by ID.
    *
    * @param proposalId - Proposal identifier
-   * @returns Proposal view or null if not found
+   * @returns Proposal view, or null when no proposal carries that identifier
+   * @throws {DatabaseError} If the graph query fails
+   *
+   * @remarks
+   * Null means absent and nothing else. Callers turn it into a 404, so a read
+   * failure returned as null reported a proposal that exists as missing.
    *
    * @public
    */
@@ -684,8 +695,29 @@ export class KnowledgeGraphService {
       this.logger.error('Failed to get proposal', error instanceof Error ? error : undefined, {
         proposalId,
       });
-      return null;
+      throw this.asReadError(`Failed to get proposal ${proposalId}`, error);
     }
+  }
+
+  /**
+   * Wraps a caught value as a read-side {@link DatabaseError}.
+   *
+   * @remarks
+   * Errors raised by the graph adapter are already typed; re-wrapping them
+   * would bury the failing operation the adapter recorded, so they pass
+   * through unchanged.
+   *
+   * @internal
+   */
+  private asReadError(context: string, error: unknown): DatabaseError {
+    if (error instanceof DatabaseError) {
+      return error;
+    }
+    return new DatabaseError(
+      'READ',
+      `${context}: ${error instanceof Error ? error.message : String(error)}`,
+      error instanceof Error ? error : undefined
+    );
   }
 
   /**

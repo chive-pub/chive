@@ -25,6 +25,7 @@
 
 import type { Pool } from 'pg';
 
+import { getAdminDids } from '../../config/admin.js';
 import type { DID, NSID, Timestamp } from '../../types/atproto.js';
 import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
@@ -138,7 +139,24 @@ export interface TrustedEditorServiceOptions {
   pool: Pool;
   /** Logger instance */
   logger: ILogger;
+  /**
+   * DIDs that hold the administrator role without a `governance_roles` grant.
+   *
+   * @remarks
+   * Every administrator-only governance endpoint resolves the caller's role
+   * through this service, and the only way to obtain the administrator role is
+   * for an administrator to approve an elevation request — so a fresh
+   * deployment has no way to create its first administrator. Platform admins
+   * (the DIDs seeded into the `admin` authorization role at startup) are
+   * therefore accepted as administrators here. Defaults to the same
+   * `ADMIN_DIDS` environment variable that seeds those platform admins.
+   */
+  platformAdminDids?: readonly DID[];
 }
+
+/**
+ * Parse a comma-separated DID list, as carried by `ADMIN_DIDS`.
+ */
 
 /**
  * Criteria thresholds for automatic elevation.
@@ -175,10 +193,26 @@ const TRUSTED_EDITOR_CRITERIA = {
 export class TrustedEditorService {
   private readonly pool: Pool;
   private readonly logger: ILogger;
+  private readonly platformAdminDids: ReadonlySet<DID>;
 
   constructor(options: TrustedEditorServiceOptions) {
     this.pool = options.pool;
     this.logger = options.logger;
+    this.platformAdminDids = new Set(options.platformAdminDids ?? getAdminDids());
+  }
+
+  /**
+   * Resolve the effective governance role for a DID.
+   *
+   * @remarks
+   * Platform admins outrank whatever `governance_roles` holds, so that the
+   * first administrator of a deployment exists before any elevation request
+   * can be approved.
+   *
+   * @internal
+   */
+  private resolveRole(did: DID, storedRole: GovernanceRole): GovernanceRole {
+    return this.platformAdminDids.has(did) ? 'administrator' : storedRole;
   }
 
   /**
@@ -191,25 +225,27 @@ export class TrustedEditorService {
    */
   async getEditorStatus(did: DID): Promise<Result<EditorStatus, DatabaseError>> {
     try {
-      // Get user info and role
+      // Get user info and role. The query drives from the requested DID rather
+      // than from authors_index so that a granted role still resolves when the
+      // actor's profile has not been indexed; the display name is best-effort.
       const userResult = await this.pool.query<{
-        did: string;
         display_name: string | null;
         role: string;
         role_granted_at: Date | null;
         role_granted_by: string | null;
-        created_at: Date;
+        created_at: Date | null;
       }>(
         `SELECT
-          a.did,
           a.display_name,
           COALESCE(gr.role, 'community-member') as role,
           gr.granted_at as role_granted_at,
           gr.granted_by as role_granted_by,
           a.indexed_at as created_at
-        FROM authors_index a
-        LEFT JOIN governance_roles gr ON gr.did = a.did AND gr.active = true
-        WHERE a.did = $1`,
+        FROM (SELECT $1::text AS did) t
+        LEFT JOIN governance_roles gr ON gr.did = t.did AND gr.active = true
+        LEFT JOIN authors_index a ON a.did = t.did
+        ORDER BY gr.granted_at DESC
+        LIMIT 1`,
         [did]
       );
 
@@ -243,7 +279,7 @@ export class TrustedEditorService {
         value: {
           did,
           displayName: user?.display_name ?? undefined,
-          role: (user?.role ?? 'community-member') as GovernanceRole,
+          role: this.resolveRole(did, (user?.role ?? 'community-member') as GovernanceRole),
           roleGrantedAt: user?.role_granted_at?.getTime() as Timestamp | undefined,
           roleGrantedBy: user?.role_granted_by as DID | undefined,
           hasDelegation: !!delegation,
@@ -275,22 +311,28 @@ export class TrustedEditorService {
    */
   async calculateReputationMetrics(did: DID): Promise<Result<ReputationMetrics, DatabaseError>> {
     try {
-      // Get account info
+      // Get account info. As in getEditorStatus, the role comes from
+      // governance_roles rather than from an indexed profile.
       const accountResult = await this.pool.query<{
-        created_at: Date;
+        created_at: Date | null;
         role: string;
       }>(
         `SELECT
           a.indexed_at as created_at,
           COALESCE(gr.role, 'community-member') as role
-        FROM authors_index a
-        LEFT JOIN governance_roles gr ON gr.did = a.did AND gr.active = true
-        WHERE a.did = $1`,
+        FROM (SELECT $1::text AS did) t
+        LEFT JOIN governance_roles gr ON gr.did = t.did AND gr.active = true
+        LEFT JOIN authors_index a ON a.did = t.did
+        ORDER BY gr.granted_at DESC
+        LIMIT 1`,
         [did]
       );
 
       const accountCreatedAt = accountResult.rows[0]?.created_at ?? new Date();
-      const role = (accountResult.rows[0]?.role ?? 'community-member') as GovernanceRole;
+      const role = this.resolveRole(
+        did,
+        (accountResult.rows[0]?.role ?? 'community-member') as GovernanceRole
+      );
       const accountAgeDays = Math.floor(
         (Date.now() - accountCreatedAt.getTime()) / (1000 * 60 * 60 * 24)
       );
@@ -644,6 +686,8 @@ export class TrustedEditorService {
     cursor?: string
   ): Promise<Result<{ editors: EditorStatus[]; cursor?: string }, DatabaseError>> {
     try {
+      // The join to authors_index is a LEFT JOIN because an editor whose
+      // profile has not been indexed still holds the role.
       const result = await this.pool.query<{
         did: string;
         display_name: string | null;
@@ -653,7 +697,7 @@ export class TrustedEditorService {
       }>(
         `SELECT gr.did, a.display_name, gr.role, gr.granted_at, gr.granted_by
          FROM governance_roles gr
-         JOIN authors_index a ON a.did = gr.did
+         LEFT JOIN authors_index a ON a.did = gr.did
          WHERE gr.active = true AND gr.role IN ('trusted-editor', 'graph-editor')
          ${cursor ? 'AND gr.granted_at < $2' : ''}
          ORDER BY gr.granted_at DESC
@@ -710,7 +754,10 @@ export class TrustedEditorService {
         [did]
       );
 
-      const role = (result.rows[0]?.role ?? 'community-member') as GovernanceRole;
+      const role = this.resolveRole(
+        did,
+        (result.rows[0]?.role ?? 'community-member') as GovernanceRole
+      );
 
       // Authority editors get higher weight on authority proposals
       if (role === 'graph-editor' && (proposalType === 'authority' || proposalType === 'facet')) {
