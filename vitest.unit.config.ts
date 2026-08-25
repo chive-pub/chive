@@ -34,8 +34,15 @@ export default defineConfig({
         '**/lexicons/**',
       ],
       thresholds: {
-        // Lowered thresholds to match current coverage levels
-        // TODO: Increase thresholds as coverage improves
+        // These sit below the 80% line / 100%-critical-path bar stated in
+        // CLAUDE.md. They were lowered to match what the suite actually
+        // achieved and the gap was never recorded anywhere but this TODO, so
+        // the stated bar and the enforced one have disagreed since.
+        //
+        // Treat these as a ratchet, not as the target: raise them as coverage
+        // improves rather than lowering them to accommodate a new gap. The
+        // frontend equivalent lives in web/vitest.config.ts and is further
+        // behind still.
         lines: 70,
         functions: 70,
         branches: 58,
