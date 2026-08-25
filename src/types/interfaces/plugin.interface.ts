@@ -3,11 +3,24 @@
  *
  * @remarks
  * This module defines interfaces for Chive's plugin system, enabling
- * third-party extensions with security isolation and declared permissions.
+ * third-party extensions with declared permissions.
+ *
+ * IMPLEMENTATION STATUS: the security isolation described below is not wired
+ * up. `IPluginSandbox.executeInSandbox` and
+ * `IPermissionEnforcer.enforceNetworkAccess` are implemented but have no call
+ * sites — no plugin code has ever executed inside a V8 isolate, and no
+ * permission has ever been enforced at runtime. Plugins loaded through
+ * `loadPlugin` would be imported straight into the host process with its full
+ * privileges, which is why that path now refuses to load and only first-party
+ * plugins registered via `loadBuiltinPlugin` run.
+ *
+ * Treat the sandbox and permission types below as a design that has not shipped
+ * rather than as protection you have. Declaring a permission constrains
+ * nothing today.
  *
  * The plugin architecture combines dependency injection via TSyringe,
- * an event-driven hook system using EventEmitter2, and security sandboxing
- * through isolated-vm.
+ * an event-driven hook system using EventEmitter2, and a security sandbox
+ * design based on isolated-vm that is not yet wired up (see above).
  *
  * @packageDocumentation
  * @public
@@ -147,7 +160,8 @@ export interface IPluginManifest {
  * - Storage quota (max size)
  * - Event hooks (which events to subscribe)
  *
- * Permissions are enforced by the plugin sandbox (isolated-vm).
+ * Permissions are intended to be enforced by the plugin sandbox (isolated-vm).
+ * That enforcement is not wired up; see the status note at the top of this file.
  *
  * @public
  * @since 0.1.0
