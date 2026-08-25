@@ -673,6 +673,12 @@ export class PostgreSQLAdapter implements IStorageBackend {
 
   /**
    * Deletes a record from an index table by AT-URI.
+   *
+   * @remarks
+   * Only tables that actually exist and are keyed by a `uri` column may be
+   * passed. `extracted_citations` is deliberately absent: it is keyed by
+   * `user_record_uri`, so citation tombstones go through {@link deleteCitation}
+   * instead.
    */
   async deleteByUri(table: string, uri: AtUri): Promise<void> {
     // Allowlist of valid table names to prevent SQL injection
@@ -680,8 +686,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
       'user_tags_index',
       'reviews_index',
       'endorsements_index',
-      'citations_index',
-      'related_works_index',
+      'user_related_works_index',
     ];
     if (!validTables.includes(table)) {
       throw new Error(`Invalid table name: ${table}`);

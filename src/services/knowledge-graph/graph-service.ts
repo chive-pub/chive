@@ -126,6 +126,29 @@ export interface FacetedBrowseQuery {
 }
 
 /**
+ * Resolves the creation timestamp that orders a governance record.
+ *
+ * @remarks
+ * Proposal and vote lists sort on `createdAt`. That sort key has to come from
+ * the record itself, because ingest time is different on every rebuild from the
+ * firehose and would silently reorder governance history each time the index is
+ * rebuilt. Ingest time stays as the fallback for a record that carries no
+ * timestamp — or one that does not parse — since the sort key cannot be null.
+ *
+ * @param recordCreatedAt - `createdAt` as carried by the PDS record
+ * @param indexedAt - Ingest time, used only as a fallback
+ * @returns Authoritative creation timestamp for the record
+ */
+function resolveRecordCreatedAt(recordCreatedAt: string | undefined, indexedAt: Date): Date {
+  if (!recordCreatedAt) {
+    return indexedAt;
+  }
+
+  const parsed = new Date(recordCreatedAt);
+  return Number.isNaN(parsed.getTime()) ? indexedAt : parsed;
+}
+
+/**
  * Knowledge graph service implementation.
  *
  * @example
@@ -256,7 +279,7 @@ export class KnowledgeGraphService {
         proposedNode: proposalRecord.proposedNode as Partial<GraphNode> | undefined,
         rationale: proposalRecord.rationale,
         proposerDid,
-        createdAt: metadata.indexedAt,
+        createdAt: resolveRecordCreatedAt(proposalRecord.createdAt, metadata.indexedAt),
       });
 
       this.logger.info('Indexed node proposal', {
@@ -336,7 +359,7 @@ export class KnowledgeGraphService {
         proposedNode: proposalRecord.proposedEdge as Partial<GraphNode> | undefined,
         rationale: proposalRecord.rationale,
         proposerDid,
-        createdAt: metadata.indexedAt,
+        createdAt: resolveRecordCreatedAt(proposalRecord.createdAt, metadata.indexedAt),
       });
 
       this.logger.info('Indexed edge proposal', {
@@ -400,7 +423,7 @@ export class KnowledgeGraphService {
         voterRole: 'community-member', // Default role; actual role determined by governance service
         vote: voteRecord.vote,
         comment: voteRecord.comment,
-        createdAt: metadata.indexedAt,
+        createdAt: resolveRecordCreatedAt(voteRecord.createdAt, metadata.indexedAt),
       });
 
       this.logger.info('Indexed vote', {
