@@ -58,6 +58,17 @@ function extractDidFromUri(uri: AtUri): DID {
  */
 export interface EndorsementView {
   readonly uri: AtUri;
+  /**
+   * CID of the endorsement record.
+   *
+   * @remarks
+   * Stored at index time and required by the lexicon's view. Optional here
+   * because rows written before the column was populated may not carry one;
+   * the handlers surface an empty string in that case rather than the literal
+   * 'placeholder' they used to return, which no client could use for the
+   * optimistic-concurrency writes the CID exists to support.
+   */
+  readonly cid?: string;
   readonly endorser: DID;
   readonly eprintUri: AtUri;
   /**
@@ -147,6 +158,7 @@ export interface ReviewNotification {
  */
 export interface EndorsementNotification {
   readonly uri: AtUri;
+  readonly cid?: string;
   readonly endorserDid: DID;
   readonly endorserHandle?: string;
   readonly endorserDisplayName?: string;
@@ -509,15 +521,22 @@ export class ReviewService {
    */
   async getEndorsements(eprintUri: AtUri): Promise<readonly EndorsementView[]> {
     try {
+      // `cid` is selected because the lexicon marks it required on every
+      // endorsement view. The column has always existed and been populated at
+      // index time; the query simply omitted it, so the handlers returned the
+      // literal string 'placeholder' with a comment claiming the CID was not
+      // stored. Clients using the CID for optimistic concurrency were given a
+      // value that could never match.
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[] | null;
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+        `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND deleted_at IS NULL
          ORDER BY created_at DESC`,
@@ -526,6 +545,7 @@ export class ReviewService {
 
       return result.rows.map((row) => ({
         uri: row.uri as AtUri,
+        cid: row.cid ?? undefined,
         endorser: row.endorser_did as DID,
         eprintUri: row.eprint_uri as AtUri,
         contributions: row.contributions ?? [],
@@ -638,13 +658,14 @@ export class ReviewService {
     try {
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+        `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND endorser_did = $2 AND deleted_at IS NULL
          LIMIT 1`,
@@ -700,7 +721,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+      let query = `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [eprintUri];
@@ -719,6 +740,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -739,6 +761,7 @@ export class ReviewService {
       return {
         items: items.map((row) => ({
           uri: row.uri as AtUri,
+          cid: row.cid ?? undefined,
           endorser: row.endorser_did as DID,
           eprintUri: row.eprint_uri as AtUri,
           contributions: row.contributions ?? [],
@@ -787,7 +810,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+      let query = `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE endorser_did = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [endorserDid];
@@ -806,6 +829,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -1204,6 +1228,7 @@ export class ReviewService {
       let query = `
         SELECT
           en.uri,
+          en.cid,
           en.endorser_did,
           en.eprint_uri,
           en.contributions,
@@ -1233,6 +1258,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -1255,6 +1281,7 @@ export class ReviewService {
       return {
         items: items.map((row) => ({
           uri: row.uri as AtUri,
+          cid: row.cid ?? undefined,
           endorserDid: row.endorser_did as DID,
           endorserHandle: row.endorser_handle ?? undefined,
           endorserDisplayName: row.endorser_display_name ?? undefined,

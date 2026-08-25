@@ -42,7 +42,7 @@ export const listForAuthorPapers: XRPCMethod<QueryParams, void, OutputSchema> = 
     // Map service results to API format
     const endorsements = result.items.map((item) => ({
       uri: item.uri,
-      cid: 'placeholder', // CID not stored in index
+      cid: item.cid ?? '',
       eprintUri: item.eprintUri,
       eprintTitle: item.eprintTitle,
       endorser: {
