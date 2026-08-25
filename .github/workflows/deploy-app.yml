@@ -363,18 +363,16 @@ jobs:
 
             # Run the reindex script inside the chive-api container
             # The script syncs all pub.chive.graph.node and pub.chive.graph.edge records
+            # Only GRAPH_PDS_URL is overridden, to reach the PDS over the
+            # container network. GRAPH_PDS_DID is deliberately NOT passed: the
+            # repository variable is often undefined, and interpolating it
+            # yielded an empty string that overrode the correct built-in
+            # default, so every run failed with `Params must have the property
+            # "repo"` *after* it had already cleared the graph.
             docker exec \
               -e GRAPH_PDS_URL=http://governance-pds:3000 \
-              -e GRAPH_PDS_DID=${{ vars.GRAPH_PDS_DID }} \
-              -e GRAPH_PDS_HANDLE=${{ vars.GRAPH_PDS_HANDLE }} \
-              -e GRAPH_PDS_PASSWORD=${{ secrets.GRAPH_PDS_ADMIN_PASSWORD }} \
-              -e NEO4J_URI=bolt://neo4j:7687 \
-              -e NEO4J_USER=neo4j \
-              -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
               chive-api \
-              node --enable-source-maps dist/scripts/db/reindex-governance-to-neo4j.js || {
-                echo "::warning::Graph PDS sync failed - this may be expected on first deploy before records exist"
-              }
+              node --enable-source-maps dist/scripts/db/reindex-governance-to-neo4j.js
 
             echo "=== Governance sync complete ==="
 
@@ -424,18 +422,21 @@ jobs:
 
             cd /opt/chive
 
-            # Run the reindex script inside the chive-api container
-            # This fetches fresh records from PDSes and reindexes with current schema
+            # Run the reindex script inside the chive-api container.
+            # chive-api already has DATABASE_URL, ELASTICSEARCH_URL, NEO4J_URI,
+            # NEO4J_USER and NEO4J_PASSWORD from .env.production, so we pass no
+            # overrides: the script must use exactly the credentials the running
+            # service uses, and re-injecting them here risks drift and shell
+            # quoting damage.
+            #
+            # The script waits for the Neo4j knowledge graph to be populated
+            # before resolving field labels, and exits non-zero if any eprint
+            # still carries a raw UUID as a field label. A failure here means
+            # the search index is live with broken field names, so let it fail
+            # the deploy rather than warn.
             docker exec \
-              -e DATABASE_URL=postgresql://chive:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/chive \
-              -e ELASTICSEARCH_URL=http://elasticsearch:9200 \
-              -e NEO4J_URI=bolt://neo4j:7687 \
-              -e NEO4J_USER=neo4j \
-              -e NEO4J_PASSWORD=${{ secrets.NEO4J_PASSWORD }} \
               chive-api \
-              node --enable-source-maps dist/scripts/reindex-all-eprints.js || {
-                echo "::warning::Elasticsearch reindex failed - manual intervention may be required"
-              }
+              node --enable-source-maps dist/scripts/reindex-all-eprints.js
 
             echo "=== Elasticsearch reindex complete ==="
 

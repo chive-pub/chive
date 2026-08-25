@@ -237,11 +237,22 @@ export class PDSRegistry implements IPDSRegistry {
         `
         SELECT *
         FROM pds_registry
-        WHERE status IN ('pending', 'active')
+        WHERE (
+                status IN ('pending', 'active')
+                -- Recover PDSes wedged in 'scanning' by a process that died
+                -- mid-scan. Nothing else clears that status, and 'scanning' is
+                -- otherwise excluded here, so such a PDS is never scanned again.
+                OR (status = 'scanning' AND updated_at < NOW() - INTERVAL '1 hour')
+              )
           AND (next_scan_at IS NULL OR next_scan_at <= NOW())
           AND consecutive_failures < 5
-          AND is_relay_connected = FALSE
-        ORDER BY scan_priority ASC, next_scan_at ASC NULLS FIRST
+        -- Relay-connected PDSes are deprioritised, not excluded. Their records
+        -- normally arrive over the firehose, but a relay outage longer than the
+        -- relay's backfill window silently skips a range of events, and this
+        -- scan is the only mechanism that can find what was missed. Excluding
+        -- them outright made the scanner unable to repair exactly the gap it
+        -- exists for; scan cadence is still governed by next_scan_at.
+        ORDER BY is_relay_connected ASC, scan_priority ASC, next_scan_at ASC NULLS FIRST
         LIMIT $1
         `,
         [limit]
@@ -268,7 +279,8 @@ export class PDSRegistry implements IPDSRegistry {
       await this.pool.query(
         `
         UPDATE pds_registry
-        SET status = 'scanning'
+        SET status = 'scanning',
+            updated_at = NOW()
         WHERE pds_url = $1
         `,
         [pdsUrl]

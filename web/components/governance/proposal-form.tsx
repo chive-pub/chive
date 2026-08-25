@@ -23,7 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Send, Loader2, Info, Plus, Edit, Trash2, Network, Tags, X } from 'lucide-react';
 
 import { logger } from '@/lib/observability';
-import { api } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
 import { Button } from '@/components/ui/button';
 
 const proposalLogger = logger.child({ component: 'proposal-form' });
@@ -449,6 +449,33 @@ function NodeUriInput({
 // =============================================================================
 
 /**
+ * Extracts the record key from an AT-URI.
+ *
+ * @remarks
+ * Proposal routes are a single dynamic segment, so they cannot carry a full
+ * AT-URI. The record key is the identifier every proposal link uses.
+ */
+function rkeyOf(uri: string): string {
+  return uri.split('/').pop() ?? '';
+}
+
+/**
+ * Asks the AppView to index a freshly created proposal.
+ *
+ * @remarks
+ * Mirrors what endorsements, tags and annotations already do after a write.
+ * Indexing failure is not fatal: the firehose still delivers the record, so
+ * this only removes the delay before the proposal becomes readable.
+ */
+async function indexProposalRecord(uri: string): Promise<void> {
+  try {
+    await authApi.pub.chive.sync.indexRecord({ uri });
+  } catch {
+    // Non-fatal; the firehose remains the source of truth.
+  }
+}
+
+/**
  * Unified governance proposal form.
  */
 export function ProposalForm({
@@ -629,10 +656,19 @@ export function ProposalForm({
             },
           });
 
+          // Index the new record immediately. Every other user write does this;
+          // proposals did not, so the record only appeared after the firehose
+          // delivered it and the page redirected to a proposal that was not yet
+          // indexed.
+          await indexProposalRecord(result.data.uri);
+
           // Create a mock Proposal object for onSuccess
           const proposal = {
             uri: result.data.uri,
-            id: values.id,
+            // The record key, which is how proposal routes and list links
+            // address a proposal. Using the user-typed slug here sent the
+            // redirect to a URL the detail endpoint could never resolve.
+            id: rkeyOf(result.data.uri),
             type: values.proposalType,
             status: 'pending' as const,
             label: values.label,
@@ -674,10 +710,12 @@ export function ProposalForm({
             },
           });
 
+          await indexProposalRecord(result.data.uri);
+
           // Create a mock Proposal object for onSuccess
           const proposal = {
             uri: result.data.uri,
-            id: `${values.sourceUri}-${values.relationSlug}-${values.targetUri}`,
+            id: rkeyOf(result.data.uri),
             type: 'create' as const,
             status: 'pending' as const,
             label: `${values.sourceLabel ?? 'Source'} → ${values.relationSlug} → ${values.targetLabel ?? 'Target'}`,

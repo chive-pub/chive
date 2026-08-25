@@ -13,6 +13,7 @@ import type {
   OutputSchema,
   VoteView,
 } from '../../../../lexicons/generated/types/pub/chive/governance/listVotes.js';
+import { NotFoundError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -31,11 +32,18 @@ export const listVotes: XRPCMethod<QueryParams, void, OutputSchema> = {
       limit: params.limit,
     });
 
-    // Construct proposal URI from ID
-    const proposalUri = `at://chive.governance/pub.chive.graph.fieldProposal/${params.proposalId}`;
+    // Resolve the proposal to get its real URI. The previous implementation
+    // synthesised one as `at://chive.governance/pub.chive.graph.fieldProposal/<id>`,
+    // whose authority is not a DID and whose collection does not exist
+    // (proposals are `pub.chive.graph.nodeProposal`), so it matched no vote and
+    // this endpoint always returned an empty list.
+    const proposal = await graphService.getProposalById(params.proposalId);
+    if (!proposal) {
+      throw new NotFoundError('Proposal', params.proposalId);
+    }
 
     // Get votes from the knowledge graph service
-    const allVotes = await graphService.getVotesForProposal(proposalUri);
+    const allVotes = await graphService.getVotesForProposal(proposal.uri);
 
     // Apply pagination
     const limit = params.limit ?? 100;

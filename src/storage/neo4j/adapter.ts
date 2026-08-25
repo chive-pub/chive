@@ -26,6 +26,7 @@ import type {
 } from '../../types/interfaces/graph.interface.js';
 
 import { Neo4jConnection } from './connection.js';
+import { subkindToLabel } from './labels.js';
 import type {
   GraphNode,
   GraphEdge,
@@ -43,16 +44,6 @@ import type {
   UserRole,
   VoteType,
 } from './types.js';
-
-/**
- * Map subkind slugs to Neo4j labels (PascalCase).
- */
-function subkindToLabel(subkind: string): string {
-  return subkind
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join('');
-}
 
 /**
  * Neo4j adapter implementing the IGraphDatabase interface.
@@ -739,6 +730,32 @@ export class Neo4jAdapter implements IGraphDatabase {
   /**
    * Gets a proposal by URI.
    */
+  /**
+   * Gets a proposal by its record key.
+   *
+   * @remarks
+   * Matches `p.id` where present and falls back to the URI suffix, so
+   * proposals indexed before the record key was persisted resolve too. That
+   * fallback is what makes this work without a data migration.
+   */
+  async getProposalByRkey(rkey: string): Promise<NodeProposal | null> {
+    const query = `
+      MATCH (p:Proposal)
+      WHERE p.id = $rkey OR p.uri ENDS WITH '/' + $rkey
+      RETURN p
+      LIMIT 1
+    `;
+
+    const result = await this.connection.executeQuery<{ p: Neo4jProposal }>(query, { rkey });
+
+    const record = result.records[0];
+    if (!record) {
+      return null;
+    }
+
+    return this.mapNeo4jProposal(record.get('p'));
+  }
+
   async getProposal(uri: AtUri): Promise<NodeProposal | null> {
     const query = `
       MATCH (p:Proposal {uri: $uri})
@@ -868,6 +885,7 @@ export class Neo4jAdapter implements IGraphDatabase {
     const query = `
       MERGE (p:Proposal {uri: $uri})
       ON CREATE SET
+        p.id = $id,
         p.proposalType = $proposalType,
         p.kind = $kind,
         p.subkind = $subkind,
@@ -886,6 +904,8 @@ export class Neo4jAdapter implements IGraphDatabase {
 
     await this.connection.executeQuery(query, {
       uri: proposal.uri,
+      // The record key is how every UI link and route addresses a proposal.
+      id: proposal.uri.split('/').pop() ?? '',
       proposalType: proposal.proposalType,
       kind: proposal.kind,
       subkind: proposal.subkind ?? null,

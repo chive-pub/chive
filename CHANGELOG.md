@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-08-24
+
+### Fixed
+
+- Node subkinds are validated before being interpolated into Cypher. `subkindToLabel` only capitalised the hyphen-separated parts, so parentheses, whitespace and comment markers passed into `MATCH (n:Node:<label>)` unaltered, and `subkind` is caller-supplied on the unauthenticated `pub.chive.graph.listNodes` and `pub.chive.graph.getHierarchy`. The helper was also duplicated, unguarded, across two files feeding nine interpolation sites; both now route through `src/storage/neo4j/labels.ts`, which rejects anything that is not a plain identifier.
+- Proposals resolve by record key, so proposal detail pages and votes load. `getProposalById` cast whatever identifier it received to an `AtUri` and matched on `uri`, while every route and list link carries the record key — a value that never equals a full AT-URI. No proposal page could load and `getUserVote` failed identically. `IGraphDatabase` gains `getProposalByRkey`, which falls back to the URI suffix so proposals indexed before the record key was persisted resolve without a migration. Closes #89.
+- `pub.chive.governance.listVotes` returns the votes on a proposal. It synthesised `at://chive.governance/pub.chive.graph.fieldProposal/<id>` — an authority that is not a DID, and a collection that does not exist — so it matched no vote and always returned an empty list.
+- New proposals are indexed immediately through `pub.chive.sync.indexRecord`, as every other user write already was. `pub.chive.graph.nodeProposal` and `pub.chive.graph.vote` were not accepted by that endpoint, so a proposal was only readable once the firehose delivered it.
+- The governance sync no longer clears the knowledge graph before it has the records to replace it with. An undefined `GRAPH_PDS_DID` repository variable interpolated to an empty string, which overrode the correct built-in default and failed every request with `Params must have the property "repo"` — after the graph had already been wiped. Deploys therefore left Neo4j empty, and the eprint reindex that followed resolved every field label to a raw UUID.
+- Field labels survive a reindex that cannot reach the knowledge graph. `resolveFieldLabels` returns the original UUID when Neo4j has no matching node and swallows the error that caused it, so a racing or failed lookup overwrote correct labels. The reindex now waits briefly for the graph to populate and preserves the label already stored in PostgreSQL rather than downgrading it.
+- The field label resolution job mirrors repairs into Elasticsearch. It only ever wrote to PostgreSQL, while browse and search read from the search index, so repaired labels never reached the UI.
+- The PDS scanner can reach relay-connected servers. `getPDSesForScan` required `is_relay_connected = FALSE` and every registered PDS is relay-connected, so the scheduler ran every 15 minutes and scanned nothing. Records from those servers normally arrive over the firehose, but a relay outage longer than the relay's backfill window skips events permanently, and this scan is the only mechanism that can find them. They are now ranked last rather than excluded.
+- A PDS wedged in `scanning` by a crashed scan is reclaimed after an hour. Nothing cleared that status and it was absent from the selection query, so such a server was excluded from every future cycle.
+- Backend services report their real release version. `npm_package_version` is unset when a container starts Node directly, so `/health`, structured logs and OpenTelemetry resources reported `0.0.0` in every deployed environment.
+
+### Changed
+
+- The production deploy no longer re-injects database credentials into the reindex and governance sync steps, using the container's own environment instead. Re-interpolating them risked drift from the values the running service uses, and an undefined variable silently overrode a correct default.
+- A failed Elasticsearch reindex or governance sync now fails the deploy instead of emitting a warning and reporting success.
+
 ## [0.7.0] - 2026-08-24
 
 ### Added
@@ -669,7 +689,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/chive-pub/chive/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/chive-pub/chive/compare/v0.6.3...v0.7.0
 [0.6.3]: https://github.com/chive-pub/chive/compare/v0.6.2...v0.6.3
 [0.6.2]: https://github.com/chive-pub/chive/compare/v0.6.1...v0.6.2

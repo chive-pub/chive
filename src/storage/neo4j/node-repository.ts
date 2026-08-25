@@ -16,6 +16,7 @@ import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError, ValidationError } from '../../types/errors.js';
 
 import { Neo4jConnection } from './connection.js';
+import { subkindToLabel } from './labels.js';
 import type {
   GraphNode,
   NodeKind,
@@ -27,17 +28,6 @@ import type {
   ExternalId,
   NodeMetadata,
 } from './types.js';
-
-/**
- * Subkind label mapping - converts slug to Neo4j label
- */
-function subkindToLabel(slug: string): string {
-  // Convert kebab-case to PascalCase
-  return slug
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join('');
-}
 
 /**
  * Neo4j repository for unified graph node operations.
