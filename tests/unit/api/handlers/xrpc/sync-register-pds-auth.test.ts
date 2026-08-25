@@ -8,6 +8,7 @@
  */
 
 import type { Context } from 'hono';
+import type { Mock } from 'vitest';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 import { registerPDS } from '@/api/handlers/xrpc/sync/registerPDS.js';
