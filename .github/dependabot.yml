@@ -1,0 +1,67 @@
+# Dependabot configuration.
+#
+# The dependency tree carries a large backlog of transitive advisories, most of
+# them in dev and docs tooling. Grouping updates keeps that from arriving as
+# hundreds of separate pull requests: production dependencies are grouped
+# separately from development ones so a runtime change is never buried in a
+# batch of tooling bumps, and the two workspaces that hold their own manifests
+# are covered explicitly, since Dependabot does not follow pnpm workspaces from
+# the root.
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    groups:
+      production-dependencies:
+        dependency-type: production
+        update-types: [minor, patch]
+      development-dependencies:
+        dependency-type: development
+        update-types: [minor, patch]
+    labels: [dependencies, security]
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 5
+    groups:
+      web-dependencies:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, frontend]
+
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 3
+    groups:
+      docs-dependencies:
+        patterns: ['*']
+        update-types: [minor, patch]
+    labels: [dependencies, documentation]
+
+  # Workflow actions pin to tags that go stale and are a supply-chain surface in
+  # their own right.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: '06:00'
+    open-pull-requests-limit: 3
+    groups:
+      github-actions:
+        patterns: ['*']
+    labels: [dependencies, ci]
