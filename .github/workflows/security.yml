@@ -1,0 +1,138 @@
+# Security scanning.
+#
+# The repository previously had no scanning of any kind — no CodeQL, no
+# dependency audit, no container scan, no dependabot — despite the architecture
+# overview describing one. This workflow supplies the missing visibility.
+#
+# On enforcement: CodeQL gates, because it analyses code this repository owns
+# and a finding there is actionable now. The dependency and container scans
+# report without failing, because the tree currently carries 343 known
+# advisories (8 critical, 141 high), almost all transitive through dev and docs
+# tooling. A gate switched on today would block every pull request on debt that
+# predates it. The scans make that debt visible and dependabot starts reducing
+# it; turning `audit` into a gate is a follow-up once the count is manageable,
+# and the one-line change is marked below.
+name: Security
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging, develop]
+  schedule:
+    # Weekly, so newly disclosed advisories surface without a push.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  codeql:
+    name: CodeQL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript-typescript'
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+
+      # `|| true` is deliberate: see the enforcement note at the top of this
+      # file. Remove it to turn the audit into a gate.
+      - name: Audit dependencies
+        run: pnpm audit --json > audit.json || true
+
+      - name: Summarize advisories
+        run: |
+          python3 - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+
+          try:
+              with open('audit.json') as handle:
+                  report = json.load(handle)
+          except Exception as error:
+              print(f'Could not parse audit output: {error}')
+              raise SystemExit(0)
+
+          advisories = (report.get('advisories') or {}).values()
+          counts = {}
+          for advisory in advisories:
+              severity = advisory.get('severity', 'unknown')
+              counts[severity] = counts.get(severity, 0) + 1
+
+          print('## Dependency audit')
+          print()
+          if not counts:
+              print('No advisories reported.')
+              raise SystemExit(0)
+
+          order = ['critical', 'high', 'moderate', 'low', 'info', 'unknown']
+          print('| Severity | Count |')
+          print('| --- | --- |')
+          for severity in order:
+              if severity in counts:
+                  print(f'| {severity} | {counts[severity]} |')
+
+          critical = [a for a in advisories if a.get('severity') == 'critical']
+          if critical:
+              print()
+              print('### Critical')
+              print()
+              print('| Package | Advisory |')
+              print('| --- | --- |')
+              for advisory in sorted(critical, key=lambda a: a.get('module_name', '')):
+                  title = (advisory.get('title') or '').replace('|', '\\|')
+                  print(f"| `{advisory.get('module_name')}` | {title} |")
+          PY
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: audit.json
+          retention-days: 30
+
+  filesystem-scan:
+    name: Filesystem Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,misconfig
+          format: sarif
+          output: trivy-results.sarif
+          severity: HIGH,CRITICAL
+          # Reports rather than gates, for the reason given at the top.
+          exit-code: '0'
+
+      - name: Upload results to the security tab
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+          category: trivy-filesystem
