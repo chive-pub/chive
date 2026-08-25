@@ -476,7 +476,8 @@ export class MetricsService {
    */
   async getTrending(
     window: '24h' | '7d' | '30d',
-    limit: number
+    limit: number,
+    offset = 0
   ): Promise<readonly TrendingEntry[]> {
     try {
       const now = Date.now();
@@ -577,7 +578,9 @@ export class MetricsService {
       } while (cursor !== '0');
 
       // Sort by score descending and take top N
-      const trending = uriScores.sort((a, b) => b.score - a.score).slice(0, limit);
+      // Paging slices the ranked list; without the offset every page returned
+      // the same first `limit` entries and the cursor advanced forever.
+      const trending = uriScores.sort((a, b) => b.score - a.score).slice(offset, offset + limit);
 
       return trending;
     } catch (error) {

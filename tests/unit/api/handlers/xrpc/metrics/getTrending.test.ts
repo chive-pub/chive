@@ -499,7 +499,9 @@ describe('getTrending', () => {
         c: mockContext as never,
       });
 
-      expect(mockMetricsService.getTrending).toHaveBeenCalledWith('24h', 20);
+      // The third argument is the paging offset, which the handler previously
+      // parsed but never passed on; see trending-paging.test.ts.
+      expect(mockMetricsService.getTrending).toHaveBeenCalledWith('24h', 20, 0);
     });
   });
 });

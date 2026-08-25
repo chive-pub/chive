@@ -18,7 +18,10 @@ import type { XRPCMethod } from '@/api/xrpc/types.js';
 const handler = vi.fn().mockResolvedValue({ encoding: 'application/json', body: { ok: true } });
 
 /** Registers one method on an empty lexicon set and returns the router. */
-const register = (nsid: string, config: Partial<XRPCMethod<unknown, unknown, unknown>>) => {
+const register = (
+  nsid: string,
+  config: Partial<XRPCMethod<unknown, unknown, unknown>>
+): ReturnType<typeof createXRPCRouter> => {
   const xrpc = createXRPCRouter(new Lexicons());
   xrpc.method(nsid, { handler, ...config } as XRPCMethod<unknown, unknown, unknown>);
   return xrpc;
