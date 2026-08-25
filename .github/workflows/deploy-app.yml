@@ -229,7 +229,12 @@ jobs:
 
             # Force-remove any leftover chive containers (catches orphans from profile changes or failed deploys)
             echo "Removing any leftover chive containers..."
-            docker ps -a --filter "name=chive-" -q | xargs docker rm -f 2>/dev/null || true
+            # `chive-test-*` is the developer test stack (docker/docker-compose.yml).
+            # It shares the `chive-` prefix, so exclude it by name rather than
+            # letting this sweep destroy a running test stack on the same host.
+            docker ps -a --filter "name=chive-" --format '{{.Names}}' \
+              | grep -v '^chive-test-' \
+              | xargs -r docker rm -f 2>/dev/null || true
 
             # Start all services including observability stack
             # --force-recreate ensures containers use the newly built images
