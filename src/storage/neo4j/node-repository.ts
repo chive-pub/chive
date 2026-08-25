@@ -155,6 +155,47 @@ export class NodeRepository {
   }
 
   /**
+   * Get several nodes by URI in one query.
+   *
+   * @param uris - Node AT-URIs
+   * @returns Map of URI to node, omitting URIs with no node
+   *
+   * @remarks
+   * Faceted browse resolved value labels with one `getNode` per edge inside a
+   * per-facet loop, so a browse with a limit of 100 cost 100 sequential Neo4j
+   * round trips per facet. `WHERE n.uri IN $uris` collapses each facet's
+   * lookups into one.
+   *
+   * @public
+   */
+  async getNodesByUris(uris: readonly AtUri[]): Promise<Map<AtUri, GraphNode>> {
+    const found = new Map<AtUri, GraphNode>();
+
+    if (uris.length === 0) {
+      return found;
+    }
+
+    const query = `
+      MATCH (n:Node)
+      WHERE n.uri IN $uris
+      RETURN n
+    `;
+
+    const result = await this.connection.executeQuery<{ n: GraphNode }>(query, {
+      uris: [...new Set(uris)],
+    });
+
+    for (const record of result.records) {
+      const node = this.mapRecordToNode(record.get('n'));
+      if (node.uri) {
+        found.set(node.uri, node);
+      }
+    }
+
+    return found;
+  }
+
+  /**
    * Get a node by ID.
    *
    * @param id - Node ID (UUID)

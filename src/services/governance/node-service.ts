@@ -187,6 +187,52 @@ export class NodeService {
   }
 
   /**
+   * Get several nodes by URI, using the cache where possible.
+   *
+   * @param uris - Node AT-URIs
+   * @returns Map of URI to node, omitting URIs with no node
+   *
+   * @remarks
+   * Cached entries are served without touching Neo4j; whatever is left is
+   * fetched in a single query rather than one per URI. Faceted browse
+   * previously issued one `getNode` per edge inside a per-facet loop, which at
+   * a limit of 100 meant 100 sequential round trips for every facet on the
+   * page.
+   *
+   * @public
+   */
+  async getNodes(uris: readonly AtUri[]): Promise<Map<AtUri, GraphNode>> {
+    const found = new Map<AtUri, GraphNode>();
+    const unresolved: AtUri[] = [];
+
+    for (const uri of new Set(uris)) {
+      if (this.cache) {
+        const cached = await this.cache.get(this.cacheKey(uri));
+        if (cached) {
+          found.set(uri, JSON.parse(cached) as GraphNode);
+          continue;
+        }
+      }
+      unresolved.push(uri);
+    }
+
+    if (unresolved.length === 0) {
+      return found;
+    }
+
+    const fetched = await this.nodeRepository.getNodesByUris(unresolved);
+
+    for (const [uri, node] of fetched) {
+      found.set(uri, node);
+      if (this.cache) {
+        await this.cache.setex(this.cacheKey(uri), this.cacheTtlSeconds, JSON.stringify(node));
+      }
+    }
+
+    return found;
+  }
+
+  /**
    * Get a node by ID.
    */
   async getNodeById(id: string): Promise<GraphNode | null> {

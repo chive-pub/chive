@@ -225,7 +225,16 @@ export class CollaborationGraph {
    */
   async getCollaborationStrength(did1: DID, did2: DID): Promise<CollaborationStrength | null> {
     const query = `
-      MATCH (a1:Author {did: $did1})-[r:COAUTHORED_WITH]-(a2:Author {did: $did2})
+      // Authors are stored as (:Node:Object:Person) with subkind 'author' and the
+      // DID under metadata.did — see AuthorRepository.createCoauthorship, which
+      // is what writes COAUTHORED_WITH. This query matched (:Author {did}), a
+      // label and property pair nothing ever creates, so collaboration strength
+      // was null for every pair of authors that had ever collaborated.
+      MATCH (a1:Node:Object:Person)
+      WHERE a1.subkind = 'author' AND a1.metadata.did = $did1
+      MATCH (a2:Node:Object:Person)
+      WHERE a2.subkind = 'author' AND a2.metadata.did = $did2
+      MATCH (a1)-[r:COAUTHORED_WITH]-(a2)
       RETURN
         $did1 AS author1Did,
         $did2 AS author2Did,
