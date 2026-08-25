@@ -9,7 +9,7 @@
  * - qualityScore >= 0.7
  * - spamScore < 0.3
  *
- * Tags meeting these criteria are promoted to `pub.chive.graph.fieldProposal`
+ * Tags meeting these criteria are promoted to `pub.chive.graph.nodeProposal`
  * records in the Governance PDS, where they enter the community voting workflow.
  *
  * **ATProto Compliance:**

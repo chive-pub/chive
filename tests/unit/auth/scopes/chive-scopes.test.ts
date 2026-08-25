@@ -42,7 +42,12 @@ describe('chive-scopes', () => {
       expect(REPO_SCOPES.GRAPH_NODE).toBe('repo:pub.chive.graph.node');
       expect(REPO_SCOPES.GRAPH_EDGE).toBe('repo:pub.chive.graph.edge');
       expect(REPO_SCOPES.DISCOVERY_SETTINGS).toBe('repo:pub.chive.discovery.settings');
-      expect(REPO_SCOPES.GRAPH_FIELD_PROPOSAL).toBe('repo:pub.chive.graph.fieldProposal');
+    });
+
+    // The record type was renamed to node/edgeProposal and `fieldProposal` has
+    // no lexicon, so a scope for it could be granted but never used.
+    it('does not offer a scope for the renamed fieldProposal record', () => {
+      expect(Object.values(REPO_SCOPES)).not.toContain('repo:pub.chive.graph.fieldProposal');
     });
 
     it('prefixes all scopes with repo:', () => {
@@ -58,8 +63,10 @@ describe('chive-scopes', () => {
     });
 
     it('covers all pub.chive.* collections that the app writes to', () => {
-      // 19 original + actor.mute + collaboration.invite + collaboration.inviteAcceptance
-      expect(Object.keys(REPO_SCOPES)).toHaveLength(22);
+      // 19 original + actor.mute + collaboration.invite + collaboration.inviteAcceptance,
+      // less the fieldProposal scope, whose record type was renamed to
+      // node/edgeProposal and has no lexicon to grant against.
+      expect(Object.keys(REPO_SCOPES)).toHaveLength(21);
     });
   });
 

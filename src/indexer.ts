@@ -11,7 +11,7 @@
  * - pub.chive.review.comment
  * - pub.chive.review.endorsement
  * - pub.chive.eprint.userTag
- * - pub.chive.graph.fieldProposal
+ * - pub.chive.graph.nodeProposal
  * - pub.chive.graph.vote
  * - pub.chive.actor.profile
  *
