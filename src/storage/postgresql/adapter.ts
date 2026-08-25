@@ -607,14 +607,20 @@ export class PostgreSQLAdapter implements IStorageBackend {
     limit: number,
     offset: number
   ): Promise<{ uris: AtUri[]; total: number }> {
-    const normTag = PostgreSQLAdapter.normalizeExpr('tag');
+    // Qualified so the tag lookup can join eprints_index and drop tags whose
+    // eprint has been soft-deleted; an unjoined tag row would otherwise keep a
+    // deleted eprint reachable through community tags.
+    const normTag = PostgreSQLAdapter.normalizeExpr('t.tag');
     const normKw = PostgreSQLAdapter.normalizeExpr('k');
 
     const countResult = await this.pool.query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM (
-         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         SELECT DISTINCT t.eprint_uri AS uri FROM user_tags_index t
+           JOIN eprints_index te ON te.uri = t.eprint_uri
+           WHERE ${normTag} = $1 AND te.deleted_at IS NULL
          UNION
-         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k
+           WHERE ${normKw} = $1 AND deleted_at IS NULL
        ) combined`,
       [normalizedTerm]
     );
@@ -626,9 +632,12 @@ export class PostgreSQLAdapter implements IStorageBackend {
 
     const result = await this.pool.query<{ uri: string }>(
       `SELECT uri FROM (
-         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         SELECT DISTINCT t.eprint_uri AS uri FROM user_tags_index t
+           JOIN eprints_index te ON te.uri = t.eprint_uri
+           WHERE ${normTag} = $1 AND te.deleted_at IS NULL
          UNION
-         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k
+           WHERE ${normKw} = $1 AND deleted_at IS NULL
        ) combined
        ORDER BY uri
        LIMIT $2 OFFSET $3`,

@@ -70,6 +70,16 @@ export interface BatchAssignmentResult {
 }
 
 /**
+ * Largest traversal depth accepted by {@link FacetManager.getChildFacets}.
+ *
+ * @remarks
+ * The depth is interpolated into the Cypher text rather than parameterized,
+ * so it is bounded as well as type-checked: an unbounded variable-length
+ * traversal over a dense facet graph is a cheap way to exhaust the server.
+ */
+const MAX_FACET_DEPTH = 10;
+
+/**
  * Facet manager for 10-dimensional classification system.
  *
  * Manages faceted classification using PMEST (Personality, Matter, Energy, Space, Time)
@@ -311,7 +321,7 @@ export class FacetManager {
    */
   async createFacet(node: GraphNode): Promise<AtUri> {
     const query = `
-      CREATE (f:Node:Node:Facet {
+      CREATE (f:Node:Facet {
         id: $id,
         uri: $uri,
         kind: 'type',
@@ -615,15 +625,25 @@ export class FacetManager {
    * @returns Child facet nodes
    */
   async getChildFacets(parentUri: AtUri, maxDepth = 1): Promise<GraphNode[]> {
+    // Cypher does not accept a parameter as a variable-length bound: `*1..$n`
+    // is a syntax error, so this query failed on every call. The bound has to
+    // be part of the query text, which means it cannot be parameterized and
+    // must be proven to be a plain integer before interpolation.
+    if (!Number.isInteger(maxDepth) || maxDepth < 1 || maxDepth > MAX_FACET_DEPTH) {
+      throw new RangeError(
+        `maxDepth must be an integer between 1 and ${MAX_FACET_DEPTH}, received ${String(maxDepth)}`
+      );
+    }
+
     const query = `
-      MATCH (parent:Node:Node:Facet {uri: $parentUri})<-[:EDGE {relationSlug: 'narrower'}*1..$maxDepth]-(child:Node:Facet)
+      MATCH (parent:Node:Facet {uri: $parentUri})<-[:EDGE {relationSlug: 'narrower'}*1..${maxDepth}]-(child:Node:Facet)
       RETURN DISTINCT child
       ORDER BY child.label
     `;
 
     const result = await this.connection.executeQuery<{
       child: Record<string, string | number | Date | string[]>;
-    }>(query, { parentUri, maxDepth: neo4j.int(maxDepth) });
+    }>(query, { parentUri });
 
     return result.records.map((record) => this.mapFacet(record.get('child')));
   }
@@ -636,7 +656,7 @@ export class FacetManager {
    */
   async getParentFacets(childUri: AtUri): Promise<GraphNode[]> {
     const query = `
-      MATCH (child:Node:Node:Facet {uri: $childUri})-[:EDGE {relationSlug: 'broader'}]->(parent:Node:Facet)
+      MATCH (child:Node:Facet {uri: $childUri})-[:EDGE {relationSlug: 'broader'}]->(parent:Node:Facet)
       RETURN parent
       ORDER BY parent.label
     `;
