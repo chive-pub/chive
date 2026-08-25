@@ -17,6 +17,7 @@ import { Redis } from 'ioredis';
 const { EventEmitter2 } = EventEmitter2Module;
 type EventEmitter2Type = InstanceType<typeof EventEmitter2>;
 
+import { assertNoAuthBypassInProduction } from './api/middleware/auth.js';
 import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
@@ -1044,6 +1045,10 @@ async function seedAdminRoles(
  * Main entry point.
  */
 async function main(): Promise<void> {
+  // Refuse to boot a production process with the header auth bypass enabled,
+  // before any listener is bound.
+  assertNoAuthBypassInProduction();
+
   const config = loadConfig();
   const logger = new PinoLogger({
     level: config.nodeEnv === 'production' ? 'info' : 'debug',

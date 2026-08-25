@@ -14,6 +14,14 @@ import type { ChiveEnv } from '@/api/types/context.js';
 import type { AtUri, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+// The registerPDS handler runs every candidate URL through the SSRF guard,
+// which resolves the hostname before any fetch. Test hostnames do not exist in
+// DNS, so resolution is stubbed to a public address; the guard's own rejection
+// paths are covered in tests/unit/utils/ssrf-guard.test.ts.
+vi.mock('node:dns/promises', () => ({
+  lookup: vi.fn().mockResolvedValue([{ address: '93.184.216.34' }]),
+}));
+
 // =============================================================================
 // Mocks
 // =============================================================================

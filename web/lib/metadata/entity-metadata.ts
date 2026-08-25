@@ -237,10 +237,35 @@ export function buildEntityHeadTags(input: EntityMetadataInput): EntityHeadTag[]
   tags.push({
     kind: 'script',
     type: 'application/ld+json',
-    content: JSON.stringify(buildSchemaOrg(input)),
+    content: serializeJsonLd(buildSchemaOrg(input)),
   });
 
   return tags;
+}
+
+/**
+ * Serializes a JSON-LD payload for embedding in a `<script>` element.
+ *
+ * @param payload - Schema.org object to serialize
+ * @returns JSON text safe to place inside `<script type="application/ld+json">`
+ *
+ * @remarks
+ * `JSON.stringify` escapes what JSON requires, which does not include `<`. The
+ * payload carries eprint titles, abstracts and author names that originate in
+ * user-controlled PDS records, so a title containing `</script>` closed the
+ * element and everything after it parsed as markup — stored XSS on every page
+ * that rendered the record. Escaping `<`, `>` and `&` as unicode escapes keeps
+ * the JSON semantically identical while making an early `</script>`
+ * unrepresentable. U+2028 and U+2029 are escaped too: they are valid in JSON
+ * but are line terminators in JavaScript source.
+ */
+function serializeJsonLd(payload: unknown): string {
+  return JSON.stringify(payload)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 /**

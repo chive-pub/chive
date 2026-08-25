@@ -74,14 +74,48 @@ function extractBearerToken(header: string | undefined): string | null {
  *
  * @public
  */
+/**
+ * Refuses to start a production process that enables the E2E auth bypass.
+ *
+ * @throws Error when `ENABLE_E2E_AUTH_BYPASS` is `true` while `NODE_ENV` is
+ *   `production`
+ *
+ * @remarks
+ * The bypass turns `X-E2E-Auth-Did` and `X-E2E-Auth-Admin` into an
+ * unauthenticated route to full administrative access, and both header names
+ * are in the production CORS allowlist. The middleware already ignores the
+ * variable outside development, but silently ignoring it would leave an
+ * operator believing the bypass is active — or, worse, leave the flag set in a
+ * deploy that a later refactor honours again. Failing the boot makes the
+ * misconfiguration impossible to miss.
+ *
+ * @public
+ */
+export function assertNoAuthBypassInProduction(env: NodeJS.ProcessEnv = process.env): void {
+  if (env.ENABLE_E2E_AUTH_BYPASS === 'true' && env.NODE_ENV === 'production') {
+    throw new Error(
+      'ENABLE_E2E_AUTH_BYPASS is set in production. This header-based bypass grants ' +
+        'full admin access and must never be enabled outside development or E2E runs. ' +
+        'Unset it and redeploy.'
+    );
+  }
+}
+
 export function authenticateServiceAuth(
   verifier: IServiceAuthVerifier,
   authzService: IAuthorizationService
 ): MiddlewareHandler<ChiveEnv> {
   return async (c, next) => {
-    // E2E test bypass: when enabled, accept X-E2E-Auth-Did header
-    // This is standard practice for E2E testing OAuth-protected APIs
-    const e2eAuthBypass = process.env.ENABLE_E2E_AUTH_BYPASS === 'true';
+    // E2E test bypass: when enabled, accept X-E2E-Auth-Did header.
+    // This is standard practice for E2E testing OAuth-protected APIs, but it
+    // hands out full admin from a request header — `X-E2E-Auth-Admin: true` —
+    // and the header names sit in the production CORS allowlist. An env var is
+    // the only thing that stood between a misconfigured deploy and an open
+    // admin door, so the bypass is additionally compiled out of production by
+    // NODE_ENV. `assertNoAuthBypassInProduction` refuses to boot a production
+    // process that sets it, rather than starting up silently ignoring it.
+    const e2eAuthBypass =
+      process.env.ENABLE_E2E_AUTH_BYPASS === 'true' && process.env.NODE_ENV !== 'production';
     const e2eAuthDid = c.req.header('x-e2e-auth-did');
 
     if (e2eAuthBypass && e2eAuthDid) {
