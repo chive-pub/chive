@@ -61,7 +61,8 @@ describe('searchAuthors', () => {
       getEprints: vi.fn(async (uris: readonly string[]) => {
         const found = new Map<string, unknown>();
         for (const uri of uris) {
-          const eprint: unknown = await mockEprint.getEprint(uri);
+          const fetchOne = mockEprint.getEprint as (u: string) => Promise<unknown>;
+          const eprint: unknown = await fetchOne(uri);
           if (eprint) {
             found.set(uri, eprint);
           }
