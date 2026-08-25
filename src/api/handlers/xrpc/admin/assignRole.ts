@@ -2,8 +2,9 @@
  * XRPC handler for pub.chive.admin.assignRole.
  *
  * @remarks
- * Assigns a role to a user via the authorization service.
- * Requires admin authentication.
+ * Assigns a platform role to a user via the authorization service.
+ * Requires admin authentication. Governance roles are rejected here; they are
+ * granted through the pub.chive.governance.* endpoints.
  *
  * @packageDocumentation
  * @public
@@ -24,14 +25,40 @@ interface AssignRoleOutput {
   readonly role: string;
 }
 
+/**
+ * Roles this endpoint can grant.
+ *
+ * @remarks
+ * These are the platform roles held in Redis and read back by the
+ * authentication middleware. Governance roles are deliberately absent: they
+ * live in the `governance_roles` table and are granted through the governance
+ * endpoints, so writing one here would report success while changing nothing
+ * the governance code reads.
+ */
 const VALID_ROLES: readonly string[] = [
   'admin',
   'moderator',
-  'graph-editor',
   'author',
   'reader',
   'alpha-tester',
   'premium',
+];
+
+/**
+ * Roles that only the governance endpoints can grant.
+ *
+ * @remarks
+ * Listed separately from the generic invalid-role case so the caller is told
+ * which endpoint actually grants the role rather than that it does not exist.
+ * `graph-editor` overlaps the platform role vocabulary, which is what made the
+ * silent no-op easy to hit.
+ */
+const GOVERNANCE_ROLES: readonly string[] = [
+  'community-member',
+  'trusted-editor',
+  'graph-editor',
+  'domain-expert',
+  'administrator',
 ];
 
 export const assignRole: XRPCMethod<void, AssignRoleInput, AssignRoleOutput> = {
@@ -45,6 +72,14 @@ export const assignRole: XRPCMethod<void, AssignRoleInput, AssignRoleOutput> = {
 
     if (!input?.did || !input.role) {
       throw new ValidationError('DID and role are required', 'input', 'required');
+    }
+
+    if (GOVERNANCE_ROLES.includes(input.role)) {
+      throw new ValidationError(
+        `Role ${input.role} is a governance role and cannot be assigned here; grant it with pub.chive.governance.approveElevation`,
+        'role',
+        'governance-role'
+      );
     }
 
     if (!VALID_ROLES.includes(input.role)) {

@@ -21,6 +21,7 @@ import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { getAdminDids } from './config/admin.js';
 import { getGrobidConfig } from './config/grobid.js';
 import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { CollaborativeFilteringSyncJob } from './jobs/collaborative-filtering-sync.js';
@@ -1022,13 +1023,7 @@ async function seedAdminRoles(
   authzService: InstanceType<typeof AuthorizationService>,
   logger: PinoLogger
 ): Promise<void> {
-  const defaultAdminDids = 'did:plc:34mbm5v3umztwvvgnttvcz6e';
-  const adminDidsRaw = process.env.ADMIN_DIDS ?? defaultAdminDids;
-
-  const adminDids = adminDidsRaw
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
+  const adminDids = getAdminDids();
 
   if (adminDids.length === 0) {
     logger.info('No admin DIDs to seed');
@@ -1038,7 +1033,7 @@ async function seedAdminRoles(
   logger.info('Seeding admin roles...', { count: adminDids.length });
 
   for (const did of adminDids) {
-    await authzService.assignRole(did as DID, 'admin', 'system-startup' as DID);
+    await authzService.assignRole(did, 'admin', 'system-startup' as DID);
     logger.info('Admin role assigned', { did });
   }
 

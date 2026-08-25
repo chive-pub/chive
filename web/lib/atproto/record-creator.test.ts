@@ -342,6 +342,36 @@ describe('createVoteRecord', () => {
       })
     );
   });
+
+  // VoteRecord carries an index signature, so a misnamed wire field typechecks
+  // silently; only an assertion on the emitted record catches the regression.
+  it('writes the rationale to the lexicon comment field', async () => {
+    const agent = createMockAgent();
+
+    await createVoteRecord(agent, {
+      proposalUri: 'at://did:plc:user/pub.chive.graph.fieldProposal/123',
+      vote: 'approve',
+      rationale: 'This is a well-defined field.',
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record.comment).toBe('This is a well-defined field.');
+    expect(createRecordCall.record.rationale).toBeUndefined();
+  });
+
+  it('omits the comment field when no rationale is given', async () => {
+    const agent = createMockAgent();
+
+    await createVoteRecord(agent, {
+      proposalUri: 'at://did:plc:user/pub.chive.graph.fieldProposal/123',
+      vote: 'reject',
+    });
+
+    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(createRecordCall.record).not.toHaveProperty('comment');
+  });
 });
 
 describe('deleteRecord', () => {

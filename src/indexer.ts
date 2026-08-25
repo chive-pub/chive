@@ -54,6 +54,7 @@ import { AutomaticProposalService } from './services/governance/automatic-propos
 import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { NodeService } from './services/governance/node-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
+import { DeadLetterQueue } from './services/indexing/dlq-handler.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import {
   type FirehoseHealthServer,
@@ -542,9 +543,18 @@ async function main(): Promise<void> {
       logger.error('Failed to load Margin plugins', err instanceof Error ? err : undefined);
     }
 
+    // The cursor advances as soon as an event is queued, well before the
+    // processor runs, so a handler failure without a DLQ loses the record
+    // permanently — there is no sequence number left to rewind to. The DLQ is
+    // backed entirely by the `firehose_dlq` table, so this instance and the one
+    // IndexingService builds for queue-level failures are the same queue; only
+    // the alert thresholds are per-instance, and neither configures alerts.
+    const dlq = new DeadLetterQueue({ db: pgPool });
+
     // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
       pool: pgPool,
+      dlq, // Capture handler failures for replay; the cursor has already moved on
       activity: activityService,
       eprintService,
       reviewService,

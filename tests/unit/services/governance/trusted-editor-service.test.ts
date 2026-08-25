@@ -7,7 +7,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { TrustedEditorService } from '@/services/governance/trusted-editor-service.js';
+import {
+  ROLE_VOTE_WEIGHTS,
+  TrustedEditorService,
+} from '@/services/governance/trusted-editor-service.js';
 import type { DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
@@ -496,6 +499,135 @@ describe('TrustedEditorService', () => {
       if (!result.ok) {
         expect(result.error.code).toBe('DATABASE_ERROR');
       }
+    });
+  });
+
+  describe('getEditorStatus', () => {
+    const userDid = makeDID('did:plc:editor');
+
+    /**
+     * Queue the five queries getEditorStatus issues after the role lookup:
+     * delegations, then the four reputation queries.
+     */
+    const mockRemainingQueries = (role: string): void => {
+      mockPool.query
+        .mockResolvedValueOnce({ rows: [] }) // delegations
+        .mockResolvedValueOnce({ rows: [{ created_at: null, role }] }) // account
+        .mockResolvedValueOnce({ rows: [] }) // eprints
+        .mockResolvedValueOnce({ rows: [] }) // proposals and votes
+        .mockResolvedValueOnce({ rows: [] }); // warnings and violations
+    };
+
+    it('resolves the role from governance_roles when the profile is not indexed', async () => {
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            display_name: null,
+            role: 'trusted-editor',
+            role_granted_at: new Date(),
+            role_granted_by: 'did:plc:admin',
+            created_at: null,
+          },
+        ],
+      });
+      mockRemainingQueries('trusted-editor');
+
+      const result = await service.getEditorStatus(userDid);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.role).toBe('trusted-editor');
+        expect(result.value.displayName).toBeUndefined();
+      }
+
+      // The role must not depend on authors_index having a row
+      const roleQuery = mockPool.query.mock.calls[0]?.[0] as string;
+      expect(roleQuery).toContain('LEFT JOIN governance_roles');
+      expect(roleQuery).toContain('LEFT JOIN authors_index');
+    });
+
+    it('treats a configured platform admin as an administrator', async () => {
+      service = new TrustedEditorService({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pool: mockPool as any,
+        logger: mockLogger,
+        platformAdminDids: [userDid],
+      });
+
+      mockPool.query.mockResolvedValueOnce({
+        rows: [
+          {
+            display_name: 'Editor',
+            role: 'community-member',
+            role_granted_at: null,
+            role_granted_by: null,
+            created_at: new Date(),
+          },
+        ],
+      });
+      mockRemainingQueries('community-member');
+
+      const result = await service.getEditorStatus(userDid);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.role).toBe('administrator');
+        expect(result.value.metrics.role).toBe('administrator');
+      }
+    });
+
+    it('reads platform admins from ADMIN_DIDS when none are injected', async () => {
+      vi.stubEnv('ADMIN_DIDS', ` did:plc:other , ${userDid} `);
+      service = new TrustedEditorService({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pool: mockPool as any,
+        logger: mockLogger,
+      });
+      vi.unstubAllEnvs();
+
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      mockRemainingQueries('community-member');
+
+      const result = await service.getEditorStatus(userDid);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.role).toBe('administrator');
+      }
+    });
+
+    it('leaves non-admins on their stored role', async () => {
+      service = new TrustedEditorService({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pool: mockPool as any,
+        logger: mockLogger,
+        platformAdminDids: [makeDID('did:plc:someone-else')],
+      });
+
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+      mockRemainingQueries('community-member');
+
+      const result = await service.getEditorStatus(userDid);
+
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.value.role).toBe('community-member');
+      }
+    });
+  });
+
+  describe('getVoteWeight', () => {
+    it('gives a platform admin the administrator weight', async () => {
+      const adminDid = makeDID('did:plc:platform-admin');
+      service = new TrustedEditorService({
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        pool: mockPool as any,
+        logger: mockLogger,
+        platformAdminDids: [adminDid],
+      });
+      mockPool.query.mockResolvedValueOnce({ rows: [] });
+
+      await expect(service.getVoteWeight(adminDid)).resolves.toBe(ROLE_VOTE_WEIGHTS.administrator);
     });
   });
 });
