@@ -173,6 +173,33 @@ const COLLECTIONS = {
 } as const;
 
 /**
+ * Governance collections that have no lexicon in `lexicons/pub/chive/graph/`.
+ *
+ * @remarks
+ * Nothing can publish a record under an NSID that has no schema, so listing
+ * these collections returns an empty page every time. That is indistinguishable
+ * from a governance PDS that simply holds no facets yet, which is why it went
+ * unnoticed: the sync reported success having imported nothing, forever.
+ *
+ * Authoring the schemas is the real fix, and it is design work rather than
+ * remediation — a wrong schema published under one of these names is harder to
+ * withdraw than no schema at all. Until then the connector says plainly that
+ * the collection cannot yield records, so an empty import reads as a missing
+ * schema rather than as an empty community.
+ *
+ * `pub.chive.graph.authority` also disagrees with the namespace listed in
+ * `CLAUDE.md`, which names `pub.chive.graph.authorityRecord`. Left alone here:
+ * renaming the collection would change what the connector reads, and which
+ * name the governance PDS actually holds needs checking against the live repo
+ * rather than guessing.
+ */
+const COLLECTIONS_WITHOUT_LEXICONS: ReadonlySet<string> = new Set([
+  COLLECTIONS.AUTHORITY_RECORD,
+  COLLECTIONS.FACET,
+  COLLECTIONS.ORGANIZATION,
+]);
+
+/**
  * Governance PDS Connector.
  *
  * @remarks
@@ -225,6 +252,29 @@ export class GovernancePDSConnector {
   private readonly pool?: Pool;
 
   private governancePdsUrl?: string;
+
+  /** Collections already reported as having no lexicon, so the warning fires once. */
+  private readonly reportedSchemaless = new Set<string>();
+
+  /**
+   * Warns, once per collection, that a listing cannot return records.
+   *
+   * @param collection - Governance collection about to be listed
+   *
+   * @remarks
+   * Without this an empty result is silent and reads as "no records yet"
+   * rather than "no schema exists, so there can never be records".
+   */
+  private warnIfCollectionHasNoLexicon(collection: string): void {
+    if (!COLLECTIONS_WITHOUT_LEXICONS.has(collection) || this.reportedSchemaless.has(collection)) {
+      return;
+    }
+    this.reportedSchemaless.add(collection);
+    this.logger.warn(
+      'Governance collection has no published lexicon; this listing cannot return records',
+      { collection }
+    );
+  }
 
   constructor(options: GovernancePDSConnectorOptions) {
     this.graphPdsDid = options.graphPdsDid;
@@ -346,6 +396,7 @@ export class GovernancePDSConnector {
     options?: GovernanceListOptions
   ): AsyncIterable<GovernanceAuthorityRecord> {
     const pdsUrl = await this.getPdsUrl();
+    this.warnIfCollectionHasNoLexicon(COLLECTIONS.AUTHORITY_RECORD);
     const records = this.repository.listRecords<RawAuthorityRecord>(
       this.graphPdsDid,
       COLLECTIONS.AUTHORITY_RECORD,
@@ -432,6 +483,7 @@ export class GovernancePDSConnector {
     options?: GovernanceListOptions
   ): AsyncIterable<GovernanceFacet> {
     const pdsUrl = await this.getPdsUrl();
+    this.warnIfCollectionHasNoLexicon(COLLECTIONS.FACET);
     const records = this.repository.listRecords<RawFacetRecord>(
       this.graphPdsDid,
       COLLECTIONS.FACET,
@@ -513,6 +565,7 @@ export class GovernancePDSConnector {
    */
   async *listOrganizations(options?: GovernanceListOptions): AsyncIterable<GovernanceOrganization> {
     const pdsUrl = await this.getPdsUrl();
+    this.warnIfCollectionHasNoLexicon(COLLECTIONS.ORGANIZATION);
     const records = this.repository.listRecords<RawOrganizationRecord>(
       this.graphPdsDid,
       COLLECTIONS.ORGANIZATION,

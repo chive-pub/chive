@@ -45,7 +45,10 @@ export const REPO_SCOPES = {
   ANNOTATION_ENTITY_LINK: 'repo:pub.chive.annotation.entityLink',
 
   // Graph collections
-  GRAPH_FIELD_PROPOSAL: 'repo:pub.chive.graph.fieldProposal',
+  // `pub.chive.graph.fieldProposal` was renamed to node/edgeProposal and has no
+  // lexicon. It is not listed here: a scope naming a record type that cannot
+  // exist can only ever be granted and never used, and it made the field
+  // promotion path look like it wrote a record type it does not.
   GRAPH_NODE_PROPOSAL: 'repo:pub.chive.graph.nodeProposal',
   GRAPH_EDGE_PROPOSAL: 'repo:pub.chive.graph.edgeProposal',
   GRAPH_VOTE: 'repo:pub.chive.graph.vote',
