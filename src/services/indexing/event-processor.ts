@@ -1684,15 +1684,30 @@ async function processRecord(
           const did = data.repo;
 
           await pool.query(
+            // A verified ORCID is Chive's own observation of a completed OAuth
+            // flow, not something the PDS record carries, so it must survive
+            // reindexing. Previously `orcid = EXCLUDED.orcid` overwrote it with
+            // whatever the profile record held — frequently null — on every
+            // profile update. On insert the verification is pulled in from
+            // orcid_verifications, which covers an author who verified before
+            // they were ever indexed.
             `INSERT INTO authors_index (
-              did, handle, display_name, bio, avatar_blob_cid, orcid, affiliations, field_ids,
-              pds_url, indexed_at, last_synced_at
-            ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+              did, handle, display_name, bio, avatar_blob_cid, orcid, orcid_verified_at,
+              affiliations, field_ids, pds_url, indexed_at, last_synced_at
+            ) VALUES (
+              $1, NULL, $2, $3, $4,
+              COALESCE((SELECT orcid FROM orcid_verifications WHERE did = $1), $5),
+              (SELECT verified_at FROM orcid_verifications WHERE did = $1),
+              $6, $7, $8, NOW(), NOW()
+            )
             ON CONFLICT (did) DO UPDATE SET
               display_name = EXCLUDED.display_name,
               bio = EXCLUDED.bio,
               avatar_blob_cid = EXCLUDED.avatar_blob_cid,
-              orcid = EXCLUDED.orcid,
+              orcid = CASE
+                WHEN authors_index.orcid_verified_at IS NOT NULL THEN authors_index.orcid
+                ELSE EXCLUDED.orcid
+              END,
               affiliations = EXCLUDED.affiliations,
               field_ids = EXCLUDED.field_ids,
               pds_url = EXCLUDED.pds_url,

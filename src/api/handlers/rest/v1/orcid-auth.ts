@@ -153,17 +153,48 @@ export function registerOrcidAuthRoutes(app: Hono<ChiveEnv>): void {
         return c.redirect(buildRedirectUrl('error', { message: 'Internal error' }));
       }
 
-      // Update authors_index with verified ORCID (UPDATE only, since INSERT
-      // would require all NOT NULL columns like pds_url that we don't have here)
+      // Record the verification durably first. `authors_index` is rebuilt from
+      // the firehose, so a verification stored only there is lost the next time
+      // the author's profile is indexed — and, for an author who has not been
+      // indexed yet, the UPDATE below matches no rows and the verification used
+      // to be discarded outright with a log line claiming indexing would pick
+      // it up. Nothing persisted it, so nothing could.
+      //
+      // An ORCID iD identifies one researcher, so a second DID claiming one
+      // already verified is rejected rather than silently reassigned.
+      try {
+        await pool.query(
+          `INSERT INTO orcid_verifications (did, orcid, verified_at)
+           VALUES ($1, $2, NOW())
+           ON CONFLICT (did) DO UPDATE SET orcid = EXCLUDED.orcid, verified_at = NOW()`,
+          [did, orcid]
+        );
+      } catch (insertError) {
+        const message = insertError instanceof Error ? insertError.message : String(insertError);
+        if (message.includes('orcid_verifications_orcid_unique')) {
+          logger.warn('ORCID already verified by a different account', { did, orcid });
+          return c.redirect(
+            buildRedirectUrl('error', {
+              message: 'This ORCID iD is already linked to another account',
+            })
+          );
+        }
+        throw insertError;
+      }
+
+      // Denormalized copy for queries that read the author index.
       const updateResult = await pool.query(
         `UPDATE authors_index SET orcid = $1, orcid_verified_at = NOW() WHERE did = $2`,
         [orcid, did]
       );
 
       if (updateResult.rowCount === 0) {
-        // User not yet in authors_index (not indexed from firehose yet).
-        // Verification still succeeded - it will be picked up when they are indexed.
-        logger.info('ORCID verified but user not yet in authors_index', { did, orcid });
+        // Not indexed yet. The verification is safe in orcid_verifications and
+        // the indexing path reads it when the author's row is first written.
+        logger.info('ORCID verified before the author was indexed; stored for indexing', {
+          did,
+          orcid,
+        });
       }
 
       logger.info('ORCID verification completed', { did, orcid });

@@ -63,34 +63,49 @@ export const listProposals: XRPCMethod<QueryParams, void, OutputSchema> = {
       proposerDids.add(p.proposedBy);
     }
 
-    // Batch lookup node labels
+    // Both of these were labelled "batch lookup" and were sequential awaits, one
+    // round trip per item, so listing a page of proposals cost as many serial
+    // queries as it had distinct nodes and proposers. They are independent
+    // lookups, so they run concurrently.
+    //
+    // A miss is expected — a node may be gone, a proposer may not be a trusted
+    // editor — and leaves the label undefined, which the response tolerates. The
+    // rejection is logged rather than swallowed: an empty catch here made a
+    // datastore outage look identical to a page of unlabelled proposals.
     const nodeLabels = new Map<string, string>();
-    for (const nodeUri of nodeUris) {
-      try {
-        const node = await graphService.getNode(nodeUri);
-        if (node) {
-          nodeLabels.set(nodeUri, node.label);
-        }
-      } catch {
-        // Node not found, label will be undefined
-      }
-    }
-
-    // Batch lookup proposer names from authors_index
     const proposerNames = new Map<string, string>();
     const trustedEditorService = c.get('services').trustedEditor;
-    if (trustedEditorService) {
-      for (const did of proposerDids) {
+
+    await Promise.all([
+      ...[...nodeUris].map(async (nodeUri) => {
         try {
-          const status = await trustedEditorService.getEditorStatus(did as DID);
-          if (status.ok && status.value.displayName) {
-            proposerNames.set(did, status.value.displayName);
+          const node = await graphService.getNode(nodeUri);
+          if (node) {
+            nodeLabels.set(nodeUri, node.label);
           }
-        } catch {
-          // Proposer not found, name will be undefined
+        } catch (error) {
+          logger.debug('Could not resolve node label for proposal listing', {
+            nodeUri,
+            error: error instanceof Error ? error.message : String(error),
+          });
         }
-      }
-    }
+      }),
+      ...(trustedEditorService
+        ? [...proposerDids].map(async (did) => {
+            try {
+              const status = await trustedEditorService.getEditorStatus(did as DID);
+              if (status.ok && status.value.displayName) {
+                proposerNames.set(did, status.value.displayName);
+              }
+            } catch (error) {
+              logger.debug('Could not resolve proposer name for proposal listing', {
+                did,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          })
+        : []),
+    ]);
 
     // Map to API response format with enriched data
     const proposals: ProposalView[] = result.proposals.map((p) => ({
