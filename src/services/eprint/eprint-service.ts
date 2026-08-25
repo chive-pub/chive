@@ -629,6 +629,36 @@ export class EprintService {
     };
   }
 
+  /**
+   * Fetches several eprints in one query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint view, omitting URIs with no row
+   *
+   * @remarks
+   * Unlike {@link EprintService.getEprint} this does not resolve version
+   * chains, which would reintroduce a query per eprint. It is for callers that
+   * need the record body across a page of results — author autocomplete was
+   * issuing up to 75 sequential `getEprint` calls per keystroke, each waiting
+   * on the last.
+   *
+   * @public
+   */
+  async getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, EprintView>> {
+    const stored = await this.storage.getEprints(uris);
+    const views = new Map<AtUri, EprintView>();
+
+    for (const [uri, eprint] of stored) {
+      views.set(uri, {
+        ...eprint,
+        versions: [],
+        metrics: { views: 0, downloads: 0, endorsements: 0 },
+      });
+    }
+
+    return views;
+  }
+
   async getEprintsByAuthor(did: DID, options?: EprintQueryOptions): Promise<EprintList> {
     const eprints = await this.storage.getEprintsByAuthor(did, options);
 

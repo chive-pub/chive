@@ -187,6 +187,16 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Fetches several eprints in one query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint, omitting URIs with no row
+   */
+  async getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, StoredEprint>> {
+    return this.eprintsRepo.findByUris(uris);
+  }
+
+  /**
    * Queries eprints by author.
    *
    * @param author - Author DID

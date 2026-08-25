@@ -9,7 +9,7 @@
  * When a WhiteWind blog post mentions or embeds a Chive eprint,
  * this plugin creates a backlink for aggregation and discovery.
  *
- * Blog entry schema: com.whitewind.blog.entry
+ * Blog entry schema: com.whtwnd.blog.entry
  *
  * ATProto Compliance:
  * - All backlinks indexed from firehose (rebuildable via replay)
@@ -33,7 +33,7 @@ import { BacklinkTrackingPlugin } from '../core/backlink-plugin.js';
  * @internal
  */
 interface WhiteWindEntry {
-  $type: 'com.whitewind.blog.entry';
+  $type: 'com.whtwnd.blog.entry';
   title: string;
   content: string;
   contentFormat: 'markdown' | 'html' | 'plaintext';
@@ -50,7 +50,7 @@ interface WhiteWindEntry {
  * @internal
  */
 interface WhiteWindEmbed {
-  $type: 'com.whitewind.blog.embed#record';
+  $type: 'com.whtwnd.blog.embed#record';
   uri: string;
   cid?: string;
 }
@@ -85,7 +85,7 @@ export class WhiteWindBacklinksPlugin extends BacklinkTrackingPlugin {
   /**
    * ATProto collection to track.
    */
-  readonly trackedCollection = 'com.whitewind.blog.entry';
+  readonly trackedCollection = 'com.whtwnd.blog.entry';
 
   /**
    * Backlink source type.
@@ -103,7 +103,7 @@ export class WhiteWindBacklinksPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.com.whitewind.blog.entry'],
+      hooks: ['firehose.com.whtwnd.blog.entry'],
       storage: {
         maxSize: 10 * 1024 * 1024, // 10MB
       },

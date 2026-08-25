@@ -97,6 +97,10 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'getEprint', args: [uri] });
       return Promise.resolve(null);
     }),
+    getEprints: vi.fn().mockImplementation((uris: readonly AtUri[]) => {
+      operations.push({ method: 'getEprints', args: [uris] });
+      return Promise.resolve(new Map());
+    }),
     getEprintsByAuthor: vi.fn().mockImplementation((author: DID) => {
       operations.push({ method: 'getEprintsByAuthor', args: [author] });
       return Promise.resolve([]);
