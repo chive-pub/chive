@@ -30,8 +30,13 @@ describe('getAdminDids', () => {
     expect(getAdminDids(' did:plc:abc , did:plc:def ')).toEqual(['did:plc:abc', 'did:plc:def']);
   });
 
-  it('should fall back when unset', () => {
-    expect(getAdminDids(undefined)).toEqual([DEFAULT_ADMIN_DID]);
+  // `getAdminDids(undefined)` triggers the default parameter and therefore
+  // reads ADMIN_DIDS, so "unset" has to be established on the environment
+  // rather than by passing undefined — CI sets ADMIN_DIDS, and conflating the
+  // two made this pass locally and fail there.
+  it('should fall back when the environment has no ADMIN_DIDS', () => {
+    delete process.env.ADMIN_DIDS;
+    expect(getAdminDids()).toEqual([DEFAULT_ADMIN_DID]);
   });
 
   // An undefined deploy variable interpolates to an empty string rather than
