@@ -1180,15 +1180,26 @@ export class PDSScanner {
 
     try {
       await this.pool.query(
+        // Mirrors the event processor's profile upsert: a verified ORCID is
+        // Chive's own record of a completed OAuth flow and must survive a
+        // rescan, which would otherwise overwrite it from the PDS record.
         `INSERT INTO authors_index (
-          did, handle, display_name, bio, avatar_blob_cid, orcid, affiliations, field_ids,
-          pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          did, handle, display_name, bio, avatar_blob_cid, orcid, orcid_verified_at,
+          affiliations, field_ids, pds_url, indexed_at, last_synced_at
+        ) VALUES (
+          $1, NULL, $2, $3, $4,
+          COALESCE((SELECT orcid FROM orcid_verifications WHERE did = $1), $5),
+          (SELECT verified_at FROM orcid_verifications WHERE did = $1),
+          $6, $7, $8, NOW(), NOW()
+        )
         ON CONFLICT (did) DO UPDATE SET
           display_name = EXCLUDED.display_name,
           bio = EXCLUDED.bio,
           avatar_blob_cid = EXCLUDED.avatar_blob_cid,
-          orcid = EXCLUDED.orcid,
+          orcid = CASE
+            WHEN authors_index.orcid_verified_at IS NOT NULL THEN authors_index.orcid
+            ELSE EXCLUDED.orcid
+          END,
           affiliations = EXCLUDED.affiliations,
           field_ids = EXCLUDED.field_ids,
           pds_url = EXCLUDED.pds_url,
