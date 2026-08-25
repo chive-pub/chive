@@ -54,7 +54,17 @@ export interface OrcidConfig {
    * Must match the redirect URI registered in the ORCID developer dashboard.
    *
    * Environment variable: `ORCID_REDIRECT_URI`
-   * Default: `{API_BASE_URL}/api/v1/auth/orcid/callback`
+   * Default: `{API_BASE_URL}/v1/auth/orcid/callback`
+   *
+   * @remarks
+   * The path has no `/api` prefix because the application does not register
+   * one: REST routes are mounted at `/v1/...` directly. In production the
+   * `/api` prefix exists only on the `Host(DOMAIN) && PathPrefix(/api)`
+   * Traefik router, which strips it before the request reaches the app; the
+   * `api.DOMAIN` router does not. Defaulting to `/api/v1/...` therefore 404ed
+   * everywhere the request reached the app directly, local development
+   * included. Set `ORCID_REDIRECT_URI` explicitly when fronting the API
+   * through the path-prefixed router.
    */
   readonly redirectUri: string;
 }
@@ -85,7 +95,7 @@ export function getOrcidConfig(): OrcidConfig {
 
   const baseUrl = process.env.ORCID_BASE_URL ?? 'https://orcid.org';
   const apiBaseUrl = process.env.API_BASE_URL ?? 'http://localhost:3001';
-  const redirectUri = process.env.ORCID_REDIRECT_URI ?? `${apiBaseUrl}/api/v1/auth/orcid/callback`;
+  const redirectUri = process.env.ORCID_REDIRECT_URI ?? `${apiBaseUrl}/v1/auth/orcid/callback`;
 
   return { clientId, clientSecret, baseUrl, redirectUri };
 }

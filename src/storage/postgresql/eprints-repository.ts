@@ -463,6 +463,7 @@ export class EprintsRepository {
           fields, needs_abstract_migration, pds_url, indexed_at, created_at
         FROM eprints_index
         WHERE authors @> $1::jsonb
+          AND deleted_at IS NULL
         ORDER BY ${sortColumn} ${sortDirection}
         LIMIT $2 OFFSET $3
       `;
@@ -505,6 +506,7 @@ export class EprintsRepository {
         SELECT COUNT(*)::int AS count
         FROM eprints_index
         WHERE authors @> $1::jsonb
+          AND deleted_at IS NULL
       `;
 
       const result = await this.pool.query<{ count: number }>(query, [
@@ -880,7 +882,8 @@ export class EprintsRepository {
     const query = `
       SELECT uri
       FROM eprints_index
-      WHERE ${conditions.join(' OR ')}
+      WHERE (${conditions.join(' OR ')})
+        AND deleted_at IS NULL
       ORDER BY created_at DESC
       LIMIT $${fieldUris.length + 1}
     `;

@@ -70,7 +70,7 @@ interface OrcidTokenResponse {
  *
  * @remarks
  * Routes:
- * - `GET /api/v1/auth/orcid/callback` - ORCID OAuth redirect callback
+ * - `GET /v1/auth/orcid/callback` - ORCID OAuth redirect callback
  *
  * @public
  */
