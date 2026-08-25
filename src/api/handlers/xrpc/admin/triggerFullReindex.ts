@@ -7,13 +7,51 @@
  * The actual work runs in the background; the handler returns immediately
  * with the operation ID.
  *
+ * Search documents are built with {@link mapEprintToDocument}, the same mapper
+ * `scripts/reindex-all-eprints.ts` uses. Elasticsearch indexing replaces the
+ * whole document rather than merging into it, so any field a projection omits
+ * is destroyed for every eprint the reindex touches. A hand-rolled projection
+ * here previously wrote about nine fields and thereby wiped DOIs, publication
+ * status, external IDs, funding, repositories, related works, supplementary
+ * materials, license and document metadata across the index.
+ *
  * @packageDocumentation
  * @public
  */
 
+import type { EprintView } from '../../../../services/eprint/eprint-service.js';
+import { mapEprintToDocument } from '../../../../storage/elasticsearch/document-mapper.js';
+import { toTimestamp } from '../../../../types/atproto-validators.js';
 import type { AtUri } from '../../../../types/atproto.js';
 import { AuthorizationError, ServiceUnavailableError } from '../../../../types/errors.js';
+import type { IndexableEprintDocument as SimpleIndexableDocument } from '../../../../types/interfaces/search.interface.js';
+import type { Eprint } from '../../../../types/models/eprint.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
+
+/**
+ * Projects an indexed eprint back onto the {@link Eprint} domain model.
+ *
+ * @param stored - Eprint as held by Chive's PostgreSQL index
+ * @returns Domain record accepted by {@link mapEprintToDocument}
+ *
+ * @remarks
+ * PostgreSQL holds every field the Elasticsearch mapper reads except `facets`,
+ * which ride on the PDS record and are never persisted to the index. They are
+ * therefore empty here: restoring facets requires reading the PDS, which is
+ * what `scripts/reindex-all-eprints.ts` does.
+ *
+ * `version` is normalized to the integer form the mapper expects by taking the
+ * major component of a semantic version — the inverse of `integerToSemantic`.
+ */
+function toDomainEprint(stored: EprintView): Eprint {
+  return {
+    ...stored,
+    keywords: stored.keywords ?? [],
+    facets: [],
+    version: typeof stored.version === 'number' ? stored.version : stored.version.major,
+    createdAt: toTimestamp(stored.createdAt),
+  };
+}
 
 export const triggerFullReindex: XRPCMethod<void, void, unknown> = {
   type: 'procedure',
@@ -69,27 +107,16 @@ export const triggerFullReindex: XRPCMethod<void, void, unknown> = {
               continue;
             }
 
-            // Build an IndexableEprintDocument from the stored eprint
-            const primaryAuthor = stored.authors?.find((a) => a.order === 1) ?? stored.authors?.[0];
-            const authorDid = primaryAuthor?.did ?? stored.submittedBy;
-            const authorName = primaryAuthor?.name ?? stored.submittedBy ?? 'Unknown';
+            const document = mapEprintToDocument(toDomainEprint(stored), stored.pdsUrl);
 
-            const fieldNodes =
-              stored.fields
-                ?.filter((f): f is typeof f & { id: string } => f.id !== undefined)
-                .map((f) => ({ id: f.id, label: f.label })) ?? [];
-
-            const result = await searchService.indexEprintForSearch({
-              uri: uri as AtUri,
-              author: authorDid,
-              authorName,
-              title: stored.title,
-              abstract: stored.abstractPlainText ?? '',
-              keywords: (stored.keywords as string[]) ?? [],
-              fieldNodes,
-              createdAt: stored.createdAt ?? new Date(),
-              indexedAt: stored.indexedAt ?? new Date(),
-            });
+            // `ISearchEngine.indexEprint` is typed for the narrow document the
+            // live indexing path writes, but the Elasticsearch adapter accepts
+            // the mapper's full document too and dispatches on it. Widening the
+            // interface is the real fix; until then the cast is what keeps a
+            // reindex from replacing complete documents with partial ones.
+            const result = await searchService.indexEprintForSearch(
+              document as unknown as SimpleIndexableDocument
+            );
 
             if (result.ok) {
               indexed++;

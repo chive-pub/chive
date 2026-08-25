@@ -811,16 +811,22 @@ export class Neo4jAdapter implements IGraphDatabase {
 
   /**
    * Creates a vote on a proposal.
+   *
+   * @remarks
+   * `createdAt` comes from the vote record rather than the clock, and is set on
+   * every write rather than only on create. Ballot order is a sort key, so a
+   * rebuild of the index from the firehose has to reproduce the same order it
+   * had before; wall-clock ingest time would not.
    */
   async createVote(vote: Vote): Promise<void> {
     const query = `
       MERGE (v:Vote {uri: $uri})
-      ON CREATE SET v.createdAt = datetime()
       SET v.proposalUri = $proposalUri,
           v.voterDid = $voterDid,
           v.voterRole = $voterRole,
           v.vote = $vote,
           v.comment = $comment,
+          v.createdAt = datetime($createdAt),
           v.updatedAt = datetime()
       WITH v
       OPTIONAL MATCH (p:Proposal {uri: $proposalUri})
@@ -837,6 +843,7 @@ export class Neo4jAdapter implements IGraphDatabase {
       voterRole: vote.voterRole,
       vote: vote.vote,
       comment: vote.comment ?? null,
+      createdAt: vote.createdAt.toISOString(),
     });
   }
 
@@ -906,7 +913,20 @@ export class Neo4jAdapter implements IGraphDatabase {
   }
 
   /**
-   * Creates a proposal.
+   * Creates or re-indexes a proposal.
+   *
+   * @remarks
+   * `ON MATCH SET` mirrors every field the record carries, not just the
+   * proposed node and rationale: a proposal edited in its PDS can change its
+   * type, kind, subkind or target, and a re-index that copied only two fields
+   * left the rest describing the superseded version.
+   *
+   * `createdAt` is likewise taken from the record on every write. It is the
+   * sort key for the governance lists, so rebuilding the index from the
+   * firehose has to reproduce the order it had before; ingest time would not.
+   * Only `id`, `proposerDid` and `status` stay create-only — the first two are
+   * fixed by the URI, and `status` is set by moderation, so re-indexing the
+   * record must not reset a decided proposal back to pending.
    */
   async createProposal(proposal: {
     readonly uri: AtUri;
@@ -934,8 +954,13 @@ export class Neo4jAdapter implements IGraphDatabase {
         p.createdAt = datetime($createdAt),
         p.updatedAt = datetime()
       ON MATCH SET
+        p.proposalType = $proposalType,
+        p.kind = $kind,
+        p.subkind = $subkind,
+        p.targetUri = $targetUri,
         p.proposedNode = $proposedNode,
         p.rationale = $rationale,
+        p.createdAt = datetime($createdAt),
         p.updatedAt = datetime()
     `;
 

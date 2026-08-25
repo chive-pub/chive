@@ -39,11 +39,17 @@ import type {
   EdgeMetadata,
 } from '../../storage/neo4j/types.js';
 import type { AtUri, CID, DID, NSID } from '../../types/atproto.js';
-import { ChiveError, DatabaseError } from '../../types/errors.js';
+import {
+  ChiveError,
+  DatabaseError,
+  ServiceUnavailableError,
+  ValidationError,
+} from '../../types/errors.js';
 import type { ICitationGraph } from '../../types/interfaces/discovery.interface.js';
 import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
+import type { Result } from '../../types/result.js';
 import type { ActivityService } from '../activity/activity-service.js';
 import type { AnnotationService } from '../annotation/annotation-service.js';
 import type { CollaborationService } from '../collaboration/collaboration-service.js';
@@ -570,6 +576,109 @@ interface RecordData {
   readonly cid?: CID;
   readonly record?: unknown;
   readonly pdsUrl: string;
+}
+
+/**
+ * Fields each governance collection's lexicon marks as required.
+ *
+ * @remarks
+ * `KnowledgeGraphService` treats a record missing one of these as a no-op but
+ * still reports success, so the processor would record the event as indexed
+ * and let the cursor advance past a proposal or ballot that never reached
+ * Neo4j. Checking presence here instead means a malformed record is routed to
+ * the DLQ, where it stays visible and replayable. `createdAt` is deliberately
+ * omitted: it is lexicon-required but unused by the indexing path, and
+ * rejecting on it would send otherwise indexable records to the DLQ.
+ */
+const GOVERNANCE_REQUIRED_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  'pub.chive.graph.nodeProposal': ['proposalType', 'rationale'],
+  'pub.chive.graph.edgeProposal': ['proposalType', 'rationale'],
+  'pub.chive.graph.vote': ['proposalUri', 'vote'],
+};
+
+/**
+ * Names the required fields absent from a governance record.
+ *
+ * @param collection - Governance collection the record belongs to
+ * @param record - Decoded record from the firehose, if any
+ * @returns Missing field names; empty when the record is well formed
+ *
+ * @remarks
+ * A create or update carrying no decoded record at all is malformed in the
+ * same way as one missing fields, so it reports every required field.
+ */
+function missingGovernanceFields(collection: string, record: unknown): readonly string[] {
+  const required = GOVERNANCE_REQUIRED_FIELDS[collection] ?? [];
+  if (typeof record !== 'object' || record === null) {
+    return required;
+  }
+  const fields = record as Record<string, unknown>;
+  return required.filter((field) => {
+    const value = fields[field];
+    return value === undefined || value === null || value === '';
+  });
+}
+
+/**
+ * Removes an indexed governance record retracted from its source PDS.
+ */
+type GovernanceRecordDeletion = (uri: AtUri) => Promise<Result<void, Error>>;
+
+/**
+ * Deletion methods the knowledge graph service is expected to expose for
+ * retracted governance records.
+ *
+ * @remarks
+ * `KnowledgeGraphService` does not implement these yet. The processor probes
+ * for them at call time rather than assuming they exist so that a retraction
+ * is never silently counted as indexed: while a method is missing the event
+ * fails non-critically and lands in the DLQ, from which it can be replayed
+ * once the service gains the method.
+ */
+interface GovernanceRecordDeleter {
+  readonly deleteNodeProposal?: GovernanceRecordDeletion;
+  readonly deleteEdgeProposal?: GovernanceRecordDeletion;
+  readonly deleteVote?: GovernanceRecordDeletion;
+}
+
+/**
+ * Applies a governance record deletion via the knowledge graph service.
+ *
+ * @param graphService - Knowledge graph service handling governance records
+ * @param method - Deletion method to invoke
+ * @param uri - URI of the retracted record
+ * @returns Result indicating whether the deletion was applied
+ */
+async function deleteGovernanceRecord(
+  graphService: KnowledgeGraphService,
+  method: keyof GovernanceRecordDeleter,
+  uri: AtUri
+): Promise<Result<void, Error>> {
+  const deleter = graphService as unknown as GovernanceRecordDeleter;
+  const deleteFn = deleter[method];
+
+  if (typeof deleteFn !== 'function') {
+    return {
+      ok: false,
+      error: new ServiceUnavailableError(
+        `Knowledge graph service does not implement ${method}; retraction of ${uri} was not applied`,
+        'knowledge-graph'
+      ),
+    };
+  }
+
+  try {
+    return await deleteFn.call(deleter, uri);
+  } catch (error) {
+    return {
+      ok: false,
+      error: new DatabaseError(
+        'DELETE',
+        error instanceof Error ? error.message : String(error),
+        error instanceof Error ? error : undefined
+      ),
+    };
+  }
 }
 
 /**
@@ -1450,13 +1559,32 @@ async function processRecord(
     case 'pub.chive.graph.nodeProposal': {
       logger.debug('Processing node proposal', { action, uri });
 
-      if (action !== 'delete' && record) {
-        const result = await graphService.indexNodeProposal(record, metadata);
+      if (action === 'delete') {
+        const result = await deleteGovernanceRecord(graphService, 'deleteNodeProposal', uri);
         if (!result.ok) {
-          const error = result.error as Error;
-          logger.error('Failed to index node proposal', error, { uri, action });
-          return failure('Failed to index node proposal', false, error);
+          logger.error('Failed to delete node proposal', result.error, { uri });
+          return failure('Failed to delete node proposal', false, result.error);
         }
+        logger.info('Deleted node proposal from index', { uri });
+        return success();
+      }
+
+      const missingFields = missingGovernanceFields(collection, record);
+      if (missingFields.length > 0) {
+        const error = new ValidationError(
+          `Malformed node proposal: missing ${missingFields.join(', ')}`,
+          missingFields[0],
+          'required'
+        );
+        logger.error('Rejected malformed node proposal', error, { uri, action, missingFields });
+        return failure('Malformed node proposal', false, error);
+      }
+
+      const result = await graphService.indexNodeProposal(record, metadata);
+      if (!result.ok) {
+        const error = result.error as Error;
+        logger.error('Failed to index node proposal', error, { uri, action });
+        return failure('Failed to index node proposal', false, error);
       }
       return success();
     }
@@ -1464,13 +1592,32 @@ async function processRecord(
     case 'pub.chive.graph.edgeProposal': {
       logger.debug('Processing edge proposal', { action, uri });
 
-      if (action !== 'delete' && record) {
-        const result = await graphService.indexEdgeProposal(record, metadata);
+      if (action === 'delete') {
+        const result = await deleteGovernanceRecord(graphService, 'deleteEdgeProposal', uri);
         if (!result.ok) {
-          const error = result.error as Error;
-          logger.error('Failed to index edge proposal', error, { uri, action });
-          return failure('Failed to index edge proposal', false, error);
+          logger.error('Failed to delete edge proposal', result.error, { uri });
+          return failure('Failed to delete edge proposal', false, result.error);
         }
+        logger.info('Deleted edge proposal from index', { uri });
+        return success();
+      }
+
+      const missingFields = missingGovernanceFields(collection, record);
+      if (missingFields.length > 0) {
+        const error = new ValidationError(
+          `Malformed edge proposal: missing ${missingFields.join(', ')}`,
+          missingFields[0],
+          'required'
+        );
+        logger.error('Rejected malformed edge proposal', error, { uri, action, missingFields });
+        return failure('Malformed edge proposal', false, error);
+      }
+
+      const result = await graphService.indexEdgeProposal(record, metadata);
+      if (!result.ok) {
+        const error = result.error as Error;
+        logger.error('Failed to index edge proposal', error, { uri, action });
+        return failure('Failed to index edge proposal', false, error);
       }
       return success();
     }
@@ -1478,13 +1625,34 @@ async function processRecord(
     case 'pub.chive.graph.vote': {
       logger.debug('Processing vote', { action, uri });
 
-      if (action !== 'delete' && record) {
-        const result = await graphService.indexVote(record, metadata);
+      // A retracted ballot must stop counting toward the proposal's tally, so
+      // a deletion that cannot be applied is a failure rather than a no-op.
+      if (action === 'delete') {
+        const result = await deleteGovernanceRecord(graphService, 'deleteVote', uri);
         if (!result.ok) {
-          const error = result.error as Error;
-          logger.error('Failed to index vote', error, { uri, action });
-          return failure('Failed to index vote', false, error);
+          logger.error('Failed to delete vote', result.error, { uri });
+          return failure('Failed to delete vote', false, result.error);
         }
+        logger.info('Deleted vote from index', { uri });
+        return success();
+      }
+
+      const missingFields = missingGovernanceFields(collection, record);
+      if (missingFields.length > 0) {
+        const error = new ValidationError(
+          `Malformed vote: missing ${missingFields.join(', ')}`,
+          missingFields[0],
+          'required'
+        );
+        logger.error('Rejected malformed vote', error, { uri, action, missingFields });
+        return failure('Malformed vote', false, error);
+      }
+
+      const result = await graphService.indexVote(record, metadata);
+      if (!result.ok) {
+        const error = result.error as Error;
+        logger.error('Failed to index vote', error, { uri, action });
+        return failure('Failed to index vote', false, error);
       }
       return success();
     }
