@@ -35,6 +35,7 @@ import type {
 } from '../../../../lexicons/generated/types/pub/chive/sync/indexRecord.js';
 import type { RecordMetadata } from '../../../../services/eprint/eprint-service.js';
 import { transformPDSRecord } from '../../../../services/eprint/pds-record-transformer.js';
+import { isIndexedCollection } from '../../../../services/indexing/indexed-collections.js';
 import { migrateRecord, needsMigration } from '../../../../services/migration/index.js';
 import type { AtUri, CID, DID } from '../../../../types/atproto.js';
 import {
@@ -171,24 +172,8 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
       throw new ValidationError('Can only index your own records', 'uri');
     }
 
-    // Supported collections for manual indexing
-    const supportedCollections = [
-      'pub.chive.eprint.submission',
-      'pub.chive.review.comment',
-      'pub.chive.review.endorsement',
-      'pub.chive.annotation.comment',
-      'pub.chive.annotation.entityLink',
-      'pub.chive.eprint.userTag',
-      'pub.chive.eprint.citation',
-      'pub.chive.eprint.relatedWork',
-      'pub.chive.graph.node',
-      'pub.chive.graph.edge',
-      'pub.chive.graph.nodeProposal',
-      'pub.chive.graph.vote',
-      'pub.chive.actor.profileConfig',
-    ];
-
-    if (!supportedCollections.includes(collection)) {
+    // One shared list rather than a copy that drifts; see indexed-collections.ts.
+    if (!isIndexedCollection(collection)) {
       throw new ValidationError(
         `Collection ${collection} not supported for manual indexing`,
         'uri'

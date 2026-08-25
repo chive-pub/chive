@@ -75,6 +75,30 @@ function extractBearerToken(header: string | undefined): string | null {
  * @public
  */
 /**
+ * Extracts the lexicon method an XRPC request targets.
+ *
+ * @param path - Request path
+ * @returns The NSID for an XRPC route, or undefined for any other path
+ *
+ * @remarks
+ * XRPC routes are mounted as `/xrpc/<nsid>`, so the method name is the segment
+ * after the prefix. REST routes have no lexicon method and pass undefined,
+ * which leaves the token's scope unchecked for them — they are not what `lxm`
+ * scopes.
+ *
+ * @public
+ */
+export function lexiconMethodForPath(path: string): string | undefined {
+  const prefix = '/xrpc/';
+  if (!path.startsWith(prefix)) {
+    return undefined;
+  }
+
+  const nsid = path.slice(prefix.length).split('/')[0]?.split('?')[0];
+  return nsid && nsid.length > 0 ? nsid : undefined;
+}
+
+/**
  * Refuses to start a production process that enables the E2E auth bypass.
  *
  * @throws Error when `ENABLE_E2E_AUTH_BYPASS` is `true` while `NODE_ENV` is
@@ -153,10 +177,21 @@ export function authenticateServiceAuth(
     const endTimer = authMetrics.duration.startTimer({ method: 'service_auth' });
 
     try {
-      // Verify the service auth JWT.
-      // The lxm (lexicon method) claim, when present, is extracted into user
-      // scopes for downstream authorization checks.
-      const result = await verifier.verify(token);
+      // Verify the service auth JWT against the method actually being called.
+      //
+      // The `lxm` claim scopes a service auth token to one lexicon method. The
+      // verifier has always supported checking it, but the method was never
+      // passed, so the claim was decoded, copied into `user.scopes` — which
+      // nothing reads — and never enforced. A token minted for
+      // `pub.chive.metrics.recordView` was therefore accepted at
+      // `pub.chive.admin.deleteContent`: any holder of any valid token could
+      // call any endpoint their roles allowed, which is the whole point of the
+      // claim.
+      //
+      // A token carrying no `lxm` is unscoped and still verifies; passing the
+      // NSID only tightens tokens that declared a scope. Non-XRPC routes have
+      // no lexicon method, so nothing is passed for them.
+      const result = await verifier.verify(token, lexiconMethodForPath(c.req.path));
 
       if (!result) {
         // Invalid token; log and continue as anonymous
