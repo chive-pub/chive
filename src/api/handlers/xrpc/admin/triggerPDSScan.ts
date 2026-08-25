@@ -31,7 +31,7 @@ export const triggerPDSScan: XRPCMethod<void, void, unknown> = {
       throw new ServiceUnavailableError('PDS discovery services are not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('pdsScan');
+    const { operation, signal } = await backfillManager.startOperation('pdsScan');
 
     logger.info('PDS scan triggered', { operationId: operation.id });
 
@@ -52,6 +52,11 @@ export const triggerPDSScan: XRPCMethod<void, void, unknown> = {
 
         let recordsProcessed = 0;
         for (const [, scanResult] of scanResults) {
+          if (signal.aborted) {
+            logger.info('PDS scan cancelled', { operationId: operation.id });
+            return;
+          }
+
           if (!(scanResult instanceof Error)) {
             recordsProcessed += scanResult.chiveRecordCount;
           }

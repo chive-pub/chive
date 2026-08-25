@@ -31,6 +31,7 @@ import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
 import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { initTelemetry } from './observability/telemetry.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   registerPluginSystem,
@@ -1056,6 +1057,22 @@ async function main(): Promise<void> {
     environment: config.nodeEnv,
     pretty: config.nodeEnv === 'development',
   });
+
+  // Telemetry has to be started explicitly. It never was, so every `withSpan`
+  // in the codebase executed its callback without recording anything and no
+  // OTLP export ever happened — the tracing existed only as dead decoration.
+  // It stays off without a configured endpoint outside production, so local
+  // runs do not spend the process retrying a collector that is not there.
+  if (process.env.OTEL_SDK_DISABLED === 'true') {
+    logger.info('Telemetry disabled by OTEL_SDK_DISABLED');
+  } else if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || config.nodeEnv === 'production') {
+    initTelemetry({ serviceName: 'chive-appview', environment: config.nodeEnv });
+    logger.info('Telemetry initialized', {
+      endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '(default)',
+    });
+  } else {
+    logger.info('Telemetry not initialized: no OTEL_EXPORTER_OTLP_ENDPOINT configured');
+  }
 
   logger.info('Starting Chive AppView...', {
     nodeEnv: config.nodeEnv,

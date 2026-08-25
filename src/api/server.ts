@@ -68,6 +68,7 @@ import { authenticateServiceAuth, requireAuth, requireAdmin } from './middleware
 import { errorHandler } from './middleware/error-handler.js';
 import { conditionalRateLimiter, autocompleteRateLimiter } from './middleware/rate-limit.js';
 import { requestContext } from './middleware/request-context.js';
+import { AUTOCOMPLETE_RATE_LIMIT_PATHS } from './rate-limit-paths.js';
 import { registerRoutes } from './routes.js';
 import type { ChiveEnv, ChiveServices } from './types/context.js';
 
@@ -422,25 +423,15 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
 
   // 6. Rate limiting
   // Autocomplete endpoints get higher rate limits (5x for anonymous)
-  const autocompletePatterns = [
-    '/xrpc/pub.chive.search.searchSubmissions',
-    '/xrpc/pub.chive.actor.autocompleteOrcid',
-    '/xrpc/pub.chive.actor.autocompleteAffiliation',
-    '/xrpc/pub.chive.actor.autocompleteKeyword',
-    '/xrpc/pub.chive.actor.autocompleteOpenReview',
-    '/xrpc/pub.chive.claiming.autocomplete',
-    '/api/v1/search', // REST search endpoint
-  ];
-
   const isAutocompleteEndpoint = (path: string): boolean =>
-    autocompletePatterns.some((pattern) => path.startsWith(pattern));
+    AUTOCOMPLETE_RATE_LIMIT_PATHS.some((pattern) => path.startsWith(pattern));
 
   const isHealthCheck = (path: string): boolean =>
     path === HEALTH_PATHS.liveness || path === HEALTH_PATHS.readiness;
 
   // Apply autocomplete rate limiter to search/autocomplete endpoints
   // Note: Hono matches exact paths; query strings are not part of the path
-  for (const pattern of autocompletePatterns) {
+  for (const pattern of AUTOCOMPLETE_RATE_LIMIT_PATHS) {
     app.use(pattern, autocompleteRateLimiter());
   }
 

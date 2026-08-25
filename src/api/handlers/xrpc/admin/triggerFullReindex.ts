@@ -76,7 +76,11 @@ export const triggerFullReindex: XRPCMethod<void, void, unknown> = {
       throw new ServiceUnavailableError('Admin service is not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('fullReindex');
+    // `startOperation` hands back an AbortSignal alongside the operation.
+    // Dropping it meant `admin.cancelBackfill` flipped the operation's state in
+    // Redis while this loop kept running to completion — a cancel button that
+    // reported success and cancelled nothing.
+    const { operation, signal } = await backfillManager.startOperation('fullReindex');
 
     logger.info('Full Elasticsearch reindex triggered', { operationId: operation.id });
 
@@ -90,6 +94,13 @@ export const triggerFullReindex: XRPCMethod<void, void, unknown> = {
         let hasMore = true;
 
         while (hasMore) {
+          if (signal.aborted) {
+            logger.info('Full reindex cancelled while collecting URIs', {
+              operationId: operation.id,
+              collected: allUris.length,
+            });
+            return;
+          }
           const batch = await admin.listImports(batchSize, offset);
           allUris = allUris.concat(batch.items.map((item) => item.uri));
           offset += batchSize;
@@ -100,6 +111,16 @@ export const triggerFullReindex: XRPCMethod<void, void, unknown> = {
         let failed = 0;
 
         for (const uri of allUris) {
+          if (signal.aborted) {
+            logger.info('Full reindex cancelled', {
+              operationId: operation.id,
+              indexed,
+              failed,
+              remaining: allUris.length - indexed - failed,
+            });
+            return;
+          }
+
           try {
             const stored = await eprintService.getEprint(uri as AtUri);
             if (!stored) {

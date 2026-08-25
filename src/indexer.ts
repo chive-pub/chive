@@ -30,6 +30,7 @@ import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { initTelemetry } from './observability/telemetry.js';
 import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
@@ -308,6 +309,20 @@ async function main(): Promise<void> {
     environment: config.nodeEnv,
     pretty: config.nodeEnv === 'development',
   });
+
+  // The indexer is its own process, so it needs its own telemetry start; see
+  // the note in src/index.ts. Without it the firehose pipeline's spans were
+  // recorded nowhere.
+  if (process.env.OTEL_SDK_DISABLED === 'true') {
+    logger.info('Telemetry disabled by OTEL_SDK_DISABLED');
+  } else if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || config.nodeEnv === 'production') {
+    initTelemetry({ serviceName: 'chive-indexer', environment: config.nodeEnv });
+    logger.info('Telemetry initialized', {
+      endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '(default)',
+    });
+  } else {
+    logger.info('Telemetry not initialized: no OTEL_EXPORTER_OTLP_ENDPOINT configured');
+  }
 
   logger.info('Starting Chive Firehose Indexer...', {
     nodeEnv: config.nodeEnv,

@@ -36,7 +36,7 @@ export const triggerCitationExtraction: XRPCMethod<void, void, unknown> = {
       throw new ServiceUnavailableError('Admin service is not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('citationExtraction');
+    const { operation, signal } = await backfillManager.startOperation('citationExtraction');
 
     logger.info('Citation extraction triggered', { operationId: operation.id });
 
@@ -50,6 +50,13 @@ export const triggerCitationExtraction: XRPCMethod<void, void, unknown> = {
         let hasMore = true;
 
         while (hasMore) {
+          if (signal.aborted) {
+            logger.info('citation extraction cancelled while collecting URIs', {
+              operationId: operation.id,
+            });
+            return;
+          }
+
           const batch = await admin.listImports(batchSize, offset);
           allUris = allUris.concat(batch.items.map((item) => item.uri));
           offset += batchSize;
@@ -60,6 +67,11 @@ export const triggerCitationExtraction: XRPCMethod<void, void, unknown> = {
         let totalExtracted = 0;
 
         for (const eprintUri of allUris) {
+          if (signal.aborted) {
+            logger.info('citation extraction cancelled', { operationId: operation.id });
+            return;
+          }
+
           try {
             const extractionResult = await citationExtraction.extractCitations(eprintUri as AtUri, {
               useCrossref: true,
