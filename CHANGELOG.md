@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-26
+
+### Security
+
+- The Prometheus scrape endpoint is no longer reachable from the public internet. `/metrics` shipped in 0.8.0 unauthenticated by default, which is the usual arrangement for a metrics port on a private network — but Chive's API is fronted by two public Traefik routers, so on this deployment it was world-readable: request rates, per-endpoint latencies and error counts, and queue depths. It was serving 200 to anonymous requests after 0.8.0 deployed. Both public routes now deny the path at the edge, which holds whether or not `METRICS_TOKEN` is configured, and Prometheus scrapes the API directly over the compose network where it never traverses Traefik.
+
 ## [0.8.0] - 2026-08-25
 
 Remediation sweep against the 0.8.0 backlog. Fourteen changes, each with tests
