@@ -25,9 +25,10 @@
  * @packageDocumentation
  */
 
+import { useEffect, useState } from 'react';
+
 import Link from 'next/link';
 import { ExternalLink } from 'lucide-react';
-import katex from 'katex';
 import { toHtml } from 'hast-util-to-html';
 
 import { Badge } from '@/components/ui/badge';
@@ -103,9 +104,31 @@ export interface RichTextRendererProps {
  * @param displayMode - True for display mode (centered block)
  * @returns Rendered HTML string
  */
-function renderLatex(latex: string, displayMode: boolean): string {
+/**
+ * Loads KaTeX on first use and keeps it for the rest of the session.
+ *
+ * @returns The KaTeX module
+ *
+ * @remarks
+ * KaTeX is roughly 280KB and was imported at the top of this module, so every
+ * route that renders any rich text shipped it — browse, search, trending and
+ * author pages included, none of which typically contain a formula. Importing
+ * it here moves it into its own chunk, fetched only when a `latex` item is
+ * actually rendered.
+ *
+ * The promise is cached rather than the module, so concurrent renders on the
+ * same page share one request instead of racing.
+ */
+let katexModule: Promise<typeof import('katex')> | null = null;
+
+function loadKatex(): Promise<typeof import('katex')> {
+  katexModule ??= import('katex');
+  return katexModule;
+}
+
+function renderLatex(katex: typeof import('katex'), latex: string, displayMode: boolean): string {
   try {
-    return katex.renderToString(latex, {
+    return katex.default.renderToString(latex, {
       displayMode,
       throwOnError: false,
       errorColor: '#cc0000',
@@ -448,12 +471,50 @@ function TextRenderer({ item }: { item: TextItem }) {
  */
 function LatexRenderer({ item }: { item: LatexItem }) {
   const displayMode = item.displayMode ?? false;
+  const [html, setHtml] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+
+    void loadKatex()
+      .then((katex) => {
+        if (active) {
+          setHtml(renderLatex(katex, item.content, displayMode));
+        }
+      })
+      .catch(() => {
+        // The chunk failed to load. Showing the source is more useful than an
+        // empty span, and matches what a reader would see in a plain-text
+        // context anyway.
+        if (active) {
+          setHtml(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [item.content, displayMode]);
+
+  // Before KaTeX resolves — and if it never does — the LaTeX source stands in.
+  // It occupies roughly the right space, so layout does not jump, and it is
+  // readable on its own.
+  if (html === null) {
+    return (
+      <span
+        className={
+          displayMode ? 'block my-2 text-center font-mono text-sm' : 'inline font-mono text-sm'
+        }
+      >
+        {item.content}
+      </span>
+    );
+  }
+
   return (
     <span
       className={displayMode ? 'block my-2 text-center' : 'inline'}
-      dangerouslySetInnerHTML={{
-        __html: renderLatex(item.content, displayMode),
-      }}
+      dangerouslySetInnerHTML={{ __html: html }}
     />
   );
 }
