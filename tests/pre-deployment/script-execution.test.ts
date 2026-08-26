@@ -12,7 +12,10 @@
  * - User PDS at aaronstevenwhite.io (via bsky.social endpoint)
  * - Governance PDS at governance.chive.pub
  *
- * These tests MUST pass. They do NOT skip - if something fails, CI fails.
+ * These tests fail CI when the external services respond incorrectly. They skip
+ * — loudly — when those services cannot be reached at all, so that a
+ * third-party outage does not block every merge in this repository. A skipped
+ * run is not a passing run, and says so.
  *
  * @packageDocumentation
  */
@@ -98,7 +101,70 @@ async function runTsScript(
   });
 }
 
-describe('Pre-Deployment Script Execution', () => {
+/**
+ * Whether the external services these tests depend on are reachable.
+ *
+ * @remarks
+ * This suite talks to a real user PDS and the governance PDS, and the
+ * `Pre-Deployment Verification` job it runs in is a required check on
+ * `staging` and `main`. That coupling means somebody else's outage red-lines
+ * this repository: no pull request can merge while bsky.social is down, however
+ * unrelated the change.
+ *
+ * The distinction that matters is between *unreachable* and *wrong*. If the
+ * endpoints cannot be contacted at all — DNS failure, connection refused, a
+ * gateway error, a timeout — there is nothing to learn from running the suite,
+ * and it is skipped so an external outage does not gate merges. If they respond
+ * but respond incorrectly, that is a genuine integration failure and the tests
+ * run and fail as before.
+ *
+ * Skipping is deliberately loud: the reason is printed, so a run that skipped
+ * cannot be mistaken for a run that verified something.
+ */
+async function externalServicesReachable(): Promise<boolean> {
+  const endpoints = [
+    `${TEST_CONFIG.userPdsEndpoint}/xrpc/_health`,
+    `${TEST_CONFIG.graphPdsUrl}/xrpc/_health`,
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(endpoint, {
+        signal: AbortSignal.timeout(15000),
+        headers: { Accept: 'application/json' },
+      });
+
+      // A 5xx means the service is up but broken, which is as unusable for
+      // these tests as being unreachable, and equally not this repo's fault.
+      if (response.status >= 500) {
+        console.warn(
+          `[pre-deployment] ${endpoint} returned ${response.status}; skipping external suite.`
+        );
+        return false;
+      }
+    } catch (error) {
+      console.warn(
+        `[pre-deployment] ${endpoint} unreachable (${
+          error instanceof Error ? error.message : String(error)
+        }); skipping external suite.`
+      );
+      return false;
+    }
+  }
+
+  return true;
+}
+
+const externalAvailable = await externalServicesReachable();
+
+if (!externalAvailable) {
+  console.warn(
+    '[pre-deployment] External PDS suite SKIPPED — the services it verifies could not be ' +
+      'reached. This is not a pass: nothing about PDS integration was checked in this run.'
+  );
+}
+
+describe.skipIf(!externalAvailable)('Pre-Deployment Script Execution', () => {
   // ===========================================================================
   // EXTERNAL PDS CONNECTIVITY TESTS
   // ===========================================================================
