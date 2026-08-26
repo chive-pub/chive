@@ -101,7 +101,10 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
 
         return {
           uri: item.uri,
-          cid: 'placeholder', // CID not stored in index
+          // The CID is stored at index time and now selected; it was previously
+          // reported as the literal string 'placeholder', which no client could
+          // use for the optimistic-concurrency writes the lexicon intends.
+          cid: item.cid ?? '',
           eprintUri: item.eprintUri,
           eprintTitle,
           endorser: {
