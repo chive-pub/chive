@@ -40,15 +40,36 @@ interface MockMetricsService {
 
 interface MockEprintService {
   getEprint: ReturnType<typeof vi.fn<(uri: string) => Promise<EprintView | null>>>;
+  getEprints: ReturnType<typeof vi.fn>;
 }
 
 const createMockMetricsService = (): MockMetricsService => ({
   getTrending: vi.fn().mockResolvedValue([]),
 });
 
-const createMockEprintService = (): MockEprintService => ({
-  getEprint: vi.fn().mockResolvedValue(null),
-});
+const createMockEprintService = (): MockEprintService => {
+  const service: MockEprintService = {
+    getEprint: vi.fn().mockResolvedValue(null),
+    getEprints: vi.fn(),
+  };
+
+  // The handler fetches a page in one call. Resolving through this service's
+  // own `getEprint` keeps the per-test stubs below describing what each case
+  // returns, rather than making every case build a Map by hand.
+  service.getEprints = vi.fn(async (uris: readonly string[]) => {
+    const found = new Map<string, EprintView>();
+    for (const uri of uris) {
+      const fetchOne = service.getEprint as (u: string) => Promise<EprintView | null>;
+      const eprint = await fetchOne(uri);
+      if (eprint) {
+        found.set(uri, eprint);
+      }
+    }
+    return found;
+  });
+
+  return service;
+};
 
 interface MockContext {
   get: ReturnType<typeof vi.fn>;

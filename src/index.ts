@@ -74,6 +74,7 @@ import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { PDSScanner } from './services/pds-discovery/pds-scanner.js';
 import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
 import { PDSSyncService } from './services/pds-sync/sync-service.js';
+import { ProfileHydrator } from './services/profile/profile-hydrator.js';
 import { ReviewService } from './services/review/review-service.js';
 import { TaxonomyCategoryMatcher } from './services/search/category-matcher.js';
 import { RankingService } from './services/search/ranking-service.js';
@@ -495,6 +496,10 @@ function createServices(
   // never used its cache. Same Redis, same key space as the job.
   const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
 
+  // The hydrator's cache is the point of it: without one it makes the same
+  // appview request per page render. Redis is already here, so it gets one.
+  const profileHydrator = new ProfileHydrator({ logger, cache: redis });
+
   const relevanceLogger = relevanceLoggingEnabled
     ? new RelevanceLogger({
         pool: pgPool,
@@ -620,6 +625,7 @@ function createServices(
     importService,
     pdsSyncService,
     graphAlgorithmCache,
+    profileHydrator,
     relevanceLogger,
     activityService,
     discoveryService,

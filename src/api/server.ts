@@ -49,6 +49,7 @@ import type { ContentReportService } from '../services/moderation/content-report
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
+import type { ProfileHydrator } from '../services/profile/profile-hydrator.js';
 import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
@@ -241,6 +242,17 @@ export interface ServerConfig {
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
 
   /**
+   * Shared, Redis-backed profile lookup.
+   *
+   * @remarks
+   * Handler-level profile fetching was open-coded at several sites, none of
+   * them cached. Passing one hydrator gives them a single implementation and
+   * a shared cache, so the same author rendered across a page costs one lookup
+   * rather than one per appearance.
+   */
+  readonly profileHydrator?: ProfileHydrator;
+
+  /**
    * Logger instance.
    */
   readonly logger: ILogger;
@@ -401,6 +413,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       import: config.importService,
       pdsSync: config.pdsSyncService,
       graphAlgorithmCache: config.graphAlgorithmCache,
+      profileHydrator: config.profileHydrator,
       relevanceLogger: config.relevanceLogger,
       ranking: config.rankingService,
       discovery: config.discoveryService,
