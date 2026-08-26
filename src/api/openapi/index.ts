@@ -16,6 +16,7 @@ import { schemaDict } from '../../lexicons/generated/lexicons.js';
 import { SERVER_INFO, OPENAPI_SERVERS, OPENAPI_PATHS } from '../config.js';
 import { allXRPCMethods } from '../handlers/xrpc/index.js';
 import type { ChiveEnv } from '../types/context.js';
+import { resolveMethodType } from '../xrpc/validation.js';
 
 // =============================================================================
 // Types
@@ -312,7 +313,10 @@ export function generateOpenAPISpec(): OpenAPISpec {
   // Generate paths from XRPC methods
   for (const [nsid, method] of Object.entries(allXRPCMethods)) {
     const path = `/xrpc/${nsid}`;
-    const httpMethod = method.type === 'procedure' ? 'post' : 'get';
+    // Resolved the same way the router resolves it. Deciding this from
+    // `method.type` alone is what let the spec describe a verb the server does
+    // not serve.
+    const httpMethod = resolveMethodType(nsid, method.type) === 'procedure' ? 'post' : 'get';
     const lexDef = getLexiconDef(nsid);
 
     // Extract tag from method namespace
