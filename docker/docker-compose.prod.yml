@@ -339,6 +339,29 @@ services:
       - "traefik.http.middlewares.api-ratelimit.ratelimit.average=2000"
       - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=500"
       - "traefik.http.routers.api.middlewares=api-ratelimit"
+      # Block /metrics from the public internet.
+      #
+      # The Prometheus scrape endpoint is unauthenticated by default so an
+      # in-network collector needs no credentials, which is the usual
+      # arrangement for a metrics port on a private network. Both routers above
+      # are public, so without this the endpoint is world-readable: request
+      # rates, latencies and error counts per endpoint, and queue depths.
+      #
+      # Prometheus reaches the API directly over the compose network at
+      # chive-api:3000/metrics and never traverses Traefik, so denying here
+      # costs nothing internally. The higher priority is required to beat the
+      # broader PathPrefix(`/api`) rule.
+      #
+      # Setting METRICS_TOKEN additionally enforces a bearer token at the
+      # application layer; this is the network half of the same control, and
+      # does not depend on that variable being set.
+      - "traefik.http.routers.api-metrics.rule=(Host(`api.${DOMAIN}`) && Path(`/metrics`)) || (Host(`${DOMAIN}`) && Path(`/api/metrics`))"
+      - "traefik.http.routers.api-metrics.priority=200"
+      - "traefik.http.routers.api-metrics.entrypoints=websecure"
+      - "traefik.http.routers.api-metrics.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.api-metrics.service=api"
+      - "traefik.http.middlewares.metrics-deny.ipallowlist.sourcerange=127.0.0.1/32"
+      - "traefik.http.routers.api-metrics.middlewares=metrics-deny"
 
   # ---------------------------------------------------------------------------
   # Chive Indexer (Firehose Consumer)
