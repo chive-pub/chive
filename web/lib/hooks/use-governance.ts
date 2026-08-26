@@ -34,6 +34,7 @@ import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import { createVoteRecord, createNodeProposalRecord } from '@/lib/atproto/record-creator';
+import type { VoteView as UserVoteView } from '@/lib/api/generated/types/pub/chive/governance/getUserVote';
 import type {
   Vote as RecordCreatorVote,
   NodeProposal as RecordCreatorNodeProposal,
@@ -381,9 +382,20 @@ export function useMyVote(proposalId: string, userDid: string, options: UseGover
     queryFn: async (): Promise<Vote | null> => {
       try {
         const response = await api.pub.chive.governance.getUserVote({ proposalId, userDid });
-        // The API returns a VoteView with a different $type discriminator than listVotes.
-        // Cast to Vote since they share the same structural shape.
-        return (response.data?.vote as Vote) ?? null;
+        const vote = response.data?.vote;
+        // The handler answers "this user has not voted" with a `#noVote` sentinel
+        // rather than omitting the field, so the union must be narrowed on its
+        // discriminator. Accepting the sentinel as a cast vote would hide the
+        // voting UI from every user who has yet to vote.
+        if (vote?.$type !== 'pub.chive.governance.getUserVote#voteView') {
+          return null;
+        }
+        // getUserVote#voteView and listVotes#voteView (exported as Vote) are the
+        // same shape under different discriminators, so re-tag rather than reshape.
+        return {
+          ...(vote as UserVoteView),
+          $type: 'pub.chive.governance.listVotes#voteView',
+        };
       } catch (error) {
         if (error instanceof APIError && error.statusCode === 404) {
           return null;
@@ -636,8 +648,10 @@ export function useCreateVote() {
         queryClient.invalidateQueries({
           queryKey: governanceKeys.votes(proposalId),
         });
+        // Invalidate the whole proposals subtree: proposalsList() with no params
+        // yields a trailing `undefined` element that matches no cached list query.
         queryClient.invalidateQueries({
-          queryKey: governanceKeys.proposalsList(),
+          queryKey: governanceKeys.proposals(),
         });
       }, 1000);
     },
@@ -799,7 +813,7 @@ export function useRequestElevation() {
   return useMutation({
     mutationFn: async (): Promise<ElevationResult> => {
       try {
-        const response = await api.pub.chive.governance.requestElevation({
+        const response = await authApi.pub.chive.governance.requestElevation({
           targetRole: 'trusted-editor',
         });
         return response.data;
@@ -840,7 +854,7 @@ export function useGrantDelegation() {
   return useMutation({
     mutationFn: async (input: GrantDelegationInput): Promise<DelegationResult> => {
       try {
-        const response = await api.pub.chive.governance.grantDelegation({
+        const response = await authApi.pub.chive.governance.grantDelegation({
           delegateDid: input.delegateDid,
           collections: input.collections,
           daysValid: input.daysValid ?? 365,
@@ -883,7 +897,7 @@ export function useRevokeDelegation() {
   return useMutation({
     mutationFn: async (input: RevokeDelegationInput): Promise<DelegationResult> => {
       try {
-        const response = await api.pub.chive.governance.revokeDelegation({
+        const response = await authApi.pub.chive.governance.revokeDelegation({
           delegationId: input.delegationId,
         });
         return response.data;

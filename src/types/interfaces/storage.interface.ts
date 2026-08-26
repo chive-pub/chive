@@ -445,6 +445,18 @@ export interface IStorageBackend {
   getEprint(uri: AtUri): Promise<StoredEprint | null>;
 
   /**
+   * Fetches several eprints in a single query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint, omitting URIs with no row
+   *
+   * @remarks
+   * Exists so callers handling a page of results do not issue one round trip
+   * per item; a missing URI is absent from the map rather than an error.
+   */
+  getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, StoredEprint>>;
+
+  /**
    * Queries eprints by author.
    *
    * @param author - Author DID

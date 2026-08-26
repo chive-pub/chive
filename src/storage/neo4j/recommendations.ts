@@ -19,6 +19,22 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { Neo4jConnection } from './connection.js';
 
 /**
+ * NOTE ON `INTERESTED_IN`
+ *
+ * Nothing in the codebase creates an `INTERESTED_IN` relationship. It appears
+ * only in read queries — here and in graph-algorithms.ts — so any path that
+ * depends on it alone returns an empty result no matter what else is correct.
+ * The node labels in these queries have been aligned with what the write side
+ * actually creates (`:Node:Field`, not `:FieldNode`), which repairs the
+ * `EXPERT_IN` half, but the interest half cannot be repaired by relabelling:
+ * there is no writer to relabel against.
+ *
+ * Recording a user's declared interests is a missing feature rather than a
+ * broken query. Until something writes the relationship, interest-based
+ * recommendations are silently empty, and adding a writer is the fix.
+ */
+
+/**
  * Paper recommendation result.
  */
 export interface PaperRecommendation {
@@ -150,7 +166,7 @@ export class RecommendationService {
     const query = `
       // Get user's fields of interest
       MATCH (user:User {did: $userDid})
-      OPTIONAL MATCH (user)-[:INTERESTED_IN]->(field:FieldNode)
+      OPTIONAL MATCH (user)-[:INTERESTED_IN]->(field:Node:Field)
       WITH user, collect(DISTINCT field) AS userFields
 
       // Find papers from user's fields and citation network
@@ -474,12 +490,12 @@ export class RecommendationService {
 
     const query = `
       MATCH (user:User {did: $userDid})
-      OPTIONAL MATCH (user)-[:INTERESTED_IN]->(currentField:FieldNode)
+      OPTIONAL MATCH (user)-[:INTERESTED_IN]->(currentField:Node:Field)
       WITH user, collect(currentField) AS currentFields
 
       // Find related fields through graph structure
       UNWIND currentFields AS field
-      MATCH (field)-[:RELATED_TO|SUBFIELD_OF*1..2]-(candidate:FieldNode)
+      MATCH (field)-[:RELATED_TO|SUBFIELD_OF*1..2]-(candidate:Node:Field)
       WHERE NOT candidate IN currentFields
 
       WITH candidate, count(*) AS proximity

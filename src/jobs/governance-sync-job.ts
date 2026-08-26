@@ -55,6 +55,37 @@ export interface GovernanceSyncJobConfig {
 }
 
 /**
+ * Outcome of a single sync cycle.
+ *
+ * @remarks
+ * A cycle that indexed every record it read is `success`; a cycle in which at
+ * least one record failed to index is `partial`. Callers that track the sync as
+ * an operation — e.g. the admin trigger endpoint — should treat `partial` as a
+ * failure, since a partial cycle silently leaves the Neo4j index behind the
+ * Governance PDS.
+ *
+ * @public
+ */
+export interface GovernanceSyncResult {
+  /** Nodes successfully indexed into Neo4j. */
+  nodesIndexed: number;
+  /** Edges successfully indexed into Neo4j. */
+  edgesIndexed: number;
+  /** Records that were read but could not be indexed. */
+  failedCount: number;
+  /** Whether every record read was indexed. */
+  status: 'success' | 'partial';
+}
+
+/**
+ * Per-collection sync tallies.
+ */
+interface SyncCounts {
+  indexed: number;
+  failed: number;
+}
+
+/**
  * Node record value from ATProto listRecords.
  */
 interface NodeRecordValue {
@@ -176,11 +207,19 @@ export class GovernanceSyncJob {
 
   /**
    * Runs a single sync cycle.
+   *
+   * @returns The cycle outcome, `partial` when some records failed to index.
+   *
+   * @remarks
+   * Per-record indexing failures do not abort the cycle — one poisoned record
+   * should not block the rest of the graph — but they are counted and surfaced
+   * so a caller cannot mistake a lossy cycle for a complete one.
    */
-  async run(): Promise<void> {
+  async run(): Promise<GovernanceSyncResult> {
     if (this.isRunning) {
       this.config.logger.debug('Sync already in progress, skipping');
-      return;
+      // Nothing was read, so nothing was dropped: not a partial cycle.
+      return { nodesIndexed: 0, edgesIndexed: 0, failedCount: 0, status: 'success' };
     }
 
     this.isRunning = true;
@@ -188,26 +227,46 @@ export class GovernanceSyncJob {
     const endTimer = jobMetrics.duration.startTimer({ job: 'governance_sync' });
 
     try {
-      await withSpan('job.governance_sync', async () => {
+      return await withSpan('job.governance_sync', async () => {
         this.config.logger.debug('Starting governance sync');
 
-        const nodeCount = await this.syncNodes();
-        const edgeCount = await this.syncEdges();
+        const nodes = await this.syncNodes();
+        const edges = await this.syncEdges();
+
+        const nodeCount = nodes.indexed;
+        const edgeCount = edges.indexed;
+        const failedCount = nodes.failed + edges.failed;
+        const status = failedCount > 0 ? 'partial' : 'success';
 
         const duration = Date.now() - startTime;
-        this.config.logger.info('Governance sync completed', {
-          nodesIndexed: nodeCount,
-          edgesIndexed: edgeCount,
-          durationMs: duration,
-        });
+        if (failedCount > 0) {
+          this.config.logger.warn('Governance sync completed with failures', {
+            nodesIndexed: nodeCount,
+            edgesIndexed: edgeCount,
+            nodesFailed: nodes.failed,
+            edgesFailed: edges.failed,
+            durationMs: duration,
+          });
+        } else {
+          this.config.logger.info('Governance sync completed', {
+            nodesIndexed: nodeCount,
+            edgesIndexed: edgeCount,
+            durationMs: duration,
+          });
+        }
 
-        jobMetrics.executionsTotal.inc({ job: 'governance_sync', status: 'success' });
+        jobMetrics.executionsTotal.inc({ job: 'governance_sync', status });
         jobMetrics.lastRunTimestamp.set({ job: 'governance_sync' }, Date.now() / 1000);
         jobMetrics.itemsProcessed.inc(
           { job: 'governance_sync', status: 'success' },
           nodeCount + edgeCount
         );
-        endTimer({ status: 'success' });
+        if (failedCount > 0) {
+          jobMetrics.itemsProcessed.inc({ job: 'governance_sync', status: 'error' }, failedCount);
+        }
+        endTimer({ status });
+
+        return { nodesIndexed: nodeCount, edgesIndexed: edgeCount, failedCount, status };
       });
     } catch (error) {
       this.config.logger.error(
@@ -226,9 +285,12 @@ export class GovernanceSyncJob {
 
   /**
    * Syncs all node records from the Governance PDS.
+   *
+   * @returns Indexed and failed record counts for this collection.
    */
-  private async syncNodes(): Promise<number> {
+  private async syncNodes(): Promise<SyncCounts> {
     let indexedCount = 0;
+    let failedCount = 0;
     let cursor: string | undefined;
 
     do {
@@ -270,20 +332,24 @@ export class GovernanceSyncJob {
             error instanceof Error ? error : undefined,
             { uri: record.uri }
           );
+          failedCount++;
         }
       }
 
       cursor = response.data.cursor;
     } while (cursor);
 
-    return indexedCount;
+    return { indexed: indexedCount, failed: failedCount };
   }
 
   /**
    * Syncs all edge records from the Governance PDS.
+   *
+   * @returns Indexed and failed record counts for this collection.
    */
-  private async syncEdges(): Promise<number> {
+  private async syncEdges(): Promise<SyncCounts> {
     let indexedCount = 0;
+    let failedCount = 0;
     let cursor: string | undefined;
 
     do {
@@ -322,12 +388,13 @@ export class GovernanceSyncJob {
             error instanceof Error ? error : undefined,
             { uri: record.uri }
           );
+          failedCount++;
         }
       }
 
       cursor = response.data.cursor;
     } while (cursor);
 
-    return indexedCount;
+    return { indexed: indexedCount, failed: failedCount };
   }
 }

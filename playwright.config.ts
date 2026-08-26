@@ -135,12 +135,12 @@ export default defineConfig({
         // Database credentials - use env vars if set (CI), otherwise defaults for local
         POSTGRES_USER: process.env.POSTGRES_USER ?? 'chive',
         POSTGRES_PASSWORD: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
-        POSTGRES_DB: process.env.POSTGRES_DB ?? 'chive',
+        POSTGRES_DB: process.env.POSTGRES_DB ?? 'chive_test',
         POSTGRES_HOST: process.env.POSTGRES_HOST ?? '127.0.0.1',
         POSTGRES_PORT: process.env.POSTGRES_PORT ?? '5432',
         DATABASE_URL:
           process.env.DATABASE_URL ??
-          `postgresql://${process.env.POSTGRES_USER ?? 'chive'}:${process.env.POSTGRES_PASSWORD ?? 'chive_test_password'}@${process.env.POSTGRES_HOST ?? '127.0.0.1'}:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB ?? 'chive'}`,
+          `postgresql://${process.env.POSTGRES_USER ?? 'chive'}:${process.env.POSTGRES_PASSWORD ?? 'chive_test_password'}@${process.env.POSTGRES_HOST ?? '127.0.0.1'}:${process.env.POSTGRES_PORT ?? '5432'}/${process.env.POSTGRES_DB ?? 'chive_test'}`,
         NEO4J_USER: process.env.NEO4J_USER ?? 'neo4j',
         NEO4J_PASSWORD: process.env.NEO4J_PASSWORD ?? 'chive_test_password',
         NEO4J_URI: process.env.NEO4J_URI ?? 'bolt://127.0.0.1:7687',

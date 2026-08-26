@@ -31,7 +31,7 @@ export const triggerFreshnessScan: XRPCMethod<void, void, unknown> = {
       throw new ServiceUnavailableError('PDS sync service is not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('freshnessScan');
+    const { operation, signal } = await backfillManager.startOperation('freshnessScan');
 
     logger.info('Freshness scan triggered', { operationId: operation.id });
 
@@ -42,6 +42,11 @@ export const triggerFreshnessScan: XRPCMethod<void, void, unknown> = {
         let refreshed = 0;
 
         for (const uri of staleUris) {
+          if (signal.aborted) {
+            logger.info('freshness scan cancelled', { operationId: operation.id });
+            return;
+          }
+
           const result = await pdsSync.refreshRecord(uri);
           if (result.ok) {
             refreshed++;

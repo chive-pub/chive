@@ -472,7 +472,7 @@ export class AutomaticProposalService {
    * Queries the tag manager for tags that have reached the promotion threshold
    * (usageCount >= 10, uniqueUsers >= 5, qualityScore >= 0.7, spamScore < 0.3).
    * For each candidate, checks whether a field proposal already exists in the
-   * governance system. Creates new `pub.chive.graph.fieldProposal` records
+   * governance system. Creates new `pub.chive.graph.nodeProposal` records
    * via GovernancePDSWriter for candidates without existing proposals.
    *
    * @returns Summary of the promotion check: proposals created, evaluated, and skipped

@@ -45,6 +45,13 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
       fieldUriCount: fieldUriSet?.size ?? 0,
     });
 
+    // The cursor is an offset into the ranked list. It was parsed only at the
+    // end, to build the next cursor, and never passed to either data source, so
+    // every page returned the same first `limit` entries while the cursor kept
+    // advancing — paging that looked like it worked and never moved.
+    const parsedCursor = params.cursor ? Number.parseInt(params.cursor, 10) : 0;
+    const offset = Number.isFinite(parsedCursor) && parsedCursor > 0 ? parsedCursor : 0;
+
     // Try graph algorithm cache first for faster response
     let trendingEntries: { uri: string; score: number; velocity?: number }[] = [];
 
@@ -52,7 +59,7 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
       try {
         const cachedTrending = await graphAlgorithmCache.getTrending(window);
         if (cachedTrending && cachedTrending.length > 0) {
-          trendingEntries = cachedTrending.slice(0, limit).map((paper) => ({
+          trendingEntries = cachedTrending.slice(offset, offset + limit).map((paper) => ({
             uri: paper.uri as string,
             score: paper.viewCount ?? paper.score,
             velocity: undefined,
@@ -68,7 +75,7 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
 
     // Fall back to metrics service if no cached data
     if (trendingEntries.length === 0) {
-      const metricsEntries = await metrics.getTrending(window, limit);
+      const metricsEntries = await metrics.getTrending(window, limit, offset);
       trendingEntries = metricsEntries.map((entry) => ({
         uri: entry.uri as string,
         score: entry.score,
@@ -221,7 +228,6 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
-    const offset = params.cursor ? parseInt(params.cursor, 10) : 0;
     const hasMore = validEntries.length >= limit;
 
     const response: OutputSchema = {

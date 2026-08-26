@@ -33,7 +33,7 @@ const TEST_DB_CONFIG = {
   port: parseInt(process.env.POSTGRES_PORT ?? '5432', 10),
   user: process.env.POSTGRES_USER ?? 'chive',
   password: process.env.POSTGRES_PASSWORD ?? 'chive_test_password',
-  database: process.env.POSTGRES_DB ?? 'chive',
+  database: process.env.POSTGRES_DB ?? 'chive_test',
 };
 
 const TEST_REDIS_CONFIG = {

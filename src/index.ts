@@ -17,10 +17,12 @@ import { Redis } from 'ioredis';
 const { EventEmitter2 } = EventEmitter2Module;
 type EventEmitter2Type = InstanceType<typeof EventEmitter2>;
 
+import { assertNoAuthBypassInProduction } from './api/middleware/auth.js';
 import { createServer, type ServerConfig } from './api/server.js';
 import { ATRepository } from './atproto/repository/at-repository.js';
 import { AuthorizationService } from './auth/authorization/authorization-service.js';
 import { DIDResolver } from './auth/did/did-resolver.js';
+import { getAdminDids } from './config/admin.js';
 import { getGrobidConfig } from './config/grobid.js';
 import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { CollaborativeFilteringSyncJob } from './jobs/collaborative-filtering-sync.js';
@@ -29,6 +31,7 @@ import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
 import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { initTelemetry } from './observability/telemetry.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   registerPluginSystem,
@@ -1022,13 +1025,7 @@ async function seedAdminRoles(
   authzService: InstanceType<typeof AuthorizationService>,
   logger: PinoLogger
 ): Promise<void> {
-  const defaultAdminDids = 'did:plc:34mbm5v3umztwvvgnttvcz6e';
-  const adminDidsRaw = process.env.ADMIN_DIDS ?? defaultAdminDids;
-
-  const adminDids = adminDidsRaw
-    .split(',')
-    .map((d) => d.trim())
-    .filter(Boolean);
+  const adminDids = getAdminDids();
 
   if (adminDids.length === 0) {
     logger.info('No admin DIDs to seed');
@@ -1038,7 +1035,7 @@ async function seedAdminRoles(
   logger.info('Seeding admin roles...', { count: adminDids.length });
 
   for (const did of adminDids) {
-    await authzService.assignRole(did as DID, 'admin', 'system-startup' as DID);
+    await authzService.assignRole(did, 'admin', 'system-startup' as DID);
     logger.info('Admin role assigned', { did });
   }
 
@@ -1049,6 +1046,10 @@ async function seedAdminRoles(
  * Main entry point.
  */
 async function main(): Promise<void> {
+  // Refuse to boot a production process with the header auth bypass enabled,
+  // before any listener is bound.
+  assertNoAuthBypassInProduction();
+
   const config = loadConfig();
   const logger = new PinoLogger({
     level: config.nodeEnv === 'production' ? 'info' : 'debug',
@@ -1056,6 +1057,22 @@ async function main(): Promise<void> {
     environment: config.nodeEnv,
     pretty: config.nodeEnv === 'development',
   });
+
+  // Telemetry has to be started explicitly. It never was, so every `withSpan`
+  // in the codebase executed its callback without recording anything and no
+  // OTLP export ever happened — the tracing existed only as dead decoration.
+  // It stays off without a configured endpoint outside production, so local
+  // runs do not spend the process retrying a collector that is not there.
+  if (process.env.OTEL_SDK_DISABLED === 'true') {
+    logger.info('Telemetry disabled by OTEL_SDK_DISABLED');
+  } else if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || config.nodeEnv === 'production') {
+    initTelemetry({ serviceName: 'chive-appview', environment: config.nodeEnv });
+    logger.info('Telemetry initialized', {
+      endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '(default)',
+    });
+  } else {
+    logger.info('Telemetry not initialized: no OTEL_EXPORTER_OTLP_ENDPOINT configured');
+  }
 
   logger.info('Starting Chive AppView...', {
     nodeEnv: config.nodeEnv,

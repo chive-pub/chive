@@ -17,6 +17,22 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      // Frontend coverage was measured by nobody: this config declared no
+      // thresholds and CI ran the suite without `--coverage` at all, so the
+      // stated 70% bar in CLAUDE.md was unenforced end to end and the real
+      // figure had drifted to roughly 41% of lines.
+      //
+      // These numbers are set just under what the suite currently achieves, so
+      // they act as a ratchet against further slippage rather than as the bar
+      // the project actually wants. Raising them toward 70% is real test-writing
+      // work; pretending the bar is already met by declaring it here would just
+      // break every pull request on debt that predates the threshold.
+      thresholds: {
+        lines: 40,
+        statements: 40,
+        branches: 72,
+        functions: 43,
+      },
       exclude: ['node_modules/', '.next/', 'out/', 'tests/', '**/*.test.{ts,tsx}', '**/types/**'],
     },
     // Inline dependencies that have incomplete package.json exports

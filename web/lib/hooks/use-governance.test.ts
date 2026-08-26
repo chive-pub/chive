@@ -15,6 +15,7 @@ import {
   governanceKeys,
   useMyEditorStatus,
   useEditorStatus,
+  useMyVote,
   useTrustedEditors,
   useRequestElevation,
   useGrantDelegation,
@@ -26,6 +27,7 @@ import {
 // Mock functions using vi.hoisted for proper hoisting
 const {
   mockGetEditorStatus,
+  mockGetUserVote,
   mockAuthGetEditorStatus,
   mockListTrustedEditors,
   mockRequestElevation,
@@ -34,6 +36,7 @@ const {
   mockRevokeRole,
 } = vi.hoisted(() => ({
   mockGetEditorStatus: vi.fn(),
+  mockGetUserVote: vi.fn(),
   mockAuthGetEditorStatus: vi.fn(),
   mockListTrustedEditors: vi.fn(),
   mockRequestElevation: vi.fn(),
@@ -48,9 +51,7 @@ vi.mock('@/lib/api/client', () => ({
       chive: {
         governance: {
           getEditorStatus: mockGetEditorStatus,
-          requestElevation: mockRequestElevation,
-          grantDelegation: mockGrantDelegation,
-          revokeDelegation: mockRevokeDelegation,
+          getUserVote: mockGetUserVote,
         },
       },
     },
@@ -61,6 +62,9 @@ vi.mock('@/lib/api/client', () => ({
         governance: {
           getEditorStatus: mockAuthGetEditorStatus,
           listTrustedEditors: mockListTrustedEditors,
+          requestElevation: mockRequestElevation,
+          grantDelegation: mockGrantDelegation,
+          revokeDelegation: mockRevokeDelegation,
           revokeRole: mockRevokeRole,
         },
       },
@@ -104,6 +108,15 @@ const createMockTrustedEditorsResponse = (editors = [createMockEditorStatus()]) 
 describe('governanceKeys', () => {
   it('generates all key', () => {
     expect(governanceKeys.all).toEqual(['governance']);
+  });
+
+  it('generates proposals key as a prefix of every proposals list key', () => {
+    // Invalidation after a vote relies on this prefix relationship: proposalsList()
+    // with no params carries a trailing `undefined` that partial-matches nothing.
+    const params = { status: 'open' as const };
+    expect(governanceKeys.proposals()).toEqual(['governance', 'proposals']);
+    expect(governanceKeys.proposalsList(params).slice(0, 2)).toEqual(governanceKeys.proposals());
+    expect(governanceKeys.proposalsList()).toEqual(['governance', 'proposals', 'list', undefined]);
   });
 
   it('generates trustedEditors key', () => {
@@ -243,6 +256,64 @@ describe('useEditorStatus', () => {
 
     expect(result.current.fetchStatus).toBe('idle');
     expect(mockGetEditorStatus).not.toHaveBeenCalled();
+  });
+});
+
+describe('useMyVote', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns null for the #noVote sentinel', async () => {
+    mockGetUserVote.mockResolvedValueOnce({
+      data: { vote: { $type: 'pub.chive.governance.getUserVote#noVote' } },
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useMyVote('proposal-1', 'did:plc:user123'), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data).toBeNull();
+  });
+
+  it('returns the vote for the #voteView member', async () => {
+    mockGetUserVote.mockResolvedValueOnce({
+      data: {
+        vote: {
+          $type: 'pub.chive.governance.getUserVote#voteView',
+          id: 'vote-1',
+          uri: 'at://did:plc:user123/pub.chive.graph.vote/vote-1',
+          cid: 'bafyvote',
+          proposalUri: 'at://did:plc:author/pub.chive.graph.nodeProposal/proposal-1',
+          voterDid: 'did:plc:user123',
+          voterRole: 'community-member',
+          vote: 'approve',
+          weight: 1,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      },
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useMyVote('proposal-1', 'did:plc:user123'), {
+      wrapper: Wrapper,
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data?.id).toBe('vote-1');
+    expect(result.current.data?.vote).toBe('approve');
+    expect(mockGetUserVote).toHaveBeenCalledWith({
+      proposalId: 'proposal-1',
+      userDid: 'did:plc:user123',
+    });
   });
 });
 

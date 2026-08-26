@@ -103,9 +103,13 @@ export const browseFaceted: XRPCMethod<QueryParams, void, OutputSchema> = {
       const values: { value: string; label?: string; count: number }[] = [];
       const seenUris = new Set<string>();
 
+      // One query per facet rather than one per edge. With a limit of 100 this
+      // was 100 sequential Neo4j round trips for every facet on the page, each
+      // waiting on the one before it.
+      const valueNodes = await nodeService.getNodes(valueEdges.edges.map((e) => e.targetUri));
+
       for (const edge of valueEdges.edges) {
-        // Get the target node (the value node)
-        const valueNode = await nodeService.getNode(edge.targetUri);
+        const valueNode = valueNodes.get(edge.targetUri);
         if (valueNode?.uri) {
           const valueUri = valueNode.uri as string;
 

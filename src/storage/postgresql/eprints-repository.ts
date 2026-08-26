@@ -412,6 +412,49 @@ export class EprintsRepository {
   }
 
   /**
+   * Fetches several eprints in one query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint, omitting URIs with no row
+   *
+   * @remarks
+   * Callers that need many eprints were fetching them one at a time. On the
+   * author autocomplete that meant up to 75 sequential round trips per
+   * keystroke, each waiting on the last. One `uri = ANY($1)` replaces the lot.
+   *
+   * A missing URI is simply absent from the map rather than being an error:
+   * the index can legitimately lag a search result.
+   *
+   * @public
+   */
+  async findByUris(uris: readonly AtUri[]): Promise<Map<AtUri, StoredEprint>> {
+    const found = new Map<AtUri, StoredEprint>();
+
+    if (uris.length === 0) {
+      return found;
+    }
+
+    try {
+      const unique = [...new Set(uris)];
+      const result = await this.pool.query<EprintRow>(
+        `SELECT uri, cid, authors, submitted_by, paper_did, title, abstract, abstract_plain_text, document_blob_cid, document_blob_mime_type, document_blob_size, document_format, version, keywords, license, license_uri, publication_status, published_version, external_ids, related_works, repositories, funding, conference_presentation, supplementary_materials, fields, needs_abstract_migration, pds_url, indexed_at, created_at
+         FROM eprints_index
+         WHERE uri = ANY($1::text[]) AND deleted_at IS NULL`,
+        [unique]
+      );
+
+      for (const row of result.rows) {
+        const eprint = this.rowToEprint(row);
+        found.set(eprint.uri, eprint);
+      }
+
+      return found;
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(`Failed to find eprints: ${String(error)}`);
+    }
+  }
+
+  /**
    * Queries eprints by author.
    *
    * @param author - Author DID
@@ -463,6 +506,7 @@ export class EprintsRepository {
           fields, needs_abstract_migration, pds_url, indexed_at, created_at
         FROM eprints_index
         WHERE authors @> $1::jsonb
+          AND deleted_at IS NULL
         ORDER BY ${sortColumn} ${sortDirection}
         LIMIT $2 OFFSET $3
       `;
@@ -505,6 +549,7 @@ export class EprintsRepository {
         SELECT COUNT(*)::int AS count
         FROM eprints_index
         WHERE authors @> $1::jsonb
+          AND deleted_at IS NULL
       `;
 
       const result = await this.pool.query<{ count: number }>(query, [
@@ -880,7 +925,8 @@ export class EprintsRepository {
     const query = `
       SELECT uri
       FROM eprints_index
-      WHERE ${conditions.join(' OR ')}
+      WHERE (${conditions.join(' OR ')})
+        AND deleted_at IS NULL
       ORDER BY created_at DESC
       LIMIT $${fieldUris.length + 1}
     `;

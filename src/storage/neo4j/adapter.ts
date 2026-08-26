@@ -12,6 +12,7 @@
 import neo4j, { Integer } from 'neo4j-driver';
 import { singleton } from 'tsyringe';
 
+import { createLogger } from '../../observability/logger.js';
 import { toAtUri, toDID } from '../../types/atproto-validators.js';
 import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, NotFoundError } from '../../types/errors.js';
@@ -24,6 +25,7 @@ import type {
   ProposalFilters,
   FacetAggregation,
 } from '../../types/interfaces/graph.interface.js';
+import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 import { Neo4jConnection } from './connection.js';
 import { subkindToLabel } from './labels.js';
@@ -44,6 +46,16 @@ import type {
   UserRole,
   VoteType,
 } from './types.js';
+
+/**
+ * Module-level logger for row-level mapping faults.
+ *
+ * @remarks
+ * The adapter takes only a connection, so a per-row diagnostic has no injected
+ * logger to reach; the same module-level pattern is used by the Neo4j setup
+ * manager and the PostgreSQL connection.
+ */
+const logger: ILogger = createLogger({ service: 'neo4j-adapter' });
 
 /**
  * Neo4j adapter implementing the IGraphDatabase interface.
@@ -638,7 +650,9 @@ export class Neo4jAdapter implements IGraphDatabase {
       limit: neo4j.int(50),
     });
 
-    return result.records.map((record) => this.mapNeo4jProposal(record.get('p')));
+    return result.records
+      .map((record) => this.mapNeo4jProposal(record.get('p')))
+      .filter((proposal): proposal is NodeProposal => proposal !== null);
   }
 
   /**
@@ -704,11 +718,16 @@ export class Neo4jAdapter implements IGraphDatabase {
 
     const result = await this.connection.executeQuery<{ p: Neo4jProposal }>(query, params);
 
-    const proposals = result.records.map((record) => this.mapNeo4jProposal(record.get('p')));
-    const hasMore = proposals.length > (filters.limit ?? 50);
-    if (hasMore) {
-      proposals.pop();
-    }
+    // The query fetches one row beyond the page to detect a next page, so
+    // paging is decided on raw rows: an unmappable row that mapping drops must
+    // not end pagination early.
+    const limit = filters.limit ?? 50;
+    const hasMore = result.records.length > limit;
+    const pageRecords = hasMore ? result.records.slice(0, limit) : result.records;
+
+    const proposals = pageRecords
+      .map((record) => this.mapNeo4jProposal(record.get('p')))
+      .filter((proposal): proposal is NodeProposal => proposal !== null);
 
     // Get total count
     const countQuery = `
@@ -753,7 +772,7 @@ export class Neo4jAdapter implements IGraphDatabase {
       return null;
     }
 
-    return this.mapNeo4jProposal(record.get('p'));
+    return this.requireMappedProposal(record.get('p'), rkey);
   }
 
   async getProposal(uri: AtUri): Promise<NodeProposal | null> {
@@ -769,21 +788,45 @@ export class Neo4jAdapter implements IGraphDatabase {
       return null;
     }
 
-    return this.mapNeo4jProposal(record.get('p'));
+    return this.requireMappedProposal(record.get('p'), uri);
+  }
+
+  /**
+   * Maps a single proposal row, treating an unmappable row as a read failure.
+   *
+   * @throws {DatabaseError} If the row cannot be mapped
+   *
+   * @remarks
+   * Single-record lookups return null for "no such proposal", which callers
+   * render as a 404. A corrupt row is a datastore fault, not a missing
+   * proposal, so it surfaces as an error instead.
+   */
+  private requireMappedProposal(row: Neo4jProposal, identifier: string): NodeProposal {
+    const proposal = this.mapNeo4jProposal(row);
+    if (!proposal) {
+      throw new DatabaseError('READ', `Proposal ${identifier} is stored in an unmappable state`);
+    }
+    return proposal;
   }
 
   /**
    * Creates a vote on a proposal.
+   *
+   * @remarks
+   * `createdAt` comes from the vote record rather than the clock, and is set on
+   * every write rather than only on create. Ballot order is a sort key, so a
+   * rebuild of the index from the firehose has to reproduce the same order it
+   * had before; wall-clock ingest time would not.
    */
   async createVote(vote: Vote): Promise<void> {
     const query = `
       MERGE (v:Vote {uri: $uri})
-      ON CREATE SET v.createdAt = datetime()
       SET v.proposalUri = $proposalUri,
           v.voterDid = $voterDid,
           v.voterRole = $voterRole,
           v.vote = $vote,
           v.comment = $comment,
+          v.createdAt = datetime($createdAt),
           v.updatedAt = datetime()
       WITH v
       OPTIONAL MATCH (p:Proposal {uri: $proposalUri})
@@ -800,6 +843,7 @@ export class Neo4jAdapter implements IGraphDatabase {
       voterRole: vote.voterRole,
       vote: vote.vote,
       comment: vote.comment ?? null,
+      createdAt: vote.createdAt.toISOString(),
     });
   }
 
@@ -869,7 +913,20 @@ export class Neo4jAdapter implements IGraphDatabase {
   }
 
   /**
-   * Creates a proposal.
+   * Creates or re-indexes a proposal.
+   *
+   * @remarks
+   * `ON MATCH SET` mirrors every field the record carries, not just the
+   * proposed node and rationale: a proposal edited in its PDS can change its
+   * type, kind, subkind or target, and a re-index that copied only two fields
+   * left the rest describing the superseded version.
+   *
+   * `createdAt` is likewise taken from the record on every write. It is the
+   * sort key for the governance lists, so rebuilding the index from the
+   * firehose has to reproduce the order it had before; ingest time would not.
+   * Only `id`, `proposerDid` and `status` stay create-only — the first two are
+   * fixed by the URI, and `status` is set by moderation, so re-indexing the
+   * record must not reset a decided proposal back to pending.
    */
   async createProposal(proposal: {
     readonly uri: AtUri;
@@ -897,8 +954,13 @@ export class Neo4jAdapter implements IGraphDatabase {
         p.createdAt = datetime($createdAt),
         p.updatedAt = datetime()
       ON MATCH SET
+        p.proposalType = $proposalType,
+        p.kind = $kind,
+        p.subkind = $subkind,
+        p.targetUri = $targetUri,
         p.proposedNode = $proposedNode,
         p.rationale = $rationale,
+        p.createdAt = datetime($createdAt),
         p.updatedAt = datetime()
     `;
 
@@ -1083,8 +1145,16 @@ export class Neo4jAdapter implements IGraphDatabase {
 
   /**
    * Map Neo4j proposal to NodeProposal.
+   *
+   * @returns The mapped proposal, or null when the row cannot be mapped
+   *
+   * @remarks
+   * Throwing on a malformed row aborted the enclosing query, so one proposal
+   * with an unparseable proposer DID emptied every proposal list. Skipping the
+   * row keeps the rest of the page readable; callers that fetch a single row
+   * turn the null back into a {@link DatabaseError}.
    */
-  private mapNeo4jProposal(proposal: Neo4jProposal): NodeProposal {
+  private mapNeo4jProposal(proposal: Neo4jProposal): NodeProposal | null {
     const props = proposal.properties ?? proposal;
 
     const uriVal = props.uri as string | undefined;
@@ -1110,7 +1180,11 @@ export class Neo4jAdapter implements IGraphDatabase {
 
     const proposerDid = toDID(proposerDidStr);
     if (!proposerDid) {
-      throw new DatabaseError('READ', `Invalid DID in proposal: ${proposerDidStr}`);
+      logger.warn('Skipping proposal with unparseable proposer DID', {
+        uri: uriVal,
+        proposerDid: proposerDidStr,
+      });
+      return null;
     }
 
     const createdAt = createdAtRaw instanceof Date ? createdAtRaw : new Date(String(createdAtRaw));

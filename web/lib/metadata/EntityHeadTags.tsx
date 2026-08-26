@@ -50,7 +50,11 @@ export function EntityHeadTags({ tags }: EntityHeadTagsProps) {
           <script
             key={`ldjson-${i}`}
             type={tag.type}
-            // eslint-disable-next-line react/no-danger -- JSON-LD payload is built server-side from trusted sources
+            // The underlying values are user-controlled PDS fields, not trusted
+            // input. They are safe here only because serializeJsonLd escapes
+            // `<`, `>` and `&`, which makes an early `</script>` unrepresentable
+            // in the serialized JSON.
+            // eslint-disable-next-line react/no-danger -- payload escaped by serializeJsonLd
             dangerouslySetInnerHTML={{ __html: tag.content }}
           />
         );

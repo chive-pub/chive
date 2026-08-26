@@ -59,6 +59,64 @@ describe('paper-oauth-popup', () => {
     vi.unstubAllGlobals();
   });
 
+  // A completed or cancelled attempt must take its timers with it. They used to
+  // live only in the promise closure, so the success path could not clear them:
+  // the 500ms poll ran forever, and the five-minute timeout stayed armed
+  // against whatever attempt was pending when it eventually fired. A second
+  // authentication started inside that window had its popup closed and its
+  // promise left unsettled — a spinner that never stopped.
+  describe('timer cleanup', () => {
+    it('clears both timers when the attempt is cancelled', async () => {
+      const clearInterval = vi.spyOn(globalThis, 'clearInterval');
+      const clearTimeout = vi.spyOn(globalThis, 'clearTimeout');
+
+      void authenticatePaperInPopup('paper.example.com').catch(() => undefined);
+      await Promise.resolve();
+      cancelPaperAuthentication();
+
+      expect(clearInterval).toHaveBeenCalled();
+      expect(clearTimeout).toHaveBeenCalled();
+
+      clearInterval.mockRestore();
+      clearTimeout.mockRestore();
+    });
+
+    it('leaves no attempt pending after cancellation', async () => {
+      void authenticatePaperInPopup('paper.example.com').catch(() => undefined);
+      await Promise.resolve();
+      cancelPaperAuthentication();
+
+      expect(isPaperAuthInProgress()).toBe(false);
+    });
+
+    // The stranded-spinner case. The two attempts start four minutes apart, so
+    // when the first attempt's five-minute deadline passes the second is still
+    // well inside its own. A stale timer belonging to the first must not settle
+    // or close the second.
+    it('does not disturb a second attempt started after the first ended', async () => {
+      vi.useFakeTimers();
+      try {
+        void authenticatePaperInPopup('first.example.com').catch(() => undefined);
+        await vi.advanceTimersByTimeAsync(0);
+        cancelPaperAuthentication();
+
+        await vi.advanceTimersByTimeAsync(4 * 60 * 1000);
+
+        void authenticatePaperInPopup('second.example.com').catch(() => undefined);
+        await vi.advanceTimersByTimeAsync(0);
+        expect(isPaperAuthInProgress()).toBe(true);
+
+        // Cross the first attempt's original deadline. The second attempt's own
+        // deadline is still three minutes away.
+        await vi.advanceTimersByTimeAsync(90 * 1000);
+
+        expect(isPaperAuthInProgress()).toBe(true);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   describe('isPaperAuthInProgress', () => {
     it('returns false initially', () => {
       expect(isPaperAuthInProgress()).toBe(false);

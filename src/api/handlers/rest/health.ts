@@ -13,7 +13,7 @@
 import type { Context } from 'hono';
 import type { Hono } from 'hono';
 
-import type { DID } from '../../../types/atproto.js';
+import type { AtUri, DID } from '../../../types/atproto.js';
 import { getAppVersion } from '../../../utils/app-version.js';
 import { HEALTH_PATHS } from '../../config.js';
 import type { ChiveEnv } from '../../types/context.js';
@@ -26,6 +26,73 @@ import type { ChiveEnv } from '../../types/context.js';
  * Queries with this DID are expected to return no results.
  */
 const HEALTH_CHECK_DID = 'did:plc:health-check' as DID;
+
+/**
+ * Node URI used for Neo4j connectivity checks.
+ *
+ * @remarks
+ * Synthetic URI that is never expected to match a node; the probe exists only
+ * to force a round trip to Neo4j.
+ */
+const HEALTH_CHECK_NODE_URI = 'health-check-field' as AtUri;
+
+/**
+ * Timeout applied to each dependency probe in the readiness check.
+ */
+const DEPENDENCY_CHECK_TIMEOUT_MS = 5000;
+
+/**
+ * Settlement of a dependency probe, captured without discarding a rejection.
+ */
+type ProbeOutcome = { ok: true } | { ok: false; error: unknown };
+
+/**
+ * Runs a dependency probe under a timeout and surfaces its failure to the caller.
+ *
+ * @param probe - In-flight probe, or `undefined` when the injected service does not
+ *   expose the probe method (partial test doubles)
+ * @returns Resolves once the probe succeeds within {@link DEPENDENCY_CHECK_TIMEOUT_MS}
+ * @throws The probe's rejection reason, or `Error('Timeout')` when it does not settle in time
+ *
+ * @remarks
+ * The probe's settlement is captured with a `then(onFulfilled, onRejected)` pair
+ * before the race rather than a `.catch(() => undefined)` applied to the racer. A
+ * discarded rejection made a dependency that refuses connections outright — which
+ * rejects fast, well inside the timeout — resolve to `undefined` and get recorded
+ * as a passing check, so `/ready` answered 200 while PostgreSQL, Elasticsearch or
+ * Neo4j was down and Kubernetes kept routing traffic to the pod. Only a hang past
+ * the timeout could trip the old race.
+ *
+ * Capturing rather than discarding also keeps the timeout path free of unhandled
+ * rejections when a probe rejects after losing the race.
+ */
+async function runDependencyProbe(probe: Promise<unknown> | undefined): Promise<void> {
+  if (probe === undefined) {
+    return;
+  }
+
+  const settled: Promise<ProbeOutcome> = probe.then(
+    (): ProbeOutcome => ({ ok: true }),
+    (error: unknown): ProbeOutcome => ({ ok: false, error })
+  );
+
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const outcome = await Promise.race([
+    settled,
+    new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('Timeout')), DEPENDENCY_CHECK_TIMEOUT_MS);
+    }),
+  ]).finally(() => {
+    // Release the timer so a fast probe does not hold the event loop for 5s.
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  });
+
+  if (!outcome.ok) {
+    throw outcome.error instanceof Error ? outcome.error : new Error(String(outcome.error));
+  }
+}
 
 /**
  * Health check response.
@@ -117,13 +184,12 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
     const services = c.get('services');
     if (services?.eprint) {
       const pgStart = performance.now();
-      // A simple existence check: if the service is available and responds, PostgreSQL is up
-      // In a full implementation, we'd call a health-specific method on the adapter
-      await Promise.race([
-        // Use a dummy query that will fail fast if DB is down
-        services.eprint.getEprintsByAuthor?.(HEALTH_CHECK_DID, { limit: 1 }).catch(() => undefined), // Swallow expected not-found errors
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
-      ]);
+      // A simple existence check: if the service is available and responds, PostgreSQL is up.
+      // An unknown author yields an empty list rather than an error, so any rejection here
+      // means the database itself is unreachable and must fail the check.
+      await runDependencyProbe(
+        services.eprint.getEprintsByAuthor?.(HEALTH_CHECK_DID, { limit: 1 })
+      );
       const pgLatency = Math.round(performance.now() - pgStart);
 
       checks.postgresql = {
@@ -153,10 +219,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
     if (services?.search) {
       const esStart = performance.now();
       // A simple search that validates ES connectivity
-      await Promise.race([
-        services.search.search?.({ q: '', limit: 1 }).catch(() => undefined),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
-      ]);
+      await runDependencyProbe(services.search.search?.({ q: '', limit: 1 }));
       const esLatency = Math.round(performance.now() - esStart);
 
       checks.elasticsearch = {
@@ -185,11 +248,15 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
     const services = c.get('services');
     if (services?.graph) {
       const neo4jStart = performance.now();
-      // A simple field query that validates Neo4j connectivity
-      await Promise.race([
-        services.graph.getNode?.('health-check-field').catch(() => undefined),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000)),
-      ]);
+      // A simple node lookup that validates Neo4j connectivity. The probe goes through
+      // NodeRepository rather than KnowledgeGraphService because the latter's getNode
+      // catches its own driver errors and returns null, which would report a healthy
+      // Neo4j no matter what. Fall back to the service only when the repository is
+      // absent (partial test doubles).
+      await runDependencyProbe(
+        services.nodeRepository?.getNode?.(HEALTH_CHECK_NODE_URI) ??
+          services.graph.getNode?.(HEALTH_CHECK_NODE_URI)
+      );
       const neo4jLatency = Math.round(performance.now() - neo4jStart);
 
       checks.neo4j = {

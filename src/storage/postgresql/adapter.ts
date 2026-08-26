@@ -187,6 +187,16 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Fetches several eprints in one query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint, omitting URIs with no row
+   */
+  async getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, StoredEprint>> {
+    return this.eprintsRepo.findByUris(uris);
+  }
+
+  /**
    * Queries eprints by author.
    *
    * @param author - Author DID
@@ -607,14 +617,20 @@ export class PostgreSQLAdapter implements IStorageBackend {
     limit: number,
     offset: number
   ): Promise<{ uris: AtUri[]; total: number }> {
-    const normTag = PostgreSQLAdapter.normalizeExpr('tag');
+    // Qualified so the tag lookup can join eprints_index and drop tags whose
+    // eprint has been soft-deleted; an unjoined tag row would otherwise keep a
+    // deleted eprint reachable through community tags.
+    const normTag = PostgreSQLAdapter.normalizeExpr('t.tag');
     const normKw = PostgreSQLAdapter.normalizeExpr('k');
 
     const countResult = await this.pool.query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM (
-         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         SELECT DISTINCT t.eprint_uri AS uri FROM user_tags_index t
+           JOIN eprints_index te ON te.uri = t.eprint_uri
+           WHERE ${normTag} = $1 AND te.deleted_at IS NULL
          UNION
-         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k
+           WHERE ${normKw} = $1 AND deleted_at IS NULL
        ) combined`,
       [normalizedTerm]
     );
@@ -626,9 +642,12 @@ export class PostgreSQLAdapter implements IStorageBackend {
 
     const result = await this.pool.query<{ uri: string }>(
       `SELECT uri FROM (
-         SELECT DISTINCT eprint_uri AS uri FROM user_tags_index WHERE ${normTag} = $1
+         SELECT DISTINCT t.eprint_uri AS uri FROM user_tags_index t
+           JOIN eprints_index te ON te.uri = t.eprint_uri
+           WHERE ${normTag} = $1 AND te.deleted_at IS NULL
          UNION
-         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k WHERE ${normKw} = $1
+         SELECT DISTINCT uri FROM eprints_index, LATERAL unnest(keywords) AS k
+           WHERE ${normKw} = $1 AND deleted_at IS NULL
        ) combined
        ORDER BY uri
        LIMIT $2 OFFSET $3`,
@@ -673,6 +692,12 @@ export class PostgreSQLAdapter implements IStorageBackend {
 
   /**
    * Deletes a record from an index table by AT-URI.
+   *
+   * @remarks
+   * Only tables that actually exist and are keyed by a `uri` column may be
+   * passed. `extracted_citations` is deliberately absent: it is keyed by
+   * `user_record_uri`, so citation tombstones go through {@link deleteCitation}
+   * instead.
    */
   async deleteByUri(table: string, uri: AtUri): Promise<void> {
     // Allowlist of valid table names to prevent SQL injection
@@ -680,8 +705,7 @@ export class PostgreSQLAdapter implements IStorageBackend {
       'user_tags_index',
       'reviews_index',
       'endorsements_index',
-      'citations_index',
-      'related_works_index',
+      'user_related_works_index',
     ];
     if (!validTables.includes(table)) {
       throw new Error(`Invalid table name: ${table}`);

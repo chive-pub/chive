@@ -25,6 +25,22 @@ import type { Neo4jConnection } from './connection.js';
 import type { RelationshipSlug } from './types.js';
 
 /**
+ * NOTE ON `INTERESTED_IN`
+ *
+ * Nothing in the codebase creates an `INTERESTED_IN` relationship. It appears
+ * only in read queries — here and in graph-algorithms.ts — so any path that
+ * depends on it alone returns an empty result no matter what else is correct.
+ * The node labels in these queries have been aligned with what the write side
+ * actually creates (`:Node:Field`, not `:FieldNode`), which repairs the
+ * `EXPERT_IN` half, but the interest half cannot be repaired by relabelling:
+ * there is no writer to relabel against.
+ *
+ * Recording a user's declared interests is a missing feature rather than a
+ * broken query. Until something writes the relationship, interest-based
+ * recommendations are silently empty, and adding a writer is the fix.
+ */
+
+/**
  * Path between two nodes.
  */
 export interface Path {
@@ -619,10 +635,10 @@ export class GraphAlgorithms {
    */
   async recommendFields(userDid: DID, limit = 20): Promise<Recommendation[]> {
     const query = `
-      MATCH (user:User {did: $userDid})-[:INTERESTED_IN|EXPERT_IN]->(userField:FieldNode)
+      MATCH (user:User {did: $userDid})-[:INTERESTED_IN|EXPERT_IN]->(userField:Node:Field)
 
       // Find similar fields using graph proximity
-      MATCH (userField)-[:RELATED_TO|SUBFIELD_OF*1..2]-(candidate:FieldNode)
+      MATCH (userField)-[:RELATED_TO|SUBFIELD_OF*1..2]-(candidate:Node:Field)
       WHERE NOT (user)-[:INTERESTED_IN|EXPERT_IN]->(candidate)
 
       WITH candidate, count(*) AS proximity

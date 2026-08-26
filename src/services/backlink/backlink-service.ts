@@ -15,7 +15,7 @@
  * Backlink Sources:
  * - Cosmik collections (network.cosmik.collection)
  * - Leaflet reading lists (xyz.leaflet.list)
- * - WhiteWind blog posts (com.whitewind.blog.entry)
+ * - WhiteWind blog posts (com.whtwnd.blog.entry)
  * - Bluesky posts/embeds (app.bsky.feed.post)
  * - Chive comments (pub.chive.review.comment)
  * - Chive endorsements (pub.chive.review.endorsement)

@@ -80,7 +80,7 @@ const createMockEventBus = (): IPluginEventBus & {
 const createMockBacklinkService = (): IBacklinkService => ({
   createBacklink: vi.fn().mockResolvedValue({
     id: 1,
-    sourceUri: 'at://did:plc:test/com.whitewind.blog.entry/rkey',
+    sourceUri: 'at://did:plc:test/com.whtwnd.blog.entry/rkey',
     sourceType: 'whitewind.blog',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
     indexedAt: new Date(),
@@ -150,7 +150,7 @@ const createWhiteWindEntry = (
     tags: string[];
   }> = {}
 ): Record<string, unknown> => ({
-  $type: 'com.whitewind.blog.entry' as const,
+  $type: 'com.whtwnd.blog.entry' as const,
   title: 'Test Blog Post',
   content: 'Test content',
   contentFormat: 'markdown' as const,
@@ -185,7 +185,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     });
 
     it('should have correct tracked collection', () => {
-      expect(plugin.trackedCollection).toBe('com.whitewind.blog.entry');
+      expect(plugin.trackedCollection).toBe('com.whtwnd.blog.entry');
     });
 
     it('should have correct source type', () => {
@@ -222,7 +222,7 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should have correct permissions', () => {
       expect(plugin.manifest.permissions).toEqual({
-        hooks: ['firehose.com.whitewind.blog.entry'],
+        hooks: ['firehose.com.whtwnd.blog.entry'],
         storage: {
           maxSize: 10 * 1024 * 1024, // 10MB
         },
@@ -239,13 +239,13 @@ describe('WhiteWindBacklinksPlugin', () => {
       await plugin.initialize(context);
 
       expect(context.eventBus.on).toHaveBeenCalledWith(
-        'firehose.com.whitewind.blog.entry',
+        'firehose.com.whtwnd.blog.entry',
         expect.any(Function)
       );
       expect(context.logger.info).toHaveBeenCalledWith(
         'Backlink tracking initialized',
         expect.objectContaining({
-          collection: 'com.whitewind.blog.entry',
+          collection: 'com.whtwnd.blog.entry',
           sourceType: 'whitewind.blog',
         })
       );
@@ -263,7 +263,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     it('should extract eprint URI from embed', () => {
       const entry = createWhiteWindEntry({
         embed: {
-          $type: 'com.whitewind.blog.embed#record',
+          $type: 'com.whtwnd.blog.embed#record',
           uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         },
       });
@@ -276,7 +276,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     it('should not extract non-eprint URI from embed', () => {
       const entry = createWhiteWindEntry({
         embed: {
-          $type: 'com.whitewind.blog.embed#record',
+          $type: 'com.whtwnd.blog.embed#record',
           uri: 'at://did:plc:someone/app.bsky.feed.post/xyz',
         },
       });
@@ -401,7 +401,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     it('should extract from both embed and content', () => {
       const entry = createWhiteWindEntry({
         embed: {
-          $type: 'com.whitewind.blog.embed#record',
+          $type: 'com.whtwnd.blog.embed#record',
           uri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         },
         content: 'Also see: at://did:plc:author2/pub.chive.eprint.submission/paper2',
@@ -421,7 +421,7 @@ describe('WhiteWindBacklinksPlugin', () => {
       const uri = 'at://did:plc:author/pub.chive.eprint.submission/paper1';
       const entry = createWhiteWindEntry({
         embed: {
-          $type: 'com.whitewind.blog.embed#record',
+          $type: 'com.whtwnd.blog.embed#record',
           uri,
         },
         content: `This paper: ${uri} is great!`,
@@ -509,14 +509,14 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should create backlink from public entry with embed', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post123',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post123',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post123',
         record: createWhiteWindEntry({
           title: 'Great Paper Review',
           embed: {
-            $type: 'com.whitewind.blog.embed#record',
+            $type: 'com.whtwnd.blog.embed#record',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
@@ -524,11 +524,11 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post123',
+        sourceUri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post123',
         sourceType: 'whitewind.blog',
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         context: 'Great Paper Review',
@@ -537,8 +537,8 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should create backlinks from markdown content', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post456',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post456',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post456',
         record: createWhiteWindEntry({
@@ -553,18 +553,18 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).toHaveBeenCalledTimes(2);
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post456',
+        sourceUri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post456',
         sourceType: 'whitewind.blog',
         targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/paper1',
         context: 'Reading List',
       });
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post456',
+        sourceUri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post456',
         sourceType: 'whitewind.blog',
         targetUri: 'at://did:plc:author2/pub.chive.eprint.submission/paper2',
         context: 'Reading List',
@@ -573,14 +573,14 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should not create backlink for unlisted entry', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post789',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post789',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post789',
         record: createWhiteWindEntry({
           visibility: 'unlisted',
           embed: {
-            $type: 'com.whitewind.blog.embed#record',
+            $type: 'com.whtwnd.blog.embed#record',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
@@ -588,7 +588,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
@@ -596,14 +596,14 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should not create backlink for private entry', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post000',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post000',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post000',
         record: createWhiteWindEntry({
           visibility: 'private',
           embed: {
-            $type: 'com.whitewind.blog.embed#record',
+            $type: 'com.whtwnd.blog.embed#record',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
@@ -611,7 +611,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
@@ -619,8 +619,8 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should not create backlink for entry without eprint refs', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post111',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post111',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post111',
         record: createWhiteWindEntry({
@@ -631,7 +631,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.createBacklink).not.toHaveBeenCalled();
@@ -639,8 +639,8 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should handle deletion events', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post222',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post222',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post222',
         record: null,
@@ -648,27 +648,27 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(backlinkService.deleteBacklink).toHaveBeenCalledWith(
-        'at://did:plc:blogger/com.whitewind.blog.entry/post222'
+        'at://did:plc:blogger/com.whtwnd.blog.entry/post222'
       );
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.deleted', {
-        sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post222',
+        sourceUri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post222',
         sourceType: 'whitewind.blog',
       });
     });
 
     it('should emit backlink.created events', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post333',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post333',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post333',
         record: createWhiteWindEntry({
           embed: {
-            $type: 'com.whitewind.blog.embed#record',
+            $type: 'com.whtwnd.blog.embed#record',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
@@ -676,11 +676,11 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(context.eventBus.emit).toHaveBeenCalledWith('backlink.created', {
-        sourceUri: 'at://did:plc:blogger/com.whitewind.blog.entry/post333',
+        sourceUri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post333',
         sourceType: 'whitewind.blog',
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
       });
@@ -688,13 +688,13 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should record metrics for created backlinks', async () => {
       const record: FirehoseRecord = {
-        uri: 'at://did:plc:blogger/com.whitewind.blog.entry/post444',
-        collection: 'com.whitewind.blog.entry',
+        uri: 'at://did:plc:blogger/com.whtwnd.blog.entry/post444',
+        collection: 'com.whtwnd.blog.entry',
         did: 'did:plc:blogger',
         rkey: 'post444',
         record: createWhiteWindEntry({
           embed: {
-            $type: 'com.whitewind.blog.embed#record',
+            $type: 'com.whtwnd.blog.embed#record',
             uri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           },
         }),
@@ -702,7 +702,7 @@ describe('WhiteWindBacklinksPlugin', () => {
         timestamp: new Date(),
       };
 
-      await context.eventBus.trigger('firehose.com.whitewind.blog.entry', record);
+      await context.eventBus.trigger('firehose.com.whtwnd.blog.entry', record);
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
@@ -727,7 +727,7 @@ describe('WhiteWindBacklinksPlugin', () => {
 
     it('should handle entry with null-like values gracefully', () => {
       const entry = {
-        $type: 'com.whitewind.blog.entry' as const,
+        $type: 'com.whtwnd.blog.entry' as const,
         title: 'Test',
         content: '',
         contentFormat: 'markdown' as const,
@@ -743,7 +743,7 @@ describe('WhiteWindBacklinksPlugin', () => {
     it('should handle malformed embed gracefully', () => {
       const entry = createWhiteWindEntry({
         embed: {
-          $type: 'com.whitewind.blog.embed#record',
+          $type: 'com.whtwnd.blog.embed#record',
           uri: '',
         },
       });

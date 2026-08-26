@@ -544,6 +544,25 @@ export class EprintService {
         }
       }
 
+      // Remove the eprint node itself from Neo4j. Dropping tag relationships
+      // above leaves the (:Node:Object:Eprint) node and every other edge it
+      // carries — CITES, CLASSIFIED_AS, INTERACTED_WITH — pointing at a record
+      // that no longer exists, so recommendations and citation queries keep
+      // surfacing it. DETACH DELETE inside deleteNode clears node and edges.
+      // Errors here should not prevent overall deletion (log and continue).
+      if (this.graph) {
+        try {
+          await this.graph.deleteNode(uri);
+          this.logger.debug('Removed eprint node from Neo4j', { uri });
+        } catch (graphError) {
+          this.logger.warn('Neo4j node cleanup failed, PostgreSQL is source of truth', {
+            uri,
+            error: graphError instanceof Error ? graphError.message : String(graphError),
+          });
+          // Continue; PostgreSQL is the primary index
+        }
+      }
+
       this.logger.info('Deleted eprint from indexes', { uri });
 
       return { ok: true, value: undefined };
@@ -576,11 +595,15 @@ export class EprintService {
       case 'pub.chive.review.endorsement':
         await this.storage.deleteByUri('endorsements_index', uri);
         break;
+      // Citations and related works are not reachable through deleteByUri:
+      // extracted_citations is keyed by user_record_uri rather than uri, and
+      // both have dedicated delete methods that the firehose event processor
+      // already uses.
       case 'pub.chive.eprint.citation':
-        await this.storage.deleteByUri('citations_index', uri);
+        await this.storage.deleteCitation(uri);
         break;
       case 'pub.chive.eprint.relatedWork':
-        await this.storage.deleteByUri('related_works_index', uri);
+        await this.storage.deleteRelatedWork(uri);
         break;
       default:
         this.logger.debug('No index table for collection', { collection, uri });
@@ -604,6 +627,36 @@ export class EprintService {
         endorsements: 0,
       },
     };
+  }
+
+  /**
+   * Fetches several eprints in one query.
+   *
+   * @param uris - Eprint URIs to fetch
+   * @returns Map of URI to eprint view, omitting URIs with no row
+   *
+   * @remarks
+   * Unlike {@link EprintService.getEprint} this does not resolve version
+   * chains, which would reintroduce a query per eprint. It is for callers that
+   * need the record body across a page of results — author autocomplete was
+   * issuing up to 75 sequential `getEprint` calls per keystroke, each waiting
+   * on the last.
+   *
+   * @public
+   */
+  async getEprints(uris: readonly AtUri[]): Promise<Map<AtUri, EprintView>> {
+    const stored = await this.storage.getEprints(uris);
+    const views = new Map<AtUri, EprintView>();
+
+    for (const [uri, eprint] of stored) {
+      views.set(uri, {
+        ...eprint,
+        versions: [],
+        metrics: { views: 0, downloads: 0, endorsements: 0 },
+      });
+    }
+
+    return views;
   }
 
   async getEprintsByAuthor(did: DID, options?: EprintQueryOptions): Promise<EprintList> {

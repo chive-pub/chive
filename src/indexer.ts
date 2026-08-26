@@ -11,7 +11,7 @@
  * - pub.chive.review.comment
  * - pub.chive.review.endorsement
  * - pub.chive.eprint.userTag
- * - pub.chive.graph.fieldProposal
+ * - pub.chive.graph.nodeProposal
  * - pub.chive.graph.vote
  * - pub.chive.actor.profile
  *
@@ -30,6 +30,7 @@ import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
+import { initTelemetry } from './observability/telemetry.js';
 import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
@@ -54,6 +55,7 @@ import { AutomaticProposalService } from './services/governance/automatic-propos
 import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { NodeService } from './services/governance/node-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
+import { DeadLetterQueue } from './services/indexing/dlq-handler.js';
 import { createEventProcessor } from './services/indexing/event-processor.js';
 import {
   type FirehoseHealthServer,
@@ -308,6 +310,20 @@ async function main(): Promise<void> {
     pretty: config.nodeEnv === 'development',
   });
 
+  // The indexer is its own process, so it needs its own telemetry start; see
+  // the note in src/index.ts. Without it the firehose pipeline's spans were
+  // recorded nowhere.
+  if (process.env.OTEL_SDK_DISABLED === 'true') {
+    logger.info('Telemetry disabled by OTEL_SDK_DISABLED');
+  } else if (process.env.OTEL_EXPORTER_OTLP_ENDPOINT || config.nodeEnv === 'production') {
+    initTelemetry({ serviceName: 'chive-indexer', environment: config.nodeEnv });
+    logger.info('Telemetry initialized', {
+      endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '(default)',
+    });
+  } else {
+    logger.info('Telemetry not initialized: no OTEL_EXPORTER_OTLP_ENDPOINT configured');
+  }
+
   logger.info('Starting Chive Firehose Indexer...', {
     nodeEnv: config.nodeEnv,
     relay: config.relayUrl,
@@ -542,9 +558,18 @@ async function main(): Promise<void> {
       logger.error('Failed to load Margin plugins', err instanceof Error ? err : undefined);
     }
 
+    // The cursor advances as soon as an event is queued, well before the
+    // processor runs, so a handler failure without a DLQ loses the record
+    // permanently — there is no sequence number left to rewind to. The DLQ is
+    // backed entirely by the `firehose_dlq` table, so this instance and the one
+    // IndexingService builds for queue-level failures are the same queue; only
+    // the alert thresholds are per-instance, and neither configures alerts.
+    const dlq = new DeadLetterQueue({ db: pgPool });
+
     // Create event processor with PDS auto-discovery
     const processor = createEventProcessor({
       pool: pgPool,
+      dlq, // Capture handler failures for replay; the cursor has already moved on
       activity: activityService,
       eprintService,
       reviewService,

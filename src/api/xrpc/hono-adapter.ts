@@ -94,8 +94,13 @@ export function createXRPCRouter(
       // Lexicon not found - will use config only
     }
 
-    // Determine if this is a query (GET) or procedure (POST)
-    const isQueryMethod = def ? isQuery(def) : true; // Default to query if no lexicon
+    // Determine if this is a query (GET) or procedure (POST). The lexicon is
+    // authoritative when one is registered; otherwise the method's own
+    // `type` decides. Falling straight through to `true` ignored `type` and
+    // registered every lexicon-less procedure as a GET, so a handler declared
+    // `procedure` silently answered on the wrong verb — and its POST callers
+    // got a 404.
+    const isQueryMethod = def ? isQuery(def) : config.type !== 'procedure';
     const httpMethod = isQueryMethod ? 'get' : 'post';
 
     // Store method with metadata

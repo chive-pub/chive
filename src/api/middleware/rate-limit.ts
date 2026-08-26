@@ -300,7 +300,7 @@ export function conditionalRateLimiter(
  * @example
  * ```typescript
  * // Apply to autocomplete endpoints
- * app.get('/xrpc/pub.chive.search.searchSubmissions', autocompleteRateLimiter(), handler);
+ * app.get('/xrpc/pub.chive.eprint.searchSubmissions', autocompleteRateLimiter(), handler);
  * app.get('/xrpc/pub.chive.search.autocomplete', autocompleteRateLimiter(), handler);
  * ```
  *

@@ -57,6 +57,30 @@ export function toAtUri(uri: string): AtUri | null {
 }
 
 /**
+ * Reports whether a string is a well-formed `did:plc:` identifier.
+ *
+ * @param did - Candidate DID string
+ * @returns True when the value is `did:plc:` followed by 24 base32-sortable characters
+ *
+ * @remarks
+ * PLC identifiers are exactly 24 characters drawn from the base32-sortable
+ * alphabet (`a`–`z`, `2`–`7`). {@link toDID} deliberately does not enforce this:
+ * it accepts any syntactically plausible DID across every method, and hundreds
+ * of test fixtures rely on short readable placeholders.
+ *
+ * This stricter check exists for values that must be a real PLC identity rather
+ * than a plausible-looking string — configuration in particular. The governance
+ * PDS DID was configured as `did:plc:chive-governance` in every environment
+ * file, which is not a PLC identifier at all; nothing rejected it, and the
+ * governance sync resolved nothing for as long as it was set.
+ *
+ * @public
+ */
+export function isPlcDid(did: string): boolean {
+  return /^did:plc:[a-z2-7]{24}$/.test(did);
+}
+
+/**
  * Validates and brands a DID string.
  *
  * @remarks
@@ -112,7 +136,7 @@ export function toDID(did: string): DID | null {
  * Common Chive NSIDs:
  * - `pub.chive.eprint.submission`
  * - `pub.chive.review.comment`
- * - `pub.chive.graph.fieldProposal`
+ * - `pub.chive.graph.nodeProposal`
  *
  * @param nsid - Potential NSID string
  * @returns Branded NSID if valid, null otherwise
