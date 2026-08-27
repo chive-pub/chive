@@ -51,6 +51,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md}\"",
     "typecheck": "tsc --noEmit",
     "prepare": "husky install",
+    "docs:openapi": "tsx scripts/generate-openapi-spec.ts",
     "lexicons:generate": "./scripts/generate-lexicons.sh",
     "openapi:generate": "./scripts/generate-api-types.sh",
     "test:stack:start": "./scripts/start-test-stack.sh",
