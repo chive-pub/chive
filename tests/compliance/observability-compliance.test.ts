@@ -19,6 +19,13 @@ import type { ILogger } from '../../src/types/interfaces/logger.interface.js';
 import { LogLevel } from '../../src/types/interfaces/logger.interface.js';
 import type { IMetrics } from '../../src/types/interfaces/metrics.interface.js';
 
+import {
+  PDS_WRITE_CALLS,
+  findCalls,
+  readConfig,
+  readExecutableSource,
+} from './helpers/source-scan.js';
+
 describe('Observability ATProto Compliance', () => {
   describe('Logging - No PII in Logs', () => {
     let logger: ILogger;
@@ -273,21 +280,18 @@ describe('Observability ATProto Compliance', () => {
 
   describe('Health Check - ATProto Compliance', () => {
     it('Health check MUST NOT write to user PDSes', () => {
-      // Health checks only read from dependencies (Redis, PostgreSQL, etc.)
-      // This is verified by code review. health.ts uses read operations only:
-      // - redis.ping()
-      // - services.eprint.getEprintsByAuthor (read)
-      // - services.search.search (read)
-      // - services.graph.getFieldById (read)
-      expect(true).toBe(true);
+      const source = readExecutableSource('src/api/handlers/rest/health.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
     it('Health check MUST NOT store any data', () => {
-      // Health checks are stateless (no data storage)
-      // This is verified by code review. health.ts:
-      // - Only checks dependency connectivity
-      // - Returns status without side effects
-      expect(true).toBe(true);
+      const source = readExecutableSource('src/api/handlers/rest/health.ts');
+
+      // A readiness probe that writes is a probe that can corrupt what it
+      // measures, and it runs on a timer against production.
+      const mutations = findCalls(source, ['set', 'setex', 'hset', 'lpush', 'insert', 'save']);
+      expect(mutations).toEqual([]);
+      expect(source).not.toMatch(/\b(INSERT|UPDATE|DELETE)\b/i);
     });
   });
 
@@ -328,27 +332,43 @@ describe('Observability ATProto Compliance', () => {
   });
 
   describe('Kubernetes Configs - Security Compliance', () => {
-    it('OTEL Collector MUST use RBAC', () => {
-      // Verified in otel-collector.yaml:
-      // - ServiceAccount: otel-collector
-      // - No cluster-wide permissions
-      // - Only collects telemetry from Chive namespace
-      expect(true).toBe(true);
+    it('OTEL Collector MUST run under a dedicated ServiceAccount with no cluster-wide grant', () => {
+      const manifest = readConfig('k8s/monitoring/otel-collector.yaml');
+
+      expect(manifest).toContain('serviceAccountName: otel-collector');
+      expect(manifest).toMatch(/kind:\s*ServiceAccount/);
+      // A collector scraping one namespace has no reason to hold a
+      // ClusterRole; granting one would let a compromised collector read
+      // across every namespace on the cluster.
+      expect(manifest).not.toMatch(/kind:\s*ClusterRole\b/);
     });
 
     it('Promtail MUST have read-only access to logs', () => {
-      // Verified in promtail-config.yaml:
-      // - readOnly: true for volume mounts
-      // - ClusterRole only has get, watch, list permissions
-      expect(true).toBe(true);
+      const manifest = readConfig('k8s/monitoring/promtail-config.yaml');
+
+      expect(manifest).toContain('readOnly: true');
+      expect(manifest).toContain('readOnlyRootFilesystem: true');
+
+      // Promtail does hold a ClusterRole, since it discovers targets across
+      // the cluster. What matters is that every verb on it is a read.
+      const verbLines = manifest.match(/verbs:\s*\[[^\]]*\]/g) ?? [];
+      expect(verbLines.length).toBeGreaterThan(0);
+      for (const line of verbLines) {
+        expect(line, line).not.toMatch(/create|update|patch|delete|\*/);
+      }
     });
 
     it('Alert rules MUST NOT expose sensitive data', () => {
-      // Verified in alert-rules.yaml:
-      // - Annotations contain URLs, not secrets
-      // - Labels are categorization, not PII
-      // - Descriptions use metric values, not raw data
-      expect(true).toBe(true);
+      const manifest = readConfig('k8s/monitoring/alert-rules.yaml');
+
+      // Alert payloads travel to pagers, chat, and email. Anything
+      // credential-shaped that lands in one has left the cluster's trust
+      // boundary and cannot be recalled.
+      expect(manifest).not.toMatch(
+        /\b(password|passwd|secret|api[_-]?key|private[_-]?key|authorization|bearer)\b\s*[:=]/i
+      );
+      expect(manifest).not.toMatch(/\b(did:plc:|did:web:)/);
+      expect(manifest).not.toMatch(/[A-Za-z0-9+/]{40,}={0,2}\s*$/m);
     });
   });
 });

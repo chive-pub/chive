@@ -36,6 +36,8 @@ import type {
 } from '../../src/types/interfaces/repository.interface.js';
 import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../test-constants.js';
 
+import { PDS_WRITE_CALLS, findCalls, readExecutableSource } from './helpers/source-scan.js';
+
 // Test constants
 const TEST_USER_DID = TEST_USER_DIDS.USER_1;
 const TEST_GRAPH_PDS_URL = 'https://pds.chive-governance.test';
@@ -181,10 +183,11 @@ describe('ATProto Advanced Features Compliance', () => {
       await connector.getAuthorityRecord(TEST_AUTHORITY_URI);
       await connector.getAuthorityRecord(TEST_AUTHORITY_URI);
 
-      // Without cache, both calls hit repository
-      // With cache, second call would be cached
-      // In both cases, source of truth is Governance PDS
-      expect(true).toBe(true); // Design verification
+      // Cached or not, the Governance PDS stays the source of truth: the
+      // connector may read from it and may not write back to it.
+      const source = readExecutableSource('src/services/governance/governance-pds-connector.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
+      expect(findCalls(source, ['getRecord', 'listRecords'])).not.toEqual([]);
     });
 
     it('IRepository interface has no write methods', () => {
@@ -251,9 +254,10 @@ describe('ATProto Advanced Features Compliance', () => {
 
       await service.createNotification(input);
 
-      // Notification is stored in Redis (if configured) or memory
-      // NEVER written to user PDSes
-      expect(true).toBe(true); // Design verification
+      // Notifications are an AppView convenience. Writing one into a user's
+      // repository would put Chive's own state into data the user owns.
+      const source = readExecutableSource('src/services/notification/notification-service.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
     it('references eprints via AT-URI, not local IDs', async () => {
@@ -297,123 +301,93 @@ describe('ATProto Advanced Features Compliance', () => {
   });
 
   describe('CRITICAL: Multi-Layer Cache - Ephemeral Storage', () => {
-    it('L1 cache (Redis) is ephemeral with TTL', () => {
-      // RedisCache uses SETEX for all entries
-      // TTL ensures entries expire (default 3600 seconds = 1 hour)
-      //
-      // Key pattern: chive:blob:{uri}:{cid}
-      // Value: blob data (limited by maxBlobSize)
-      // TTL: Configurable, defaults to 1 hour
-      //
-      // Implementation uses probabilistic early expiration
-      // (Vattani et al. 2015) to prevent cache stampedes
-      expect(true).toBe(true); // Implementation verification
+    it('L1 cache (Redis) writes every entry with an expiry', () => {
+      const source = readExecutableSource('src/services/blob-proxy/redis-cache.ts');
+
+      // `setex` carries a TTL and a bare `set` does not. A blob cached without
+      // one is Chive holding blob data indefinitely.
+      expect(findCalls(source, ['setex'])).toEqual(['setex']);
+      expect(source).not.toMatch(/\.\s*set\s*\(/);
     });
 
-    it('L2 cache (CDN) is ephemeral with TTL', () => {
-      // CDNAdapter (Cloudflare R2) stores blobs with:
-      // - Cache-Control: max-age=86400 (default 24 hours)
-      // - Metadata includes cachedAt timestamp
-      // - Records expire and are re-fetched from PDS
-      //
-      // CDN is a performance optimization, not permanent storage
-      expect(true).toBe(true); // Implementation verification
+    it('L2 cache (CDN) gives every stored object a bounded lifetime', () => {
+      const source = readExecutableSource('src/services/blob-proxy/cdn-adapter.ts');
+      expect(source).toMatch(/defaultTTL|ttl/);
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
-    it('blobs fetched from PDS on cache miss', () => {
-      // BlobProxyService cache hierarchy:
-      // 1. Check L1 (Redis), hit rate ~40-50%
-      // 2. Check L2 (Cloudflare R2), hit rate ~85-90%
-      // 3. Fetch from user's PDS (source of truth)
-      //
-      // Cache miss always falls back to PDS via IRepository.getBlob()
-      expect(true).toBe(true); // Implementation verification
+    it('blobs are fetched from the PDS on cache miss', () => {
+      const source = readExecutableSource('src/services/blob-proxy/proxy-service.ts');
+
+      // Without this fallback a miss would have nowhere to go but Chive's own
+      // copy, which is what "never the source of truth" rules out.
+      expect(findCalls(source, ['getBlob'])).toEqual(['getBlob']);
     });
 
-    it('cache invalidation does not affect source PDSes', () => {
-      // Cache invalidation only affects local cache:
-      // - Redis DEL command for L1
-      // - R2 DELETE for L2
-      //
-      // User's PDS is never modified during cache operations
-      // Blobs remain in user's PDS regardless of cache state
-      expect(true).toBe(true); // Design verification
+    it('cache invalidation touches only Chive-owned stores', () => {
+      for (const file of [
+        'src/services/blob-proxy/proxy-service.ts',
+        'src/services/blob-proxy/redis-cache.ts',
+        'src/services/blob-proxy/cdn-adapter.ts',
+      ]) {
+        const source = readExecutableSource(file);
+        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
+      }
     });
   });
 
   describe('CRITICAL: MetricsService - AppView-Local Analytics', () => {
-    it('metrics stored in Redis/PostgreSQL, not user PDSes', () => {
-      // MetricsService uses:
-      // - Redis INCR for real-time counters
-      // - Redis ZADD for time-windowed trending
-      // - Redis PFADD for unique viewer HyperLogLog
-      // - PostgreSQL for persistent aggregates
-      //
-      // NO writes to user PDSes for any metric
-      expect(true).toBe(true); // Implementation verification
+    it('metrics are written to Redis and PostgreSQL, never to a repository', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
+      expect(findCalls(source, ['incr', 'zadd', 'pfadd', 'query'])).not.toEqual([]);
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
-    it('view counts are AppView-specific, not portable', () => {
-      // View counts are specific to this Chive instance
-      // Users cannot export/import view counts to other AppViews
-      //
-      // This is intentional:
-      // - Prevents gaming metrics
-      // - Each AppView has own analytics
-      // - Users own content, not popularity metrics
-      expect(true).toBe(true); // Design verification
+    it('view counts never leave the AppView as records', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
+
+      // Popularity belongs to this instance, not to the user's repository.
+      // Emitting it as a record would make one AppView's analytics part of
+      // the portable data the user carries between AppViews.
+      expect(source).not.toContain('pub.chive.');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
-    it('metrics can be rebuilt from firehose events', () => {
-      // Metrics derived from:
-      // - Page view events (logged, not ATProto records)
-      // - Firehose indexing timestamps (when eprints were indexed)
-      //
-      // Note: View counts are NOT rebuildable (ephemeral analytics)
-      // But eprint existence/metadata IS rebuildable from firehose
-      expect(true).toBe(true); // Design verification
+    it('the metrics store is Chive-owned and therefore discardable', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
+
+      // The rebuildability rule is about what Chive would lose if its
+      // databases were dropped: nothing a user owns. View counts are
+      // deliberately not rebuildable, and deliberately not the user's.
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
-    it('trending algorithm uses AppView-local data only', () => {
-      // Trending calculation:
-      // - Redis sorted sets with time-windowed scores
-      // - Score = views_24h * decay_factor
-      // - Completely local to this AppView
-      //
-      // Does NOT read from or write to PDSes
-      expect(true).toBe(true); // Implementation verification
+    it('trending reads only AppView-local state', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
+      expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
     });
   });
 
   describe('CRITICAL: WebSocket/SSE Handlers - No PDS Interaction', () => {
-    it('WebSocket connections are AppView-local sessions', () => {
-      // WebSocketHandler manages:
-      // - Connection state (in-memory Map)
-      // - DID-to-connection lookup
-      // - Keepalive pings
-      //
-      // No PDS reads or writes for connection management
-      expect(true).toBe(true); // Implementation verification
+    it('WebSocket connection handling touches no repository', () => {
+      const source = readExecutableSource('src/services/notification/websocket-handler.ts');
+      expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
     });
 
-    it('SSE streams are AppView-local sessions', () => {
-      // SSEHandler manages:
-      // - Stream state (in-memory Map)
-      // - DID-to-stream lookup
-      // - Server-sent events
-      //
-      // No PDS reads or writes for stream management
-      expect(true).toBe(true); // Implementation verification
+    it('SSE stream handling touches no repository', () => {
+      const source = readExecutableSource('src/services/notification/sse-handler.ts');
+      expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
     });
 
     it('notification delivery does not modify PDSes', () => {
-      // NotificationDeliveryHandler callback:
-      // - Receives Notification object
-      // - Sends via WebSocket or SSE
-      // - Updates local read status (Redis)
-      //
-      // Never writes to user PDSes
-      expect(true).toBe(true); // Design verification
+      for (const file of [
+        'src/services/notification/notification-service.ts',
+        'src/services/notification/websocket-handler.ts',
+        'src/services/notification/sse-handler.ts',
+      ]) {
+        const source = readExecutableSource(file);
+        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
+      }
     });
   });
 
