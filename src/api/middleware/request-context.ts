@@ -139,15 +139,23 @@ export function requestContext(): MiddlewareHandler<ChiveEnv> {
 
     requestLogger.debug('Request started', traceparent ? { traceId: traceparent.traceId } : {});
 
+    let thrown: Error | undefined;
     try {
       await next();
+    } catch (error) {
+      // Captured and re-thrown so the 500 below is logged with the stack that
+      // produced it. The `undefined` that used to sit in the error slot meant
+      // every server error was recorded with a duration and a status and no
+      // indication of what actually failed.
+      thrown = error instanceof Error ? error : new Error(String(error));
+      throw error;
     } finally {
       const duration = Math.round(performance.now() - startTime);
       const status = c.res.status;
 
       // Log completion
-      if (status >= 500) {
-        requestLogger.error('Request failed', undefined, {
+      if (status >= 500 || thrown) {
+        requestLogger.error('Request failed', thrown ?? c.error, {
           status,
           durationMs: duration,
         });

@@ -206,3 +206,60 @@ describe('Error Handler Middleware', () => {
     });
   });
 });
+
+describe('XRPC error logging severity', () => {
+  it('logs a 404 below error severity', async () => {
+    // NotFoundError used to match the `ChiveError` branch and be recorded at
+    // error severity, so routine misses filled the error dashboards.
+    const { xrpcErrorHandler } = await import('@/api/xrpc/error-handler.js');
+    const logger = createMockLogger();
+    const c = {
+      get: (key: string) => (key === 'logger' ? logger : undefined),
+      header: vi.fn(),
+      json: (body: unknown, status?: number) =>
+        new Response(JSON.stringify(body), { status: status ?? 200 }),
+    } as never;
+
+    await xrpcErrorHandler(new NotFoundError('Eprint', 'at://x'), c);
+
+    expect(logger.error).not.toHaveBeenCalled();
+    expect(logger.debug).toHaveBeenCalled();
+  });
+
+  it('logs a 400 at all', async () => {
+    // ValidationError matched no branch in the old chain, so every 400 went
+    // entirely unlogged — an endpoint could reject every request and leave no
+    // trace of having done so.
+    const { xrpcErrorHandler } = await import('@/api/xrpc/error-handler.js');
+    const logger = createMockLogger();
+    const c = {
+      get: (key: string) => (key === 'logger' ? logger : undefined),
+      header: vi.fn(),
+      json: (body: unknown, status?: number) =>
+        new Response(JSON.stringify(body), { status: status ?? 200 }),
+    } as never;
+
+    await xrpcErrorHandler(new ValidationError('bad input', 'uri'), c);
+
+    expect(logger.debug).toHaveBeenCalled();
+  });
+
+  it('logs a 500 at error severity with the error attached', async () => {
+    const { xrpcErrorHandler } = await import('@/api/xrpc/error-handler.js');
+    const logger = createMockLogger();
+    const c = {
+      get: (key: string) => (key === 'logger' ? logger : undefined),
+      header: vi.fn(),
+      json: (body: unknown, status?: number) =>
+        new Response(JSON.stringify(body), { status: status ?? 200 }),
+    } as never;
+    const boom = new Error('boom');
+
+    await xrpcErrorHandler(boom, c);
+
+    expect(logger.error).toHaveBeenCalled();
+    const [, attached] = (logger.error as unknown as { mock: { calls: unknown[][] } }).mock
+      .calls[0] as [string, unknown];
+    expect(attached).toBe(boom);
+  });
+});

@@ -12,7 +12,7 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/collection/search.js';
-import { ValidationError } from '../../../../types/errors.js';
+import { ServiceUnavailableError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 import { mapCollectionToView } from './utils.js';
@@ -49,10 +49,13 @@ export const search: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     if (!collectionService) {
-      return {
-        encoding: 'application/json',
-        body: { collections: [], hasMore: false, total: 0 },
-      };
+      // The collection service is not configured. Returning an empty result
+      // is indistinguishable from a genuine empty one, so a client renders
+      // "no collections" for a feature that is switched off. 503 says which.
+      throw new ServiceUnavailableError(
+        'Collections are not configured on this instance',
+        'collection'
+      );
     }
 
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, MAX_LIMIT);

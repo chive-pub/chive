@@ -48,6 +48,11 @@ export function GitHubRepoCard({ repo, className }: GitHubRepoCardProps) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {repo.unavailable && (
+          <p className="text-sm text-muted-foreground">
+            GitHub could not be reached, so this repository&apos;s details are unavailable.
+          </p>
+        )}
         {repo.description && (
           <p className="text-sm text-muted-foreground line-clamp-2">{repo.description}</p>
         )}
@@ -61,11 +66,12 @@ export function GitHubRepoCard({ repo, className }: GitHubRepoCardProps) {
           )}
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4" />
-            <span>{repo.stars.toLocaleString()}</span>
+            {/* Never render a placeholder count as a real one. */}
+            <span>{repo.unavailable ? '—' : repo.stars.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1">
             <GitFork className="h-4 w-4" />
-            <span>{repo.forks.toLocaleString()}</span>
+            <span>{repo.unavailable ? '—' : repo.forks.toLocaleString()}</span>
           </div>
           {repo.license && (
             <div className="flex items-center gap-1">

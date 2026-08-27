@@ -37,9 +37,13 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
     });
 
     // Get paginated endorsements from service
+    // The contribution-type filter goes to the service, not applied here after
+    // the page has already been cut: filtering a page after pagination left
+    // `total`, `hasMore` and `cursor` describing a different set than the items.
     const result = await review.listEndorsementsByUser(params.endorserDid as DID, {
       limit: params.limit,
       cursor: params.cursor,
+      contributionType: params.contributionType,
     });
 
     // Resolve handle and avatar for the endorser (same user for all results)
@@ -119,16 +123,8 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
       })
     );
 
-    // Filter by contribution type if specified
-    let endorsements = endorsementsWithTitles;
-    if (params.contributionType) {
-      endorsements = endorsements.filter((e) =>
-        e.contributions.includes(params.contributionType as string)
-      );
-    }
-
     const response: OutputSchema = {
-      endorsements,
+      endorsements: endorsementsWithTitles,
       cursor: result.cursor,
       hasMore: result.hasMore,
       total: result.total,

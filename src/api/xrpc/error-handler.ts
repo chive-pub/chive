@@ -135,24 +135,31 @@ function getErrorMessage(error: Error): string {
 export const xrpcErrorHandler: ErrorHandler<ChiveEnv> = (err, c) => {
   const logger = c.get('logger');
 
-  // Log error with appropriate level
-  if (err instanceof XRPCError && err.statusCode < 500) {
+  // Log by the status the client will actually receive, not by error class.
+  //
+  // The chain this replaces branched on type, and two classes fell through it
+  // badly: `ValidationError` matched no branch at all, so every 400 went
+  // unlogged; and `NotFoundError` matched the `ChiveError` branch, so every 404
+  // was recorded at error severity and filled the error dashboards with routine
+  // misses. Deciding from the resolved status cannot develop that kind of gap
+  // when a new error class is added.
+  const status = getStatusCode(err);
+
+  if (status >= 500) {
+    logger.error('XRPC server error', err instanceof Error ? err : undefined, {
+      status,
+      errorType: err?.constructor?.name ?? 'Unknown',
+      ...(err instanceof ChiveError ? { code: err.code } : {}),
+    });
+  } else {
     logger.debug('XRPC client error', {
-      error: err.payload.error,
-      message: err.payload.message,
-      status: err.statusCode,
-    });
-  } else if (err instanceof ChiveError && !(err instanceof ValidationError)) {
-    logger.error('XRPC error', err, {
-      code: err.code,
-    });
-  } else if (!(err instanceof ChiveError) && !(err instanceof XRPCError)) {
-    logger.error('Unexpected XRPC error', err instanceof Error ? err : undefined, {
+      status,
+      error: getXRPCErrorName(err),
+      message: getErrorMessage(err),
       errorType: err?.constructor?.name ?? 'Unknown',
     });
   }
 
-  const status = getStatusCode(err);
   const response: XRPCErrorResponse = {
     error: getXRPCErrorName(err),
     message: getErrorMessage(err),
