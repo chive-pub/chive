@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,10 +16,12 @@ interface LexiconNode {
 
 function lexiconFiles(dir: string): string[] {
   const out: string[] = [];
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) out.push(...lexiconFiles(full));
-    else if (entry.endsWith('.json')) out.push(full);
+  // `withFileTypes` answers from the directory entry itself. Reading the name
+  // and stat-ing it separately is a check-then-use on the filesystem.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...lexiconFiles(full));
+    else if (entry.name.endsWith('.json')) out.push(full);
   }
   return out;
 }
