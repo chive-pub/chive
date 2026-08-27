@@ -315,8 +315,93 @@ describe('PluginManager', () => {
     });
   });
 
+  /**
+   * `loadPlugin` dynamically imports `manifest.entrypoint` into the host
+   * process, where it runs with the service's full privileges — filesystem,
+   * network, and the database credentials in the environment. The plugin
+   * interfaces describe isolated-vm isolation and permission enforcement, and
+   * both `executeInSandbox` and `enforceNetworkAccess` are implemented with
+   * zero call sites: no plugin code has ever run inside an isolate.
+   *
+   * Nothing calls `loadPlugin` today — the plugins that run are first-party
+   * classes registered through `loadBuiltinPlugin` — so this is a trap rather
+   * than a live vulnerability, and a trap is better sprung than left armed for
+   * whoever wires up plugin installation believing the sandbox is real.
+   */
+  describe('unsandboxed plugin loading', () => {
+    beforeEach(() => {
+      delete process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS;
+    });
+
+    afterEach(() => {
+      delete process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS;
+    });
+
+    it('refuses by default', async () => {
+      await expect(manager.loadPlugin(createTestManifest())).rejects.toThrow(/unsandboxed/i);
+    });
+
+    // The important half: it must refuse *before* importing anything, or the
+    // refusal is decoration and the code has already run.
+    it('does not import the entrypoint when refusing', async () => {
+      const spy = vi.spyOn(mockLoader, 'loadPluginCode');
+      await expect(manager.loadPlugin(createTestManifest())).rejects.toThrow();
+      expect(spy).not.toHaveBeenCalled();
+    });
+
+    it('says what to use instead', async () => {
+      await expect(manager.loadPlugin(createTestManifest())).rejects.toThrow(/loadBuiltinPlugin/);
+    });
+
+    it.each([['false'], ['1'], ['yes'], ['TRUE'], ['']])(
+      'stays refused when the flag is %s',
+      async (value) => {
+        process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS = value;
+        await expect(manager.loadPlugin(createTestManifest())).rejects.toThrow(/unsandboxed/i);
+      }
+    );
+
+    it('proceeds only on an exact opt-in', async () => {
+      process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS = 'true';
+      const manifest = createTestManifest();
+      const spy = vi
+        .spyOn(mockLoader, 'loadPluginCode')
+        .mockRejectedValue(new Error('import attempted'));
+
+      await expect(manager.loadPlugin(manifest)).rejects.toThrow(/import attempted/);
+      expect(spy).toHaveBeenCalled();
+    });
+  });
+
   describe('reloadPlugin', () => {
-    it('should reload a plugin', async () => {
+    // Reload re-imports the plugin's entrypoint, so it goes through the same
+    // unsandboxed path as `loadPlugin` and is refused for the same reason. The
+    // escape hatch is set here rather than the assertion being dropped, so the
+    // reload behaviour itself stays covered.
+    const withUnsandboxedPluginsAllowed = async (run: () => Promise<void>): Promise<void> => {
+      const previous = process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS;
+      process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS = 'true';
+      try {
+        await run();
+      } finally {
+        if (previous === undefined) {
+          delete process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS;
+        } else {
+          process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS = previous;
+        }
+      }
+    };
+
+    it('refuses to reload while third-party plugin code cannot be sandboxed', async () => {
+      const manifest = createTestManifest();
+      const plugin = createMockPlugin(manifest);
+      vi.spyOn(mockLoader, 'loadPluginCode').mockResolvedValue(plugin);
+      await manager.loadBuiltinPlugin(plugin);
+
+      await expect(manager.reloadPlugin(manifest.id)).rejects.toThrow(/unsandboxed/i);
+    });
+
+    it('should reload a plugin when unsandboxed loading is explicitly allowed', async () => {
       const manifest = createTestManifest();
       const plugin = createMockPlugin(manifest);
 
@@ -329,7 +414,9 @@ describe('PluginManager', () => {
       (plugin.initialize as ReturnType<typeof vi.fn>).mockClear();
       (plugin.shutdown as ReturnType<typeof vi.fn>).mockClear();
 
-      await manager.reloadPlugin(manifest.id);
+      await withUnsandboxedPluginsAllowed(async () => {
+        await manager.reloadPlugin(manifest.id);
+      });
 
       expect(plugin.shutdown).toHaveBeenCalled();
       expect(plugin.initialize).toHaveBeenCalled();
