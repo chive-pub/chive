@@ -55,3 +55,21 @@ pnpm test:compliance -- --reporter=verbose
 
 - `.claude/design/00-atproto-compliance.md` - ATProto compliance principles
 - `.claude/design/02-appview/indexing-pipeline.md` - Firehose indexing design
+
+## Rebuildability
+
+The rule that every index must be reconstructible from the firehose is checked
+by `tests/integration/compliance/index-reconstruction.test.ts`, not by a file in
+this directory: it needs a live PostgreSQL index to wipe and rebuild, so it runs
+with the integration suite. It replays a fixed firehose log through the real
+event processor, snapshots the index, deletes it, replays the same log, and
+requires the two snapshots to match.
+
+## Assertions must be able to fail
+
+Several tests here read source files through `helpers/source-scan.ts` and assert
+the absence of a call — that a service never invokes a repository write, that a
+cache never stores a value without an expiry. This replaced a set of tests whose
+body was `expect(true).toBe(true)` under a comment describing what had been
+verified by hand: those reported passes without checking anything, which is worse
+than having no test, because the suite claimed coverage it did not have.
