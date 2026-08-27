@@ -4,7 +4,20 @@
  * Recreate Elasticsearch eprints index with current schema.
  *
  * @remarks
- * Use this when mapping changes require a full index recreation.
+ * DESTRUCTIVE. This deletes the index and everything in it, and search is down
+ * from the delete until a full repopulation finishes. Prefer
+ * `migrateIndexToCurrentMapping` from src/storage/elasticsearch/setup.ts, which
+ * applies a changed mapping by building the next index version, copying the
+ * documents, and moving the alias atomically — search keeps serving the old
+ * index throughout and switches between one request and the next.
+ *
+ * This script remains for the cases that migration cannot serve: a corrupted
+ * index, or a deliberate rebuild from the PDSes rather than from the existing
+ * documents.
+ *
+ * It refuses to run without an explicit confirmation, because it used to delete
+ * a live index with no prompt at all.
+ *
  * This script:
  * 1. Deletes the existing eprints-v1 index and alias
  * 2. Recreates with the current template
@@ -62,6 +75,28 @@ async function main(): Promise<void> {
 
     const indexExists = await client.indices.exists({ index: indexName });
     if (indexExists) {
+      // The index holds every indexed eprint, and search is down from here
+      // until a full repopulation completes. That is too much to do because
+      // someone ran the wrong script.
+      const confirmed =
+        process.argv.includes('--force') || process.env.CHIVE_CONFIRM_INDEX_DELETE === 'yes';
+
+      if (!confirmed) {
+        console.error(`Refusing to delete the live index ${indexName}.`);
+        console.error();
+        console.error('This deletes every indexed document and takes search down until a full');
+        console.error('repopulation finishes. To apply a mapping change without downtime, use');
+        console.error('migrateIndexToCurrentMapping() from src/storage/elasticsearch/setup.ts:');
+        console.error('it builds the next index version, copies the documents, and moves the');
+        console.error('alias atomically.');
+        console.error();
+        console.error('If you really do want to delete and rebuild, re-run with --force');
+        console.error('(or CHIVE_CONFIRM_INDEX_DELETE=yes), and be ready to run');
+        console.error('reindex-all-eprints.ts immediately afterwards.');
+        process.exitCode = 1;
+        return;
+      }
+
       console.log(`Deleting existing index: ${indexName}`);
 
       // First remove alias if it exists
