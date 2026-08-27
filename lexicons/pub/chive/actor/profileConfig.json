@@ -1,0 +1,87 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.profileConfig",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "How an author's profile page is arranged: which sections appear, in what order, and which collection is featured. Written by the account holder to their own repository.",
+      "key": "literal:self",
+      "record": {
+        "type": "object",
+        "required": ["createdAt"],
+        "properties": {
+          "profileType": {
+            "type": "string",
+            "knownValues": ["researcher", "group", "institution", "project"],
+            "maxLength": 64,
+            "description": "Broad kind of profile, used to pick sensible default sections. Open-ended: an unknown value is preserved and falls back to the default layout."
+          },
+          "sections": {
+            "type": "array",
+            "maxLength": 32,
+            "items": { "type": "ref", "ref": "#section" },
+            "description": "Ordered display sections. Order in this array is the display order."
+          },
+          "featuredCollectionUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "Collection node pinned to the top of the profile."
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this configuration was first created."
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "datetime",
+            "description": "When this configuration was last changed."
+          }
+        }
+      }
+    },
+    "section": {
+      "type": "object",
+      "description": "One section of the profile layout.",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "knownValues": [
+            "eprints",
+            "collections",
+            "reviews",
+            "endorsements",
+            "fields",
+            "affiliations",
+            "collaborators"
+          ],
+          "maxLength": 64,
+          "description": "What the section shows. Open-ended so a section type can be added without invalidating existing records."
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Heading shown for the section. Defaults to a label derived from `kind` when absent."
+        },
+        "collectionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Collection this section draws from, where the kind supports it."
+        },
+        "limit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 100,
+          "description": "Maximum items to display in this section."
+        },
+        "visible": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the section is rendered. A hidden section keeps its configuration."
+        }
+      }
+    }
+  }
+}
