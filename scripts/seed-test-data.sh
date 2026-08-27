@@ -20,7 +20,9 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 # Database credentials (must match docker-compose.yml)
-export DATABASE_URL="${DATABASE_URL:-postgresql://chive:chive_test_password@127.0.0.1:5432/chive}"
+# chive_test, matching docker-compose.yml. The default used to name `chive`,
+# which the test stack does not create.
+export DATABASE_URL="${DATABASE_URL:-postgresql://chive:chive_test_password@127.0.0.1:5432/chive_test}"
 export ELASTICSEARCH_URL="${ELASTICSEARCH_URL:-http://127.0.0.1:9200}"
 export NEO4J_URI="${NEO4J_URI:-bolt://127.0.0.1:7687}"
 export NEO4J_USER="${NEO4J_USER:-neo4j}"

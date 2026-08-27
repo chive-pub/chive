@@ -4,13 +4,22 @@ description: 'Configures Node.js and pnpm with caching for the Chive monorepo'
 runs:
   using: 'composite'
   steps:
-    # Install build tools for native modules (isolated-vm requires g++, make, python3)
-    # Ubuntu 24.04 removed build-essential from default installation
+    # Build tools for native modules; isolated-vm needs g++, make and python3,
+    # and Ubuntu 24.04 no longer ships build-essential by default.
+    #
+    # `apt-get update` alone costs 30-60s and this action runs in every job, so
+    # it is skipped when the compilers are already present — which they are on
+    # the current runner images. The check is on the tools rather than on the
+    # image version, so a runner image that drops them still gets them.
     - name: Install build tools
       shell: bash
       run: |
-        sudo apt-get update
-        sudo apt-get install -y build-essential python3
+        if command -v g++ >/dev/null && command -v make >/dev/null && command -v python3 >/dev/null; then
+          echo "build tools already present; skipping apt-get"
+        else
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3
+        fi
 
     - name: Setup pnpm
       uses: pnpm/action-setup@v3
@@ -23,12 +32,20 @@ runs:
         node-version: 22
         cache: 'pnpm'
 
+    # Turbo cache.
+    #
+    # The key used to be the commit SHA, which is unique to the run that writes
+    # it — so the primary key could never hit and every job fell through to the
+    # restore-key. Keying on the lockfile plus the branch means a rerun on the
+    # same commit, and the next commit on the same branch, both hit directly.
     - name: Cache Turbo build artifacts
       uses: actions/cache@v4
       with:
         path: .turbo
-        key: turbo-${{ runner.os }}-${{ github.sha }}
+        key: turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.ref_name }}-${{ github.sha }}
         restore-keys: |
+          turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.ref_name }}-
+          turbo-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
           turbo-${{ runner.os }}-
 
     - name: Install dependencies
