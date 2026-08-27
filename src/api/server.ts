@@ -377,7 +377,26 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
     });
 
   // 1. Security headers (first, applied to all responses)
-  app.use('*', secureHeaders());
+  app.use(
+    '*',
+    secureHeaders({
+      // `secureHeaders()` sets no Content-Security-Policy by default, so the
+      // API shipped without one. It answers JSON and nothing else, which makes
+      // the policy both strict and easy: nothing may load, nothing may frame
+      // it, and no base tag or form action can be introduced by injected
+      // markup. Had this been here, the stored-XSS hole fixed in 0.8.0 would
+      // have been far harder to exploit.
+      contentSecurityPolicy: {
+        defaultSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+        baseUri: ["'none'"],
+        formAction: ["'none'"],
+        sandbox: [],
+      },
+      crossOriginResourcePolicy: 'same-site',
+      referrerPolicy: 'no-referrer',
+    })
+  );
 
   // 2. CORS (before any request processing)
   app.use(

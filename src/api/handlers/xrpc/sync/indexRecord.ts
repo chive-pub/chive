@@ -40,6 +40,7 @@ import { migrateRecord, needsMigration } from '../../../../services/migration/in
 import type { AtUri, CID, DID } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
+  AuthorizationError,
   DatabaseError,
   NotFoundError,
   ValidationError,
@@ -169,7 +170,9 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         recordDid: did,
         uri: input.uri,
       });
-      throw new ValidationError('Can only index your own records', 'uri');
+      // 403, not 400: the request is well-formed and the caller simply may
+      // not make it. A 400 tells a client to fix its input, which cannot help.
+      throw new AuthorizationError('Can only index your own records');
     }
 
     // One shared list rather than a copy that drifts; see indexed-collections.ts.

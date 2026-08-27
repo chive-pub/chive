@@ -169,12 +169,23 @@ export const updateSubmission: XRPCMethod<void, InputSchema, OutputSchema> = {
     // Determine the record owner (paper PDS or submitter PDS)
     const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
 
-    // Authorization: must be submitter, paper account, or listed author
+    // Authorization: must be the account whose repository holds the record.
+    //
+    // Being listed in `authors[]` used to be sufficient, but that array is
+    // written by whoever submitted the eprint — it is metadata about the paper,
+    // not a claim about who may act on it. Anyone a submitter named could
+    // therefore alter or delete a record in someone else's repository, and a
+    // submitter could hand that power to an arbitrary DID by typing it in.
+    //
+    // The narrower rule is also the only coherent one for an AppView. ATProto
+    // forbids cross-repository writes, so a co-author cannot change the record
+    // itself; letting them change Chive's copy would leave the index disagreeing
+    // with the PDS that owns it, which is precisely what "the PDS is the source
+    // of truth" rules out.
     const isSubmitter = eprintData.submittedBy === user.did;
     const isPaperAccount = eprintData.paperDid === user.did;
-    const isAuthor = eprintData.authors?.some((a: { did?: string }) => a.did === user.did) ?? false;
 
-    if (!isSubmitter && !isPaperAccount && !isAuthor) {
+    if (!isSubmitter && !isPaperAccount) {
       throw new AuthorizationError('Not authorized to modify this eprint');
     }
 
