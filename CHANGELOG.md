@@ -7,6 +7,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-08-26
+
+### Security
+
+- The Prometheus scrape endpoint is no longer reachable from the public internet. `/metrics` shipped in 0.8.0 unauthenticated by default, which is the usual arrangement for a metrics port on a private network — but Chive's API is fronted by two public Traefik routers, so on this deployment it was world-readable: request rates, per-endpoint latencies and error counts, and queue depths. It was serving 200 to anonymous requests after 0.8.0 deployed. Both public routes now deny the path at the edge, which holds whether or not `METRICS_TOKEN` is configured, and Prometheus scrapes the API directly over the compose network where it never traverses Traefik.
+
+## [0.8.0] - 2026-08-25
+
+Remediation sweep against the 0.8.0 backlog. Fourteen changes, each with tests
+pinning the specific failure. A recurring shape runs through them: work that
+ran, reported success, and had no effect — telemetry recording into an SDK that
+was never started, metrics nothing could scrape, deletions announced to a
+subscriber that was never written, precomputed graph results with no reader.
+
+### Security
+
+- Service auth tokens are verified against the method being called. A JWT's `lxm` claim scopes it to one lexicon method, and the verifier has always accepted a method to check against — the middleware passed none. The claim was decoded, copied into `user.scopes`, which nothing reads, and never enforced, so a token minted for `pub.chive.metrics.recordView` was accepted at `pub.chive.admin.deleteContent`. Any holder of any valid token could call any endpoint their roles allowed.
+- PDS registration requires authentication and is bound to the caller's own identity. The handler was `auth: 'optional'`, and a registered host is later enumerated by the scanner, which indexes whatever repos that host claims to hold. The ownership check resolves the caller's DID document and fails open when resolution is inconclusive, which is recorded rather than hidden.
+- Server-side request forgery through PDS registration and `did:web` resolution is blocked. Both fetched caller-supplied hosts with no scheme allowlist, no private-address block and no redirect cap, reaching cloud metadata at `169.254.169.254`, loopback and RFC 1918 services. Every resolved address is checked, not just the hostname, and redirects are refused.
+- The E2E authentication bypass cannot be enabled in production. `X-E2E-Auth-Did` supplies an identity and `X-E2E-Auth-Admin: true` grants administrative access, with both header names in the production CORS allowlist; an unset environment variable was the only thing between a deploy and an open admin door. It is now gated on `NODE_ENV` as well, and the process refuses to start if the flag is set in production.
+- Stored cross-site scripting through JSON-LD is closed. The Schema.org payload is rendered with `dangerouslySetInnerHTML` and carries eprint titles, abstracts and author names taken from user-controlled PDS records; `JSON.stringify` does not escape `<`, so a title containing `</script>` closed the element and everything after it parsed as markup.
+- CodeQL, a dependency audit and a Trivy filesystem scan now run on every pull request and weekly. The repository had no scanning of any kind despite the architecture overview describing some. CodeQL gates; the dependency audit reports without failing, because the tree carries 343 known advisories (8 critical, 141 high) and a gate nobody can satisfy is one that gets disabled. Dependabot opens the update pull requests.
+
+### Fixed
+
+- `/ready` reports the state of its dependencies. Each probe was raced against a timeout with `.catch(() => undefined)` applied to the racer, so a dependency refusing connections rejected fast, resolved to `undefined`, and was recorded as passing. The endpoint answered 200 with PostgreSQL, Elasticsearch or Neo4j down, and Kubernetes kept routing to the pod. Only a probe that hung past the timeout could ever trip it.
+- The admin full reindex no longer destroys indexed fields. It rebuilt each search document from a hand-rolled nine-field projection, and Elasticsearch replaces whole documents rather than merging, so DOIs, publication status, external identifiers, funding, repositories, related works, supplementary materials, licence and document metadata were wiped from every eprint the reindex touched. It now uses the same mapper as the reindex script. Facets remain empty, because they live on the PDS record and not in the index.
+- Records deleted from their PDS are removed from the index. The freshness worker emitted `record.deletion_detected` and returned success; no subscriber to that event was ever written, so the scan reported a deletion and deleted nothing. `PDSSyncService.markAsDeleted` was already among the worker's own dependencies.
+- Telemetry is started. `initTelemetry` was referenced only in its own documentation, so the OpenTelemetry SDK never initialised, every `withSpan` executed its callback recording nothing, and no OTLP export happened. Both the API and the firehose indexer start it, since they are separate processes.
+- Request rate, latency and error metrics exist and can be scraped. The counter and histogram had no emission site — the middleware computed status and duration and only logged them — and the only exposure was an admin-authenticated XRPC method returning JSON, which Prometheus can neither authenticate against nor parse. `GET /metrics` now serves the exposition format, exempt from rate limiting, with optional bearer-token protection.
+- Cancelling a long-running admin operation cancels it. `startOperation` returns an `AbortSignal` that all seven trigger handlers discarded, so `cancelBackfill` flipped the operation's state in Redis while the loop ran to completion. The four handlers driving a loop locally now honour it, including both loops of the reindex and citation extraction.
+- Soft-deleted eprints no longer appear in author profiles, the counts beside them, field browse, or tag and keyword browse. The partial index the soft-delete migration created for exactly this filter was never used by any read path. The tag lookup needed a join rather than a predicate, since a tag row carries only the eprint URI.
+- Eprint deletion is reversible and reconcilable. It hard-deleted the PostgreSQL row and then removed the Elasticsearch document best-effort; when that failed the row was already gone, so nothing recorded that a document still needed removing and no sweep could find it. Deletion now marks the row, and `reconcileDeletedFromSearch` re-issues the removal.
+- A verified ORCID iD survives indexing. Verification wrote only to `authors_index`, which is rebuilt from the firehose, and both profile upserts assigned `orcid` straight from the incoming record — so a verified value was overwritten, usually with null, on the next profile update. An author who verified before being indexed lost it outright. Verification is now stored in its own table and seeded into new rows.
+- The child-facet hierarchy resolves. `getChildFacets` asked Cypher for `*1..$maxDepth`; a parameter is not accepted as a variable-length bound, so the query was a syntax error and the method threw on every call.
+- Recommendation and collaboration queries match the labels the write side creates. Fields are created as `(:Node:Field)` and were read as `(:FieldNode)`; authors are created as `(:Node:Object:Person)` keyed on `metadata.did` and were read as `(:Author {did})`, so collaboration strength was null for every pair of authors who had in fact collaborated. Cypher returns no rows for a label that matches nothing, so both read as "no data yet". Interest-based paths remain empty: nothing creates `INTERESTED_IN` at all.
+- Precomputed community and trending results are read. Two handlers looked for `services.graphAlgorithmCache`, which `ServerConfig` had no field for and nothing constructed, so `getCommunities` returned an empty list on every request while the graph algorithm job wrote results nobody read.
+- Trending pagination advances. The cursor was parsed only to build the next cursor and never passed to either data source, so every page returned the same entries while the cursor climbed.
+- The ORCID verification flow resolves. The callback is registered at `/v1/auth/orcid/callback` while the default redirect URI pointed at `/api/v1/...`, a prefix only one Traefik router strips.
+- Methods declared as procedures are served on POST. The router ignored a handler's `type` when no lexicon was registered, so a `procedure` was mounted as GET and its POST callers received 404. `pub.chive.claiming.dismissSuggestion`, the concrete victim, also gains the lexicon it never had.
+- Author autocomplete issues one query per page instead of one per hit — up to 75 sequential round trips per keystroke — and faceted browse one query per facet instead of one per edge.
+- Search is billed against the relaxed rate-limit tier. The autocomplete list named `pub.chive.search.searchSubmissions`, a method that does not exist; the real NSID is `pub.chive.eprint.searchSubmissions`, so search never matched and every anonymous request took the low tier.
+- Endorsement views carry the record CID. Handlers returned the literal string `'placeholder'` for a field the lexicon marks required, with a comment claiming the CID was not stored — it has always been stored, and the queries simply did not select it. Optimistic-concurrency writes were comparing against a constant that could never match.
+- The WhiteWind backlink plugin tracks `com.whtwnd.blog.entry`, the collection that exists. It subscribed to `com.whitewind.blog.entry` and so could never have matched a post.
+- The governance PDS DID is validated at load. Every environment file set `did:plc:chive-governance`, which is not a PLC identifier, overriding the correct default — so the governance sync resolved nothing and imported an empty graph. An ill-formed value now fails startup rather than being carried.
+- Thread loads no longer scan the whole review table. `parent_comment` carries a foreign key with no index, and PostgreSQL does not index foreign keys automatically.
+- A second paper login within five minutes no longer hangs. The popup's poll interval and timeout lived only in the promise closure, so the success path could not clear them and a stale timeout closed the next attempt's popup, leaving its promise unsettled.
+
+### Changed
+
+- Manual reindex accepts every collection the firehose indexes. Three lists described "the collections we index" and disagreed; `sync.indexRecord` accepted 13 while the event processor handled 20, so seven were unrecoverable by manual reindex — `pub.chive.graph.edgeProposal` among them. One list now serves both, derived from the event processor's own dispatch and asserted by test.
+- The scheduled health check probes `/ready` as well as `/api/health`. The latter is a static 200 that reports nothing about dependencies, so a datastore outage was invisible to monitoring.
+- `pnpm test` runs the backend suite. The root package is not a workspace member, so `turbo test` reached only the frontend and the command exited zero having run none of the 4,000-plus backend tests.
+- The developer test stack no longer collides with production containers, and the deploy sweep excludes it. Both used `chive-` names — `chive-grobid` identically — and `docker ps --filter "name=chive-"` matched the test stack, so a deploy could delete it mid-run.
+- Frontend coverage is measured and enforced. The config declared no thresholds and CI ran the suite without `--coverage`, so the stated 70% bar was unenforced end to end; the real figure is 41%. Thresholds are set just below current levels as a ratchet, and both configs now record the gap to the documented bar rather than a bare TODO.
+- Every environment variable the code reads is documented — 75 of 103 were not. Three clusters are marked as inert rather than presented as working configuration: the R2/CDN variables select an adapter that is never chosen, the governance PDS writer is never constructed, and the SMTP path is never invoked.
+- The XRPC method verb is resolved once, so the OpenAPI specification and the router cannot disagree and generate a client for a verb the server does not serve.
+
+### Removed
+
+- The second-factor authentication layer. WebAuthn, TOTP and JWT session management — 2,334 lines plus a 688-line authentication service — were unreachable: no route, handler or service imported them, and credentials were held in Redis under TTLs rather than in the tables built for them. No user could enrol, because no endpoint existed. Chive does not offer 2FA; the code and its two tables are gone rather than completed.
+- `document_base64` from the search document. It carried a base64 document body into Elasticsearch — implemented, typed and tested — which contradicts the rule that only BlobRefs are stored. Nothing populated it.
+- The `repo:pub.chive.graph.fieldProposal` scope, for a record type renamed to node/edgeProposal that has no lexicon.
+
 ## [0.7.1] - 2026-08-24
 
 ### Fixed
