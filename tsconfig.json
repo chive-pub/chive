@@ -13,8 +13,17 @@
     "declarationMap": true,
     "sourceMap": true,
     "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
+    // Unused-symbol checking lives in ESLint, not here.
+    //
+    // `@typescript-eslint/no-unused-vars` already enforces this on hand-written
+    // code and already ignores src/lexicons/generated. Leaving it on in tsc too
+    // meant the generator's boilerplate — unused CID, $Typed and OmitKey
+    // imports across 436 files — produced roughly a thousand diagnostics, which
+    // was answered by prepending `// @ts-nocheck` to every generated file. That
+    // exempted the whole lexicon type surface from type checking to silence a
+    // lint concern, and hid two real schema errors for as long as it was there.
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
