@@ -1,6 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
+  name: chive-config
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: chive
+    app.kubernetes.io/part-of: chive
+data:
   # Service addresses are bare names, not fully qualified.
   #
   # They used to read `<service>.chive.svc.cluster.local`, which pins them to the
@@ -8,12 +14,6 @@ metadata:
   # `chive-staging`, `chive-prod` — so each pod was pointed at a namespace its own
   # Services did not live in. A bare name resolves through the pod's DNS search
   # path and is therefore correct in whichever namespace it is applied to.
-  name: chive-config
-  namespace: chive
-  labels:
-    app.kubernetes.io/name: chive
-    app.kubernetes.io/part-of: chive
-data:
   # PostgreSQL
   POSTGRES_HOST: 'postgresql'
   POSTGRES_PORT: '5432'

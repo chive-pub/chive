@@ -34,12 +34,31 @@ spec:
         app.kubernetes.io/component: reference-extraction
         app.kubernetes.io/part-of: chive
     spec:
+      # GROBID needs no Kubernetes API access.
+      automountServiceAccountToken: false
       securityContext:
-        runAsNonRoot: false
+        seccompProfile:
+          type: RuntimeDefault
+        # Not runAsNonRoot. The upstream image installs and runs GROBID under
+        # /opt/grobid owned by root, and it writes model and temp files there,
+        # so an arbitrary UID cannot start it. Changing that means rebuilding
+        # the image rather than overriding the UID here, and shipping an
+        # untested override would produce a pod that crashloops in production
+        # while appearing hardened. Trivy flags this; it is a real gap, and
+        # narrowing it belongs with an image change.
       containers:
         - name: grobid
           image: lfoppiano/grobid:0.8.2.1-crf
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            capabilities:
+              drop:
+                - ALL
+            # Not readOnlyRootFilesystem, for the same reason as above: GROBID
+            # writes into its own home at runtime.
+            readOnlyRootFilesystem: false
           ports:
             - name: http
               containerPort: 8070
