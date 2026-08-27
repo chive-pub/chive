@@ -24,6 +24,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
+      // Count every source file, not only the ones a test happens to import.
+      // Without this, v8 measures the tested subset against itself: a large
+      // module with no test at all simply left the denominator, so coverage
+      // could rise by deleting a test or fall by writing the first one for a
+      // big file. The percentage below is therefore of all of `src/`.
+      include: ['src/**/*.ts'],
       exclude: [
         'node_modules/',
         'dist/',
@@ -34,19 +40,23 @@ export default defineConfig({
         '**/lexicons/**',
       ],
       thresholds: {
-        // These sit below the 80% line / 100%-critical-path bar stated in
-        // CLAUDE.md. They were lowered to match what the suite actually
-        // achieved and the gap was never recorded anywhere but this TODO, so
-        // the stated bar and the enforced one have disagreed since.
+        // Measured over all of `src/`, which is the first time these numbers
+        // have meant that. The previous 70 was a percentage of the files a
+        // test imported, and roughly a third of the tree was outside that set;
+        // measured properly the same suite covers 46% of lines. Nothing got
+        // worse here — the figure was always this, and the earlier one was
+        // reporting a subset against itself.
         //
-        // Treat these as a ratchet, not as the target: raise them as coverage
-        // improves rather than lowering them to accommodate a new gap. The
-        // frontend equivalent lives in web/vitest.config.ts and is further
-        // behind still.
-        lines: 70,
-        functions: 70,
-        branches: 58,
-        statements: 70,
+        // These sit far below the 80% line / 100%-critical-path bar stated in
+        // CLAUDE.md. That bar remains the target; these are a floor.
+        //
+        // Treat them as a ratchet: raise them as coverage improves, never
+        // lower them to accommodate a new gap. The frontend equivalent lives
+        // in web/vitest.config.ts and is further behind still.
+        lines: 46,
+        functions: 48,
+        branches: 41,
+        statements: 46,
       },
     },
     include: [
