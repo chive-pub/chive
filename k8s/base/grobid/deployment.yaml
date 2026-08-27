@@ -1,0 +1,81 @@
+# GROBID — reference extraction service.
+#
+# The indexer reads GROBID_URL and falls back to no citation extraction when it
+# is unset, so its absence from these manifests did not fail a deploy: citation
+# extraction was simply off, silently, on every Kubernetes environment while
+# docker-compose ran it.
+#
+# Settings mirror docker/docker-compose.prod.yml. The generous startup budget is
+# load-bearing: GROBID loads CRF models before it answers, which takes minutes on
+# a single CPU, and a shorter probe restarts the pod mid-load in a loop that
+# never converges.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chive-grobid
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: grobid
+    app.kubernetes.io/component: reference-extraction
+    app.kubernetes.io/part-of: chive
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: grobid
+  strategy:
+    # GROBID is memory-hungry and slow to start; a rolling update would need
+    # two copies resident at once.
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: grobid
+        app.kubernetes.io/component: reference-extraction
+        app.kubernetes.io/part-of: chive
+    spec:
+      securityContext:
+        runAsNonRoot: false
+      containers:
+        - name: grobid
+          image: lfoppiano/grobid:0.8.2.1-crf
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8070
+              protocol: TCP
+          env:
+            - name: GROBID_MAX_CONCURRENCY
+              value: '2'
+            - name: CROSSREF_MAILTO
+              valueFrom:
+                configMapKeyRef:
+                  name: chive-config
+                  key: CROSSREF_MAILTO
+                  optional: true
+          resources:
+            requests:
+              cpu: '250m'
+              memory: '2Gi'
+            limits:
+              cpu: '1000m'
+              memory: '3Gi'
+          startupProbe:
+            tcpSocket:
+              port: http
+            # 60 × 10s = 10 minutes for model loading before the pod is failed.
+            periodSeconds: 10
+            failureThreshold: 60
+          livenessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /api/isalive
+              port: http
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 3

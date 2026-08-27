@@ -89,9 +89,14 @@ setup('authenticate', async ({ page }) => {
     },
   ]);
 
-  // Reload to pick up the auth state
-  await page.reload();
-  await page.waitForLoadState('domcontentloaded');
+  // Reload to pick up the auth state.
+  //
+  // `waitUntil` must be `domcontentloaded`, not the default `load`. Once the
+  // session metadata above is in place the app opens a Server-Sent Events
+  // notification stream, and an EventSource never completes — so `load` never
+  // fires and the reload sat until the 30s timeout, failing this setup project
+  // and skipping all 509 tests that depend on it.
+  await page.reload({ waitUntil: 'domcontentloaded' });
 
   // Save the storage state for reuse in authenticated tests
   await page.context().storageState({ path: STORAGE_STATE_PATH });

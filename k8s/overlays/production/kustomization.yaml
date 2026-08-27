@@ -155,9 +155,22 @@ patches:
         path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
         value: 20Gi
 
-configMapGenerator:
-  - name: chive-prod-config
-    behavior: merge
-    literals:
-      - NODE_ENV=production
-      - LOG_LEVEL=info
+  # Environment name and log level.
+  #
+  # This was a `configMapGenerator` with `behavior: merge` naming a ConfigMap
+  # that exists in no base. Kustomize can only merge a generator into another
+  # generator, so `kubectl kustomize` failed outright — every overlay was
+  # unbuildable, and no workflow built one, so none of them said so.
+  # `chive-config` arrives from base as a plain resource, and a patch is how
+  # you override one.
+  - target:
+      kind: ConfigMap
+      name: chive-config
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: chive-config
+      data:
+        NODE_ENV: "production"
+        LOG_LEVEL: "info"

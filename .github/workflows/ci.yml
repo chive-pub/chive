@@ -35,6 +35,12 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
 
+      # Nothing built the Kubernetes manifests, so all three overlays had been
+      # unrenderable for as long as they have existed and no run said so.
+      # kubectl ships on GitHub's ubuntu images, so this needs no new action.
+      - name: Validate Kubernetes manifests
+        run: ./scripts/validate-k8s-manifests.sh
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest

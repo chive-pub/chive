@@ -30,7 +30,14 @@
       "@tests/*": ["./tests/*"]
     }
   },
-  "include": ["src/**/*", "tests/**/*", "scripts/**/*"],
+  "include": [
+    "src/**/*",
+    "tests/**/*",
+    "scripts/**/*",
+    "vitest.*.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",

@@ -9,14 +9,22 @@ metadata:
 data:
   # Indexer-specific configuration
   # Queue settings
-  INDEXER_QUEUE_CONCURRENCY: "10"
-  INDEXER_MAX_QUEUE_DEPTH: "1000"
-  INDEXER_CURSOR_FLUSH_INTERVAL_MS: "5000"
+  INDEXER_QUEUE_CONCURRENCY: '10'
+  INDEXER_MAX_QUEUE_DEPTH: '1000'
+  INDEXER_CURSOR_FLUSH_INTERVAL_MS: '5000'
 
   # Retry settings
-  INDEXER_MAX_RETRIES: "3"
-  INDEXER_RETRY_DELAY_MS: "1000"
+  INDEXER_MAX_RETRIES: '3'
+  INDEXER_RETRY_DELAY_MS: '1000'
 
   # DLQ settings
-  INDEXER_DLQ_ENABLED: "true"
-  INDEXER_DLQ_MAX_AGE_DAYS: "7"
+  INDEXER_DLQ_ENABLED: 'true'
+  INDEXER_DLQ_MAX_AGE_DAYS: '7'
+
+  # Reference extraction
+  #
+  # The indexer silently skips citation extraction when GROBID_URL is unset,
+  # so its absence here disabled the feature on every Kubernetes environment
+  # without failing a deploy or logging anything an operator would notice.
+  # docker-compose has always set it.
+  GROBID_URL: 'http://grobid:8070'
