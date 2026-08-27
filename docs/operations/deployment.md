@@ -277,25 +277,25 @@ kubectl exec -it deploy/chive-api -n chive -- \
 
 ### Endpoints
 
-| Endpoint        | Purpose                        |
-| --------------- | ------------------------------ |
-| `/health`       | Basic liveness check           |
-| `/health/ready` | Readiness (includes DB checks) |
-| `/health/live`  | Liveness (process running)     |
+| Endpoint  | Purpose                                                       |
+| --------- | ------------------------------------------------------------- |
+| `/health` | Basic liveness check                                          |
+| `/ready`  | Readiness (checks Redis, PostgreSQL, Elasticsearch and Neo4j) |
+| `/health` | Liveness (process running)                                    |
 
 ### Kubernetes probes
 
 ```yaml
 livenessProbe:
   httpGet:
-    path: /health/live
+    path: /health
     port: 3000
   initialDelaySeconds: 10
   periodSeconds: 30
 
 readinessProbe:
   httpGet:
-    path: /health/ready
+    path: /ready
     port: 3000
   initialDelaySeconds: 5
   periodSeconds: 10

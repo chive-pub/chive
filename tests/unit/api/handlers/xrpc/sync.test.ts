@@ -14,6 +14,17 @@ import type { ChiveEnv } from '@/api/types/context.js';
 import type { AtUri, DID } from '@/types/atproto.js';
 import type { ILogger } from '@/types/interfaces/logger.interface.js';
 
+// The handler resolves the PDS through the shared DIDResolver rather than
+// fetching plc.directory itself, so the resolver is what these tests stub. The
+// `global.fetch` mock below still serves the getRecord call.
+vi.mock('@/auth/did/did-resolver.js', () => ({
+  DIDResolver: class {
+    getPDSEndpoint(): Promise<string> {
+      return Promise.resolve('https://user-pds.example.com');
+    }
+  },
+}));
+
 // The registerPDS handler runs every candidate URL through the SSRF guard,
 // which resolves the hostname before any fetch. Test hostnames do not exist in
 // DNS, so resolution is stubbed to a public address; the guard's own rejection
