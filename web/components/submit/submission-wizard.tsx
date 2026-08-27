@@ -16,7 +16,7 @@
  * @packageDocumentation
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -49,6 +49,13 @@ import { StepFacets } from './step-facets';
 import { StepPublication } from './step-publication';
 import { StepReview } from './step-review';
 import { getActivePaperSession, clearAllPaperSessions } from '@/lib/auth/paper-session';
+import {
+  clearDraft,
+  draftHasContent,
+  draftScope,
+  loadDraft,
+  saveDraft,
+} from '@/lib/submit/wizard-draft';
 import type { EprintAuthorFormData } from '@/components/forms/eprint-author-editor';
 
 // =============================================================================
@@ -570,6 +577,27 @@ const stepSchemas = {
   review: z.object({}), // No additional validation for review step
 };
 
+/**
+ * Render a draft's age in words.
+ *
+ * @param savedAt - Epoch milliseconds the draft was written
+ * @returns A phrase such as `'earlier today'` or `'3 days ago'`
+ *
+ * @remarks
+ * The banner needs to convey recency, not a timestamp. A user deciding whether
+ * to keep a draft cares whether it is this morning's work or last month's.
+ */
+function formatDraftAge(savedAt: number): string {
+  const elapsed = Date.now() - savedAt;
+  const hour = 60 * 60 * 1000;
+  const day = 24 * hour;
+
+  if (elapsed < hour) return 'a few minutes ago';
+  if (elapsed < day) return 'earlier today';
+  const days = Math.round(elapsed / day);
+  return days === 1 ? 'yesterday' : `${days} days ago`;
+}
+
 // =============================================================================
 // COMPONENT
 // =============================================================================
@@ -587,12 +615,28 @@ export function SubmissionWizard({
   isClaimMode = false,
   className,
 }: SubmissionWizardProps) {
-  const { isAuthenticated, user: _user } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const agent = useAgent();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [restoredDraft, setRestoredDraft] = useState<{
+    savedAt: number;
+    missingFiles: string[];
+  } | null>(null);
+
+  // A draft belongs to one account and one submission source. Both are needed
+  // before anything can be read or written, so persistence stays inert until
+  // the user's DID is known.
+  const draftDid = user?.did;
+  const scope = useMemo(() => draftScope(prefilled), [prefilled]);
+
+  // Guards the autosave effect: saving before the restore pass has run would
+  // overwrite the stored draft with the wizard's own default values.
+  const hasAttemptedRestore = useRef(false);
+  // Set once the record lands in the PDS, so unload guards and autosave stop.
+  const hasSubmitted = useRef(false);
 
   // Clean up paper sessions when wizard unmounts
   useEffect(() => {
@@ -619,10 +663,8 @@ export function SubmissionWizard({
   // Initialize form with react-hook-form
   // Note: Using explicit type assertion since zodResolver inference
   // doesn't perfectly match our EprintFormValues interface
-  const form = useForm<EprintFormValues>({
-    resolver: zodResolver(formSchema) as never,
-    mode: 'onChange',
-    defaultValues: {
+  const defaultValues: EprintFormValues = useMemo(
+    () => ({
       // In claim mode, use prefilled document file if available
       documentFile: prefilled?.documentFile,
       // Destination defaults to user's own PDS
@@ -650,8 +692,110 @@ export function SubmissionWizard({
       conferencePresentation: {},
       // Cross-platform discovery is enabled by default
       enableCrossPlatformDiscovery: true,
-    },
+    }),
+    // Recomputed only when the claim-mode source changes; the wizard's own
+    // edits live in the form, not here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [prefilled]
+  );
+
+  const form = useForm<EprintFormValues>({
+    resolver: zodResolver(formSchema) as never,
+    mode: 'onChange',
+    defaultValues,
   });
+
+  // Restore a draft saved by an earlier visit.
+  //
+  // Runs once per account/scope pair. `usePaperPds` and `paperDid` are
+  // deliberately dropped: paper sessions are in-memory by design and cannot
+  // survive the page load that made this restore necessary, so a restored
+  // destination would point at an account the wizard can no longer sign with.
+  useEffect(() => {
+    if (!draftDid || hasAttemptedRestore.current) return;
+    hasAttemptedRestore.current = true;
+
+    const draft = loadDraft<EprintFormValues>(draftDid, scope, Date.now());
+    if (!draft || !draftHasContent(draft)) return;
+
+    form.reset({
+      ...defaultValues,
+      ...draft.values,
+      // Claim mode re-fetches the source document on every visit, so the live
+      // handle beats the draft's absence of one.
+      documentFile: prefilled?.documentFile,
+      usePaperPds: false,
+      paperDid: undefined,
+    } as EprintFormValues);
+
+    const lastStep = WIZARD_STEPS.length - 1;
+    setCurrentStep(Math.min(Math.max(draft.step, 0), lastStep));
+    setRestoredDraft({ savedAt: draft.savedAt, missingFiles: draft.missingFiles });
+  }, [draftDid, scope, form, defaultValues, prefilled?.documentFile]);
+
+  // Persist the draft as the user works.
+  //
+  // `form.watch` fires on every keystroke, so writes are debounced rather than
+  // run per character; localStorage writes are synchronous and would otherwise
+  // land on the typing path.
+  useEffect(() => {
+    if (!draftDid) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const subscription = form.watch((values) => {
+      if (hasSubmitted.current || !hasAttemptedRestore.current) return;
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        saveDraft(draftDid, scope, {
+          step: currentStep,
+          values: values as EprintFormValues,
+          savedAt: Date.now(),
+        });
+      }, 800);
+    });
+
+    return () => {
+      if (timer) clearTimeout(timer);
+      subscription.unsubscribe();
+    };
+  }, [draftDid, scope, form, currentStep]);
+
+  // Save immediately on step change, so a user who advances and then closes
+  // the tab does not lose the step they had reached to the debounce window.
+  useEffect(() => {
+    if (!draftDid || hasSubmitted.current || !hasAttemptedRestore.current) return;
+    saveDraft(draftDid, scope, {
+      step: currentStep,
+      values: form.getValues(),
+      savedAt: Date.now(),
+    });
+  }, [currentStep, draftDid, scope, form]);
+
+  // Warn before a close or reload discards work.
+  //
+  // The draft makes that loss recoverable, but only on this browser, and only
+  // for fields that are not file handles. The prompt is still worth showing.
+  useEffect(() => {
+    const handler = (event: BeforeUnloadEvent) => {
+      if (hasSubmitted.current || isSubmitting) return;
+      if (!form.formState.isDirty) return;
+      event.preventDefault();
+      // Assigning returnValue is what actually triggers the prompt in Chrome
+      // and Safari; the string itself has been ignored by browsers for years.
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [form, isSubmitting]);
+
+  // Discard the restored draft and start from a clean wizard.
+  const handleDiscardDraft = useCallback(() => {
+    if (draftDid) clearDraft(draftDid, scope);
+    form.reset(defaultValues);
+    setCurrentStep(0);
+    setRestoredDraft(null);
+  }, [draftDid, scope, form, defaultValues]);
 
   // Get current step key
   const currentStepKey = WIZARD_STEPS[currentStep].id as keyof typeof stepSchemas;
@@ -868,6 +1012,12 @@ export function SubmissionWizard({
       // Clean up paper session after successful submission
       clearAllPaperSessions();
 
+      // The work now lives in the user's PDS, so the local copy is obsolete.
+      // Clearing before onSuccess keeps a navigating callback from racing the
+      // unmount and leaving a draft that would be offered back on return.
+      hasSubmitted.current = true;
+      if (draftDid) clearDraft(draftDid, scope);
+
       onSuccess?.(result);
     } catch (error) {
       submitLogger.error('Submission error', error);
@@ -877,7 +1027,7 @@ export function SubmissionWizard({
     } finally {
       setIsSubmitting(false);
     }
-  }, [agent, isAuthenticated, form, onSuccess]);
+  }, [agent, isAuthenticated, form, onSuccess, draftDid, scope]);
 
   // Render current step content
   const renderStepContent = () => {
@@ -910,6 +1060,30 @@ export function SubmissionWizard({
 
   return (
     <div className={cn('space-y-8', className)}>
+      {restoredDraft && (
+        <div
+          role="status"
+          className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <p className="font-medium">
+                Restored your unfinished submission from {formatDraftAge(restoredDraft.savedAt)}.
+              </p>
+              {restoredDraft.missingFiles.length > 0 && (
+                <p className="text-muted-foreground">
+                  Files are not saved in your browser, so you need to attach{' '}
+                  {restoredDraft.missingFiles.join(', ')} again on the Files step.
+                </p>
+              )}
+            </div>
+            <Button type="button" variant="ghost" size="sm" onClick={handleDiscardDraft}>
+              Start over
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Progress indicator - desktop */}
       <div className="hidden md:block">
         <WizardProgress
