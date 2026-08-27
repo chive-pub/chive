@@ -16,7 +16,6 @@ storybook-static/
 # Generated code (regenerated on build/CI)
 src/lexicons/generated/
 web/lib/api/generated/
-web/lib/api/schema.generated.ts
 
 # Testing
 coverage/
