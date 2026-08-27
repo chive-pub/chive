@@ -58,19 +58,26 @@ describe('indexed collections, lexicons and write scopes agree', () => {
     }
   });
 
-  it('records only the two collections granted for writing that are not indexed', () => {
-    // Both are real gaps, listed here rather than hidden so that adding a third
-    // fails this test:
+  it('separates collections read through from the PDS from ones that are simply dropped', () => {
+    // Not every granted write scope should be indexed. `discovery.settings` is
+    // read on demand straight from the user's PDS
+    // (`actor/getDiscoverySettings.ts` issues `com.atproto.repo.getRecord`), so
+    // it is deliberately absent from the firehose set — a per-user preference
+    // does not belong in a shared index.
     //
-    //   - `pub.chive.actor.mute`: the frontend writes these records to the
-    //     user's PDS (web/lib/atproto/record-creator.ts), and the firehose
-    //     processor drops them. The mute list the UI shows comes from
-    //     localStorage, so mutes do not follow a user to another device and
-    //     Chive cannot apply them server-side.
-    //   - `pub.chive.discovery.settings`: granted, with a lexicon, and written
-    //     by nothing — permission requested and not used.
-    const notIndexed = [...GRANTED_WRITES].filter((s) => !INDEXED_COLLECTIONS.includes(s)).sort();
+    // `actor.mute` is the other kind. The frontend writes those records to the
+    // user's PDS (`web/lib/atproto/record-creator.ts`), nothing reads them from
+    // the PDS, and the firehose processor has no branch for them, so they are
+    // dropped. The mute list the UI shows comes from `localStorage`, which is
+    // why mutes do not follow a user to another device.
+    const READ_THROUGH = ['pub.chive.discovery.settings'];
+    const KNOWN_DROPPED = ['pub.chive.actor.mute'];
 
-    expect(notIndexed).toEqual(['pub.chive.actor.mute', 'pub.chive.discovery.settings']);
+    const unconsumed = [...GRANTED_WRITES]
+      .filter((s) => !INDEXED_COLLECTIONS.includes(s))
+      .filter((s) => !READ_THROUGH.includes(s))
+      .sort();
+
+    expect(unconsumed).toEqual(KNOWN_DROPPED);
   });
 });
