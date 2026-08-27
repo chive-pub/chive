@@ -23,6 +23,7 @@ import type { Affiliation as AuthorAffiliation } from '@/lib/api/generated/types
 import type { ChangelogSection } from '@/lib/api/generated/types/pub/chive/eprint/changelog';
 import type { OutputSchema as DeleteOutput } from '@/lib/api/generated/types/pub/chive/eprint/deleteSubmission';
 import type { OutputSchema as GetChangelogOutput } from '@/lib/api/generated/types/pub/chive/eprint/getChangelog';
+import type { InputSchema as UpdateSubmissionInput } from '@/lib/api/generated/types/pub/chive/eprint/updateSubmission';
 import type {
   OutputSchema as ListChangelogsOutput,
   ChangelogView,
@@ -80,34 +81,20 @@ interface DeleteEprintParams {
  * @remarks
  * Uses generated types from the lexicon schema for authors and changelog.
  */
-interface UpdateEprintParams {
-  /** AT-URI of the eprint to update */
-  uri: string;
-  /** Type of version increment */
-  versionBump: VersionBumpType;
-  /** Updated title (optional) */
-  title?: string;
-  /** Updated keywords (optional) */
-  keywords?: string[];
-  /** Updated field node URIs (optional) */
-  fieldUris?: string[];
-  /** Updated authors (optional) */
-  authors?: AuthorContribution[];
-  /** Structured changelog data (optional) */
-  changelog?: ChangelogInput;
-  /** Published version metadata (optional) */
-  publishedVersion?: Record<string, unknown>;
-  /** External identifiers such as arXiv, PubMed (optional) */
-  externalIds?: Record<string, unknown>;
-  /** Code and data repository links (optional) */
-  repositories?: Record<string, unknown>;
-  /** Conference presentation metadata (optional) */
-  conferencePresentation?: Record<string, unknown>;
-  /** Funding sources (optional) */
-  funding?: Record<string, unknown>[];
+/**
+ * Parameters for {@link useUpdateEprint}.
+ *
+ * @remarks
+ * Derived from the lexicon's own input type rather than re-listed by hand. The
+ * hand-written version had fallen two fields behind: `abstract` and `document`
+ * were absent, so an eprint's abstract could not be edited through the frontend
+ * at all — and nothing could notice, because a field the lexicon accepts and
+ * the interface omits is simply invisible.
+ */
+type UpdateEprintParams = UpdateSubmissionInput & {
   /** Agent to use for service auth (paper agent for paper-centric eprints) */
   overrideAgent?: Agent;
-}
+};
 
 /**
  * Mutation hook for deleting eprints.
@@ -197,20 +184,10 @@ export function useUpdateEprint() {
     mutationFn: async ({ overrideAgent, ...params }) => {
       try {
         const client = overrideAgent ? createAuthenticatedClient(overrideAgent) : authApi;
-        const response = await client.pub.chive.eprint.updateSubmission({
-          uri: params.uri,
-          versionBump: params.versionBump,
-          title: params.title,
-          keywords: params.keywords,
-          fieldUris: params.fieldUris,
-          authors: params.authors,
-          changelog: params.changelog,
-          publishedVersion: params.publishedVersion,
-          externalIds: params.externalIds,
-          repositories: params.repositories,
-          conferencePresentation: params.conferencePresentation,
-          funding: params.funding,
-        });
+        // Forward everything the caller passed, minus the local-only agent.
+        // Enumerating the fields here is what dropped `abstract` and
+        // `document`, and would silently drop the next one added to the lexicon.
+        const response = await client.pub.chive.eprint.updateSubmission(params);
         return response.data;
       } catch (error) {
         if (error instanceof APIError) throw error;

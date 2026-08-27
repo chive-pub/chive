@@ -1,3 +1,7 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { renderHook, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
@@ -473,5 +477,45 @@ describe('formatVersion', () => {
     const version = { major: 1, minor: 2, patch: 3, prerelease: '' };
     // Empty string is falsy, so it should not include the prerelease
     expect(formatVersion(version)).toBe('1.2.3');
+  });
+});
+
+describe('useUpdateEprint forwards whatever the lexicon accepts', () => {
+  // The hook used to re-list the fields it forwarded, and that list had fallen
+  // two behind the lexicon: `abstract` and `document` were missing, so an
+  // eprint's abstract could not be edited through the frontend, and nothing
+  // could notice — a field the lexicon accepts and the hook omits is invisible.
+  //
+  // The fix is structural, so these assertions are too. "The hook forwards
+  // abstract" would pass again the moment a thirteenth field is added and left
+  // out; "the hook does not enumerate at all" is what actually holds.
+  const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+  const hook = readFileSync(join(REPO_ROOT, 'web/lib/hooks/use-eprint-mutations.ts'), 'utf8');
+  const lexicon = JSON.parse(
+    readFileSync(join(REPO_ROOT, 'lexicons/pub/chive/eprint/updateSubmission.json'), 'utf8')
+  ) as { defs: { main: { input: { schema: { properties: Record<string, unknown> } } } } };
+
+  it('takes its parameter type from the lexicon', () => {
+    expect(hook).toContain('type UpdateEprintParams = UpdateSubmissionInput');
+  });
+
+  it('does not re-enumerate the fields it forwards', () => {
+    const start = hook.indexOf('client.pub.chive.eprint.updateSubmission');
+    const call = hook.slice(start, hook.indexOf('return response.data;', start));
+
+    expect(call).toContain('updateSubmission(params)');
+    expect(call).not.toContain('uri: params.uri');
+  });
+
+  it('strips only the local-only agent before forwarding', () => {
+    // `overrideAgent` selects which agent signs the request and is not part of
+    // the lexicon input; everything else must reach the server.
+    expect(hook).toContain('{ overrideAgent, ...params }');
+  });
+
+  it('has a lexicon that declares the two fields that were being dropped', () => {
+    const fields = Object.keys(lexicon.defs.main.input.schema.properties);
+    expect(fields).toContain('abstract');
+    expect(fields).toContain('document');
   });
 });
