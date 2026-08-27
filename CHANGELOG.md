@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-08-27
+
+Second tranche of the 0.8.0 backlog remediation: fourteen further changes.
+
+### Security
+
+- Plugin loading refuses third-party code rather than importing it into the host process. `loadPlugin` dynamically imported `manifest.entrypoint`, where it ran with the service's full privileges — filesystem, network, and the database credentials in the environment — while the plugin interfaces described isolated-vm isolation and permission enforcement. Both `executeInSandbox` and `enforceNetworkAccess` are implemented and have zero call sites: no plugin code has ever run inside an isolate. Nothing called `loadPlugin`, so this was a trap rather than a live vulnerability, and it is now sprung loudly instead of left armed. `CHIVE_ALLOW_UNSANDBOXED_PLUGINS=true` overrides it, named for what it grants.
+- The frontend no longer offers its end-to-end authentication bypass in a production build. Setting one `localStorage` key made the client send `X-E2E-Auth-Did`, which the API turns into an identity — and `X-E2E-Auth-Admin` into an administrative one — so a console one-liner on the live site was enough. The API stopped honouring those headers in 0.8.0, but a bypass that depends on the other side refusing it is not a control.
+
+### Fixed
+
+- `getCommunities` returns data. Two handlers read `services.graphAlgorithmCache`, which `ServerConfig` had no field for and nothing constructed, so it was always undefined and the endpoint returned an empty list on every request — while the graph algorithm job wrote precomputed results into the same cache that nothing read.
+- Endorsement views carry the record CID. Handlers returned the literal string `'placeholder'` for a field the lexicon marks required, with a comment claiming the CID was not stored; it has always been stored and the queries simply did not select it, so optimistic-concurrency writes were comparing against a constant that could never match.
+- Seven fields the search mapper emits are mapped explicitly, as `nested` where they are arrays of objects. Elasticsearch inferred `object` for them, which flattens: a query for one funder's grant number matched across the whole array, so an eprint funded by A with grant X and B with grant Y matched a search for "A's grant Y". Wrong answers indistinguishable from right ones.
+- Mapping changes can reach a live index. `bootstrapIndex` returns early when the alias exists, and the only path that applied a change deleted `eprints-v1` outright — full search downtime for the length of a reindex, no prompt, nothing to fall back to. `migrateIndexToCurrentMapping` builds the next index version, copies the documents, and moves the alias in a single atomic action; the previous index is kept, so the migration is reversible.
+- The trending page is fetched in one query and its authors hydrated once. It issued a `getEprint` and a separate call to the public Bluesky appview per entry — 40 network round trips for 20 entries — and silently dropped authors past the first 25 of each eprint.
+- KaTeX loads only when LaTeX is rendered. Roughly 280KB was imported at the top of the rich-text renderer, so browse, search, trending and author listings all shipped a typesetting library for content that rarely contains a formula.
+- The Kubernetes manifests reference images that exist. They named bare `chive` and `chive-frontend`, which resolve against Docker Hub, while CI publishes to `ghcr.io/chive-pub/chive`; overlays set only `newTag`, never `newName`; and the base pinned `latest`, which CI does not produce. No environment could pull an image.
+
+### Changed
+
+- The XRPC method verb is resolved once, so the OpenAPI specification and the runtime router cannot disagree. They decided it from different sources, and because the frontend client is generated from the spec, a disagreement became a 404 at runtime rather than a build error.
+- Profile lookups go through one cached hydrator. Handle, display name and avatar were fetched from the public Bluesky appview at fourteen call sites, two of them byte-identical private methods, none of them cached — so a page of reviews re-fetched the same authors on every request.
+- The pre-deployment suite skips when the external services it verifies cannot be reached, rather than failing. That job is a required check, so a third-party outage previously blocked every merge in this repository however unrelated the change. A service that responds _incorrectly_ still fails the build; only unreachability skips, and the skip says loudly that nothing was verified.
+- Every environment variable the code reads is documented — 75 of 103 were not. Three clusters are marked as inert rather than presented as working configuration: the R2/CDN variables select an adapter that is never chosen, the governance PDS writer is never constructed, and the SMTP path is never invoked.
+
+### Removed
+
+- The second-factor authentication layer: WebAuthn, TOTP and JWT session management, 2,334 lines plus a 688-line authentication service, and the two tables built for it. It was unreachable — no route, handler or service imported it, and credentials lived in Redis under TTLs rather than in those tables — so no user could enrol, because no endpoint existed to enrol through. Chive does not offer 2FA.
+- `document_base64` from the search document, an implemented and tested path for putting a base64 document body into Elasticsearch, contradicting the rule that only BlobRefs are stored. Nothing populated it.
+- The `repo:pub.chive.graph.fieldProposal` OAuth scope, for a record type renamed to node/edgeProposal that has no lexicon.
+
 ## [0.8.1] - 2026-08-26
 
 ### Security
