@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
 
+import { absoluteUrl, siteUrl } from '@/lib/site/url';
 import { Providers } from '@/components/providers';
 import { FaroInit } from '@/components/observability';
 import { ConditionalHeader } from '@/components/conditional-header';
@@ -14,6 +15,9 @@ import 'highlight.js/styles/github-dark.css';
 import '@/styles/globals.css';
 
 export const metadata: Metadata = {
+  // Absolute URLs come from NEXT_PUBLIC_SITE_URL rather than a literal, so a
+  // staging deployment stops advertising production as its canonical home.
+  metadataBase: new URL(siteUrl()),
   title: {
     default: 'Chive | Decentralized Eprint Service',
     template: '%s | Chive',
@@ -28,7 +32,7 @@ export const metadata: Metadata = {
     'open access',
     'scholarly communication',
   ],
-  authors: [{ name: 'Aaron Steven White', url: 'https://chive.pub' }],
+  authors: [{ name: 'Aaron Steven White', url: siteUrl() }],
   icons: {
     icon: '/chive-logo.svg',
     apple: '/chive-logo.svg',
@@ -36,13 +40,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://chive.pub',
+    url: siteUrl(),
     siteName: 'Chive',
     title: 'Chive | Decentralized Eprint Service',
     description: 'Decentralized eprints on ATProto.',
     images: [
       {
-        url: 'https://chive.pub/og',
+        url: absoluteUrl('/og'),
         width: 1200,
         height: 630,
         alt: 'Chive | Decentralized Eprint Service',
@@ -53,7 +57,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Chive | Decentralized Eprint Service',
     description: 'Decentralized eprints on ATProto.',
-    images: ['https://chive.pub/og'],
+    images: [absoluteUrl('/og')],
   },
   robots: {
     index: true,
