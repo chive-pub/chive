@@ -346,14 +346,17 @@ describe('Plugin Lifecycle Integration', () => {
   });
 
   describe('plugin reload', () => {
-    // Note: reloadPlugin() uses loadPlugin() which tries to load from filesystem
-    // This is expected behavior: builtin plugins can't be reloaded via manifest
+    // `reloadPlugin` re-imports the plugin's entrypoint, so it takes the same
+    // path as `loadPlugin` and is refused for the same reason: that path would
+    // run third-party code unsandboxed with the service's full privileges, and
+    // the isolated-vm sandbox described in the plugin interfaces is not wired
+    // up. A builtin plugin still cannot be reloaded from a manifest — the
+    // reason it cannot has simply changed, and the message now says so.
     it('should throw when reloading builtin plugin', async () => {
       const plugin = new LifecycleTrackingPlugin();
       await manager.loadBuiltinPlugin(plugin);
 
-      // Reload will fail because it tries to load from filesystem
-      await expect(manager.reloadPlugin(plugin.id)).rejects.toThrow('Failed to load plugin');
+      await expect(manager.reloadPlugin(plugin.id)).rejects.toThrow(/unsandboxed/i);
     });
   });
 

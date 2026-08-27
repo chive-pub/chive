@@ -25,6 +25,7 @@ import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import type { IStorageBackend } from '../../types/interfaces/storage.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
+import { ProfileHydrator } from '../profile/profile-hydrator.js';
 
 /**
  * Re-export generated lexicon types for external use.
@@ -58,6 +59,17 @@ function extractDidFromUri(uri: AtUri): DID {
  */
 export interface EndorsementView {
   readonly uri: AtUri;
+  /**
+   * CID of the endorsement record.
+   *
+   * @remarks
+   * Stored at index time and required by the lexicon's view. Optional here
+   * because rows written before the column was populated may not carry one;
+   * the handlers surface an empty string in that case rather than the literal
+   * 'placeholder' they used to return, which no client could use for the
+   * optimistic-concurrency writes the CID exists to support.
+   */
+  readonly cid?: string;
   readonly endorser: DID;
   readonly eprintUri: AtUri;
   /**
@@ -147,6 +159,7 @@ export interface ReviewNotification {
  */
 export interface EndorsementNotification {
   readonly uri: AtUri;
+  readonly cid?: string;
   readonly endorserDid: DID;
   readonly endorserHandle?: string;
   readonly endorserDisplayName?: string;
@@ -209,10 +222,21 @@ export interface ReviewServiceOptions {
 export class ReviewService {
   private readonly pool: Pool;
   private readonly logger: ILogger;
+  /**
+   * Shared, cached profile lookup.
+   *
+   * @remarks
+   * Constructed here rather than injected so existing callers need no change.
+   * It takes the same logger; without a cache it behaves exactly as the
+   * previous inline implementation did, so the only difference for a caller
+   * that supplies no cache is that there is now one copy of the code.
+   */
+  private readonly profileHydrator: ProfileHydrator;
 
   constructor(options: ReviewServiceOptions) {
     this.pool = options.pool;
     this.logger = options.logger;
+    this.profileHydrator = new ProfileHydrator({ logger: options.logger });
   }
 
   /**
@@ -509,15 +533,22 @@ export class ReviewService {
    */
   async getEndorsements(eprintUri: AtUri): Promise<readonly EndorsementView[]> {
     try {
+      // `cid` is selected because the lexicon marks it required on every
+      // endorsement view. The column has always existed and been populated at
+      // index time; the query simply omitted it, so the handlers returned the
+      // literal string 'placeholder' with a comment claiming the CID was not
+      // stored. Clients using the CID for optimistic concurrency were given a
+      // value that could never match.
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[] | null;
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+        `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND deleted_at IS NULL
          ORDER BY created_at DESC`,
@@ -526,6 +557,7 @@ export class ReviewService {
 
       return result.rows.map((row) => ({
         uri: row.uri as AtUri,
+        cid: row.cid ?? undefined,
         endorser: row.endorser_did as DID,
         eprintUri: row.eprint_uri as AtUri,
         contributions: row.contributions ?? [],
@@ -638,13 +670,14 @@ export class ReviewService {
     try {
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
         comment: string | null;
         created_at: Date;
       }>(
-        `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+        `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND endorser_did = $2 AND deleted_at IS NULL
          LIMIT 1`,
@@ -700,7 +733,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+      let query = `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE eprint_uri = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [eprintUri];
@@ -719,6 +752,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -739,6 +773,7 @@ export class ReviewService {
       return {
         items: items.map((row) => ({
           uri: row.uri as AtUri,
+          cid: row.cid ?? undefined,
           endorser: row.endorser_did as DID,
           eprintUri: row.eprint_uri as AtUri,
           contributions: row.contributions ?? [],
@@ -787,7 +822,7 @@ export class ReviewService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
-      let query = `SELECT uri, endorser_did, eprint_uri, contributions, comment, created_at
+      let query = `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
          WHERE endorser_did = $1 AND deleted_at IS NULL`;
       const params: unknown[] = [endorserDid];
@@ -806,6 +841,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -1204,6 +1240,7 @@ export class ReviewService {
       let query = `
         SELECT
           en.uri,
+          en.cid,
           en.endorser_did,
           en.eprint_uri,
           en.contributions,
@@ -1233,6 +1270,7 @@ export class ReviewService {
 
       const result = await this.pool.query<{
         uri: string;
+        cid: string | null;
         endorser_did: string;
         eprint_uri: string;
         contributions: string[];
@@ -1255,6 +1293,7 @@ export class ReviewService {
       return {
         items: items.map((row) => ({
           uri: row.uri as AtUri,
+          cid: row.cid ?? undefined,
           endorserDid: row.endorser_did as DID,
           endorserHandle: row.endorser_handle ?? undefined,
           endorserDisplayName: row.endorser_display_name ?? undefined,
@@ -1350,46 +1389,14 @@ export class ReviewService {
     dids: string[],
     result: Map<string, { handle?: string; displayName?: string; avatar?: string }>
   ): Promise<void> {
-    // Batch fetch up to 25 profiles at a time (API limit)
-    const batchSize = 25;
-    for (let i = 0; i < dids.length; i += batchSize) {
-      const batch = dids.slice(i, i + batchSize);
-      try {
-        const params = new URLSearchParams();
-        for (const did of batch) {
-          params.append('actors', did);
-        }
-        const response = await fetch(
-          `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
-          {
-            headers: { Accept: 'application/json' },
-            signal: AbortSignal.timeout(5000),
-          }
-        );
+    // Delegates to the shared hydrator. This method was one of two
+    // byte-identical copies — the other lived in the sibling service — and
+    // neither cached, so the same authors were re-fetched from the public
+    // appview on every request that rendered them.
+    const profiles = await this.profileHydrator.hydrate(dids as DID[]);
 
-        if (response.ok) {
-          const data = (await response.json()) as {
-            profiles: {
-              did: string;
-              handle: string;
-              displayName?: string;
-              avatar?: string;
-            }[];
-          };
-          for (const profile of data.profiles) {
-            result.set(profile.did, {
-              handle: profile.handle,
-              displayName: profile.displayName,
-              avatar: profile.avatar,
-            });
-          }
-        }
-      } catch (error) {
-        this.logger.debug('Failed to fetch Bluesky profiles', {
-          error: error instanceof Error ? error.message : String(error),
-          batchSize: batch.length,
-        });
-      }
+    for (const [did, profile] of profiles) {
+      result.set(did, profile);
     }
   }
 

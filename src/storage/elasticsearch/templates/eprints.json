@@ -77,6 +77,7 @@
       }
     },
     "mappings": {
+      "dynamic": "false",
       "properties": {
         "@timestamp": {
           "type": "date",
@@ -446,6 +447,146 @@
         },
         "pds_endpoint": {
           "type": "keyword"
+        },
+        "submitted_by": {
+          "type": "keyword"
+        },
+        "paper_did": {
+          "type": "keyword"
+        },
+        "related_works": {
+          "type": "nested",
+          "properties": {
+            "identifier": {
+              "type": "keyword"
+            },
+            "identifier_type": {
+              "type": "keyword"
+            },
+            "relation_type": {
+              "type": "keyword"
+            },
+            "title": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            }
+          }
+        },
+        "funding": {
+          "type": "nested",
+          "properties": {
+            "funder_name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "funder_doi": {
+              "type": "keyword"
+            },
+            "funder_ror": {
+              "type": "keyword"
+            },
+            "grant_number": {
+              "type": "keyword"
+            }
+          }
+        },
+        "repositories": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "nested",
+              "properties": {
+                "url": {
+                  "type": "keyword"
+                },
+                "platform": {
+                  "type": "keyword"
+                },
+                "label": {
+                  "type": "text"
+                },
+                "swhid": {
+                  "type": "keyword"
+                }
+              }
+            },
+            "data": {
+              "type": "nested",
+              "properties": {
+                "url": {
+                  "type": "keyword"
+                },
+                "doi": {
+                  "type": "keyword"
+                },
+                "platform": {
+                  "type": "keyword"
+                },
+                "label": {
+                  "type": "text"
+                }
+              }
+            },
+            "has_preregistration": {
+              "type": "boolean"
+            }
+          }
+        },
+        "conference_presentation": {
+          "type": "object",
+          "properties": {
+            "conference_name": {
+              "type": "text",
+              "fields": {
+                "keyword": {
+                  "type": "keyword",
+                  "ignore_above": 256
+                }
+              }
+            },
+            "conference_acronym": {
+              "type": "keyword"
+            },
+            "presentation_type": {
+              "type": "keyword"
+            },
+            "presentation_date": {
+              "type": "date"
+            }
+          }
+        },
+        "supplementary_materials": {
+          "type": "nested",
+          "properties": {
+            "blob_cid": {
+              "type": "keyword"
+            },
+            "label": {
+              "type": "text"
+            },
+            "description": {
+              "type": "text"
+            },
+            "category": {
+              "type": "keyword"
+            },
+            "detected_format": {
+              "type": "keyword"
+            },
+            "order": {
+              "type": "integer"
+            }
+          }
         }
       }
     }

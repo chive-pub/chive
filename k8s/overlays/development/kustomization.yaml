@@ -14,9 +14,11 @@ commonLabels:
 # Override images with dev tags
 images:
   - name: chive
-    newTag: dev
+    newName: ghcr.io/chive-pub/chive
+    newTag: develop
   - name: chive-frontend
-    newTag: dev
+    newName: ghcr.io/chive-pub/chive-frontend
+    newTag: develop
 
 patches:
   # Reduce replicas for development

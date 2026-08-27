@@ -204,10 +204,16 @@ export async function setupIngestPipeline(client: Client): Promise<void> {
  * Uses a regular index with an alias (not a data stream) to support:
  * - Document IDs for upserts
  * - Updating existing documents when records change on PDS
- * - Zero-downtime reindexing via alias switching
+ * - Zero-downtime reindexing via alias switching, implemented by
+ *   {@link migrateIndexToCurrentMapping}
  *
- * The alias "eprints" points to the current index "eprints-v1".
- * Future migrations can create "eprints-v2" and switch the alias.
+ * The alias "eprints" points to the current index, "eprints-v1" initially.
+ *
+ * This function is bootstrap only: it returns early when the alias already
+ * exists, so it will not apply a changed template to a live index. Index
+ * mappings are fixed once created — Elasticsearch cannot remap in place — so
+ * changing them requires building a new index and moving the alias, which is
+ * what {@link migrateIndexToCurrentMapping} does.
  *
  * @public
  */
@@ -237,6 +243,108 @@ export async function bootstrapIndex(client: Client): Promise<void> {
       [aliasName]: {},
     },
   });
+}
+
+/**
+ * Result of an index mapping migration.
+ *
+ * @public
+ */
+export interface IndexMigrationResult {
+  /** Index the alias pointed at before the migration. */
+  readonly from: string;
+  /** Index the alias points at now. */
+  readonly to: string;
+  /** Documents copied into the new index. */
+  readonly documentsReindexed: number;
+  /** Whether the previous index was deleted. */
+  readonly previousIndexDeleted: boolean;
+}
+
+/**
+ * Rebuilds the eprints index against the current template and moves the alias.
+ *
+ * @param client - Elasticsearch client
+ * @param options - `deletePrevious` removes the old index once the alias has moved
+ * @returns What moved where, and how many documents were copied
+ * @throws DatabaseError when the alias does not resolve to exactly one index
+ *
+ * @remarks
+ * Elasticsearch mappings are fixed once an index exists, so a template edit
+ * reaches a live deployment only by creating a new index and repointing the
+ * alias. {@link bootstrapIndex} returns early when the alias exists and does
+ * not do this, and the only path that applied a mapping change was a script
+ * that deleted `eprints-v1` outright — full search downtime for the length of a
+ * reindex, with no prompt, and nothing to fall back to if the rebuild failed
+ * halfway.
+ *
+ * This performs the alias switch the module has always documented: create the
+ * next version from the current template, copy the documents, then move the
+ * alias in a single atomic action so no request sees the alias unset. Search
+ * keeps serving the old index for the whole reindex and switches between one
+ * request and the next.
+ *
+ * The previous index is kept by default. It is the only copy of the pre-migration
+ * state, and keeping it makes the migration reversible by moving the alias back;
+ * deleting it is a separate decision once the new index looks right.
+ *
+ * @public
+ */
+export async function migrateIndexToCurrentMapping(
+  client: Client,
+  options: { readonly deletePrevious?: boolean } = {}
+): Promise<IndexMigrationResult> {
+  const aliasName = 'eprints';
+
+  const aliased = await client.indices.getAlias({ name: aliasName });
+  const currentIndices = Object.keys(aliased);
+  const [from] = currentIndices;
+
+  // Checking the destructured value rather than the length narrows the type
+  // without an assertion, and still rejects the several-indices case: an alias
+  // spanning more than one index means someone has done something the version
+  // arithmetic below cannot reason about, and guessing would move the wrong one.
+  if (from === undefined || currentIndices.length !== 1) {
+    throw new DatabaseError(
+      'MIGRATE',
+      `Alias ${aliasName} resolves to ${currentIndices.length} indices; expected exactly one`
+    );
+  }
+
+  const version = Number.parseInt(/-v(\d+)$/.exec(from)?.[1] ?? '1', 10);
+  const to = `${aliasName}-v${version + 1}`;
+
+  // The template supplies the mappings, so the new index is built against
+  // whatever the current template says rather than a copy kept in code.
+  await client.indices.create({ index: to });
+
+  const reindexed = await client.reindex({
+    source: { index: from },
+    dest: { index: to },
+    refresh: true,
+    wait_for_completion: true,
+  });
+
+  // One atomic action: the alias is never unset between the remove and the add.
+  await client.indices.updateAliases({
+    actions: [
+      { remove: { index: from, alias: aliasName } },
+      { add: { index: to, alias: aliasName } },
+    ],
+  });
+
+  let previousIndexDeleted = false;
+  if (options.deletePrevious === true) {
+    await client.indices.delete({ index: from });
+    previousIndexDeleted = true;
+  }
+
+  return {
+    from,
+    to,
+    documentsReindexed: reindexed.created ?? 0,
+    previousIndexDeleted,
+  };
 }
 
 /**

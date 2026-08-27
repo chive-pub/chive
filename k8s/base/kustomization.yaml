@@ -49,9 +49,25 @@ resources:
   - databases/elasticsearch.yaml
   - databases/neo4j.yaml
 
-# Images can be overridden in overlays
+# Images can be overridden in overlays.
+#
+# `newName` matters as much as `newTag`: the manifests referred to the bare
+# names `chive` and `chive-frontend`, which resolve against Docker Hub, while CI
+# publishes to ghcr.io/chive-pub/chive. Overlays set only `newTag`, so no
+# environment could pull an image.
+#
+# CI tags images `type=sha` and `type=ref,event=branch` — it never produces
+# `latest`, so that tag was unpullable everywhere. Tags below match branches CI
+# actually builds from.
+#
+# chive-frontend is NOT published by CI. The production deploy builds the web
+# image on the server from web/Dockerfile and never pushes it, so there is no
+# registry copy to pull. Deploying the frontend to Kubernetes requires
+# publishing that image first; see k8s/README.md.
 images:
   - name: chive
-    newTag: latest
+    newName: ghcr.io/chive-pub/chive
+    newTag: main
   - name: chive-frontend
-    newTag: latest
+    newName: ghcr.io/chive-pub/chive-frontend
+    newTag: main

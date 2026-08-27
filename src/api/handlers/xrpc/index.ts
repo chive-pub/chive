@@ -16,7 +16,7 @@ import { XRPC_PATH_PREFIX } from '../../config.js';
 import type { ChiveEnv } from '../../types/context.js';
 import { xrpcErrorHandler } from '../../xrpc/error-handler.js';
 import { createXRPCRouter } from '../../xrpc/index.js';
-import { lexicons, getMethodType } from '../../xrpc/validation.js';
+import { lexicons, resolveMethodType } from '../../xrpc/validation.js';
 
 // Re-export all endpoint modules
 export * from './activity/index.js';
@@ -129,7 +129,7 @@ export function registerXRPCRoutes(app: Hono<ChiveEnv>): void {
   // Register all XRPC methods using the router's method() function
   for (const [nsid, method] of Object.entries(allXRPCMethods)) {
     // Determine method type from lexicon or fallback to handler's type property
-    const methodType = getMethodType(nsid) ?? method.type ?? 'query';
+    const methodType = resolveMethodType(nsid, method.type);
 
     // Register method with the XRPC router (adds lexicon validation)
     // Type assertion needed due to generic type variance in XRPCMethod

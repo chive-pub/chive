@@ -74,6 +74,7 @@ import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { PDSScanner } from './services/pds-discovery/pds-scanner.js';
 import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
 import { PDSSyncService } from './services/pds-sync/sync-service.js';
+import { ProfileHydrator } from './services/profile/profile-hydrator.js';
 import { ReviewService } from './services/review/review-service.js';
 import { TaxonomyCategoryMatcher } from './services/search/category-matcher.js';
 import { RankingService } from './services/search/ranking-service.js';
@@ -88,6 +89,7 @@ import { CollaborativeFilteringStore } from './storage/neo4j/collaborative-filte
 import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
+import { GraphAlgorithmCache } from './storage/neo4j/graph-algorithm-cache.js';
 import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { RecommendationService } from './storage/neo4j/recommendations.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
@@ -487,6 +489,17 @@ function createServices(
   // Create relevance logger for LTR training data
   // Can be disabled via environment variable for development
   const relevanceLoggingEnabled = config.relevanceLoggingEnabled ?? true;
+  // The graph algorithm job writes precomputed community and trending results
+  // into this cache. Nothing read them: two handlers look for
+  // `services.graphAlgorithmCache`, but it was never constructed here, so
+  // `getCommunities` returned an empty list on every request and `getTrending`
+  // never used its cache. Same Redis, same key space as the job.
+  const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
+
+  // The hydrator's cache is the point of it: without one it makes the same
+  // appview request per page render. Redis is already here, so it gets one.
+  const profileHydrator = new ProfileHydrator({ logger, cache: redis });
+
   const relevanceLogger = relevanceLoggingEnabled
     ? new RelevanceLogger({
         pool: pgPool,
@@ -611,6 +624,8 @@ function createServices(
     claimingService,
     importService,
     pdsSyncService,
+    graphAlgorithmCache,
+    profileHydrator,
     relevanceLogger,
     activityService,
     discoveryService,

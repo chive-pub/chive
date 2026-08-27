@@ -78,7 +78,6 @@ export interface IndexableEprintDocument {
   readonly document_format: DocumentFormat;
   readonly document_metadata?: DocumentMetadata;
   readonly document_blob_ref?: BlobRefDocument;
-  readonly document_base64?: string;
 
   // Supplementary materials
   readonly supplementary_materials?: readonly SupplementaryMaterialDocument[];
@@ -351,7 +350,6 @@ export interface EnrichmentData {
   readonly viewCount?: number;
   readonly downloadCount?: number;
   readonly tags?: readonly string[];
-  readonly documentBase64?: string;
 }
 
 /**
@@ -426,7 +424,6 @@ export function mapEprintToDocument(
     document_format: eprint.documentFormat,
     document_metadata: mapDocumentMetadata(eprint.documentBlobRef),
     document_blob_ref: mapBlobRef(eprint.documentBlobRef),
-    document_base64: enrichment?.documentBase64,
 
     // Supplementary materials
     supplementary_materials: mapSupplementaryMaterials(eprint.supplementaryMaterials),

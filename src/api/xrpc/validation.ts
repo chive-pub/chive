@@ -170,3 +170,33 @@ export function getMethodType(nsid: string): 'query' | 'procedure' | undefined {
     return undefined;
   }
 }
+
+/**
+ * Resolves whether a method is a query or a procedure.
+ *
+ * @param nsid - Method NSID
+ * @param declaredType - The `type` the handler declares, if any
+ * @returns The resolved method type
+ *
+ * @remarks
+ * The single source of truth for a method's HTTP verb. It was previously
+ * decided twice, differently: the runtime router asked the lexicon and fell
+ * back to the handler's `type`, while the OpenAPI generator looked only at
+ * `type`. When the two disagreed the generated client was built against a verb
+ * the server did not serve — `dismissSuggestion` declared `procedure` with no
+ * lexicon, so the spec said POST while the router mounted GET, and every
+ * generated call 404ed.
+ *
+ * A registered lexicon wins, because it is the published contract. Otherwise
+ * the handler's declaration decides. Query is the final fallback: most
+ * lexicon-less methods are reads, and defaulting the other way would move
+ * existing endpoints off the verb their callers already use.
+ *
+ * @public
+ */
+export function resolveMethodType(
+  nsid: string,
+  declaredType?: 'query' | 'procedure'
+): 'query' | 'procedure' {
+  return getMethodType(nsid) ?? declaredType ?? 'query';
+}

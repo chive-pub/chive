@@ -54,6 +54,24 @@ interface LoadedPlugin {
 }
 
 /**
+ * Reports whether third-party plugin code may be loaded without a sandbox.
+ *
+ * @returns True only when `CHIVE_ALLOW_UNSANDBOXED_PLUGINS` is exactly `true`
+ *
+ * @remarks
+ * Read at call time rather than at module load, so the setting can be changed
+ * without restarting the process — and so the refusal is testable without
+ * module-registry games.
+ *
+ * The escape hatch exists so sandbox work can be developed against a real load
+ * path, not so deployments can opt into running foreign code with the service's
+ * own privileges. It names what it grants for that reason.
+ */
+function allowUnsandboxedPlugins(): boolean {
+  return process.env.CHIVE_ALLOW_UNSANDBOXED_PLUGINS === 'true';
+}
+
+/**
  * Plugin manager implementation.
  *
  * @remarks
@@ -166,6 +184,34 @@ export class PluginManager implements IPluginManager {
    * @public
    */
   async loadPlugin(manifest: IPluginManifest): Promise<void> {
+    // Refuse third-party plugin code until there is a sandbox to run it in.
+    //
+    // This path dynamically imports `manifest.entrypoint` into the host
+    // process, where it runs with the full privileges of the service: the
+    // filesystem, the network, the database credentials in the environment.
+    // The interfaces describe isolated-vm isolation and permission enforcement,
+    // and `PluginSandbox.executeInSandbox` and
+    // `PermissionEnforcer.enforceNetworkAccess` both exist — with zero call
+    // sites. Nothing has ever executed inside an isolate.
+    //
+    // Nothing calls this method today; the running plugins are first-party
+    // classes loaded through `loadBuiltinPlugin`, which imports no foreign
+    // code. That makes this a trap rather than a live vulnerability, and the
+    // fix for a trap is to spring it loudly rather than leave it armed. Wiring
+    // isolated-vm is the real work and is still open; until it lands, refusing
+    // is the only honest behaviour.
+    if (!allowUnsandboxedPlugins()) {
+      throw new PluginError(
+        manifest.id,
+        'LOAD',
+        'Third-party plugin loading is disabled: plugin code would run unsandboxed with ' +
+          'full host privileges. The isolated-vm sandbox described in the plugin interfaces ' +
+          'is not wired up. Load first-party plugins with loadBuiltinPlugin instead, or set ' +
+          'CHIVE_ALLOW_UNSANDBOXED_PLUGINS=true if you accept running plugin code with the ' +
+          "service's own privileges."
+      );
+    }
+
     if (this.plugins.has(manifest.id)) {
       throw new PluginError(manifest.id, 'LOAD', `Plugin already loaded: ${manifest.id}`);
     }

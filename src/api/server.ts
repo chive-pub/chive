@@ -49,12 +49,14 @@ import type { ContentReportService } from '../services/moderation/content-report
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
+import type { ProfileHydrator } from '../services/profile/profile-hydrator.js';
 import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
 import type { SearchService } from '../services/search/search-service.js';
 import type { EdgeRepository } from '../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../storage/neo4j/facet-manager.js';
+import type { GraphAlgorithmCache } from '../storage/neo4j/graph-algorithm-cache.js';
 import type { NodeRepository } from '../storage/neo4j/node-repository.js';
 import type { RecommendationService } from '../storage/neo4j/recommendations.js';
 import type { TagManager } from '../storage/neo4j/tag-manager.js';
@@ -228,6 +230,29 @@ export interface ServerConfig {
   readonly redis: Redis;
 
   /**
+   * Cache of precomputed graph algorithm results.
+   *
+   * @remarks
+   * Two handlers read `services.graphAlgorithmCache`, but `ServerConfig` had no
+   * field for it and nothing ever set it, so it was always undefined:
+   * `getCommunities` returned an empty list on every request and `getTrending`
+   * never used its cache. The graph algorithm job builds and populates the very
+   * same cache — nothing was reading what it wrote.
+   */
+  readonly graphAlgorithmCache?: GraphAlgorithmCache;
+
+  /**
+   * Shared, Redis-backed profile lookup.
+   *
+   * @remarks
+   * Handler-level profile fetching was open-coded at several sites, none of
+   * them cached. Passing one hydrator gives them a single implementation and
+   * a shared cache, so the same author rendered across a page costs one lookup
+   * rather than one per appearance.
+   */
+  readonly profileHydrator?: ProfileHydrator;
+
+  /**
    * Logger instance.
    */
   readonly logger: ILogger;
@@ -387,6 +412,8 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       claiming: config.claimingService,
       import: config.importService,
       pdsSync: config.pdsSyncService,
+      graphAlgorithmCache: config.graphAlgorithmCache,
+      profileHydrator: config.profileHydrator,
       relevanceLogger: config.relevanceLogger,
       ranking: config.rankingService,
       discovery: config.discoveryService,
