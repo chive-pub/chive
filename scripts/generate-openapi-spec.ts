@@ -30,9 +30,30 @@ import { generateOpenAPISpec } from '../src/api/openapi/index.js';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUTPUT = join(REPO_ROOT, 'docs/openapi/chive-api.json');
 
+/**
+ * Serialize with every object's keys in sorted order.
+ *
+ * @remarks
+ * `generateOpenAPISpec()` builds its path and schema maps by iterating module
+ * registries, so insertion order follows the order the lexicon generator
+ * emitted files — which differs between a macOS `find` and a Linux one. Writing
+ * in insertion order makes the file byte-different on two machines that agree
+ * completely about the API, which would turn the drift check below into a
+ * platform test. Sorting makes the output a function of the content alone.
+ */
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value === null || typeof value !== 'object') return value;
+
+  const entries = Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0
+  );
+  return Object.fromEntries(entries.map(([k, v]) => [k, canonical(v)]));
+}
+
 function main(): void {
   const spec = generateOpenAPISpec();
-  const serialized = `${JSON.stringify(spec, null, 2)}\n`;
+  const serialized = `${JSON.stringify(canonical(spec), null, 2)}\n`;
 
   if (process.argv.includes('--check')) {
     let current: string;
@@ -44,8 +65,28 @@ function main(): void {
     }
 
     if (current !== serialized) {
+      // Name what moved. A bare "out of date" leaves the reader to diff an
+      // 18,000-line file by hand to learn whether an endpoint appeared or a
+      // description changed.
+      const paths = (text: string): string[] =>
+        Object.keys((JSON.parse(text) as { paths?: Record<string, unknown> }).paths ?? {});
+      let detail = '';
+      try {
+        const before = new Set(paths(current));
+        const after = new Set(paths(serialized));
+        const added = [...after].filter((p) => !before.has(p));
+        const removed = [...before].filter((p) => !after.has(p));
+        if (added.length > 0) detail += `\n  added:   ${added.join(', ')}`;
+        if (removed.length > 0) detail += `\n  removed: ${removed.join(', ')}`;
+        if (added.length === 0 && removed.length === 0) {
+          detail = '\n  the same paths, with different contents';
+        }
+      } catch {
+        detail = '\n  (the current file could not be parsed)';
+      }
+
       console.error(
-        '✗ docs/openapi/chive-api.json is out of date with the registered XRPC methods.\n' +
+        `✗ docs/openapi/chive-api.json is out of date with the registered XRPC methods.${detail}\n` +
           '  Run: pnpm docs:openapi'
       );
       process.exit(1);
