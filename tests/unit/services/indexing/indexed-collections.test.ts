@@ -65,9 +65,15 @@ describe('INDEXED_COLLECTIONS', () => {
     'pub.chive.collaboration.inviteAcceptance',
     'pub.chive.eprint.changelog',
     'pub.chive.eprint.version',
-    'pub.chive.eprint.tag',
   ])('includes %s, previously unreachable by manual reindex', (collection) => {
     expect(isIndexedCollection(collection)).toBe(true);
+  });
+
+  it('excludes pub.chive.eprint.tag, for which there is no lexicon', () => {
+    // The record type is `pub.chive.eprint.userTag`. Listing the old name here
+    // let `sync.indexRecord` accept a manual index request for a collection
+    // with no schema to validate the record against.
+    expect(isIndexedCollection('pub.chive.eprint.tag')).toBe(false);
   });
 
   it('rejects a collection outside the namespace', () => {
