@@ -135,7 +135,7 @@ describe('readinessHandler', () => {
     expect(body.status).toBe('degraded');
     expect(body.checks?.postgresql).toMatchObject({
       status: 'fail',
-      message: 'ECONNREFUSED 127.0.0.1:5432',
+      message: 'Check failed',
     });
     expect(body.checks?.redis?.status).toBe('pass');
     expect(logger.warn).toHaveBeenCalled();
@@ -153,7 +153,7 @@ describe('readinessHandler', () => {
     expect(body.status).toBe('degraded');
     expect(body.checks?.elasticsearch).toMatchObject({
       status: 'fail',
-      message: 'connect ECONNREFUSED 9200',
+      message: 'Check failed',
     });
   });
 
@@ -169,7 +169,7 @@ describe('readinessHandler', () => {
     expect(body.status).toBe('degraded');
     expect(body.checks?.neo4j).toMatchObject({
       status: 'fail',
-      message: 'ServiceUnavailable: bolt://neo4j:7687',
+      message: 'Check failed',
     });
   });
 
@@ -184,7 +184,7 @@ describe('readinessHandler', () => {
 
     expect(res.status).toBe(503);
     expect(body.status).toBe('unhealthy');
-    expect(body.checks?.redis).toMatchObject({ status: 'fail', message: 'Redis down' });
+    expect(body.checks?.redis).toMatchObject({ status: 'fail', message: 'Check failed' });
     expect(body.checks?.postgresql?.status).toBe('fail');
     expect(logger.error).toHaveBeenCalled();
   });
@@ -203,7 +203,7 @@ describe('readinessHandler', () => {
     expect(res.status).toBe(503);
     expect(body.checks?.postgresql).toMatchObject({
       status: 'fail',
-      message: 'pool exhausted',
+      message: 'Check failed',
     });
   });
 
@@ -219,7 +219,7 @@ describe('readinessHandler', () => {
 
     expect(res.status).toBe(503);
     expect(body.status).toBe('degraded');
-    expect(body.checks?.postgresql).toMatchObject({ status: 'fail', message: 'Timeout' });
+    expect(body.checks?.postgresql).toMatchObject({ status: 'fail', message: 'Check failed' });
   });
 
   it('does not time out a probe that settles before the deadline', async () => {
@@ -278,7 +278,29 @@ describe('readinessHandler', () => {
     expect(res.status).toBe(503);
     expect(body.checks?.neo4j).toMatchObject({
       status: 'fail',
-      message: 'graph probe failed',
+      message: 'Check failed',
     });
+  });
+});
+
+describe('readiness probe disclosure', () => {
+  it('never reports the underlying driver message', async () => {
+    // `/ready` is unauthenticated, exempt from rate limiting, and reachable
+    // from the internet. Driver messages name hosts, ports, credentials and
+    // index names, so returning them let anyone read Chive's internal topology
+    // by asking during an outage — or by causing one.
+    const { app } = buildApp({
+      redisPing: () =>
+        Promise.reject(new Error('NOAUTH Authentication required. host=10.0.0.4:6379')),
+    });
+
+    const res = await app.request('/ready');
+    const body = await readBody(res);
+    const serialized = JSON.stringify(body);
+
+    expect(body.checks?.redis?.status).toBe('fail');
+    expect(serialized).not.toContain('10.0.0.4');
+    expect(serialized).not.toContain('NOAUTH');
+    expect(body.checks?.redis?.message).toBe('Check failed');
   });
 });

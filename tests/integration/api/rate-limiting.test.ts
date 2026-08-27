@@ -427,21 +427,43 @@ describe('API Rate Limiting Integration', () => {
   });
 
   describe('X-Forwarded-For Header Handling', () => {
-    it('extracts first IP from X-Forwarded-For chain', async () => {
-      const clientIp = '203.0.113.50';
-      const key = buildRateLimitKey('anonymous', clientIp);
-      const proxyChain = `${clientIp}, 10.0.0.1, 10.0.0.2`;
+    it('keys on the entry the trusted proxy appended, not the one the client sent', async () => {
+      // This test used to assert the opposite — that the *first* entry was
+      // used — which is what made anonymous limits defeatable. X-Forwarded-For
+      // is append-only: whatever the client sent arrives first, and each proxy
+      // appends the address it saw. With one trusted proxy the honest value is
+      // the last entry.
+      const spoofed = '203.0.113.50';
+      const observed = '10.0.0.2';
+      const chain = `${spoofed}, 10.0.0.1, ${observed}`;
 
-      // Clear any existing data
-      await redis.del(key);
+      const spoofedKey = buildRateLimitKey('anonymous', spoofed);
+      const observedKey = buildRateLimitKey('anonymous', observed);
+      await redis.del(spoofedKey);
+      await redis.del(observedKey);
 
       await app.request(STANDARD_ENDPOINT, {
-        headers: { 'X-Forwarded-For': proxyChain },
+        headers: { 'X-Forwarded-For': chain },
       });
 
-      // Rate limit should be keyed by first IP (uses sorted set)
-      const count = await redis.zcard(key);
-      expect(count).toBeGreaterThan(0);
+      expect(await redis.zcard(observedKey)).toBeGreaterThan(0);
+      expect(await redis.zcard(spoofedKey)).toBe(0);
+    });
+
+    it('cannot be given a fresh budget by varying the forged prefix', async () => {
+      const observed = '10.0.0.9';
+      const observedKey = buildRateLimitKey('anonymous', observed);
+      await redis.del(observedKey);
+
+      for (const forgery of ['1.1.1.1', '2.2.2.2', '3.3.3.3']) {
+        await app.request(STANDARD_ENDPOINT, {
+          headers: { 'X-Forwarded-For': `${forgery}, ${observed}` },
+        });
+      }
+
+      // All three land in one bucket. Keying on the first entry would have
+      // given each request a window of its own.
+      expect(await redis.zcard(observedKey)).toBe(3);
     });
   });
 
