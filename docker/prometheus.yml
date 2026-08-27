@@ -18,6 +18,18 @@ scrape_configs:
       - targets: ['otel-collector:8888']
 
   # PostgreSQL exporter (if deployed)
+  # The API's own metrics: request rate, latency and error counts, plus the
+  # eprint and database counters. Nothing scraped these before — the endpoint
+  # did not exist, and the only exposure was an admin-authenticated XRPC method
+  # returning JSON that Prometheus can neither authenticate against nor parse.
+  #
+  # Scraped over the compose network, so it never traverses Traefik and needs no
+  # credential; the public routers deny this path.
+  - job_name: 'chive-api'
+    metrics_path: /metrics
+    static_configs:
+      - targets: ['chive-api:3000']
+
   - job_name: 'postgres'
     static_configs:
       - targets: ['postgres-exporter:9187']
