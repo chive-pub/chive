@@ -1,5 +1,23 @@
 # Kubernetes Deployment
 
+> **Status: these manifests are not the deployment path in use.**
+>
+> Chive deploys to a single host with docker-compose over SSH (`.github/workflows/deploy-app.yml`
+> and `docker/docker-compose.prod.yml`). Nothing in CI or the deploy workflow applies these
+> manifests, and no cluster is known to run them, so they are not exercised by any pipeline —
+> which is how their image references came to be unpullable in every environment.
+>
+> What was fixed (CI-9): the manifests referred to the bare names `chive` and `chive-frontend`,
+> which resolve against Docker Hub, while CI publishes to `ghcr.io/chive-pub/chive`. Overlays set
+> only `newTag`, never `newName`. The base tag was `latest`, which CI never produces — it tags
+> `type=sha` and `type=ref,event=branch`. Names and tags now match what CI actually builds.
+>
+> **Still blocking a real Kubernetes deploy:** `chive-frontend` is not published anywhere. The
+> production deploy builds the web image on the server from `web/Dockerfile` and never pushes it,
+> so there is no registry copy to pull. Deploying the frontend to a cluster requires adding a
+> build-and-push step for it in CI first. That is a deliberate piece of work, not a config tweak,
+> and it is not done here.
+
 Kubernetes infrastructure for deploying Chive in production.
 
 ## Directory Structure

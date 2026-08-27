@@ -14,8 +14,10 @@ commonLabels:
 # Override images with staging tags
 images:
   - name: chive
+    newName: ghcr.io/chive-pub/chive
     newTag: staging
   - name: chive-frontend
+    newName: ghcr.io/chive-pub/chive-frontend
     newTag: staging
 
 patches:
