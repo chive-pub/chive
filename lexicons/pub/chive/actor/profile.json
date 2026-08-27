@@ -33,7 +33,7 @@
     "main": {
       "type": "record",
       "description": "Chive-specific author profile",
-      "key": "self",
+      "key": "literal:self",
       "record": {
         "type": "object",
         "properties": {

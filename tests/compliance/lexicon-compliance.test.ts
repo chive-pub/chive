@@ -188,14 +188,28 @@ describe('Lexicon ATProto Compliance', () => {
     }
   });
 
-  it('all records use tid, self, or any keys (not auto)', () => {
+  it('all records use a record key type the Lexicon spec defines', () => {
+    // The spec admits exactly four forms: `tid`, `nsid`, `any`, and
+    // `literal:<value>`. A bare `self` is a common transcription of
+    // `literal:self` and appears nowhere in the official lexicons, so a strict
+    // validator has no rule to apply to it.
+    const isSpecKey = (key: unknown): boolean =>
+      typeof key === 'string' &&
+      (key === 'tid' || key === 'nsid' || key === 'any' || /^literal:.+$/.test(key));
+
     for (const schema of schemas) {
+      // Third-party lexicons are mirrored, not authored here: Chive indexes
+      // whatever their owners publish and cannot unilaterally correct them.
+      if (!schema.id.startsWith('pub.chive.')) continue;
+
       for (const def of Object.values(schema.defs)) {
         const recordDef = def as RecordDef;
         if (recordDef.type === 'record') {
           expect(recordDef.key).toBeDefined();
-          expect(['tid', 'self', 'any']).toContain(recordDef.key);
-          expect(recordDef.key).not.toBe('auto');
+          expect(
+            isSpecKey(recordDef.key),
+            `${schema.id} declares key "${String(recordDef.key)}"`
+          ).toBe(true);
         }
       }
     }
