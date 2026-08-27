@@ -41,6 +41,20 @@ describe('security scanning workflow', () => {
     expect(read(path)).toMatch(pattern);
   });
 
+  // A tag that does not exist fails at "Set up job", before any step runs, so
+  // the workflow reports a red check with no scan output to explain it. The
+  // first version of this file pinned `aquasecurity/trivy-action@0.28.0`, which
+  // is neither a real release nor the right tag format — the action's releases
+  // are v-prefixed.
+  it('pins third-party actions to v-prefixed release tags', () => {
+    const contents = read(path);
+    const thirdParty = [...contents.matchAll(/uses:\s+(?!\.\/)([\w-]+\/[\w./-]+)@(\S+)/g)];
+    expect(thirdParty.length).toBeGreaterThan(0);
+    for (const [, action, ref] of thirdParty) {
+      expect(ref, `${action ?? ''} is pinned to ${ref ?? ''}`).toMatch(/^v\d+/);
+    }
+  });
+
   it('grants the permission needed to publish findings', () => {
     expect(read(path)).toMatch(/security-events:\s*write/);
   });
