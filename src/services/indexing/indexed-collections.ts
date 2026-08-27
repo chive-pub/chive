@@ -19,6 +19,17 @@
  * "indexed". A test asserts the two agree, so adding a `case` without adding it
  * here fails rather than silently reintroducing the divergence.
  *
+ * The PDS scanner now derives its backfill list from here too, so a repository
+ * scan covers exactly what the firehose covers. It had its own copy, which had
+ * drifted in both directions: it scanned `pub.chive.review.entityLink`, which
+ * the processor does not index, and missed both `collaboration` collections, so
+ * a backfill could never recover a co-author invitation.
+ *
+ * `pub.chive.eprint.tag` used to appear here. There is no such lexicon — the
+ * record type is `pub.chive.eprint.userTag`, and the processor keeps a
+ * fall-through case for the old name. Listing it here let `sync.indexRecord`
+ * accept a manual index request for a collection with no schema at all.
+ *
  * The PDS scanner's governance subset is deliberately out of scope here; it is
  * owned separately (G-04).
  *
@@ -42,7 +53,6 @@ export const INDEXED_COLLECTIONS: readonly string[] = [
   'pub.chive.eprint.citation',
   'pub.chive.eprint.relatedWork',
   'pub.chive.eprint.submission',
-  'pub.chive.eprint.tag',
   'pub.chive.eprint.userTag',
   'pub.chive.eprint.version',
   'pub.chive.graph.edge',

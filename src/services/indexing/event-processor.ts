@@ -1059,7 +1059,6 @@ async function processRecord(
       return success();
     }
 
-    case 'pub.chive.eprint.tag':
     case 'pub.chive.eprint.userTag': {
       logger.debug('Processing tag', { action, uri });
 
