@@ -11,7 +11,6 @@
 import { vi } from 'vitest';
 
 import type { ServerConfig } from '@/api/server.js';
-import type { BlobProxyService } from '@/services/blob-proxy/proxy-service.js';
 import type { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '@/services/metrics/metrics-service.js';
 import { NoOpRelevanceLogger } from '@/services/search/relevance-logger.js';
@@ -171,16 +170,6 @@ export function createMockGraphService(): KnowledgeGraphService {
       total: 0,
     }),
   } as unknown as KnowledgeGraphService;
-}
-
-/**
- * Creates a mock blob proxy service.
- */
-export function createMockBlobProxyService(): BlobProxyService {
-  return {
-    getProxiedBlobUrl: vi.fn().mockResolvedValue('https://cdn.chive.example.com/blob/xyz'),
-    streamBlob: vi.fn().mockResolvedValue(null),
-  } as unknown as BlobProxyService;
 }
 
 /**

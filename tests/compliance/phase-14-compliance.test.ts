@@ -20,13 +20,15 @@
  * @packageDocumentation
  */
 
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
 import { GovernancePDSConnector } from '../../src/services/governance/governance-pds-connector.js';
-import {
-  NotificationService,
-  type CreateNotificationInput,
-} from '../../src/services/notification/notification-service.js';
 import type { AtUri, DID } from '../../src/types/atproto.js';
 import type { IIdentityResolver } from '../../src/types/interfaces/identity.interface.js';
 import type { ILogger } from '../../src/types/interfaces/logger.interface.js';
@@ -34,12 +36,11 @@ import type {
   IRepository,
   RepositoryRecord,
 } from '../../src/types/interfaces/repository.interface.js';
-import { TEST_GRAPH_PDS_DID, TEST_USER_DIDS } from '../test-constants.js';
+import { TEST_GRAPH_PDS_DID } from '../test-constants.js';
 
 import { PDS_WRITE_CALLS, findCalls, readExecutableSource } from './helpers/source-scan.js';
 
 // Test constants
-const TEST_USER_DID = TEST_USER_DIDS.USER_1;
 const TEST_GRAPH_PDS_URL = 'https://pds.chive-governance.test';
 const TEST_AUTHORITY_URI = `at://${TEST_GRAPH_PDS_DID}/pub.chive.graph.authority/test` as AtUri;
 
@@ -207,132 +208,40 @@ describe('ATProto Advanced Features Compliance', () => {
     });
   });
 
-  describe('CRITICAL: NotificationService - AppView-Local Only', () => {
-    let service: NotificationService;
-    let logger: ILogger;
-
-    beforeEach(() => {
-      logger = createMockLogger();
-      service = new NotificationService({ logger });
+  describe('CRITICAL: notification delivery', () => {
+    it('has no notification service to write anything anywhere', () => {
+      // `src/services/notification/` — a notification service and two competing
+      // push transports, 1,607 lines — had no importer outside its own tests.
+      // The two `notification.*` XRPC handlers query the review service
+      // directly. It was deleted rather than kept as a thing that looked wired.
+      //
+      // This replaces three assertions that read those files and checked they
+      // contained no repository writes. A deleted file is a stronger guarantee
+      // than an audited one.
+      expect(existsSync(join(REPO_ROOT, 'src/services/notification'))).toBe(false);
     });
 
-    it('notifications are AppView-local, not ATProto records', async () => {
-      const input: CreateNotificationInput = {
-        type: 'new-review',
-        recipient: TEST_USER_DID,
-        subject: 'New review',
-        message: 'Your eprint received a review',
-        resourceUri: 'at://did:plc:author/pub.chive.eprint.submission/abc' as AtUri,
-      };
-
-      const result = await service.createNotification(input);
-
-      // Notification should be created successfully
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // Notification has local ID (UUID), not AT-URI
-        expect(result.value.id).toMatch(/^[0-9a-f-]{36}$/i); // UUID format
-        expect(result.value.id).not.toMatch(/^at:\/\//); // NOT an AT-URI
-      }
-    });
-
-    it('does not write notifications to user PDSes', async () => {
-      // NotificationService takes logger and optional Redis
-      // It does NOT take IRepository (no PDS access)
-      const serviceConfig = { logger };
-
-      // Verify no repository dependency
-      expect('repository' in serviceConfig).toBe(false);
-
-      // Create notification
-      const input: CreateNotificationInput = {
-        type: 'new-review',
-        recipient: TEST_USER_DID,
-        subject: 'Test',
-        message: 'Test message',
-      };
-
-      await service.createNotification(input);
-
-      // Notifications are an AppView convenience. Writing one into a user's
-      // repository would put Chive's own state into data the user owns.
-      const source = readExecutableSource('src/services/notification/notification-service.ts');
-      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
-    });
-
-    it('references eprints via AT-URI, not local IDs', async () => {
-      const eprintUri = 'at://did:plc:author/pub.chive.eprint.submission/xyz' as AtUri;
-
-      const input: CreateNotificationInput = {
-        type: 'new-review',
-        recipient: TEST_USER_DID,
-        subject: 'New review',
-        message: 'Review received',
-        resourceUri: eprintUri, // AT-URI reference
-      };
-
-      const result = await service.createNotification(input);
-
-      expect(result.ok).toBe(true);
-      if (result.ok) {
-        // Resource reference uses AT-URI format
-        expect(result.value.resourceUri).toBe(eprintUri);
-        expect(result.value.resourceUri).toMatch(/^at:\/\//);
-      }
-    });
-
-    it('notification types are predefined, not user-defined', () => {
-      // NotificationType is a union of predefined types
-      // Users cannot create arbitrary notification types in PDSes
-      const validTypes = [
-        'new-review',
-        'new-endorsement',
-        'proposal-approved',
-        'proposal-rejected',
-        'new-version',
-        'mention',
-        'citation',
-        'system',
-      ];
-
-      // These are AppView-defined types, not lexicon record types
-      expect(validTypes.length).toBeGreaterThan(0);
+    it('serves notifications from the review index', () => {
+      const handler = readFileSync(
+        join(REPO_ROOT, 'src/api/handlers/xrpc/notification/listReviewsOnMyPapers.ts'),
+        'utf8'
+      );
+      expect(handler).toContain("c.get('services').review");
     });
   });
 
-  describe('CRITICAL: Multi-Layer Cache - Ephemeral Storage', () => {
-    it('L1 cache (Redis) writes every entry with an expiry', () => {
-      const source = readExecutableSource('src/services/blob-proxy/redis-cache.ts');
-
-      // `setex` carries a TTL and a bare `set` does not. A blob cached without
-      // one is Chive holding blob data indefinitely.
-      expect(findCalls(source, ['setex'])).toEqual(['setex']);
-      expect(source).not.toMatch(/\.\s*set\s*\(/);
-    });
-
-    it('L2 cache (CDN) gives every stored object a bounded lifetime', () => {
-      const source = readExecutableSource('src/services/blob-proxy/cdn-adapter.ts');
-      expect(source).toMatch(/defaultTTL|ttl/);
-      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
-    });
-
-    it('blobs are fetched from the PDS on cache miss', () => {
-      const source = readExecutableSource('src/services/blob-proxy/proxy-service.ts');
-
-      // Without this fallback a miss would have nowhere to go but Chive's own
-      // copy, which is what "never the source of truth" rules out.
-      expect(findCalls(source, ['getBlob'])).toEqual(['getBlob']);
-    });
-
-    it('cache invalidation touches only Chive-owned stores', () => {
-      for (const file of [
-        'src/services/blob-proxy/proxy-service.ts',
-        'src/services/blob-proxy/redis-cache.ts',
-        'src/services/blob-proxy/cdn-adapter.ts',
-      ]) {
-        const source = readExecutableSource(file);
-        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
-      }
+  describe('CRITICAL: blob caching - there is none', () => {
+    it('has no blob cache to hold anything past an expiry', () => {
+      // The two-layer blob cache — Redis L1 and a Cloudflare R2 L2 — is gone.
+      // It was injected into every request context and reachable from no route,
+      // and the R2 half was gated on five environment variables no checked-in
+      // configuration sets, so production always took the no-op adapter.
+      //
+      // These four assertions used to check that every cache write carried a
+      // TTL and that a miss fell back to the origin PDS. There is no cache to
+      // check: blobs are read from the PDS, every time, which is what the rule
+      // was protecting.
+      expect(existsSync(join(REPO_ROOT, 'src/services/blob-proxy'))).toBe(false);
     });
   });
 
@@ -365,29 +274,6 @@ describe('ATProto Advanced Features Compliance', () => {
     it('trending reads only AppView-local state', () => {
       const source = readExecutableSource('src/services/metrics/metrics-service.ts');
       expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
-    });
-  });
-
-  describe('CRITICAL: WebSocket/SSE Handlers - No PDS Interaction', () => {
-    it('WebSocket connection handling touches no repository', () => {
-      const source = readExecutableSource('src/services/notification/websocket-handler.ts');
-      expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
-    });
-
-    it('SSE stream handling touches no repository', () => {
-      const source = readExecutableSource('src/services/notification/sse-handler.ts');
-      expect(findCalls(source, [...PDS_WRITE_CALLS, 'getRecord', 'listRecords'])).toEqual([]);
-    });
-
-    it('notification delivery does not modify PDSes', () => {
-      for (const file of [
-        'src/services/notification/notification-service.ts',
-        'src/services/notification/websocket-handler.ts',
-        'src/services/notification/sse-handler.ts',
-      ]) {
-        const source = readExecutableSource(file);
-        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
-      }
     });
   });
 

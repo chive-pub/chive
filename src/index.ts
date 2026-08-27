@@ -48,11 +48,6 @@ import { AdminService } from './services/admin/admin-service.js';
 import { BackfillManager } from './services/admin/backfill-manager.js';
 import { AnnotationService } from './services/annotation/annotation-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
-import { CDNAdapter } from './services/blob-proxy/cdn-adapter.js';
-import { CIDVerifier } from './services/blob-proxy/cid-verifier.js';
-import { BlobProxyService, type BlobFetchResult } from './services/blob-proxy/proxy-service.js';
-import { RedisCache } from './services/blob-proxy/redis-cache.js';
-import { RequestCoalescer } from './services/blob-proxy/request-coalescer.js';
 import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
@@ -133,13 +128,6 @@ interface EnvConfig {
   readonly jwtSecret: string;
   readonly sessionSecret: string;
 
-  // Cloudflare R2 / CDN (optional; blob proxy will skip CDN if not configured)
-  readonly r2Endpoint?: string;
-  readonly r2Bucket?: string;
-  readonly r2AccessKeyId?: string;
-  readonly r2SecretAccessKey?: string;
-  readonly cdnBaseUrl?: string;
-
   // PLC Directory
   readonly plcDirectoryUrl: string;
 
@@ -198,13 +186,6 @@ function loadConfig(): EnvConfig {
     // Security
     jwtSecret: process.env.JWT_SECRET ?? 'dev-jwt-secret-not-for-production',
     sessionSecret: process.env.SESSION_SECRET ?? 'dev-session-secret-not-for-production',
-
-    // Cloudflare R2 / CDN (optional)
-    r2Endpoint: process.env.R2_ENDPOINT,
-    r2Bucket: process.env.R2_BUCKET,
-    r2AccessKeyId: process.env.R2_ACCESS_KEY_ID,
-    r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    cdnBaseUrl: process.env.CDN_BASE_URL,
 
     // PLC Directory
     plcDirectoryUrl: process.env.PLC_DIRECTORY_URL ?? 'https://plc.directory',
@@ -368,26 +349,6 @@ function createServices(
     },
   });
 
-  // Create blob proxy dependencies
-  const redisCache = new RedisCache({
-    redis,
-    defaultTTL: 3600, // 1 hour
-    beta: 1.0,
-    maxBlobSize: 10 * 1024 * 1024, // 10MB
-    keyPrefix: 'chive:blob:',
-    logger,
-  });
-
-  const cidVerifier = new CIDVerifier({ logger });
-
-  const coalescer = new RequestCoalescer<BlobFetchResult>({
-    maxWaitTime: 30000, // 30 seconds
-    logger,
-  });
-
-  // Create CDN adapter (optional; only if R2 is configured)
-  const cdnAdapter = createCDNAdapter(config, logger);
-
   // Create tag manager early so it can be used by EprintService for keyword-to-tag indexing
   const tagManager = new TagManager({
     connection: neo4jConnection,
@@ -420,17 +381,6 @@ function createServices(
   const graphService = new KnowledgeGraphService({
     graph: graphAdapter,
     storage: storageAdapter,
-    logger,
-  });
-
-  const blobProxyService = new BlobProxyService({
-    repository,
-    identity: identityResolver,
-    redisCache,
-    cdnAdapter,
-    cidVerifier,
-    coalescer,
-    resiliencePolicy: pdsResiliencePolicy,
     logger,
   });
 
@@ -611,7 +561,6 @@ function createServices(
     searchService,
     metricsService,
     graphService,
-    blobProxyService,
     reviewService,
     annotationService,
     tagManager,
@@ -651,67 +600,6 @@ function createServices(
     serviceDid: config.serviceDid,
     plcDirectoryUrl: config.plcDirectoryUrl,
   };
-}
-
-/**
- * Creates CDN adapter if R2 is configured.
- *
- * @remarks
- * Returns a minimal no-op adapter if R2 is not configured. This allows the
- * blob proxy service to function without CDN caching in development.
- */
-function createCDNAdapter(config: EnvConfig, logger: PinoLogger): CDNAdapter {
-  if (
-    config.r2Endpoint &&
-    config.r2Bucket &&
-    config.r2AccessKeyId &&
-    config.r2SecretAccessKey &&
-    config.cdnBaseUrl
-  ) {
-    logger.info('Initializing CDN adapter with Cloudflare R2');
-    return new CDNAdapter({
-      endpoint: config.r2Endpoint,
-      bucket: config.r2Bucket,
-      accessKeyId: config.r2AccessKeyId,
-      secretAccessKey: config.r2SecretAccessKey,
-      cdnBaseURL: config.cdnBaseUrl,
-      defaultTTL: 86400, // 24 hours
-      maxBlobSize: 100 * 1024 * 1024, // 100MB
-      logger,
-    });
-  }
-
-  // Return no-op CDN adapter for development
-  logger.warn('CDN not configured - blob proxy will skip L2 caching');
-  return createNoOpCDNAdapter();
-}
-
-/**
- * Creates a no-op CDN adapter for development without R2.
- *
- * @remarks
- * Uses BLOB_BASE_URL environment variable if set, otherwise falls back to
- * a development-mode URL pattern that indicates blobs should be fetched
- * directly from the user's PDS.
- */
-function createNoOpCDNAdapter(): CDNAdapter {
-  const blobBaseUrl = process.env.BLOB_BASE_URL ?? process.env.CDN_BASE_URL;
-
-  // Create a minimal adapter that always misses
-  return {
-    get: () => Promise.resolve(null),
-    set: () => Promise.resolve({ ok: true, value: undefined }),
-    has: () => Promise.resolve(false),
-    delete: () => Promise.resolve({ ok: true, value: undefined }),
-    getPublicURL: (cid: string) => {
-      if (blobBaseUrl) {
-        return `${blobBaseUrl}/blobs/${cid}`;
-      }
-      // Development fallback: indicate blob should be fetched from PDS
-      // This URL signals to clients that they should use the blob proxy endpoint
-      return `/api/v1/blobs/${cid}`;
-    },
-  } as unknown as CDNAdapter;
 }
 
 /**
