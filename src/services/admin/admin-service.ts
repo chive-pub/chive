@@ -1199,7 +1199,11 @@ export class AdminService {
           dataParams
         ),
         this.pool.query<{ count: number }>(
-          `SELECT COUNT(*)::int as count FROM governance_audit_log ${whereClause}`,
+          // Aliased `g` because `whereClause` is written against that alias and
+          // is shared with the data query above. Without it, any call that
+          // filtered by actor failed with "missing FROM-clause entry for table
+          // g" — a second way this endpoint could not return a row.
+          `SELECT COUNT(*)::int as count FROM governance_audit_log g ${whereClause}`,
           params
         ),
       ]);
@@ -1218,9 +1222,66 @@ export class AdminService {
       }));
 
       return { entries, total: countResult.rows[0]?.count ?? 0 };
-    } catch {
-      this.logger.warn('governance_audit_log table not available; returning empty result');
-      return { entries: [], total: 0 };
+    } catch (error) {
+      // The message used to assert the table was missing, and swallowed the
+      // error. It was not the table: the query selected `target_did` and
+      // `ip_address`, which did not exist, so every call failed and the
+      // endpoint reported an empty audit log — while sending anyone who
+      // investigated to look for a table that was there all along.
+      this.logger.error(
+        'Failed to read the governance audit log',
+        error instanceof Error ? error : undefined
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Record an administrative action in the governance audit log.
+   *
+   * @param entry - What happened, and who did it
+   *
+   * @remarks
+   * Role grants and content deletions used to be written to Redis alone — a
+   * `SET` under an assignment key, and a pub/sub publish nobody subscribed to —
+   * so the audit log could not show the two actions an audit log exists for.
+   *
+   * A failure here is logged and swallowed. The alternative is failing the
+   * administrative action itself because its record could not be written, which
+   * would mean an unwritable log stops moderation entirely.
+   *
+   * @public
+   */
+  async recordAuditEntry(entry: {
+    action: 'assign_role' | 'revoke_role' | 'delete_content';
+    collection: string;
+    uri: string;
+    actorDid: string;
+    targetDid?: string;
+    ipAddress?: string;
+    details: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.pool.query(
+        `INSERT INTO governance_audit_log
+           (id, action, collection, uri, editor_did, target_did, ip_address, record_snapshot)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7)`,
+        [
+          entry.action,
+          entry.collection,
+          entry.uri,
+          entry.actorDid,
+          entry.targetDid ?? null,
+          entry.ipAddress ?? null,
+          JSON.stringify(entry.details),
+        ]
+      );
+    } catch (error) {
+      this.logger.error(
+        'Failed to write an audit log entry',
+        error instanceof Error ? error : undefined,
+        { action: entry.action, actorDid: entry.actorDid }
+      );
     }
   }
 

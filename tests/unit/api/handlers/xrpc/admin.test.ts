@@ -103,6 +103,7 @@ const ADMIN_DID = TEST_USER_DIDS.ADMIN;
 const NON_ADMIN_DID = TEST_USER_DIDS.USER_1;
 
 interface MockAdminService {
+  recordAuditEntry: ReturnType<typeof vi.fn>;
   getOverview: ReturnType<typeof vi.fn>;
   getSystemHealth: ReturnType<typeof vi.fn>;
   searchUsers: ReturnType<typeof vi.fn>;
@@ -147,6 +148,7 @@ interface MockRedis {
 }
 
 const createMockAdminService = (): MockAdminService => ({
+  recordAuditEntry: vi.fn().mockResolvedValue(undefined),
   getOverview: vi.fn().mockResolvedValue({
     eprints: 10,
     authors: 5,
@@ -232,7 +234,11 @@ describe('XRPC Admin Handlers', () => {
   let mockAdminService: MockAdminService;
   let mockBackfillManager: MockBackfillManager;
   let mockRedis: MockRedis;
-  let mockContext: { get: ReturnType<typeof vi.fn>; set: ReturnType<typeof vi.fn> };
+  let mockContext: {
+    get: ReturnType<typeof vi.fn>;
+    set: ReturnType<typeof vi.fn>;
+    req: { header: ReturnType<typeof vi.fn> };
+  };
   const adminUser = { did: ADMIN_DID, handle: 'admin.test', isAdmin: true };
   const nonAdminUser = { did: NON_ADMIN_DID, handle: 'user.test', isAdmin: false };
 
@@ -334,6 +340,7 @@ describe('XRPC Admin Handlers', () => {
   function buildContext(user: typeof adminUser | typeof nonAdminUser | null): {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
+    req: { header: ReturnType<typeof vi.fn> };
   } {
     return {
       get: vi.fn((key: string) => {
@@ -366,12 +373,15 @@ describe('XRPC Admin Handlers', () => {
         }
       }),
       set: vi.fn(),
+      // Handlers read the caller's address for the audit log.
+      req: { header: vi.fn(() => undefined) },
     };
   }
 
   function buildContextWithoutAdmin(user: typeof adminUser): {
     get: ReturnType<typeof vi.fn>;
     set: ReturnType<typeof vi.fn>;
+    req: { header: ReturnType<typeof vi.fn> };
   } {
     return {
       get: vi.fn((key: string) => {
@@ -404,6 +414,8 @@ describe('XRPC Admin Handlers', () => {
         }
       }),
       set: vi.fn(),
+      // Handlers read the caller's address for the audit log.
+      req: { header: vi.fn(() => undefined) },
     };
   }
 
@@ -788,6 +800,49 @@ describe('XRPC Admin Handlers', () => {
   // =========================================================================
   // Users: revokeRole
   // =========================================================================
+  describe('administrative actions reach the audit log', () => {
+    it('records a role grant', async () => {
+      // Role grants used to be written to Redis alone, so getAuditLog could not
+      // show one of the two actions an admin audit log exists for.
+      await assignRole.handler({
+        params: undefined as never,
+        input: { did: 'did:plc:target', role: 'moderator' },
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(mockAdminService.recordAuditEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'assign_role',
+          actorDid: adminUser.did,
+          targetDid: 'did:plc:target',
+          details: { role: 'moderator' },
+        })
+      );
+    });
+
+    it('records a content deletion', async () => {
+      await deleteContent.handler({
+        params: undefined as never,
+        input: {
+          uri: 'at://did:plc:someone/pub.chive.eprint.submission/abc',
+          collection: 'pub.chive.eprint.submission',
+          reason: 'spam',
+        },
+        auth: null,
+        c: mockContext as never,
+      });
+
+      expect(mockAdminService.recordAuditEntry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          action: 'delete_content',
+          actorDid: adminUser.did,
+          uri: 'at://did:plc:someone/pub.chive.eprint.submission/abc',
+        })
+      );
+    });
+  });
+
   describe('revokeRole', () => {
     it('rejects non-admin users', async () => {
       const ctx = buildContext(nonAdminUser);
