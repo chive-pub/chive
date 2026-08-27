@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -9,10 +9,13 @@ import { toAtUri } from '@/types/atproto-validators.js';
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 function lexiconIds(dir: string, out: string[] = []): string[] {
-  for (const entry of readdirSync(dir)) {
-    const full = join(dir, entry);
-    if (statSync(full).isDirectory()) lexiconIds(full, out);
-    else if (entry.endsWith('.json')) {
+  // `withFileTypes` answers from the directory entry itself. Reading the name
+  // and then stat-ing it separately is a check-then-use on the filesystem, and
+  // CodeQL flags it as such.
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) lexiconIds(full, out);
+    else if (entry.name.endsWith('.json')) {
       const doc = JSON.parse(readFileSync(full, 'utf8')) as {
         id?: string;
         defs?: Record<string, { type?: string }>;
