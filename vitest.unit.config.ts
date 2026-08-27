@@ -2,6 +2,8 @@ import path from 'path';
 
 import { defineConfig } from 'vitest/config';
 
+import { testStackEnv } from './tests/setup/test-env.js';
+
 /**
  * Vitest configuration for unit tests only.
  *
@@ -13,6 +15,8 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
+    // Point the suite at the Docker test stack unless told otherwise.
+    env: testStackEnv(),
     globals: true,
     environment: 'node',
     // No globalSetup - unit tests should not require databases

@@ -26,6 +26,8 @@ import {
 import { createNeo4jDriver, setupNeo4j } from '../../src/storage/neo4j/setup.js';
 import { getMigrationConfig } from '../../src/storage/postgresql/config.js';
 
+import { applyTestStackDefaults } from './test-env.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '../..');
 
@@ -37,6 +39,9 @@ const rootDir = path.resolve(__dirname, '../..');
  */
 export default async function setup(): Promise<void> {
   console.log('🔧 Running global test setup...');
+
+  // Must precede getMigrationConfig(): the migration URL is built from these.
+  applyTestStackDefaults();
 
   // PostgreSQL migrations - use tsx to support TypeScript migrations
   try {
