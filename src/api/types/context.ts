@@ -36,6 +36,7 @@ import type { ContentReportService } from '../../services/moderation/content-rep
 import type { IPDSRegistry } from '../../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
+import type { ProfileHydrator } from '../../services/profile/profile-hydrator.js';
 import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
@@ -79,6 +80,7 @@ export interface ChiveServices {
   readonly discovery?: DiscoveryService;
   readonly recommendationService?: RecommendationService;
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
+  readonly profileHydrator?: ProfileHydrator;
   readonly trustedEditor?: TrustedEditorService;
   readonly governancePdsWriter?: GovernancePDSWriter;
   readonly pdsRegistry?: IPDSRegistry;

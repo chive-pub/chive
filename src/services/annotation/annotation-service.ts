@@ -16,6 +16,7 @@ import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 import { Err, Ok, type Result } from '../../types/result.js';
 import type { RecordMetadata } from '../eprint/eprint-service.js';
+import { ProfileHydrator } from '../profile/profile-hydrator.js';
 
 /**
  * Extracts DID from AT URI.
@@ -242,10 +243,21 @@ export interface AnnotationServiceOptions {
 export class AnnotationService {
   private readonly pool: Pool;
   private readonly logger: ILogger;
+  /**
+   * Shared, cached profile lookup.
+   *
+   * @remarks
+   * Constructed here rather than injected so existing callers need no change.
+   * It takes the same logger; without a cache it behaves exactly as the
+   * previous inline implementation did, so the only difference for a caller
+   * that supplies no cache is that there is now one copy of the code.
+   */
+  private readonly profileHydrator: ProfileHydrator;
 
   constructor(options: AnnotationServiceOptions) {
     this.pool = options.pool;
     this.logger = options.logger;
+    this.profileHydrator = new ProfileHydrator({ logger: options.logger });
   }
 
   /**
@@ -1039,45 +1051,14 @@ export class AnnotationService {
     dids: string[],
     result: Map<string, { handle?: string; displayName?: string; avatar?: string }>
   ): Promise<void> {
-    const batchSize = 25;
-    for (let i = 0; i < dids.length; i += batchSize) {
-      const batch = dids.slice(i, i + batchSize);
-      try {
-        const params = new URLSearchParams();
-        for (const did of batch) {
-          params.append('actors', did);
-        }
-        const response = await fetch(
-          `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
-          {
-            headers: { Accept: 'application/json' },
-            signal: AbortSignal.timeout(5000),
-          }
-        );
+    // Delegates to the shared hydrator. This method was one of two
+    // byte-identical copies — the other lived in the sibling service — and
+    // neither cached, so the same authors were re-fetched from the public
+    // appview on every request that rendered them.
+    const profiles = await this.profileHydrator.hydrate(dids as DID[]);
 
-        if (response.ok) {
-          const data = (await response.json()) as {
-            profiles: {
-              did: string;
-              handle: string;
-              displayName?: string;
-              avatar?: string;
-            }[];
-          };
-          for (const profile of data.profiles) {
-            result.set(profile.did, {
-              handle: profile.handle,
-              displayName: profile.displayName,
-              avatar: profile.avatar,
-            });
-          }
-        }
-      } catch (error) {
-        this.logger.debug('Failed to fetch Bluesky profiles', {
-          error: error instanceof Error ? error.message : String(error),
-          batchSize: batch.length,
-        });
-      }
+    for (const [did, profile] of profiles) {
+      result.set(did, profile);
     }
   }
 }

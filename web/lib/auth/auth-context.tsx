@@ -164,8 +164,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // E2E Test Mode: Check for mock session data set by Playwright auth.setup.ts
       // This enables testing without real OAuth by using localStorage-based mock sessions
       // See: https://authjs.dev/guides/testing
-      const mockSessionData = localStorage.getItem('chive_session_metadata');
-      const skipOAuth = localStorage.getItem('chive_e2e_skip_oauth');
+      //
+      // Ignored entirely in a production build. These keys are writable from a
+      // browser console, so honouring them on the live site let anyone hand
+      // themselves a session the client would then treat as authenticated —
+      // and the client sends `X-E2E-Auth-Did` on that basis. Playwright sets
+      // NEXT_PUBLIC_E2E_TEST at build time for its own runs.
+      const e2eAllowed =
+        process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_E2E_TEST === 'true';
+      const mockSessionData = e2eAllowed ? localStorage.getItem('chive_session_metadata') : null;
+      const skipOAuth = e2eAllowed ? localStorage.getItem('chive_e2e_skip_oauth') : null;
 
       if (mockSessionData) {
         // Authenticated E2E test: use mock session.

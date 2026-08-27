@@ -14,7 +14,7 @@ import type {
   OutputSchema,
   TrendingEntry,
 } from '../../../../lexicons/generated/types/pub/chive/metrics/getTrending.js';
-import type { AtUri } from '../../../../types/atproto.js';
+import type { AtUri, DID } from '../../../../types/atproto.js';
 import { expandFieldsWithNarrower } from '../../../../utils/field-expansion.js';
 import { toWireFormat } from '../../../../utils/rich-text.js';
 import { STALENESS_THRESHOLD_MS } from '../../../config.js';
@@ -28,7 +28,7 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
-    const { metrics, eprint, graph, graphAlgorithmCache } = c.get('services');
+    const { metrics, eprint, graph, graphAlgorithmCache, profileHydrator } = c.get('services');
     const logger = c.get('logger');
 
     const limit = params.limit ?? 20;
@@ -83,123 +83,115 @@ export const getTrending: XRPCMethod<QueryParams, void, OutputSchema> = {
       }));
     }
 
-    // Enrich with eprint data
-    const enrichedTrending = await Promise.all(
-      trendingEntries.map(async (entry, index) => {
-        const eprintData = await eprint.getEprint(entry.uri as AtUri);
-
-        if (!eprintData) {
-          // Skip entries where eprint is no longer indexed
-          return null;
-        }
-
-        // Extract rkey for record URL
-        const rkey = eprintData.uri.split('/').pop() ?? '';
-        // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
-        const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
-        const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
-
-        // Calculate staleness using configured threshold
-        const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
-
-        // Fetch avatars for authors
-        const avatarMap = new Map<string, { handle?: string; avatar?: string }>();
-        const authorDids = eprintData.authors
-          .filter((a) => a.did && !a.avatarUrl)
-          .map((a) => a.did)
-          .filter(Boolean) as string[];
-
-        if (authorDids.length > 0) {
-          try {
-            const params = new URLSearchParams();
-            for (const did of authorDids.slice(0, 25)) {
-              params.append('actors', did);
-            }
-            const profileResponse = await fetch(
-              `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles?${params.toString()}`,
-              {
-                headers: { Accept: 'application/json' },
-                signal: AbortSignal.timeout(5000),
-              }
-            );
-
-            if (profileResponse.ok) {
-              const data = (await profileResponse.json()) as {
-                profiles: { did: string; handle?: string; avatar?: string }[];
-              };
-              for (const profile of data.profiles) {
-                avatarMap.set(profile.did, { handle: profile.handle, avatar: profile.avatar });
-              }
-            }
-          } catch {
-            // Silently ignore avatar fetch failures
-          }
-        }
-
-        return {
-          uri: eprintData.uri,
-          cid: eprintData.cid,
-          title: eprintData.title,
-          abstract: toWireFormat(eprintData.abstract) ?? [],
-          authors: eprintData.authors.map((author) => {
-            const profile = author.did ? avatarMap.get(author.did) : undefined;
-            return {
-              did: author.did,
-              name: author.name,
-              orcid: author.orcid,
-              email: author.email,
-              order: author.order,
-              affiliations: (author.affiliations ?? []).map((aff) => ({
-                name: aff.name,
-                institutionUri: aff.institutionUri,
-                rorId: aff.rorId,
-                children: aff.children,
-              })),
-              contributions: (author.contributions ?? []).map((contrib) => ({
-                typeUri: contrib.typeUri,
-                typeId: contrib.typeId,
-                typeLabel: contrib.typeLabel,
-                degree: contrib.degree,
-              })),
-              isCorrespondingAuthor: author.isCorrespondingAuthor,
-              isHighlighted: author.isHighlighted,
-              handle: author.handle ?? profile?.handle,
-              avatarUrl: author.avatarUrl ?? profile?.avatar,
-            };
-          }),
-          submittedBy: eprintData.submittedBy,
-          paperDid: eprintData.paperDid,
-          fields: eprintData.fields?.map((f) => ({
-            id: f.id,
-            uri: f.uri,
-            label: f.label,
-            parentUri: f.parentUri,
-          })),
-          license: eprintData.license,
-          createdAt: eprintData.createdAt.toISOString(),
-          indexedAt: eprintData.indexedAt.toISOString(),
-          source: {
-            pdsEndpoint: eprintData.pdsUrl,
-            recordUrl,
-            blobUrl: undefined as string | undefined,
-            lastVerifiedAt: eprintData.indexedAt.toISOString(),
-            stale: eprintData.indexedAt.getTime() < stalenessThreshold,
-          },
-          metrics: eprintData.metrics
-            ? {
-                views: eprintData.metrics.views,
-                downloads: eprintData.metrics.downloads,
-                endorsements: eprintData.metrics.endorsements,
-              }
-            : undefined,
-          viewsInWindow: entry.score,
-          rank: index + 1,
-          // Lexicon expects velocity as integer percentage (scaled from 0-1 ratio)
-          velocity: entry.velocity !== undefined ? Math.round(entry.velocity * 100) : undefined,
-          inUserFields: undefined as boolean | undefined,
-        };
-      })
+    // One query for the page's eprints, and one profile lookup for every author
+    // across the whole page. This used to issue a `getEprint` and a separate
+    // call to the public Bluesky appview per entry — 40 network round trips for
+    // 20 entries — and its `slice(0, 25)` silently dropped authors beyond the
+    // first 25 of each eprint rather than batching them.
+    const eprintsByUri = await eprint.getEprints(
+      trendingEntries.map((entry) => entry.uri as AtUri)
     );
+
+    const authorDidsOnPage = [
+      ...new Set(
+        [...eprintsByUri.values()].flatMap((data) =>
+          (data.authors ?? [])
+            .filter((a): a is typeof a & { did: DID } => Boolean(a.did) && !a.avatarUrl)
+            .map((a) => a.did)
+        )
+      ),
+    ];
+
+    const profilesByDid = profileHydrator
+      ? await profileHydrator.hydrate(authorDidsOnPage)
+      : new Map<DID, { handle?: string; avatar?: string }>();
+
+    // Enrich with eprint data
+    // No longer async: the eprints and profiles for the whole page are already
+    // resolved above, so this is a pure mapping over data in hand.
+    const enrichedTrending = trendingEntries.map((entry, index) => {
+      const eprintData = eprintsByUri.get(entry.uri as AtUri);
+
+      if (!eprintData) {
+        // Skip entries where eprint is no longer indexed
+        return null;
+      }
+
+      // Extract rkey for record URL
+      const rkey = eprintData.uri.split('/').pop() ?? '';
+      // Determine which PDS holds the record (paper's PDS if paperDid set, otherwise submitter's)
+      const recordOwner = eprintData.paperDid ?? eprintData.submittedBy;
+      const recordUrl = `${eprintData.pdsUrl}/xrpc/com.atproto.repo.getRecord?repo=${encodeURIComponent(recordOwner)}&collection=pub.chive.eprint.submission&rkey=${rkey}`;
+
+      // Calculate staleness using configured threshold
+      const stalenessThreshold = Date.now() - STALENESS_THRESHOLD_MS;
+
+      // Profiles for this entry's authors, taken from the page-wide lookup.
+      const avatarMap = profilesByDid;
+
+      return {
+        uri: eprintData.uri,
+        cid: eprintData.cid,
+        title: eprintData.title,
+        abstract: toWireFormat(eprintData.abstract) ?? [],
+        authors: eprintData.authors.map((author) => {
+          const profile = author.did ? avatarMap.get(author.did) : undefined;
+          return {
+            did: author.did,
+            name: author.name,
+            orcid: author.orcid,
+            email: author.email,
+            order: author.order,
+            affiliations: (author.affiliations ?? []).map((aff) => ({
+              name: aff.name,
+              institutionUri: aff.institutionUri,
+              rorId: aff.rorId,
+              children: aff.children,
+            })),
+            contributions: (author.contributions ?? []).map((contrib) => ({
+              typeUri: contrib.typeUri,
+              typeId: contrib.typeId,
+              typeLabel: contrib.typeLabel,
+              degree: contrib.degree,
+            })),
+            isCorrespondingAuthor: author.isCorrespondingAuthor,
+            isHighlighted: author.isHighlighted,
+            handle: author.handle ?? profile?.handle,
+            avatarUrl: author.avatarUrl ?? profile?.avatar,
+          };
+        }),
+        submittedBy: eprintData.submittedBy,
+        paperDid: eprintData.paperDid,
+        fields: eprintData.fields?.map((f) => ({
+          id: f.id,
+          uri: f.uri,
+          label: f.label,
+          parentUri: f.parentUri,
+        })),
+        license: eprintData.license,
+        createdAt: eprintData.createdAt.toISOString(),
+        indexedAt: eprintData.indexedAt.toISOString(),
+        source: {
+          pdsEndpoint: eprintData.pdsUrl,
+          recordUrl,
+          blobUrl: undefined as string | undefined,
+          lastVerifiedAt: eprintData.indexedAt.toISOString(),
+          stale: eprintData.indexedAt.getTime() < stalenessThreshold,
+        },
+        metrics: eprintData.metrics
+          ? {
+              views: eprintData.metrics.views,
+              downloads: eprintData.metrics.downloads,
+              endorsements: eprintData.metrics.endorsements,
+            }
+          : undefined,
+        viewsInWindow: entry.score,
+        rank: index + 1,
+        // Lexicon expects velocity as integer percentage (scaled from 0-1 ratio)
+        velocity: entry.velocity !== undefined ? Math.round(entry.velocity * 100) : undefined,
+        inUserFields: undefined as boolean | undefined,
+      };
+    });
 
     // Filter out null entries and build response
     const validEntries = enrichedTrending.filter((e): e is NonNullable<typeof e> => e !== null);

@@ -432,6 +432,30 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Marks an eprint deleted without removing its row.
+   *
+   * @param uri - Eprint URI
+   * @param source - How the deletion was detected
+   * @returns Ok on success, Err when the row does not exist
+   */
+  async softDeleteEprint(
+    uri: AtUri,
+    source: 'pds_404' | 'firehose_tombstone' | 'admin'
+  ): Promise<Result<void, Error>> {
+    return this.eprintsRepo.softDelete(uri, source);
+  }
+
+  /**
+   * Lists eprints marked deleted, for reconciling derived indexes.
+   *
+   * @param limit - Maximum rows to return
+   * @returns URIs of soft-deleted eprints
+   */
+  async listDeletedEprintUris(limit?: number): Promise<readonly AtUri[]> {
+    return this.eprintsRepo.listDeletedUris(limit);
+  }
+
+  /**
    * Retrieves a single changelog entry by URI.
    *
    * @param uri - AT URI of the changelog record

@@ -370,10 +370,14 @@ describe('mapEprintToDocument', () => {
       expect(document.document_blob_ref?.size).toBe(mockBlobRef.size);
     });
 
-    it('should not include blob data by default', () => {
+    // The search document carries a BlobRef, never blob content. Chive's
+    // compliance rule is explicit that blob data is never stored, and a
+    // base64 document body in Elasticsearch would be exactly that.
+    it('carries a blob reference and no blob content', () => {
       const document = mapEprintToDocument(mockEprint, 'https://example.pds.host');
 
-      expect(document.document_base64).toBeUndefined();
+      expect(document.document_blob_ref).toBeDefined();
+      expect(document).not.toHaveProperty('document_base64');
     });
   });
 
@@ -450,14 +454,20 @@ describe('mapEprintToDocument', () => {
       expect(document.tag_count).toBe(0);
     });
 
-    it('should include document base64 from enrichment', () => {
-      const enrichment: EnrichmentData = {
+    // `EnrichmentData` used to carry a `documentBase64` field that the mapper
+    // copied into the search document. Nothing ever populated it, but the path
+    // existed and was tested, which made storing blob data in Elasticsearch a
+    // supported capability rather than an oversight. It contradicts the
+    // project's own rule that only BlobRefs are stored, so it was removed.
+    it('provides no way for enrichment to inject blob content', () => {
+      const enrichment = {
         documentBase64: 'JVBERi0xLjQKJeLjz9MK...',
-      };
+      } as unknown as EnrichmentData;
 
       const document = mapEprintToDocument(mockEprint, 'https://example.pds.host', enrichment);
 
-      expect(document.document_base64).toBe('JVBERi0xLjQKJeLjz9MK...');
+      expect(document).not.toHaveProperty('document_base64');
+      expect(JSON.stringify(document)).not.toContain('JVBERi0xLjQ');
     });
 
     it('should handle partial enrichment data', () => {

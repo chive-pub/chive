@@ -22,7 +22,12 @@ describe('trending pagination', () => {
       if (key === 'services') {
         return {
           metrics: { getTrending: getTrendingMetrics },
-          eprint: { getEprint: vi.fn().mockResolvedValue(null) },
+          eprint: {
+            getEprint: vi.fn().mockResolvedValue(null),
+            // The handler fetches the page in one call now.
+            getEprints: vi.fn().mockResolvedValue(new Map()),
+          },
+          profileHydrator: { hydrate: vi.fn().mockResolvedValue(new Map()) },
           graph: undefined,
           graphAlgorithmCache: undefined,
         };

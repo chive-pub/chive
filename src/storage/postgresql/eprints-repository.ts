@@ -697,6 +697,76 @@ export class EprintsRepository {
   }
 
   /**
+   * Marks an eprint deleted without removing its row.
+   *
+   * @param uri - Eprint URI
+   * @param source - How the deletion was detected
+   * @returns Ok on success, Err when the row does not exist
+   *
+   * @remarks
+   * Deletion used to remove the PostgreSQL row outright and then delete the
+   * Elasticsearch document on a best-effort basis. When the Elasticsearch call
+   * failed, the row was already gone — so nothing recorded that a document
+   * still needed removing, and the search index kept serving a record that no
+   * longer existed anywhere else. There was no sweep that could find it,
+   * because finding it required the row that had just been deleted.
+   *
+   * Keeping the row and stamping `deleted_at` leaves exactly that record. The
+   * soft-delete migration added the column and `deletion_source` for this, and
+   * annotations already work this way; eprints did not.
+   *
+   * @public
+   */
+  async softDelete(
+    uri: AtUri,
+    source: 'pds_404' | 'firehose_tombstone' | 'admin'
+  ): Promise<Result<void, Error>> {
+    try {
+      const result = await this.pool.query(
+        `UPDATE eprints_index
+         SET deleted_at = NOW(), deletion_source = $2
+         WHERE uri = $1 AND deleted_at IS NULL`,
+        [uri, source]
+      );
+
+      if (result.rowCount === 0) {
+        return Err(new Error(`Eprint not found or already deleted: ${uri}`));
+      }
+
+      return Ok(undefined);
+    } catch (error) {
+      return Err(
+        error instanceof Error ? error : new Error(`Failed to soft-delete eprint: ${String(error)}`)
+      );
+    }
+  }
+
+  /**
+   * Lists eprints marked deleted, for reconciling derived indexes.
+   *
+   * @param limit - Maximum rows to return
+   * @returns URIs of soft-deleted eprints, most recently deleted first
+   *
+   * @remarks
+   * Deleting from Elasticsearch is idempotent, so a sweep can simply re-issue
+   * the delete for recently removed eprints rather than tracking which ones
+   * succeeded. That avoids another column whose own writes could fail.
+   *
+   * @public
+   */
+  async listDeletedUris(limit = 500): Promise<readonly AtUri[]> {
+    const result = await this.pool.query<{ uri: string }>(
+      `SELECT uri FROM eprints_index
+       WHERE deleted_at IS NOT NULL
+       ORDER BY deleted_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+
+    return result.rows.map((row) => row.uri as AtUri);
+  }
+
+  /**
    * Deletes an eprint from the index.
    *
    * @param uri - Eprint URI

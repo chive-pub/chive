@@ -13,9 +13,11 @@ commonLabels:
 # Override images with production tags
 images:
   - name: chive
-    newTag: latest
+    newName: ghcr.io/chive-pub/chive
+    newTag: main
   - name: chive-frontend
-    newTag: latest
+    newName: ghcr.io/chive-pub/chive-frontend
+    newTag: main
 
 patches:
   # Production replicas

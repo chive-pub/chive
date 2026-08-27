@@ -40,6 +40,8 @@ const createMockStorage = () => ({
   listEprintUris: vi.fn(),
   findByExternalIds: vi.fn(),
   deleteEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  softDeleteEprint: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
+  listDeletedEprintUris: vi.fn().mockResolvedValue([]),
 });
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
@@ -680,16 +682,16 @@ describe('EprintService', () => {
       const result = await service.indexEprintDelete(uri);
 
       expect(result.ok).toBe(true);
-      expect(storage.deleteEprint).toHaveBeenCalledWith(uri);
+      expect(storage.softDeleteEprint).toHaveBeenCalledWith(uri, 'firehose_tombstone');
       expect(search.deleteDocument).toHaveBeenCalledWith(uri);
       expect(tagManager.removeAllTagsForRecord).toHaveBeenCalledWith(uri);
       expect(logger.info).toHaveBeenCalledWith('Deleted eprint from indexes', { uri });
     });
 
-    it('continues Elasticsearch deletion even if PostgreSQL fails', async () => {
+    it('continues Elasticsearch deletion even if the PostgreSQL soft-delete fails', async () => {
       const uri = 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri;
 
-      storage.deleteEprint.mockResolvedValue({
+      storage.softDeleteEprint.mockResolvedValue({
         ok: false,
         error: { message: 'Record not found' },
       });
@@ -698,7 +700,7 @@ describe('EprintService', () => {
 
       // Should still succeed overall (best-effort deletion)
       expect(result.ok).toBe(true);
-      expect(logger.warn).toHaveBeenCalledWith('PostgreSQL deletion failed', {
+      expect(logger.warn).toHaveBeenCalledWith('PostgreSQL soft-delete failed', {
         uri,
         error: 'Record not found',
       });
@@ -790,7 +792,7 @@ describe('EprintService', () => {
       const result = await serviceWithoutTags.indexEprintDelete(uri);
 
       expect(result.ok).toBe(true);
-      expect(storage.deleteEprint).toHaveBeenCalledWith(uri);
+      expect(storage.softDeleteEprint).toHaveBeenCalledWith(uri, 'firehose_tombstone');
       expect(search.deleteDocument).toHaveBeenCalledWith(uri);
       // tagManager should not be called
       expect(tagManager.removeAllTagsForRecord).not.toHaveBeenCalled();
@@ -800,7 +802,7 @@ describe('EprintService', () => {
       const uri = 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri;
 
       // Simulate unexpected error (not a normal failure result)
-      storage.deleteEprint.mockImplementation(() => {
+      storage.softDeleteEprint.mockImplementation(() => {
         throw new Error('Unexpected crash');
       });
 

@@ -101,6 +101,14 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'getEprints', args: [uris] });
       return Promise.resolve(new Map());
     }),
+    softDeleteEprint: vi.fn().mockImplementation((uri: AtUri, source: string) => {
+      operations.push({ method: 'softDeleteEprint', args: [uri, source] });
+      return Promise.resolve({ ok: true, value: undefined });
+    }),
+    listDeletedEprintUris: vi.fn().mockImplementation((limit?: number) => {
+      operations.push({ method: 'listDeletedEprintUris', args: [limit] });
+      return Promise.resolve([]);
+    }),
     getEprintsByAuthor: vi.fn().mockImplementation((author: DID) => {
       operations.push({ method: 'getEprintsByAuthor', args: [author] });
       return Promise.resolve([]);

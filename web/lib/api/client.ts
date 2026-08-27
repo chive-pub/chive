@@ -122,9 +122,30 @@ export function getApiBaseUrl(): string {
 // E2E TEST SUPPORT
 // =============================================================================
 
+/**
+ * Whether the client should send E2E test authentication headers.
+ *
+ * @remarks
+ * E2E mode makes the client send `X-E2E-Auth-Did`, which the API turns into an
+ * identity — including administrator, via `X-E2E-Auth-Admin`. It was reachable
+ * in a production build by setting one `localStorage` key, with no environment
+ * guard at all: anyone could run `localStorage.setItem('chive_e2e_skip_oauth',
+ * 'true')` in a console on the live site and have the client start sending
+ * them.
+ *
+ * The API stopped honouring those headers in production (SEC-4), so this was
+ * not by itself an escalation against the deployed backend. But a bypass that
+ * relies on the other side refusing it is not a control, and the same build is
+ * pointed at non-production APIs during development.
+ *
+ * The `localStorage` route is now gated on a non-production build. Playwright
+ * sets `NEXT_PUBLIC_E2E_TEST` for its own runs, which is a build-time value and
+ * cannot be turned on from a browser console.
+ */
 function isE2ETestMode(): boolean {
   if (typeof window === 'undefined') return false;
   if (process.env.NEXT_PUBLIC_E2E_TEST === 'true') return true;
+  if (process.env.NODE_ENV === 'production') return false;
   return localStorage.getItem('chive_e2e_skip_oauth') === 'true';
 }
 
