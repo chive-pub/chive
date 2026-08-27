@@ -28,8 +28,13 @@ WORKDIR /app
 # -----------------------------------------------------------------------------
 FROM base AS deps
 
-# Copy package files for dependency installation
-COPY package.json pnpm-lock.yaml ./
+# Copy package files for dependency installation.
+#
+# pnpm-workspace.yaml has to come along: without it pnpm treats this as a
+# single-package install, resolves differently from the lockfile that was
+# generated for the workspace, and `--frozen-lockfile` fails with
+# ERR_PNPM_OUTDATED_LOCKFILE. web/Dockerfile already copies it.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
 # Install all dependencies (including devDependencies for build)
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \

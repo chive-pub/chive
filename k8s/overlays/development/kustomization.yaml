@@ -6,7 +6,12 @@ namespace: chive-dev
 resources:
   - ../../base
 
-namePrefix: dev-
+# No namePrefix.
+#
+# Each overlay already deploys into its own namespace, so a prefix isolates
+# nothing the namespace does not. What it did do was rename every Service while
+# the addresses in the ConfigMap stayed unprefixed, so no pod could resolve its
+# dependencies.
 
 commonLabels:
   environment: development
@@ -105,13 +110,75 @@ patches:
         path: /data/LOG_LEVEL
         value: debug
 
-# Disable HPA and PDB in development
-patchesStrategicMerge:
-  - delete-hpa.yaml
-  - delete-pdb.yaml
+  # Environment name and log level.
+  #
+  # This was a `configMapGenerator` with `behavior: merge` naming a ConfigMap
+  # that exists in no base. Kustomize can only merge a generator into another
+  # generator, so `kubectl kustomize` failed outright — every overlay was
+  # unbuildable, and no workflow built one, so none of them said so.
+  # `chive-config` arrives from base as a plain resource, and a patch is how
+  # you override one.
+  - target:
+      kind: ConfigMap
+      name: chive-config
+    patch: |-
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: chive-config
+      data:
+        NODE_ENV: "development"
 
-configMapGenerator:
-  - name: chive-dev-config
-    behavior: merge
-    literals:
-      - NODE_ENV=development
+  # Drop autoscaling and disruption budgets: development runs one replica of
+  # everything, so an HPA has nothing to scale and a PDB that requires one
+  # available pod blocks every voluntary eviction — including a node drain.
+  #
+  # These were `patchesStrategicMerge` entries pointing at multi-document
+  # delete files, which is the deprecated field and the reason
+  # `kubectl kustomize` could not build this overlay at all. Expressed as
+  # `patches` they work and the deprecation goes away.
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: chive-appview-hpa
+    patch: |-
+      $patch: delete
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: chive-appview-hpa
+  - target:
+      kind: HorizontalPodAutoscaler
+      name: chive-frontend-hpa
+    patch: |-
+      $patch: delete
+      apiVersion: autoscaling/v2
+      kind: HorizontalPodAutoscaler
+      metadata:
+        name: chive-frontend-hpa
+  - target:
+      kind: PodDisruptionBudget
+      name: chive-appview-pdb
+    patch: |-
+      $patch: delete
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: chive-appview-pdb
+  - target:
+      kind: PodDisruptionBudget
+      name: chive-frontend-pdb
+    patch: |-
+      $patch: delete
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: chive-frontend-pdb
+  - target:
+      kind: PodDisruptionBudget
+      name: chive-indexer-pdb
+    patch: |-
+      $patch: delete
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: chive-indexer-pdb

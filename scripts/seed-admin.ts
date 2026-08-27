@@ -11,7 +11,10 @@
  *   pnpm tsx scripts/seed-admin.ts
  */
 
-import { createClient, type RedisClientType } from 'redis';
+// ioredis, not node-redis. Thirty modules across the service use ioredis; this
+// script was the only thing pulling node-redis in, so it was a second Redis
+// client in the production dependency tree for one script's sake.
+import { Redis } from 'ioredis';
 import { getAdminDids } from '../src/config/admin.js';
 
 const ROLE_PREFIX = 'chive:authz:roles:';
@@ -24,8 +27,7 @@ async function main(): Promise<void> {
   const adminDids = getAdminDids();
 
   console.log(`Connecting to Redis at ${redisUrl}...`);
-  const redis: RedisClientType = createClient({ url: redisUrl });
-  await redis.connect();
+  const redis = new Redis(redisUrl);
   console.log('Connected to Redis.');
 
   try {
@@ -33,7 +35,7 @@ async function main(): Promise<void> {
       const roleKey = `${ROLE_PREFIX}${did}`;
       const assignmentKey = `${ASSIGNMENT_PREFIX}${did}:admin`;
 
-      const added = await redis.sAdd(roleKey, 'admin');
+      const added = await redis.sadd(roleKey, 'admin');
       const assignment = JSON.stringify({
         role: 'admin',
         assignedAt: new Date().toISOString(),

@@ -49,12 +49,8 @@
     "linkFacet": {
       "type": "object",
       "description": "Hyperlink facet",
-      "required": ["$type", "uri"],
+      "required": ["uri"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "app.bsky.richtext.facet#link"
-        },
         "uri": {
           "type": "string",
           "format": "uri",

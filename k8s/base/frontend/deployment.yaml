@@ -35,17 +35,17 @@ spec:
               protocol: TCP
           env:
             - name: NODE_ENV
-              value: "production"
+              value: 'production'
             # API endpoint for frontend
             - name: NEXT_PUBLIC_API_URL
-              value: "http://chive-appview.chive.svc.cluster.local:3000"
+              value: 'http://chive-appview:3000'
           resources:
             requests:
-              cpu: "100m"
-              memory: "128Mi"
+              cpu: '100m'
+              memory: '128Mi'
             limits:
-              cpu: "500m"
-              memory: "512Mi"
+              cpu: '500m'
+              memory: '512Mi'
           livenessProbe:
             httpGet:
               path: /

@@ -24,14 +24,12 @@ types/
 │   ├── identity.interface.ts     # DID resolution
 │   ├── logger.interface.ts       # Structured logging
 │   ├── metrics.interface.ts      # Metrics (Prometheus)
-│   ├── mfa.interface.ts          # Multi-factor auth
 │   ├── plugin.interface.ts       # Plugin system
 │   ├── ranking.interface.ts      # Search ranking
 │   ├── repository.interface.ts   # PDS access (read-only)
 │   ├── search.interface.ts       # Search engine (Elasticsearch)
 │   ├── session.interface.ts      # Session management
 │   ├── storage.interface.ts      # Index storage (PostgreSQL)
-│   ├── webauthn.interface.ts     # WebAuthn/passkey
 │   └── zero-trust.interface.ts   # Zero trust verification
 └── models/                       # Domain models
     ├── index.ts                  # Model barrel exports

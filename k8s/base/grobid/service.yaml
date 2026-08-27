@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: grobid
+  namespace: chive
+  labels:
+    app.kubernetes.io/name: grobid
+    app.kubernetes.io/component: reference-extraction
+    app.kubernetes.io/part-of: chive
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: grobid
+  ports:
+    - name: http
+      port: 8070
+      targetPort: http
+      protocol: TCP

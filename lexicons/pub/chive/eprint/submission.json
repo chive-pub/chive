@@ -200,8 +200,7 @@
           "publicationStatusSlug": {
             "type": "ref",
             "ref": "pub.chive.defs#publicationStatus",
-            "description": "Publication status slug for display fallback",
-            "default": "preprint"
+            "description": "Publication status slug for display fallback. The Lexicon spec allows `default` only on primitive types, not on a ref, so the `default: preprint` that used to sit here was never applied — a record omitting this field got nothing, not a preprint. Removing it changes no behaviour and stops the schema promising one it does not keep; consumers supply their own fallback."
           },
           "paperTypeUri": {
             "type": "string",

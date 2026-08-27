@@ -52,8 +52,9 @@
           },
           "orcid": {
             "type": "string",
-            "description": "ORCID identifier",
-            "pattern": "^\\d{4}-\\d{4}-\\d{4}-\\d{3}[0-9X]$"
+            "description": "ORCID identifier in the form 0000-0000-0000-000X. The Lexicon spec defines no `pattern` constraint for strings, so the regular expression that used to sit here was ignored by every validator and this field accepted any string. Length is the strongest constraint the spec can express; the digit and checksum shape is enforced in application code.",
+            "minLength": 19,
+            "maxLength": 19
           },
           "affiliations": {
             "type": "array",

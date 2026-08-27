@@ -62,21 +62,30 @@ const SESSION_METADATA = {
  * For most E2E tests, we bypass OAuth and directly set session state.
  */
 setup('authenticate', async ({ page }) => {
-  // Navigate to the app first to set the correct origin for localStorage
-  await page.goto('/');
-
-  // Wait for the page to be ready
-  await page.waitForLoadState('domcontentloaded');
-
-  // Set up session metadata in localStorage
-  await page.evaluate((metadata) => {
-    localStorage.setItem('chive_session_metadata', JSON.stringify(metadata));
-    // Mark as E2E test mode to enable auth bypass in API client
-    localStorage.setItem('chive_e2e_skip_oauth', 'true');
+  // Seed the session before any page script runs.
+  //
+  // This used to navigate first and then call `page.evaluate` to write
+  // localStorage, which raced the app's own startup: the landing page
+  // redirects, `evaluate` landed mid-navigation, and the setup died with
+  // "Execution context was destroyed". A later `page.reload()` had two further
+  // failure modes — the default `waitUntil: 'load'` never resolves, because
+  // with a session present the app opens a Server-Sent Events stream and an
+  // EventSource does not complete; and with `domcontentloaded` the app's own
+  // redirect aborted the reload outright.
+  //
+  // `addInitScript` runs before page scripts on every navigation, so the app
+  // boots already holding the session and there is nothing left to race. It
+  // also removes the need to reload at all.
+  //
+  // All 509 tests in the suite depend on this project, so each of those
+  // failures skipped the entire E2E run rather than reporting anything.
+  await page.context().addInitScript((metadata) => {
+    window.localStorage.setItem('chive_session_metadata', JSON.stringify(metadata));
+    // Enables the auth bypass in the API client. The frontend refuses to honour
+    // this in production builds; see web/lib/api/e2e-bypass-guard.
+    window.localStorage.setItem('chive_e2e_skip_oauth', 'true');
   }, SESSION_METADATA);
 
-  // Set up a mock access token cookie (if needed by the app)
-  // Note: Real tokens would be httpOnly cookies set by the server
   await page.context().addCookies([
     {
       name: 'chive_auth_state',
@@ -89,11 +98,16 @@ setup('authenticate', async ({ page }) => {
     },
   ]);
 
-  // Reload to pick up the auth state
-  await page.reload();
-  await page.waitForLoadState('domcontentloaded');
+  // Boot once so anything the app normalizes at startup is captured below.
+  //
+  // `commit` resolves as soon as the navigation commits, before a client-side
+  // redirect can abort the wait; the settle after it is best-effort for the
+  // same reason, since redirecting mid-wait is the expected case here.
+  await page.goto('/', { waitUntil: 'commit' });
+  await page.waitForLoadState('domcontentloaded').catch(() => {
+    // Redirected while settling. The session is already in place.
+  });
 
-  // Save the storage state for reuse in authenticated tests
   await page.context().storageState({ path: STORAGE_STATE_PATH });
 });
 

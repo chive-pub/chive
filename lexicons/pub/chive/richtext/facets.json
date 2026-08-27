@@ -6,56 +6,28 @@
     "bold": {
       "type": "object",
       "description": "Bold text formatting facet",
-      "required": ["$type"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#bold"
-        }
-      }
+      "properties": {}
     },
     "italic": {
       "type": "object",
       "description": "Italic text formatting facet",
-      "required": ["$type"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#italic"
-        }
-      }
+      "properties": {}
     },
     "strikethrough": {
       "type": "object",
       "description": "Strikethrough text formatting facet",
-      "required": ["$type"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#strikethrough"
-        }
-      }
+      "properties": {}
     },
     "code": {
       "type": "object",
       "description": "Inline code formatting facet",
-      "required": ["$type"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#code"
-        }
-      }
+      "properties": {}
     },
     "latex": {
       "type": "object",
       "description": "LaTeX math expression facet",
-      "required": ["$type", "displayMode"],
+      "required": ["displayMode"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#latex"
-        },
         "displayMode": {
           "type": "boolean",
           "description": "True for block display ($$...$$), false for inline ($...$)"
@@ -65,12 +37,8 @@
     "heading": {
       "type": "object",
       "description": "Heading formatting facet",
-      "required": ["$type", "level"],
+      "required": ["level"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#heading"
-        },
         "level": {
           "type": "integer",
           "description": "Heading level (1-6)",
@@ -82,23 +50,12 @@
     "blockquote": {
       "type": "object",
       "description": "Blockquote formatting facet",
-      "required": ["$type"],
-      "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#blockquote"
-        }
-      }
+      "properties": {}
     },
     "codeBlock": {
       "type": "object",
       "description": "Code block formatting facet",
-      "required": ["$type"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#codeBlock"
-        },
         "language": {
           "type": "string",
           "description": "Programming language for syntax highlighting",
@@ -109,12 +66,8 @@
     "listItem": {
       "type": "object",
       "description": "List item formatting facet",
-      "required": ["$type", "listType"],
+      "required": ["listType"],
       "properties": {
-        "$type": {
-          "type": "string",
-          "const": "pub.chive.richtext.facets#listItem"
-        },
         "listType": {
           "type": "string",
           "description": "Type of list",
@@ -133,5 +86,6 @@
         }
       }
     }
-  }
+  },
+  "description": "$type is the protocol-level union discriminator; the Lexicon runtime supplies and checks it. Declaring it as an ordinary property made the code generator emit it twice and produced a duplicate-identifier error in every generated file for these defs — invisible while @ts-nocheck was applied to the whole generated tree."
 }
