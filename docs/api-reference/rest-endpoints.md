@@ -242,7 +242,7 @@ Health check endpoints for monitoring and orchestration:
 ### Liveness probe
 
 ```http
-GET /health/liveness
+GET /health
 ```
 
 Returns 200 if the service is running.
@@ -250,7 +250,7 @@ Returns 200 if the service is running.
 ### Readiness probe
 
 ```http
-GET /health/readiness
+GET /ready
 ```
 
 Returns 200 if the service is ready to handle requests. Checks database connections and cache availability.

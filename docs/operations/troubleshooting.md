@@ -11,7 +11,7 @@ Common issues and their solutions when operating Chive.
 curl -s https://api.chive.pub/health | jq
 
 # Detailed health
-curl -s https://api.chive.pub/health/ready | jq
+curl -s https://api.chive.pub/ready | jq
 ```
 
 ### Service status
