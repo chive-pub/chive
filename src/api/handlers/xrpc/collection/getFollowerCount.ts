@@ -13,7 +13,7 @@ import type {
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/collection/getFollowerCount.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import { ValidationError } from '../../../../types/errors.js';
+import { ServiceUnavailableError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /** Re-exported query parameters. */
@@ -38,7 +38,13 @@ export const getFollowerCount: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     if (!collectionService) {
-      return { encoding: 'application/json', body: { count: 0 } };
+      // The collection service is not configured. Returning an empty result
+      // is indistinguishable from a genuine empty one, so a client renders
+      // "no collections" for a feature that is switched off. 503 says which.
+      throw new ServiceUnavailableError(
+        'Collections are not configured on this instance',
+        'collection'
+      );
     }
 
     const count = await collectionService.getFollowerCount(params.uri as AtUri);

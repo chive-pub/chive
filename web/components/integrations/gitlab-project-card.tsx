@@ -62,11 +62,12 @@ export function GitLabProjectCard({ project, className }: GitLabProjectCardProps
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
           <div className="flex items-center gap-1">
             <Star className="h-4 w-4" />
-            <span>{project.stars.toLocaleString()}</span>
+            {/* Never render a placeholder count as a real one. */}
+            <span>{project.unavailable ? '—' : project.stars.toLocaleString()}</span>
           </div>
           <div className="flex items-center gap-1">
             <GitFork className="h-4 w-4" />
-            <span>{project.forks.toLocaleString()}</span>
+            <span>{project.unavailable ? '—' : project.forks.toLocaleString()}</span>
           </div>
         </div>
 

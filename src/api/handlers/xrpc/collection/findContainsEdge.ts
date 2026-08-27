@@ -15,7 +15,7 @@ import type {
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/collection/findContainsEdge.js';
 import type { AtUri } from '../../../../types/atproto.js';
-import { ValidationError } from '../../../../types/errors.js';
+import { ServiceUnavailableError, ValidationError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /** Re-exported query parameters for pub.chive.collection.findContainsEdge. */
@@ -40,7 +40,13 @@ export const findContainsEdge: XRPCMethod<QueryParams, void, OutputSchema> = {
     }
 
     if (!collectionService) {
-      return { encoding: 'application/json', body: { found: false } };
+      // The collection service is not configured. Returning an empty result
+      // is indistinguishable from a genuine empty one, so a client renders
+      // "no collections" for a feature that is switched off. 503 says which.
+      throw new ServiceUnavailableError(
+        'Collections are not configured on this instance',
+        'collection'
+      );
     }
 
     logger.debug('Finding contains edge', {

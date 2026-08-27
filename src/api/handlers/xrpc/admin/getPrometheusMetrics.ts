@@ -8,7 +8,7 @@
  * @public
  */
 
-import { AuthorizationError } from '../../../../types/errors.js';
+import { AuthorizationError, ServiceUnavailableError } from '../../../../types/errors.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 interface PrometheusMetricsOutput {
@@ -24,14 +24,23 @@ export const getPrometheusMetrics: XRPCMethod<void, void, PrometheusMetricsOutpu
       throw new AuthorizationError('Admin access required', 'admin');
     }
 
-    // Attempt to read from prom-client registry if available
+    // Read the prom-client registry.
+    //
+    // The catch used to be empty, so an import or registry failure returned
+    // `metrics: []` — indistinguishable from a registry with nothing in it, and
+    // silent. An administrator looking at an empty metrics page had no way to
+    // tell "nothing recorded yet" from "the metrics library failed to load".
+    const logger = c.get('logger');
     let metrics: unknown[] = [];
     try {
       const promClient = await import('prom-client');
-      const jsonMetrics = await promClient.register.getMetricsAsJSON();
-      metrics = jsonMetrics;
-    } catch {
-      // prom-client may not be configured; return empty
+      metrics = await promClient.register.getMetricsAsJSON();
+    } catch (error) {
+      logger.error(
+        'Failed to read the prom-client registry',
+        error instanceof Error ? error : undefined
+      );
+      throw new ServiceUnavailableError('Metrics registry unavailable', 'prom-client');
     }
 
     return {

@@ -509,7 +509,7 @@ describe('XRPC Collection Handlers', () => {
       expect(result.body.collections[0]?.visibility).toBe('listed');
     });
 
-    it('returns empty when no collection service is configured', async () => {
+    it('reports the feature as unconfigured rather than as empty', async () => {
       const noServiceContext = {
         get: vi.fn((key: string) => {
           switch (key) {
@@ -524,15 +524,16 @@ describe('XRPC Collection Handlers', () => {
         set: vi.fn(),
       };
 
-      const result = await listPublic.handler({
-        params: { limit: 50 },
-        input: undefined,
-        auth: null,
-        c: noServiceContext as never,
-      });
-
-      expect(result.body.collections).toEqual([]);
-      expect(result.body.total).toBe(0);
+      // An empty list is indistinguishable from a genuine empty result, so a
+      // client rendered "no collections" for a feature that is switched off.
+      await expect(
+        listPublic.handler({
+          params: { limit: 50 },
+          input: undefined,
+          auth: null,
+          c: noServiceContext as never,
+        })
+      ).rejects.toThrow(/not configured/i);
     });
 
     it('supports pagination with limit and cursor', async () => {
@@ -615,7 +616,7 @@ describe('XRPC Collection Handlers', () => {
       ).rejects.toThrow('Missing required parameter');
     });
 
-    it('returns empty when no collection service is configured', async () => {
+    it('reports the feature as unconfigured rather than as empty', async () => {
       const noServiceContext = {
         get: vi.fn((key: string) => {
           switch (key) {
@@ -630,14 +631,16 @@ describe('XRPC Collection Handlers', () => {
         set: vi.fn(),
       };
 
-      const result = await search.handler({
-        params: { query: 'test', limit: 50 },
-        input: undefined,
-        auth: null,
-        c: noServiceContext as never,
-      });
-
-      expect(result.body.collections).toEqual([]);
+      // Returning no matches would tell a searcher the query found nothing,
+      // when in fact nothing was searched.
+      await expect(
+        search.handler({
+          params: { query: 'test', limit: 50 },
+          input: undefined,
+          auth: null,
+          c: noServiceContext as never,
+        })
+      ).rejects.toThrow(/not configured/i);
     });
   });
 
@@ -813,7 +816,7 @@ describe('XRPC Collection Handlers', () => {
       ).rejects.toThrow('Missing required parameter');
     });
 
-    it('returns empty when no collection service is configured', async () => {
+    it('reports the feature as unconfigured rather than as empty', async () => {
       const noServiceContext = {
         get: vi.fn((key: string) => {
           switch (key) {
@@ -828,14 +831,14 @@ describe('XRPC Collection Handlers', () => {
         set: vi.fn(),
       };
 
-      const result = await getSubcollections.handler({
-        params: { uri: SAMPLE_COLLECTION_URI as string },
-        input: undefined,
-        auth: null,
-        c: noServiceContext as never,
-      });
-
-      expect(result.body.subcollections).toEqual([]);
+      await expect(
+        getSubcollections.handler({
+          params: { uri: SAMPLE_COLLECTION_URI as string },
+          input: undefined,
+          auth: null,
+          c: noServiceContext as never,
+        })
+      ).rejects.toThrow(/not configured/i);
     });
 
     it('passes authenticated user DID for visibility filtering', async () => {

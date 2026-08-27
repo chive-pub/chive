@@ -48,6 +48,16 @@ import type { ChiveEnv } from '../../../types/context.js';
  */
 interface GitHubIntegration {
   type: 'github';
+  /**
+   * Set when the upstream API could not be reached and the numbers below are
+   * placeholders rather than measurements.
+   *
+   * @remarks
+   * Without this, a fetch failure rendered a popular repository as "0 stars"
+   * during an outage — a wrong number presented exactly like a right one, which
+   * a reader has no way to distinguish and no reason to doubt.
+   */
+  unavailable?: boolean;
   owner: string;
   repo: string;
   url: string;
@@ -68,6 +78,16 @@ interface GitHubIntegration {
  */
 interface GitLabIntegration {
   type: 'gitlab';
+  /**
+   * Set when the upstream API could not be reached and the numbers below are
+   * placeholders rather than measurements.
+   *
+   * @remarks
+   * Without this, a fetch failure rendered a popular repository as "0 stars"
+   * during an outage — a wrong number presented exactly like a right one, which
+   * a reader has no way to distinguish and no reason to doubt.
+   */
+  unavailable?: boolean;
   pathWithNamespace: string;
   name: string;
   url: string;
@@ -87,6 +107,16 @@ interface GitLabIntegration {
  */
 interface ZenodoIntegration {
   type: 'zenodo';
+  /**
+   * Set when the upstream API could not be reached and the numbers below are
+   * placeholders rather than measurements.
+   *
+   * @remarks
+   * Without this, a fetch failure rendered a popular repository as "0 stars"
+   * during an outage — a wrong number presented exactly like a right one, which
+   * a reader has no way to distinguish and no reason to doubt.
+   */
+  unavailable?: boolean;
   doi: string;
   conceptDoi?: string;
   title: string;
@@ -409,6 +439,7 @@ async function fetchGitHubLive(
 function makeGitHubPlaceholder(owner: string, repo: string, url: string): GitHubIntegration {
   return {
     type: 'github',
+    unavailable: true,
     owner,
     repo,
     url,
@@ -502,6 +533,7 @@ async function fetchGitLabLive(
 function makeGitLabPlaceholder(path: string, url: string): GitLabIntegration {
   return {
     type: 'gitlab',
+    unavailable: true,
     pathWithNamespace: path,
     name: path.split('/')[1] ?? path,
     url,
@@ -593,6 +625,7 @@ async function fetchZenodoLive(
 function makeZenodoPlaceholder(recordId: number, url: string): ZenodoIntegration {
   return {
     type: 'zenodo',
+    unavailable: true,
     doi: `10.5281/zenodo.${recordId}`,
     title: 'Zenodo Record',
     url,

@@ -46,15 +46,34 @@ import type { AtUri, BlobRef, CID, DID, NSID, Timestamp } from './atproto.js';
  * @public
  */
 export function toAtUri(uri: string): AtUri | null {
-  // AT URI regex: at://did:method:identifier/nsid/rkey
-  const atUriPattern = /^at:\/\/did:[a-z]+:[a-zA-Z0-9._-]+\/[a-z]+(\.[a-z]+)+\/[a-zA-Z0-9._-]+$/;
-
-  if (!atUriPattern.test(uri)) {
+  if (!AT_URI_PATTERN.test(uri)) {
     return null;
   }
 
   return uri as AtUri;
 }
+
+/**
+ * `at://<did>/<nsid>/<rkey>`.
+ *
+ * @remarks
+ * The collection part used to be `[a-z]+(\.[a-z]+)+`, which is lowercase-only —
+ * so this rejected every camelCase NSID, including a large share of Chive's own
+ * collections: `pub.chive.eprint.userTag`, `pub.chive.graph.nodeProposal`,
+ * `pub.chive.collaboration.inviteAcceptance`. A validator that rejects the
+ * project's own record types is worse than none, because a caller that trusts
+ * it drops valid URIs.
+ *
+ * The grammar below follows the NSID spec: the domain authority is lowercase
+ * alphanumeric segments that may contain hyphens, and the final name segment
+ * starts with a letter and continues with letters and digits — which is exactly
+ * what admits camelCase.
+ *
+ * The record key charset also widens to the spec's `A-Za-z0-9._~:-`; `:` and `~`
+ * are legal in a key and were being rejected.
+ */
+const AT_URI_PATTERN =
+  /^at:\/\/did:[a-z]+:[a-zA-Z0-9._%:-]+\/[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+\.[a-zA-Z][a-zA-Z0-9]*\/[a-zA-Z0-9._~:-]{1,512}$/;
 
 /**
  * Reports whether a string is a well-formed `did:plc:` identifier.
