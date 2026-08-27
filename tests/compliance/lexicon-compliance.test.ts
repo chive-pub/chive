@@ -303,13 +303,15 @@ describe('Lexicon ATProto Compliance', () => {
     }
   });
 
-  it('actor profile schema uses self key', () => {
+  it('actor profile schema pins the record key to self', () => {
     const profileSchema = schemas.find((s) => s.id === 'pub.chive.actor.profile');
     expect(profileSchema).toBeDefined();
 
     const mainDef = profileSchema?.defs.main as RecordDef;
     expect(mainDef.type).toBe('record');
-    expect(mainDef.key).toBe('self');
+    // `literal:self` is the spec's way to fix a record key to one value; one
+    // account holds one profile, so any other rkey is a different record.
+    expect(mainDef.key).toBe('literal:self');
   });
 
   it('all XRPC queries have proper structure', () => {
