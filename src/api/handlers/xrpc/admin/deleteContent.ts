@@ -80,6 +80,17 @@ export const deleteContent: XRPCMethod<void, DeleteContentInput, DeleteContentOu
       })
     );
 
+    // The publish above goes to a channel with no subscriber, so it recorded
+    // nothing durable. This is the entry the audit log reads.
+    await admin.recordAuditEntry({
+      action: 'delete_content',
+      collection: input.collection,
+      uri: input.uri,
+      actorDid: user.did,
+      ipAddress: c.req.header('x-forwarded-for'),
+      details: { reason: input.reason, deleted },
+    });
+
     adminMetrics.actionsTotal.inc({ action: 'delete', target: input.collection });
 
     logger.info('Content soft-deleted by admin', {

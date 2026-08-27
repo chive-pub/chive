@@ -1363,16 +1363,16 @@ describe('AdminService', () => {
       expect(dataCall?.[1]).toContain('did:plc:editor');
     });
 
-    it('returns empty result when table does not exist', async () => {
-      mockPool.query.mockRejectedValue(new Error('relation "governance_audit_log" does not exist'));
+    it('surfaces a query failure instead of reporting an empty log', async () => {
+      // This used to assert the opposite: any error became `{ entries: [],
+      // total: 0 }` with a warning naming a missing table. The error was not a
+      // missing table — the query selected two columns that did not exist — so
+      // the endpoint reported "no audit entries" forever and the warning sent
+      // anyone investigating to look for a table that was there all along.
+      mockPool.query.mockRejectedValue(new Error('column g.target_did does not exist'));
 
-      const result = await service.getAuditLog(10, 0);
-
-      expect(result.entries).toEqual([]);
-      expect(result.total).toBe(0);
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'governance_audit_log table not available; returning empty result'
-      );
+      await expect(service.getAuditLog(10, 0)).rejects.toThrow(/target_did/);
+      expect(mockLogger.error).toHaveBeenCalled();
     });
 
     it('returns entries without actorDid filter', async () => {
