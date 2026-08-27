@@ -1,34 +1,38 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 17 record types, 81 queries, and 32 procedures across 21 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 126 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
 ## Namespace overview
 
-| Namespace                  | Purpose                                                    |
-| -------------------------- | ---------------------------------------------------------- |
-| `pub.chive.activity.*`     | Activity feed and correlation metrics                      |
-| `pub.chive.actor.*`        | User profiles and autocomplete                             |
-| `pub.chive.alpha.*`        | Alpha program enrollment                                   |
-| `pub.chive.annotation.*`   | Inline text annotations and entity links                   |
-| `pub.chive.author.*`       | Author profiles and search                                 |
-| `pub.chive.backlink.*`     | Cross-reference backlinks                                  |
-| `pub.chive.claiming.*`     | Eprint ownership claiming and coauthorship                 |
-| `pub.chive.admin.*`        | Administration, moderation, and platform management        |
-| `pub.chive.defs`           | Shared types and enum definitions                          |
-| `pub.chive.discovery.*`    | Recommendations and citation networks                      |
-| `pub.chive.endorsement.*`  | Endorsement aggregation queries                            |
-| `pub.chive.eprint.*`       | Eprint submissions, versions, citations, and related works |
-| `pub.chive.governance.*`   | Community governance and editor management                 |
-| `pub.chive.graph.*`        | Knowledge graph nodes, edges, and proposals                |
-| `pub.chive.import.*`       | External eprint import                                     |
-| `pub.chive.metrics.*`      | View counts, downloads, and trending                       |
-| `pub.chive.notification.*` | Review and endorsement notifications                       |
-| `pub.chive.review.*`       | Document-level reviews and entity links                    |
-| `pub.chive.richtext.*`     | Shared rich text definitions and facets                    |
-| `pub.chive.sync.*`         | PDS synchronization and staleness checking                 |
-| `pub.chive.tag.*`          | User-generated tags and tag search                         |
+| Namespace                   | Purpose                                                    |
+| --------------------------- | ---------------------------------------------------------- |
+| `pub.chive.activity.*`      | Activity feed and correlation metrics                      |
+| `pub.chive.actor.*`         | User profiles and autocomplete                             |
+| `pub.chive.alpha.*`         | Alpha program enrollment                                   |
+| `pub.chive.annotation.*`    | Inline text annotations and entity links                   |
+| `pub.chive.author.*`        | Author profiles and search                                 |
+| `pub.chive.backlink.*`      | Cross-reference backlinks                                  |
+| `pub.chive.collaboration.*` | Co-author invitations and acceptances                      |
+| `pub.chive.claiming.*`      | Eprint ownership claiming and coauthorship                 |
+| `pub.chive.admin.*`         | Administration, moderation, and platform management        |
+| `pub.chive.collection.*`    | Reading collections, follows, and margin annotations       |
+| `pub.chive.defs`            | Shared types and enum definitions                          |
+| `pub.chive.discovery.*`     | Recommendations and citation networks                      |
+| `pub.chive.endorsement.*`   | Endorsement aggregation queries                            |
+| `pub.chive.eprint.*`        | Eprint submissions, versions, citations, and related works |
+| `pub.chive.governance.*`    | Community governance and editor management                 |
+| `pub.chive.graph.*`         | Knowledge graph nodes, edges, and proposals                |
+| `pub.chive.import.*`        | External eprint import                                     |
+| `pub.chive.metrics.*`       | View counts, downloads, and trending                       |
+| `pub.chive.moderation.*`    | Content reports                                            |
+| `pub.chive.notification.*`  | Review and endorsement notifications                       |
+| `pub.chive.resolve.*`       | External identifier resolution (DOI, arXiv) to AT URIs     |
+| `pub.chive.review.*`        | Document-level reviews and entity links                    |
+| `pub.chive.richtext.*`      | Shared rich text definitions and facets                    |
+| `pub.chive.sync.*`          | PDS synchronization and staleness checking                 |
+| `pub.chive.tag.*`           | User-generated tags and tag search                         |
 
 ## Shared definitions (pub.chive.defs)
 

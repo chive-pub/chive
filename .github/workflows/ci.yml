@@ -41,6 +41,12 @@ jobs:
       - name: Validate Kubernetes manifests
         run: ./scripts/validate-k8s-manifests.sh
 
+      # The published API description had drifted five months from the served
+      # one — missing fifteen handlers, including the whole com.atproto.repo
+      # group — because nothing compared them.
+      - name: Check the published OpenAPI specification is current
+        run: pnpm docs:openapi --check
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
