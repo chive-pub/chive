@@ -6677,47 +6677,6 @@
         ],
         "type": "object"
       },
-      "pub.chive.eprint.listDataLinks.dataLinkView": {
-        "properties": {
-          "corpusRef": {
-            "format": "at-uri",
-            "type": "string"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "dataKind": {
-            "description": "Data kind slug, as Layers records it",
-            "maxLength": 128,
-            "type": "string"
-          },
-          "dataKindUri": {
-            "description": "Knowledge graph node for the data kind, when Layers resolved one",
-            "format": "at-uri",
-            "type": "string"
-          },
-          "description": {
-            "maxLength": 10000,
-            "type": "string"
-          },
-          "paperSection": {
-            "description": "Which part of the paper the data belongs to, such as 'Table 3'",
-            "maxLength": 256,
-            "type": "string"
-          },
-          "uri": {
-            "description": "AT-URI of the dataLink record in its author's repository",
-            "format": "at-uri",
-            "type": "string"
-          }
-        },
-        "required": [
-          "uri",
-          "dataKind"
-        ],
-        "type": "object"
-      },
       "pub.chive.eprint.listRelatedWorks.relatedWorkView": {
         "properties": {
           "createdAt": {
