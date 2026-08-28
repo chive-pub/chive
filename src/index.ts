@@ -28,6 +28,7 @@ import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { CollaborativeFilteringSyncJob } from './jobs/collaborative-filtering-sync.js';
 import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
+import { GraphAlgorithmJob, createGraphAlgorithmJobScheduler } from './jobs/graph-algorithm-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
 import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
@@ -85,6 +86,7 @@ import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
 import { GraphAlgorithmCache } from './storage/neo4j/graph-algorithm-cache.js';
+import { GraphAlgorithms } from './storage/neo4j/graph-algorithms.js';
 import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { RecommendationService } from './storage/neo4j/recommendations.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
@@ -217,6 +219,20 @@ function loadConfig(): EnvConfig {
 }
 
 /**
+ * How often the graph algorithm job recomputes communities and PageRank.
+ *
+ * @remarks
+ * Community detection over the whole knowledge graph is expensive and its
+ * results change slowly, so daily is the right order of magnitude. The job runs
+ * once immediately on start, so a fresh deployment does not serve an empty
+ * `getCommunities` for a day.
+ */
+const GRAPH_ALGORITHM_INTERVAL_MS = Number.parseInt(
+  process.env.GRAPH_ALGORITHM_INTERVAL_MS ?? String(24 * 60 * 60 * 1000),
+  10
+);
+
+/**
  * Application state for cleanup.
  */
 interface AppState {
@@ -229,6 +245,7 @@ interface AppState {
   server?: ReturnType<typeof serve>;
   importScheduler?: ImportScheduler;
   governanceSyncJob?: GovernanceSyncJob;
+  graphAlgorithmScheduler?: { start: () => void; stop: () => void };
   freshnessWorker?: FreshnessWorker;
   freshnessScanJob?: FreshnessScanJob;
   pdsScanSchedulerJob?: PDSScanSchedulerJob;
@@ -621,6 +638,10 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   }
 
   // Stop governance sync job
+  if (state.graphAlgorithmScheduler) {
+    state.graphAlgorithmScheduler.stop();
+  }
+
   if (state.governanceSyncJob) {
     state.logger.info('Stopping governance sync job...');
     state.governanceSyncJob.stop();
@@ -1070,6 +1091,35 @@ async function main(): Promise<void> {
       pdsUrl: config.graphPdsUrl,
       graphPdsDid: config.graphPdsDid,
     });
+
+    // Compute the community and PageRank results `pub.chive.graph.getCommunities`
+    // reads.
+    //
+    // The job was written, tested and never constructed. 0.9.0 built the cache
+    // the handler reads, which had never existed, and stopped there — so the
+    // endpoint went from failing on an undefined service to succeeding with an
+    // empty list, which is harder to notice. This is the producer.
+    if (serverConfig.graphAlgorithmCache) {
+      const graphAlgorithmJob = new GraphAlgorithmJob({
+        algorithms: new GraphAlgorithms(neo4jConnection),
+        cache: serverConfig.graphAlgorithmCache,
+        logger,
+      });
+      state.graphAlgorithmScheduler = createGraphAlgorithmJobScheduler(
+        graphAlgorithmJob,
+        GRAPH_ALGORITHM_INTERVAL_MS
+      );
+      state.graphAlgorithmScheduler.start();
+      logger.info('Graph algorithm job scheduled', {
+        intervalMs: GRAPH_ALGORITHM_INTERVAL_MS,
+      });
+    } else {
+      // Loudly, because the endpoint stays empty and that is now the only way
+      // it can be — which is the state this job was scheduled to end.
+      logger.warn(
+        'Graph algorithm cache is not configured; getCommunities will return an empty list'
+      );
+    }
 
     // Initialize freshness system (if enabled)
     if (config.freshnessEnabled) {
