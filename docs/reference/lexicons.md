@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 126 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 127 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 

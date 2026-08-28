@@ -19,6 +19,7 @@ import { getDiscoverySettings } from './getDiscoverySettings.js';
 import { getMyProfile } from './getMyProfile.js';
 import { getMyRoles } from './getMyRoles.js';
 import { getProfileConfig } from './getProfileConfig.js';
+import { listMutes } from './listMutes.js';
 
 // Re-export handlers
 export { autocompleteAffiliation } from './autocompleteAffiliation.js';
@@ -30,6 +31,7 @@ export { getMyProfile } from './getMyProfile.js';
 export { getMyRoles } from './getMyRoles.js';
 export { getDiscoverySettings } from './getDiscoverySettings.js';
 export { getProfileConfig } from './getProfileConfig.js';
+export { listMutes } from './listMutes.js';
 
 // Re-export types from generated lexicons for external consumers
 export type {
@@ -91,4 +93,5 @@ export const actorMethods: Record<string, XRPCMethod<any, any, any>> = {
   'pub.chive.actor.getMyProfile': getMyProfile,
   'pub.chive.actor.getMyRoles': getMyRoles,
   'pub.chive.actor.getProfileConfig': getProfileConfig,
+  'pub.chive.actor.listMutes': listMutes,
 };

@@ -1656,6 +1656,72 @@ async function processRecord(
       return success();
     }
 
+    case 'pub.chive.actor.mute': {
+      logger.debug('Processing actor mute', { action, uri });
+
+      // These records were dropped entirely before 0.11.0: the collection had
+      // no branch here, so a user's mutes never reached the index. The client
+      // reads them from the PDS directly and so has always worked; what could
+      // not work was anything server-side — a mute could not be applied in a
+      // feed, a search or a notification, because Chive did not know it
+      // existed.
+      if (action === 'delete') {
+        try {
+          await pool.query('DELETE FROM muted_authors_index WHERE uri = $1', [uri]);
+          logger.info('Deleted mute from index', { uri });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to delete mute', error, { uri });
+          return failure(
+            'Failed to delete mute',
+            false,
+            new DatabaseError('DELETE', error.message, error)
+          );
+        }
+      } else if (record) {
+        try {
+          const muteRecord = record as { subjectDid?: string; createdAt?: string };
+          const subjectDid = muteRecord.subjectDid;
+
+          if (!subjectDid) {
+            // A mute with no subject names nobody. Reject it rather than store
+            // a row that can never match an author.
+            logger.warn('Mute record has no subjectDid', { uri });
+            return failure('Mute record has no subjectDid', false);
+          }
+
+          await pool.query(
+            `INSERT INTO muted_authors_index (uri, cid, muter_did, subject_did, created_at, pds_url)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             ON CONFLICT (muter_did, subject_did)
+             DO UPDATE SET uri = EXCLUDED.uri, cid = EXCLUDED.cid,
+                           created_at = EXCLUDED.created_at, pds_url = EXCLUDED.pds_url,
+                           indexed_at = NOW()`,
+            [
+              uri,
+              metadata.cid,
+              data.repo,
+              subjectDid,
+              muteRecord.createdAt ? new Date(muteRecord.createdAt) : new Date(),
+              metadata.pdsUrl,
+            ]
+          );
+
+          logger.info('Indexed mute', { uri, subjectDid });
+        } catch (dbError) {
+          const error = dbError instanceof Error ? dbError : new Error(String(dbError));
+          logger.error('Failed to index mute', error, { uri });
+          return failure(
+            'Failed to index mute',
+            false,
+            new DatabaseError('CREATE', error.message, error)
+          );
+        }
+      }
+
+      return success();
+    }
+
     case 'pub.chive.actor.profile': {
       logger.debug('Processing actor profile', { action, uri });
 
