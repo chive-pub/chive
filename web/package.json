@@ -1,6 +1,6 @@
 {
   "name": "@chive/web",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -15,8 +15,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ct": "playwright test -c playwright-ct.config.ts",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
-    "openapi:generate": "openapi-typescript http://localhost:3001/openapi.json -o ./lib/api/schema.generated.ts"
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@atproto/api": "^0.18.3",
@@ -150,7 +149,6 @@
     "eslint-config-next": "^15.1.0",
     "jsdom": "^25.0.1",
     "msw": "^2.12.7",
-    "openapi-typescript": "^7.4.4",
     "openapi-typescript-helpers": "^0.0.15",
     "postcss": "^8.4.49",
     "storybook": "^8.4.6",

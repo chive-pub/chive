@@ -743,7 +743,7 @@ export class ReviewService {
         const parts = options.cursor.split('::');
         const timestamp = parts[0] ?? new Date().toISOString();
         const cursorUri = parts[1] ?? '';
-        query += ` AND (created_at, uri) < ($2, $3)`;
+        query += ` AND (created_at, uri) < ($${params.length + 1}, $${params.length + 2})`;
         params.push(new Date(timestamp), cursorUri);
       }
 
@@ -800,32 +800,43 @@ export class ReviewService {
    * Lists endorsements given by a specific user.
    *
    * @param endorserDid - DID of the endorser
-   * @param options - Pagination options
+   * @param options - Pagination options, optionally narrowed to one contribution type
    * @returns Paginated endorsement results
+   *
+   * @remarks
+   * `contributionType` is applied in SQL rather than by the caller. Filtering
+   * after pagination produced pages that were arbitrarily short — or empty —
+   * while `total`, `hasMore` and `cursor` all described the unfiltered set, so a
+   * client could be told there were more results, ask for them, and receive
+   * nothing, repeatedly.
    *
    * @public
    */
   async listEndorsementsByUser(
     endorserDid: DID,
-    options: PaginationOptions = {}
+    options: PaginationOptions & { contributionType?: string } = {}
   ): Promise<PaginatedResult<EndorsementView>> {
     const limit = Math.min(options.limit ?? 50, 100);
 
     try {
-      // Get total count
+      // `contributions` is a text[]; `= ANY` matches a single element.
+      const filterClause = options.contributionType ? ' AND $2 = ANY(contributions)' : '';
+      const filterParams = options.contributionType ? [options.contributionType] : [];
+
+      // Get total count, over the same filtered set the page comes from.
       const countResult = await this.pool.query<{ count: string }>(
         `SELECT COUNT(*) as count
          FROM endorsements_index
-         WHERE endorser_did = $1 AND deleted_at IS NULL`,
-        [endorserDid]
+         WHERE endorser_did = $1 AND deleted_at IS NULL${filterClause}`,
+        [endorserDid, ...filterParams]
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build query with cursor support
       let query = `SELECT uri, cid, endorser_did, eprint_uri, contributions, comment, created_at
          FROM endorsements_index
-         WHERE endorser_did = $1 AND deleted_at IS NULL`;
-      const params: unknown[] = [endorserDid];
+         WHERE endorser_did = $1 AND deleted_at IS NULL${filterClause}`;
+      const params: unknown[] = [endorserDid, ...filterParams];
 
       if (options.cursor) {
         // Cursor is the created_at timestamp + uri for stable pagination

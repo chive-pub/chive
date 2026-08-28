@@ -105,6 +105,22 @@ export const assignRole: XRPCMethod<void, AssignRoleInput, AssignRoleOutput> = {
       })
     );
 
+    // Record it where the audit log can see it. Writing the assignment to
+    // Redis alone meant `pub.chive.admin.getAuditLog` could not show role
+    // grants — one of the two actions an admin audit log exists for.
+    const admin = c.get('services').admin;
+    if (admin) {
+      await admin.recordAuditEntry({
+        action: 'assign_role',
+        collection: 'chive.admin.role',
+        uri: `did:role:${input.did}:${input.role}`,
+        actorDid: user.did,
+        targetDid: input.did,
+        ipAddress: c.req.header('x-forwarded-for'),
+        details: { role: input.role },
+      });
+    }
+
     adminMetrics.actionsTotal.inc({ action: 'assign_role', target: 'user' });
 
     const logger = c.get('logger');

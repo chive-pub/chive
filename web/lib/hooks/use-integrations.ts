@@ -7,6 +7,13 @@ import { getApiBaseUrl } from '@/lib/api/client';
  */
 export interface GitHubIntegration {
   type: 'github';
+  /**
+   * Set when the upstream API could not be reached, so the counts below are
+   * placeholders rather than measurements. Render them as unavailable, not as
+   * zero: a popular repository showing "0 stars" during an outage is a wrong
+   * number a reader has no way to distinguish from a right one.
+   */
+  unavailable?: boolean;
   owner: string;
   repo: string;
   url: string;
@@ -24,6 +31,13 @@ export interface GitHubIntegration {
  */
 export interface GitLabIntegration {
   type: 'gitlab';
+  /**
+   * Set when the upstream API could not be reached, so the counts below are
+   * placeholders rather than measurements. Render them as unavailable, not as
+   * zero: a popular repository showing "0 stars" during an outage is a wrong
+   * number a reader has no way to distinguish from a right one.
+   */
+  unavailable?: boolean;
   pathWithNamespace: string;
   name: string;
   url: string;
@@ -40,6 +54,13 @@ export interface GitLabIntegration {
  */
 export interface ZenodoIntegration {
   type: 'zenodo';
+  /**
+   * Set when the upstream API could not be reached, so the counts below are
+   * placeholders rather than measurements. Render them as unavailable, not as
+   * zero: a popular repository showing "0 stars" during an outage is a wrong
+   * number a reader has no way to distinguish from a right one.
+   */
+  unavailable?: boolean;
   doi: string;
   conceptDoi?: string;
   title: string;

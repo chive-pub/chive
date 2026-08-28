@@ -24,7 +24,6 @@ This directory contains shared utilities, hooks, API clients, and type definitio
 
 - **`client.ts`** - Typed fetch client using OpenAPI-generated types
 - **`query-client.ts`** - React Query client configuration
-- **`schema.generated.ts`** - Auto-generated OpenAPI types (DO NOT EDIT)
 - **`schema.d.ts`** - Domain type definitions
 
 ### Authentication (`auth/`)
@@ -101,7 +100,4 @@ Frontend types are auto-generated from the backend OpenAPI spec:
 pnpm dev
 
 # Regenerate types
-pnpm openapi:generate
 ```
-
-This updates `schema.generated.ts`. Never edit this file manually.

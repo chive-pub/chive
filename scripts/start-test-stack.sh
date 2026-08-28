@@ -22,6 +22,7 @@ COMPOSE_FILE="$ROOT_DIR/docker/docker-compose.yml"
 # Expected credentials (must match docker-compose.yml)
 NEO4J_PASSWORD="chive_test_password"
 PG_PASSWORD="chive_test_password"
+PG_DATABASE="chive_test"
 
 clean_start=false
 if [[ "$1" == "--clean" ]]; then
@@ -154,17 +155,26 @@ echo ""
 echo "Test stack services ready!"
 echo ""
 
-# Run database migrations
+# Run database migrations.
+#
+# The database is chive_test, matching docker-compose.yml. It used to say
+# `chive`, which does not exist in the test stack — and the `2>/dev/null || true`
+# below hid the resulting error while the next line printed "✓ Migrations
+# complete" regardless. A stack with no schema therefore reported success, and
+# the failure only surfaced later as a confusing error from whatever ran next.
 echo "Running database migrations..."
-DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive" \
+if ! DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/$PG_DATABASE" \
   pnpm exec tsx node_modules/node-pg-migrate/bin/node-pg-migrate up \
-  --migrations-dir src/storage/postgresql/migrations 2>/dev/null || true
+  --migrations-dir src/storage/postgresql/migrations; then
+  echo "✗ Migrations failed. The test stack is running but has no schema." >&2
+  exit 1
+fi
 echo "✓ Migrations complete"
 
 # Seed test data
 echo ""
 echo "Seeding test data..."
-DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive" \
+DATABASE_URL="postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/$PG_DATABASE" \
 NEO4J_PASSWORD="$NEO4J_PASSWORD" \
   "$SCRIPT_DIR/seed-test-data.sh"
 
@@ -172,7 +182,7 @@ echo ""
 echo "Test stack is ready!"
 echo ""
 echo "Connection details:"
-echo "  PostgreSQL: postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/chive"
+echo "  PostgreSQL: postgresql://chive:$PG_PASSWORD@127.0.0.1:5432/$PG_DATABASE"
 echo "  Redis:      redis://127.0.0.1:6379"
 echo "  Elasticsearch: http://127.0.0.1:9200"
 echo "  Neo4j:      bolt://127.0.0.1:7687 (neo4j/$NEO4J_PASSWORD)"

@@ -162,6 +162,10 @@ export function createXRPCRouter(
       let input: unknown = undefined;
       if (!isQueryMethod) {
         const contentType = c.req.header('content-type') ?? '';
+        const declaredEncoding =
+          def && 'input' in def ? (def.input?.encoding ?? undefined) : undefined;
+        const expectsJson = declaredEncoding?.includes('application/json') ?? false;
+
         if (contentType.includes('application/json')) {
           try {
             input = await c.req.json();
@@ -174,11 +178,23 @@ export function createXRPCRouter(
             params = decodeQueryParams(def, input as Record<string, string | string[] | undefined>);
             validateXrpcParams(lexicons, nsid, params);
           }
+        } else if (expectsJson) {
+          // A method whose lexicon declares a JSON body must be sent one.
+          //
+          // The parse and the validation used to sit together inside the
+          // content-type check, so sending any other content type skipped both:
+          // `input` stayed undefined and `validateXrpcInput` was never reached.
+          // Schema validation was effectively opt-in, and the caller chose.
+          throw new InvalidRequestError(
+            `${nsid} requires a ${declaredEncoding ?? 'application/json'} body`
+          );
+        }
 
-          // Validate input body
-          if (def) {
-            validateXrpcInput(lexicons, nsid, input);
-          }
+        // Validate whatever we ended up with — including `undefined`, so a
+        // lexicon that requires input rejects a request that omitted it rather
+        // than passing undefined to a handler that may not check.
+        if (def) {
+          validateXrpcInput(lexicons, nsid, input);
         }
       }
 

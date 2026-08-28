@@ -1655,8 +1655,16 @@ export function useCreateMarginAnnotation() {
  * @returns Mutation object for creating bookmarks
  */
 export function useCreateMarginBookmark() {
-  const queryClient = useQueryClient();
-
+  // No `queryClient` and no invalidation on purpose.
+  //
+  // `at.margin.bookmark` records are written to the user's PDS and indexed into
+  // `margin_bookmarks_index`, but no XRPC method reads that table and no hook
+  // queries it, so there is no cached list for a new bookmark to be missing
+  // from. The unused `queryClient` that used to sit here read as an oversight —
+  // an invalidation someone had forgotten to write — rather than as the absence
+  // of anything to invalidate.
+  //
+  // Whoever adds a bookmark list needs to add the invalidation with it.
   return useMutation({
     mutationFn: async (input: {
       sourceUrl: string;

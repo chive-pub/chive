@@ -33,6 +33,10 @@ resources:
   - indexer/configmap.yaml
   - indexer/pdb.yaml
 
+  # GROBID (reference extraction, consumed by the indexer)
+  - grobid/deployment.yaml
+  - grobid/service.yaml
+
   # Frontend
   - frontend/deployment.yaml
   - frontend/service.yaml

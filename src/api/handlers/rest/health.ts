@@ -113,6 +113,21 @@ interface HealthResponse {
 }
 
 /**
+ * The only failure detail `/ready` reports.
+ *
+ * @remarks
+ * The checks used to return `error.message` verbatim. A driver's message names
+ * what it could not reach — a connection string with a username, a host and
+ * port, an index name — and `/ready` is unauthenticated, rate-limit exempt, and
+ * reachable from the internet, so anyone could read Chive's internal topology
+ * by taking a datastore down or simply asking during an incident.
+ *
+ * The operator's copy is not lost: every branch already logs the real error
+ * with its stack, where it belongs.
+ */
+const CHECK_FAILED_MESSAGE = 'Check failed';
+
+/**
  * Application start time for uptime calculation.
  */
 const startTime = Date.now();
@@ -173,7 +188,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
   } catch (error) {
     checks.redis = {
       status: 'fail',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: CHECK_FAILED_MESSAGE,
     };
     overallStatus = 'unhealthy';
     logger.error('Redis health check failed', error instanceof Error ? error : undefined);
@@ -205,7 +220,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
   } catch (error) {
     checks.postgresql = {
       status: 'fail',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: CHECK_FAILED_MESSAGE,
     };
     overallStatus = overallStatus === 'healthy' ? 'degraded' : overallStatus;
     logger.warn('PostgreSQL health check failed', {
@@ -235,7 +250,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
   } catch (error) {
     checks.elasticsearch = {
       status: 'fail',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: CHECK_FAILED_MESSAGE,
     };
     overallStatus = overallStatus === 'healthy' ? 'degraded' : overallStatus;
     logger.warn('Elasticsearch health check failed', {
@@ -272,7 +287,7 @@ export async function readinessHandler(c: Context<ChiveEnv>): Promise<Response> 
   } catch (error) {
     checks.neo4j = {
       status: 'fail',
-      message: error instanceof Error ? error.message : 'Unknown error',
+      message: CHECK_FAILED_MESSAGE,
     };
     overallStatus = overallStatus === 'healthy' ? 'degraded' : overallStatus;
     logger.warn('Neo4j health check failed', {

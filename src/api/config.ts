@@ -16,11 +16,16 @@ import type { RateLimitTier } from './types/context.js';
  *
  * @remarks
  * Set DISABLE_RATE_LIMITING=true to disable rate limiting entirely.
- * This should ONLY be used for testing, never in production.
+ *
+ * Ignored when NODE_ENV is production. The comment saying this should never be
+ * set in production was the only thing enforcing it, and one stray environment
+ * variable removed every limit from a live deployment — the same shape as the
+ * E2E auth bypass that used to be honoured wherever it was set.
  *
  * @public
  */
-export const RATE_LIMITING_DISABLED = process.env.DISABLE_RATE_LIMITING === 'true';
+export const RATE_LIMITING_DISABLED =
+  process.env.DISABLE_RATE_LIMITING === 'true' && process.env.NODE_ENV !== 'production';
 
 /**
  * Rate limit configuration per tier (requests per minute).

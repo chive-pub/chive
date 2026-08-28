@@ -52,7 +52,9 @@ describe('shipped governance configuration', () => {
   });
 
   it.each(CONFIG_FILES)('%s sets a well-formed PLC DID', (file) => {
-    const match = /GRAPH_PDS_DID[=:]\s*"?(did:plc:[a-z2-7]+)"?/.exec(read(file));
+    // YAML values may be bare, single-quoted or double-quoted; Prettier
+    // normalizes the k8s ConfigMap to single quotes.
+    const match = /GRAPH_PDS_DID[=:]\s*['"]?(did:plc:[a-z2-7]+)['"]?/.exec(read(file));
     expect(match?.[1]).toBeDefined();
     expect(isPlcDid(match?.[1] ?? '')).toBe(true);
   });

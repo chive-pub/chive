@@ -133,10 +133,10 @@ pnpm openapi:generate
 curl http://localhost:3001/health
 
 # Readiness check (includes database checks)
-curl http://localhost:3001/health/ready
+curl http://localhost:3001/ready
 
 # Liveness check
-curl http://localhost:3001/health/live
+curl http://localhost:3001/health
 ```
 
 ## Scripts directory

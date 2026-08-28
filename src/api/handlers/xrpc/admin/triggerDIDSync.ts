@@ -11,6 +11,7 @@
  * @public
  */
 
+import { DIDResolver } from '../../../../auth/did/did-resolver.js';
 import type { DID } from '../../../../types/atproto.js';
 import {
   AuthorizationError,
@@ -21,45 +22,6 @@ import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 interface TriggerDIDSyncInput {
   readonly did: string;
-}
-
-/**
- * Resolves a DID to its PDS endpoint via PLC directory.
- *
- * @param did - the DID to resolve
- * @returns the PDS URL, or null if resolution fails
- */
-async function resolvePdsEndpoint(did: string): Promise<string | null> {
-  try {
-    if (did.startsWith('did:plc:')) {
-      const response = await fetch(`https://plc.directory/${did}`);
-      if (!response.ok) return null;
-      const doc = (await response.json()) as {
-        service?: { id: string; type: string; serviceEndpoint: string }[];
-      };
-      const pds = doc.service?.find(
-        (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
-      );
-      return pds?.serviceEndpoint ?? null;
-    }
-
-    if (did.startsWith('did:web:')) {
-      const domain = did.replace('did:web:', '').replace(/%3A/g, ':');
-      const response = await fetch(`https://${domain}/.well-known/did.json`);
-      if (!response.ok) return null;
-      const doc = (await response.json()) as {
-        service?: { id: string; type: string; serviceEndpoint: string }[];
-      };
-      const pds = doc.service?.find(
-        (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
-      );
-      return pds?.serviceEndpoint ?? null;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 export const triggerDIDSync: XRPCMethod<void, TriggerDIDSyncInput, unknown> = {
@@ -88,10 +50,19 @@ export const triggerDIDSync: XRPCMethod<void, TriggerDIDSyncInput, unknown> = {
 
     logger.info('DID sync triggered', { operationId: operation.id, did: input.did });
 
+    // One shared resolver rather than a hand-rolled fetch.
+    //
+    // This file and sync/indexRecord.ts each carried their own
+    // `resolvePdsEndpoint`, fetching plc.directory directly with no cache, no
+    // timeout and no did:web handling beyond a string replace, while
+    // DIDResolver — built on @atproto/identity, cached in Redis — was already
+    // used elsewhere for exactly this.
+    const didResolver = new DIDResolver({ redis: c.get('redis'), logger });
+
     // Fire-and-forget: resolve DID to PDS and scan all collections for that user
     void (async () => {
       try {
-        const pdsUrl = await resolvePdsEndpoint(input.did);
+        const pdsUrl = await didResolver.getPDSEndpoint(input.did as DID);
         if (!pdsUrl) {
           await backfillManager.failOperation(
             operation.id,

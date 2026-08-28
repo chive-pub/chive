@@ -46,13 +46,19 @@ find "$SERVER_OUTPUT_DIR" -name "*.ts" -type f | while read -r file; do
   rm -f "$file.bak"
 done
 
-# Add @ts-nocheck to server files
-echo "Adding @ts-nocheck to server files..."
-find "$SERVER_OUTPUT_DIR" -name "*.ts" -type f | while read -r file; do
-  if ! grep -q "^// @ts-nocheck" "$file"; then
-    echo "// @ts-nocheck" | cat - "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-  fi
-done
+# No @ts-nocheck.
+#
+# This used to prepend `// @ts-nocheck` to every generated file, which exempted
+# the entire lexicon type surface — 436 files — from tsc. The only diagnostics
+# it was suppressing were unused-symbol ones from the generator's boilerplate;
+# with `noUnusedLocals` moved to ESLint (see tsconfig.json), nothing needs
+# suppressing and real type errors are visible again.
+#
+# Two were: `pub.chive.actor.profile` constrained `orcid` with a `pattern`,
+# which the Lexicon spec does not define, so ORCID was unvalidated; and
+# `pub.chive.eprint.submission` put a `default` on a ref, which the spec allows
+# only on primitives, so the default was never applied. Both had been hidden
+# here since the flag was added.
 
 echo "✅ Server lexicon generation complete: $SERVER_OUTPUT_DIR"
 
@@ -75,13 +81,9 @@ find "$WEB_OUTPUT_DIR" -name "*.ts" -type f | while read -r file; do
   rm -f "$file.bak"
 done
 
-# Add @ts-nocheck to web client files to suppress strict type errors
-echo "Adding @ts-nocheck to web client files..."
-find "$WEB_OUTPUT_DIR" -name "*.ts" -type f | while read -r file; do
-  if ! grep -q "^// @ts-nocheck" "$file"; then
-    echo "// @ts-nocheck" | cat - "$file" > "$file.tmp" && mv "$file.tmp" "$file"
-  fi
-done
+# No @ts-nocheck here either; see the note above the server block.
+# web/tsconfig.json does not set noUnusedLocals, and web/eslint.config ignores
+# lib/api/generated, so the generated client needs no blanket exemption.
 
 echo "✅ Web client lexicon generation complete: $WEB_OUTPUT_DIR"
 

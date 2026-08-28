@@ -52,12 +52,129 @@ const ALLOWED_PDF_DOMAINS = [
 function isAllowedDomain(url: string): boolean {
   try {
     const parsed = new URL(url);
+    // Only https. Every allowlisted host serves it, and permitting http would
+    // let a redirect downgrade the hop that carries the document.
+    if (parsed.protocol !== 'https:') return false;
     return ALLOWED_PDF_DOMAINS.some(
       (domain) => parsed.hostname === domain || parsed.hostname.endsWith(`.${domain}`)
     );
   } catch {
     return false;
   }
+}
+
+/**
+ * Largest PDF this proxy will relay, in bytes.
+ *
+ * @remarks
+ * `response.arrayBuffer()` buffers whatever the far end sends. An allowlisted
+ * host serving an endless body — or simply a very large one — put all of it in
+ * this process's heap, so a handful of concurrent requests could exhaust
+ * memory. Eprint PDFs are comfortably under this.
+ */
+const MAX_PDF_BYTES = 50 * 1024 * 1024;
+
+/**
+ * Redirect hops to follow before giving up.
+ */
+const MAX_REDIRECTS = 5;
+
+/**
+ * Fetch a PDF, re-checking the allowlist at every redirect.
+ *
+ * @param url - Allowlisted URL to fetch
+ * @returns The response for the final, still-allowlisted URL
+ *
+ * @throws ValidationError if a redirect leaves the allowlist
+ * @throws NotFoundError if the redirect chain does not terminate
+ *
+ * @remarks
+ * The allowlist used to be checked once, on the URL the caller named, while
+ * `fetch` followed redirects on its own. An allowlisted host — or anyone able
+ * to influence one — could therefore redirect the request to an address inside
+ * the cluster and have Chive fetch it and hand back the body. Following
+ * redirects by hand is what makes the allowlist apply to where the request
+ * actually ends up rather than only to where it started.
+ */
+async function fetchAllowlistedPdf(url: string): Promise<Response> {
+  let current = url;
+
+  for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
+    const response = await fetch(current, {
+      redirect: 'manual',
+      headers: {
+        'User-Agent': 'Chive/1.0 (https://chive.pub; Scholarly Publishing Platform)',
+        Accept: 'application/pdf',
+      },
+    });
+
+    if (response.status < 300 || response.status >= 400) return response;
+
+    const location = response.headers.get('location');
+    if (!location) return response;
+
+    const next = new URL(location, current).toString();
+    if (!isAllowedDomain(next)) {
+      throw new ValidationError('PDF URL redirected outside the allowed domains');
+    }
+    current = next;
+  }
+
+  throw new NotFoundError('ExternalPdf', 'Too many redirects');
+}
+
+/**
+ * Read a response body, refusing anything over {@link MAX_PDF_BYTES}.
+ *
+ * @param response - Response to drain
+ * @returns The body bytes
+ *
+ * @throws ValidationError if the body exceeds the cap
+ *
+ * @remarks
+ * `Content-Length` is checked first because it is cheap, but it is a claim by
+ * the far end and may be absent or wrong. The stream is therefore also counted
+ * as it arrives and abandoned the moment it goes over, so a server that lies
+ * about its length cannot spend more of this process's memory than one that
+ * does not.
+ */
+async function readBounded(response: Response): Promise<Uint8Array> {
+  const declared = Number.parseInt(response.headers.get('content-length') ?? '', 10);
+  if (Number.isFinite(declared) && declared > MAX_PDF_BYTES) {
+    throw new ValidationError('PDF exceeds the maximum size this proxy will relay');
+  }
+
+  const body = response.body;
+  if (!body) return new Uint8Array(0);
+
+  const reader = body.getReader() as ReadableStreamDefaultReader<Uint8Array>;
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      total += value.byteLength;
+      if (total > MAX_PDF_BYTES) {
+        await reader.cancel();
+        throw new ValidationError('PDF exceeds the maximum size this proxy will relay');
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const out = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return out;
 }
 
 /**
@@ -110,7 +227,9 @@ export async function fetchExternalPdfHandler(c: Context<ChiveEnv>): Promise<Res
       externalId,
       pdfUrl: imported.pdfUrl,
     });
-    throw new ValidationError(`PDF URL not from allowed domain: ${imported.pdfUrl}`);
+    // The URL is logged above for operators; reflecting it into the response
+    // hands an attacker a confirmation oracle for what the allowlist contains.
+    throw new ValidationError('PDF URL is not from an allowed domain');
   }
 
   logger.info('Proxying PDF fetch', {
@@ -119,13 +238,9 @@ export async function fetchExternalPdfHandler(c: Context<ChiveEnv>): Promise<Res
     pdfUrl: imported.pdfUrl,
   });
 
-  // Fetch the PDF from the external source
-  const response = await fetch(imported.pdfUrl, {
-    headers: {
-      'User-Agent': 'Chive/1.0 (https://chive.pub; Scholarly Publishing Platform)',
-      Accept: 'application/pdf',
-    },
-  });
+  // Fetch the PDF from the external source, re-checking the allowlist at each
+  // redirect rather than trusting the first URL alone.
+  const response = await fetchAllowlistedPdf(imported.pdfUrl);
 
   if (!response.ok) {
     logger.error('Failed to fetch external PDF', undefined, {
@@ -148,7 +263,7 @@ export async function fetchExternalPdfHandler(c: Context<ChiveEnv>): Promise<Res
   }
 
   // Return the PDF with appropriate headers
-  const pdfBuffer = await response.arrayBuffer();
+  const pdfBuffer = await readBounded(response);
 
   logger.info('PDF fetched successfully', {
     source,

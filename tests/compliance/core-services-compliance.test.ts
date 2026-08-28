@@ -42,6 +42,8 @@ import type { AnnotationBody } from '../../src/types/models/annotation.js';
 import type { EprintAuthor } from '../../src/types/models/author.js';
 import type { Eprint } from '../../src/types/models/eprint.js';
 
+import { PDS_WRITE_CALLS, findCalls, readExecutableSource } from './helpers/source-scan.js';
+
 /** Creates a mock rich text abstract from plain text. */
 function createMockAbstract(text: string): AnnotationBody {
   return {
@@ -555,71 +557,75 @@ describe('ATProto Core Services Compliance', () => {
   });
 
   describe('CRITICAL: MetricsService - AppView-Local Only', () => {
-    it('metrics are stored locally, not in user PDSes', () => {
-      // MetricsService stores in Redis and PostgreSQL, never in PDSes
-      // This is verified by the service implementation using Redis counters
-      // and PostgreSQL persistence, with no IRepository writes
-
-      // The service interface takes Redis and IStorageBackend
-      // Neither of these write to user PDSes
-      expect(true).toBe(true); // Interface verification
+    it('never calls a repository write method', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
 
-    it('view counts do not modify ATProto records', () => {
-      // Recording views increments Redis counters
-      // This does NOT create/update any ATProto records in user PDSes
+    it('records views into Redis and PostgreSQL rather than a repository', () => {
+      const source = readExecutableSource('src/services/metrics/metrics-service.ts');
 
-      // Metrics are AppView-specific analytics, not part of the
-      // distributed ATProto data model
-      expect(true).toBe(true); // Design verification
+      // View counts are AppView analytics, not part of the distributed data
+      // model: they belong in stores Chive owns and may rebuild at will.
+      expect(findCalls(source, ['incr', 'hincrby', 'query'])).not.toEqual([]);
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
   });
 
   describe('CRITICAL: BlobProxyService - No Authoritative Storage', () => {
-    it('cache is ephemeral (TTL-based), not permanent', () => {
-      // RedisCache uses TTL for all entries (default 1 hour)
-      // Entries expire automatically, ensuring no permanent storage
+    it('writes every cache entry with an expiry', () => {
+      const source = readExecutableSource('src/services/blob-proxy/redis-cache.ts');
 
-      // This is verified by the RedisCache.set() implementation
-      // which always calls setex (set with expiration)
-      expect(true).toBe(true); // Implementation verification
+      // `setex` carries a TTL; a bare `set` does not. A cached blob that never
+      // expires is Chive holding blob data indefinitely, which is the thing
+      // the compliance rule forbids.
+      expect(findCalls(source, ['setex'])).toEqual(['setex']);
+      expect(source).not.toMatch(/\.\s*set\s*\(/);
     });
 
-    it('blobs are fetched from PDS, not stored authoritatively', () => {
-      // BlobProxyService fetches blobs from user PDSes via IRepository.getBlob()
-      // Cached copies are temporary and served from cache when available
-      // If cache misses, always fetches from source PDS
+    it('never calls a repository write method', () => {
+      const files = [
+        'src/services/blob-proxy/proxy-service.ts',
+        'src/services/blob-proxy/redis-cache.ts',
+        'src/services/blob-proxy/cdn-adapter.ts',
+      ];
 
-      // Chive never becomes the source of truth for blobs
-      expect(true).toBe(true); // Design verification
+      for (const file of files) {
+        const source = readExecutableSource(file);
+        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
+      }
+    });
+
+    it('reaches the PDS only through the read side of the repository', () => {
+      const source = readExecutableSource('src/services/blob-proxy/proxy-service.ts');
+
+      // A cache miss must fall back to the source PDS, so the read call has to
+      // be present; its absence would mean Chive was serving blobs it had
+      // become the source of truth for.
+      expect(findCalls(source, ['getBlob'])).toEqual(['getBlob']);
     });
   });
 
   describe('CRITICAL: PDSSyncService - Read-Only PDS Access', () => {
-    it('only reads from PDS via getRecord, never writes', () => {
-      // PDSSyncService uses IRepository which only has read methods:
-      // - getRecord<T>(uri): Fetch single record
-      // - listRecords(): Iterator over records
-      // - getBlob(): Fetch blob data
+    it('the repository interface declares no write method', () => {
+      const source = readExecutableSource('src/types/interfaces/repository.interface.ts');
 
-      // IRepository interface intentionally excludes write methods:
-      // - NO createRecord
-      // - NO putRecord
-      // - NO deleteRecord
-
-      // This is enforced by the TypeScript interface definition
-      expect(true).toBe(true); // Interface verification
+      // The guarantee is structural: a caller cannot write through an
+      // interface that does not name a write. Declarations are what matter
+      // here, so this looks for the names at all, not just at call sites.
+      for (const method of PDS_WRITE_CALLS) {
+        expect(source, `${method} must not appear in IRepository`).not.toContain(method);
+      }
     });
 
-    it('staleness detection compares CIDs without modification', () => {
-      // Staleness check:
-      // 1. Read indexed CID from local storage
-      // 2. Fetch current CID from PDS via getRecord
-      // 3. Compare CIDs
-      // 4. If different, trigger re-index from firehose
+    it('the concrete repository calls no write method either', () => {
+      const source = readExecutableSource('src/atproto/repository/at-repository.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
+    });
 
-      // NO writes to PDS during staleness detection
-      expect(true).toBe(true); // Design verification
+    it('staleness detection compares CIDs without writing anywhere upstream', () => {
+      const source = readExecutableSource('src/storage/postgresql/staleness-detector.ts');
+      expect(findCalls(source, PDS_WRITE_CALLS)).toEqual([]);
     });
   });
 

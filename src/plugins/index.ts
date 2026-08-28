@@ -124,82 +124,20 @@ export type { OpenReviewPaper } from './builtin/openreview.js';
 export { PsyArxivPlugin } from './builtin/psyarxiv.js';
 export type { PsyArxivPaper } from './builtin/psyarxiv.js';
 
-// =============================================================================
-// All Builtin Plugins (for convenience)
-// =============================================================================
-
-import { ArxivPlugin } from './builtin/arxiv.js';
-import { DoiRegistrationPlugin } from './builtin/doi-registration.js';
-import { GitHubIntegrationPlugin } from './builtin/github-integration.js';
-import { LingBuzzPlugin } from './builtin/lingbuzz.js';
-import { OpenAlexPlugin } from './builtin/openalex.js';
-import { OrcidLinkingPlugin } from './builtin/orcid-linking.js';
-import { SemanticScholarPlugin } from './builtin/semantic-scholar.js';
-import { SemanticsArchivePlugin } from './builtin/semantics-archive.js';
-
 /**
- * All builtin plugin classes.
+ * There is no exported builtin-plugin registry.
  *
  * @remarks
- * Use this to instantiate all builtin plugins at once.
+ * There used to be two — `BUILTIN_PLUGINS` and `createBuiltinPlugins()` — and
+ * neither was referenced anywhere. Each listed eight of the twenty-eight
+ * plugins in `builtin/`, and a different eight from the five that
+ * `src/index.ts` actually instantiates, so the codebase carried three disagreeing
+ * answers to "which plugins are built in" and the only correct one was the one
+ * that ran.
  *
- * @example
- * ```typescript
- * import { BUILTIN_PLUGINS, PluginManager } from './plugins';
- *
- * for (const PluginClass of BUILTIN_PLUGINS) {
- *   await manager.loadBuiltinPlugin(new PluginClass());
- * }
- * ```
- *
- * @public
+ * `src/index.ts` remains the registry, and deliberately so: the plugins do not
+ * share a shape. Search-based ones are loaded on demand, scraping ones are
+ * handed to the import scheduler, and each is wrapped in its own error handling
+ * so one failing to load does not take down startup. A flat array cannot
+ * express that, which is why the arrays drifted from it.
  */
-export const BUILTIN_PLUGINS = [
-  ArxivPlugin,
-  GitHubIntegrationPlugin,
-  OrcidLinkingPlugin,
-  DoiRegistrationPlugin,
-  SemanticsArchivePlugin,
-  LingBuzzPlugin,
-  SemanticScholarPlugin,
-  OpenAlexPlugin,
-] as const;
-
-/**
- * Creates instances of all builtin plugins.
- *
- * @returns Array of builtin plugin instances
- *
- * @example
- * ```typescript
- * import { createBuiltinPlugins, PluginManager } from './plugins';
- *
- * const plugins = createBuiltinPlugins();
- * for (const plugin of plugins) {
- *   await manager.loadBuiltinPlugin(plugin);
- * }
- * ```
- *
- * @public
- */
-export function createBuiltinPlugins(): readonly [
-  ArxivPlugin,
-  GitHubIntegrationPlugin,
-  OrcidLinkingPlugin,
-  DoiRegistrationPlugin,
-  SemanticsArchivePlugin,
-  LingBuzzPlugin,
-  SemanticScholarPlugin,
-  OpenAlexPlugin,
-] {
-  return [
-    new ArxivPlugin(),
-    new GitHubIntegrationPlugin(),
-    new OrcidLinkingPlugin(),
-    new DoiRegistrationPlugin(),
-    new SemanticsArchivePlugin(),
-    new LingBuzzPlugin(),
-    new SemanticScholarPlugin(),
-    new OpenAlexPlugin(),
-  ] as const;
-}

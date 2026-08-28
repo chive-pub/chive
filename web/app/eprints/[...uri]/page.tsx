@@ -13,6 +13,7 @@ import {
   type EntityExternalId,
 } from '@/lib/metadata/entity-metadata';
 import { EntityHeadTags } from '@/lib/metadata/EntityHeadTags';
+import { absoluteUrl } from '@/lib/site/url';
 
 /**
  * Eprint detail page route parameters.
@@ -117,7 +118,7 @@ export default async function EprintPage({ params }: EprintPageProps) {
     const serverApi = createServerClient();
     const response = await serverApi.pub.chive.eprint.getSubmission({ uri: fullUri });
     const value = response.data.value as SubmissionRecord;
-    const canonicalUrl = `https://chive.pub/eprints/${encodeURIComponent(fullUri)}`;
+    const canonicalUrl = absoluteUrl(`/eprints/${encodeURIComponent(fullUri)}`);
     const externalIds: EntityExternalId[] = [];
     const publishedDoi = value.publishedVersion?.doi;
     if (publishedDoi) {

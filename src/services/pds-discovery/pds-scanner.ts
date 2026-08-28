@@ -36,6 +36,7 @@ import type {
   UserTagRecord,
   VersionRecord,
 } from '../indexing/event-processor.js';
+import { INDEXED_COLLECTIONS } from '../indexing/indexed-collections.js';
 import type { ReviewService } from '../review/review-service.js';
 
 import type { IPDSRegistry, ScanResult } from './pds-registry.js';
@@ -338,27 +339,12 @@ export class PDSScanner {
    * @returns Number of records indexed
    */
   private async scanRepoForChiveRecords(pdsUrl: string, did: DID): Promise<number> {
-    const collections = [
-      'pub.chive.eprint.submission',
-      'pub.chive.eprint.version',
-      'pub.chive.review.comment',
-      'pub.chive.review.endorsement',
-      'pub.chive.review.entityLink',
-      'pub.chive.eprint.userTag',
-      'pub.chive.eprint.tag',
-      'pub.chive.eprint.citation',
-      'pub.chive.eprint.relatedWork',
-      'pub.chive.eprint.changelog',
-      'pub.chive.graph.node',
-      'pub.chive.graph.edge',
-      'pub.chive.graph.nodeProposal',
-      'pub.chive.graph.edgeProposal',
-      'pub.chive.graph.vote',
-      'pub.chive.annotation.comment',
-      'pub.chive.annotation.entityLink',
-      'pub.chive.actor.profile',
-      'pub.chive.actor.profileConfig',
-    ];
+    // One shared list rather than a copy that drifts. This array had gone out
+    // of step in both directions: it scanned `pub.chive.review.entityLink`,
+    // which the event processor does not index, and it omitted both
+    // `collaboration` collections, so a backfill could never recover a
+    // co-author invitation the firehose had missed.
+    const collections = INDEXED_COLLECTIONS;
 
     let totalIndexed = 0;
 
@@ -616,8 +602,7 @@ export class PDSScanner {
               }
             }
 
-            case 'pub.chive.eprint.userTag':
-            case 'pub.chive.eprint.tag': {
+            case 'pub.chive.eprint.userTag': {
               return this.indexUserTag(record, did, metadata, collection, endTimer);
             }
 

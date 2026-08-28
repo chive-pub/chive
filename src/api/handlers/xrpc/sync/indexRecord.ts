@@ -29,6 +29,7 @@
  * @public
  */
 
+import { DIDResolver } from '../../../../auth/did/did-resolver.js';
 import type {
   InputSchema,
   OutputSchema,
@@ -40,6 +41,7 @@ import { migrateRecord, needsMigration } from '../../../../services/migration/in
 import type { AtUri, CID, DID } from '../../../../types/atproto.js';
 import {
   AuthenticationError,
+  AuthorizationError,
   DatabaseError,
   NotFoundError,
   ValidationError,
@@ -60,48 +62,6 @@ function parseAtUri(uri: string): { did: DID; collection: string; rkey: string }
     collection: match[2],
     rkey: match[3],
   };
-}
-
-/**
- * Resolve DID to PDS endpoint using PLC directory.
- */
-async function resolvePdsEndpoint(did: DID): Promise<string | null> {
-  try {
-    // Handle did:plc DIDs via PLC directory
-    if (did.startsWith('did:plc:')) {
-      const response = await fetch(`https://plc.directory/${did}`);
-      if (!response.ok) {
-        return null;
-      }
-      const doc = (await response.json()) as {
-        service?: { id: string; type: string; serviceEndpoint: string }[];
-      };
-      const pdsService = doc.service?.find(
-        (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
-      );
-      return pdsService?.serviceEndpoint ?? null;
-    }
-
-    // Handle did:web DIDs
-    if (did.startsWith('did:web:')) {
-      const domain = did.replace('did:web:', '').replace(/%3A/g, ':');
-      const response = await fetch(`https://${domain}/.well-known/did.json`);
-      if (!response.ok) {
-        return null;
-      }
-      const doc = (await response.json()) as {
-        service?: { id: string; type: string; serviceEndpoint: string }[];
-      };
-      const pdsService = doc.service?.find(
-        (s) => s.id === '#atproto_pds' || s.type === 'AtprotoPersonalDataServer'
-      );
-      return pdsService?.serviceEndpoint ?? null;
-    }
-
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 /**
@@ -169,7 +129,9 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
         recordDid: did,
         uri: input.uri,
       });
-      throw new ValidationError('Can only index your own records', 'uri');
+      // 403, not 400: the request is well-formed and the caller simply may
+      // not make it. A 400 tells a client to fix its input, which cannot help.
+      throw new AuthorizationError('Can only index your own records');
     }
 
     // One shared list rather than a copy that drifts; see indexed-collections.ts.
@@ -181,8 +143,10 @@ export const indexRecord: XRPCMethod<void, InputSchema, OutputSchema> = {
     }
 
     try {
-      // Resolve PDS endpoint for the DID
-      const pdsUrl = await resolvePdsEndpoint(did);
+      // Resolve the PDS through the shared resolver; see the note in
+      // admin/triggerDIDSync.ts about the two hand-rolled copies this replaces.
+      const didResolver = new DIDResolver({ redis: c.get('redis'), logger });
+      const pdsUrl = await didResolver.getPDSEndpoint(did);
       if (!pdsUrl) {
         throw new NotFoundError('PDS endpoint', did);
       }

@@ -12,3 +12,8 @@ pnpm-lock.yaml
 
 # Generated code
 src/lexicons/validators/
+
+# Written by `pnpm docs:openapi` with sorted keys, and compared byte-for-byte
+# by the drift check in CI. Reformatting it here would make the two disagree
+# permanently.
+docs/openapi/chive-api.json

@@ -127,7 +127,7 @@
     "main": {
       "type": "record",
       "description": "User discovery preferences for personalized recommendations",
-      "key": "self",
+      "key": "literal:self",
       "record": {
         "type": "object",
         "properties": {

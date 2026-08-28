@@ -2,8 +2,12 @@ import path from 'path';
 
 import { defineConfig } from 'vitest/config';
 
+import { testStackEnv } from './tests/setup/test-env.js';
+
 export default defineConfig({
   test: {
+    // Point the suite at the Docker test stack unless told otherwise.
+    env: testStackEnv(),
     globals: true,
     environment: 'node',
     // Run migrations and setup before compliance tests
