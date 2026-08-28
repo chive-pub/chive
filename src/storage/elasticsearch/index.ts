@@ -82,14 +82,6 @@ export {
   type BulkOperationFailure,
 } from './index-manager.js';
 
-// Query caching
-export {
-  QueryCache,
-  DEFAULT_CACHE_CONFIG,
-  type QueryCacheConfig,
-  type CacheStatistics,
-} from './query-cache.js';
-
 // Index setup and lifecycle
 export {
   setupElasticsearch,

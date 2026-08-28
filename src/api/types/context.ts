@@ -17,7 +17,6 @@ import type { AdminService } from '../../services/admin/admin-service.js';
 import type { BackfillManager } from '../../services/admin/backfill-manager.js';
 import type { AnnotationService } from '../../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
-import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { CitationExtractionService } from '../../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
 import type { CollaborationService } from '../../services/collaboration/collaboration-service.js';
@@ -63,7 +62,6 @@ export interface ChiveServices {
   readonly relevanceLogger: IRelevanceLogger;
   readonly metrics: MetricsService;
   readonly graph: KnowledgeGraphService;
-  readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
   readonly annotation: AnnotationService;
   readonly tagManager: TagManager;

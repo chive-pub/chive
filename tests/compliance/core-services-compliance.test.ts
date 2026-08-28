@@ -4,7 +4,7 @@
  * @remarks
  * CRITICAL tests verifying ATProto specification compliance for:
  * - EprintService (indexing, storage, staleness)
- * - BlobProxyService (caching, no authoritative storage)
+ * - Blob handling (fetched from the PDS; Chive stores none)
  * - MetricsService (AppView-local metrics)
  * - PDSSyncService (read-only PDS access)
  * - ReviewService (review indexing)
@@ -20,6 +20,10 @@
  *
  * @packageDocumentation
  */
+
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import type { Pool } from 'pg';
 import { describe, it, expect, vi } from 'vitest';
@@ -43,6 +47,8 @@ import type { EprintAuthor } from '../../src/types/models/author.js';
 import type { Eprint } from '../../src/types/models/eprint.js';
 
 import { PDS_WRITE_CALLS, findCalls, readExecutableSource } from './helpers/source-scan.js';
+
+const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 /** Creates a mock rich text abstract from plain text. */
 function createMockAbstract(text: string): AnnotationBody {
@@ -572,37 +578,26 @@ describe('ATProto Core Services Compliance', () => {
     });
   });
 
-  describe('CRITICAL: BlobProxyService - No Authoritative Storage', () => {
-    it('writes every cache entry with an expiry', () => {
-      const source = readExecutableSource('src/services/blob-proxy/redis-cache.ts');
-
-      // `setex` carries a TTL; a bare `set` does not. A cached blob that never
-      // expires is Chive holding blob data indefinitely, which is the thing
-      // the compliance rule forbids.
-      expect(findCalls(source, ['setex'])).toEqual(['setex']);
-      expect(source).not.toMatch(/\.\s*set\s*\(/);
+  describe('CRITICAL: blob handling - no Chive-side blob storage', () => {
+    it('has no blob proxy to store anything', () => {
+      // `src/services/blob-proxy/` — a proxy, an L1 Redis cache and a
+      // Cloudflare R2 adapter, ~2,500 lines — was injected into every request
+      // context and reachable from no route: `/api/v1/blobs/:cid` was
+      // referenced in src/index.ts and never registered. The R2 half was gated
+      // on five environment variables no configuration sets, so production
+      // always took the no-op adapter.
+      //
+      // Deleting it replaces four assertions that read those files and checked
+      // they never wrote to a PDS and never cached without an expiry. A
+      // subsystem that does not exist cannot do either.
+      expect(existsSync(join(REPO_ROOT, 'src/services/blob-proxy'))).toBe(false);
     });
 
-    it('never calls a repository write method', () => {
-      const files = [
-        'src/services/blob-proxy/proxy-service.ts',
-        'src/services/blob-proxy/redis-cache.ts',
-        'src/services/blob-proxy/cdn-adapter.ts',
-      ];
-
-      for (const file of files) {
-        const source = readExecutableSource(file);
-        expect(findCalls(source, PDS_WRITE_CALLS), file).toEqual([]);
-      }
-    });
-
-    it('reaches the PDS only through the read side of the repository', () => {
-      const source = readExecutableSource('src/services/blob-proxy/proxy-service.ts');
-
-      // A cache miss must fall back to the source PDS, so the read call has to
-      // be present; its absence would mean Chive was serving blobs it had
-      // become the source of truth for.
-      expect(findCalls(source, ['getBlob'])).toEqual(['getBlob']);
+    it('fetches blobs from the PDS through the repository', () => {
+      // Blob reads go to the origin PDS via IRepository.getBlob, which is the
+      // only path now and the compliant one.
+      const repository = readExecutableSource('src/atproto/repository/at-repository.ts');
+      expect(findCalls(repository, ['getBlob'])).toEqual(['getBlob']);
     });
   });
 

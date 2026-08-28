@@ -57,10 +57,10 @@ export default defineConfig({
         // Treat them as a ratchet: raise them as coverage improves, never
         // lower them to accommodate a new gap. The frontend equivalent lives
         // in web/vitest.config.ts and is further behind still.
-        lines: 47,
-        functions: 49,
-        branches: 41,
-        statements: 47,
+        lines: 49,
+        functions: 52,
+        branches: 44,
+        statements: 49,
       },
     },
     include: [

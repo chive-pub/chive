@@ -85,7 +85,6 @@ const app = createServer({
   searchService,
   metricsService,
   graphService,
-  blobProxyService,
   reviewService,
   tagManager,
   // ... other services
