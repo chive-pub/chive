@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 
+import { fetchAllPages } from '@/lib/api/paginate';
 import { api } from '@/lib/api/client';
 import { APIError } from '@/lib/errors';
 import type { EprintSummary } from '@/lib/api/schema';
@@ -322,15 +323,21 @@ export function useFieldChildren(fieldUri: string, options: UseFieldChildrenOpti
     queryKey: fieldKeys.children(fieldUri),
     queryFn: async (): Promise<FieldSummaryNode[]> => {
       try {
-        const response = await api.pub.chive.graph.listEdges({
-          limit: 100,
-          sourceUri: fieldUri,
-          relationSlug: 'narrower',
-          status: 'established',
-        });
-        const data = response.data;
-        // Extract target nodes from edges
-        const edges = data?.edges ?? [];
+        // A broad field has more than a hundred children, and the tree shows
+        // itself as the complete set of them.
+        const { items: edges } = await fetchAllPages(
+          async (cursor) => {
+            const response = await api.pub.chive.graph.listEdges({
+              limit: 100,
+              sourceUri: fieldUri,
+              relationSlug: 'narrower',
+              status: 'established',
+              ...(cursor ? { cursor } : {}),
+            });
+            return { items: response.data?.edges ?? [], cursor: response.data?.cursor };
+          },
+          { label: 'graph.listEdges.fieldChildren' }
+        );
         const targetIds = edges
           .map((edge) => edge.targetUri.split('/').pop())
           .filter(Boolean) as string[];

@@ -37,6 +37,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
 import { authApi } from '@/lib/api/client';
+import { fetchAllPages } from '@/lib/api/paginate';
 import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -154,12 +155,25 @@ export function usePersonalNodes(did: string, options?: { subkind?: string; enab
     queryKey: personalGraphKeys.nodes(did, { subkind: options?.subkind }),
     queryFn: async (): Promise<ListPersonalNodesResponse> => {
       try {
-        const params: { limit: number; subkind?: string } = { limit: 100 };
-        if (options?.subkind) {
-          params.subkind = options.subkind;
-        }
-        const response = await authApi.pub.chive.graph.listPersonalNodes(params);
-        return response.data as unknown as ListPersonalNodesResponse;
+        const { items } = await fetchAllPages(
+          async (cursor) => {
+            const params: { limit: number; subkind?: string; cursor?: string } = { limit: 100 };
+            if (options?.subkind) {
+              params.subkind = options.subkind;
+            }
+            if (cursor) {
+              params.cursor = cursor;
+            }
+            const response = await authApi.pub.chive.graph.listPersonalNodes(params);
+            const page = response.data as unknown as ListPersonalNodesResponse & {
+              cursor?: string;
+            };
+            return { items: page.nodes ?? [], cursor: page.cursor };
+          },
+          { label: 'graph.listPersonalNodes' }
+        );
+
+        return { nodes: items } as unknown as ListPersonalNodesResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(

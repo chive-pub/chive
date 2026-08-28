@@ -34,6 +34,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
+import { fetchAllPages } from '@/lib/api/paginate';
 import { APIError } from '@/lib/errors';
 
 // =============================================================================
@@ -126,19 +127,35 @@ function extractNodeId(uri: string): string {
  */
 async function fetchAndResolveEdges(nodeUri: string): Promise<NodeEdgesResult> {
   // Fetch outbound and inbound edges in parallel
-  const [outboundResponse, inboundResponse] = await Promise.all([
-    api.pub.chive.graph.listEdges({
-      sourceUri: nodeUri,
-      limit: 100,
-    }),
-    api.pub.chive.graph.listEdges({
-      targetUri: nodeUri,
-      limit: 100,
-    }),
+  // A node in a well-populated part of the graph has more than a hundred
+  // edges, and the panel presents itself as showing all of them.
+  const [outbound, inbound] = await Promise.all([
+    fetchAllPages(
+      async (cursor) => {
+        const response = await api.pub.chive.graph.listEdges({
+          sourceUri: nodeUri,
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        });
+        return { items: response.data.edges ?? [], cursor: response.data.cursor };
+      },
+      { label: 'graph.listEdges.outbound' }
+    ),
+    fetchAllPages(
+      async (cursor) => {
+        const response = await api.pub.chive.graph.listEdges({
+          targetUri: nodeUri,
+          limit: 100,
+          ...(cursor ? { cursor } : {}),
+        });
+        return { items: response.data.edges ?? [], cursor: response.data.cursor };
+      },
+      { label: 'graph.listEdges.inbound' }
+    ),
   ]);
 
-  const outboundEdges = outboundResponse.data.edges ?? [];
-  const inboundEdges = inboundResponse.data.edges ?? [];
+  const outboundEdges = outbound.items;
+  const inboundEdges = inbound.items;
 
   // Deduplicate by edge URI
   const edgeMap = new Map<

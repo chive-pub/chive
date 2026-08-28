@@ -29,7 +29,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { APIError } from '@/lib/errors';
-import { authApi, getApiBaseUrl } from '@/lib/api/client';
+import { api, authApi } from '@/lib/api/client';
+import { fetchAllPages } from '@/lib/api/paginate';
 import { createLogger } from '@/lib/observability/logger';
 
 const logger = createLogger({ context: { component: 'use-citations' } });
@@ -189,24 +190,26 @@ export function useEprintCitations(eprintUri: string, options: UseCitationsOptio
         : citationKeys.forEprintWithSource(eprintUri, source),
     queryFn: async (): Promise<ListCitationsResponse> => {
       try {
-        // Use direct fetch since the generated XRPC client may not include this
-        // endpoint yet (backend is being developed in parallel).
-        const searchParams = new URLSearchParams({ eprintUri, limit: '100' });
-        if (source !== 'all') {
-          searchParams.set('source', source);
-        }
-        const baseUrl = getApiBaseUrl();
-        const url = `${baseUrl}/xrpc/pub.chive.eprint.listCitations?${searchParams.toString()}`;
-        const response = await fetch(url);
-        if (!response.ok) {
-          const body = (await response.json().catch(() => ({}))) as Record<string, unknown>;
-          throw new APIError(
-            typeof body['message'] === 'string' ? body['message'] : 'Failed to fetch citations',
-            response.status,
-            'pub.chive.eprint.listCitations'
-          );
-        }
-        return (await response.json()) as ListCitationsResponse;
+        // The comment here said the generated client "may not include this
+        // endpoint yet". It does, and the typed client brings the tracing and
+        // error handling the raw fetch lacked.
+        //
+        // A well-cited paper has more than a hundred references, and the
+        // citation list presents itself as the complete set.
+        const { items } = await fetchAllPages(
+          async (cursor) => {
+            const response = await api.pub.chive.eprint.listCitations({
+              eprintUri,
+              limit: 100,
+              ...(source !== 'all' ? { source } : {}),
+              ...(cursor ? { cursor } : {}),
+            });
+            return { items: response.data.citations, cursor: response.data.cursor };
+          },
+          { label: 'eprint.listCitations' }
+        );
+
+        return { citations: items, total: items.length } as unknown as ListCitationsResponse;
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(
