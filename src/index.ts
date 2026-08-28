@@ -59,6 +59,8 @@ import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { EdgeService } from './services/governance/edge-service.js';
+import { readGovernancePDSCredentials } from './services/governance/governance-pds-config.js';
+import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { NodeService } from './services/governance/node-service.js';
 import { TrustedEditorService } from './services/governance/trusted-editor-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
@@ -463,6 +465,30 @@ function createServices(
   // never used its cache. Same Redis, same key space as the job.
   const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
 
+  // The governance PDS writer. Only the indexer ever built one, so in the API
+  // process `services.governancePdsWriter` was always undefined and both
+  // `grantDelegation` and `revokeDelegation` answered 503 on every call — the
+  // delegation surface was unreachable rather than merely unused.
+  const governanceCredentials = readGovernancePDSCredentials();
+  const governancePdsWriter = governanceCredentials
+    ? new GovernancePDSWriter({
+        graphPdsDid: governanceCredentials.graphPdsDid,
+        pdsUrl: governanceCredentials.pdsUrl,
+        handle: governanceCredentials.handle,
+        password: governanceCredentials.password,
+        pool: pgPool,
+        cache: redis,
+        logger,
+      })
+    : undefined;
+
+  if (!governancePdsWriter) {
+    logger.warn(
+      'Governance PDS writing is disabled: GRAPH_PDS_PASSWORD is unset. ' +
+        'grantDelegation and revokeDelegation will answer 503.'
+    );
+  }
+
   // The hydrator's cache is the point of it: without one it makes the same
   // appview request per page render. Redis is already here, so it gets one.
   const profileHydrator = new ProfileHydrator({ logger, cache: redis });
@@ -591,6 +617,7 @@ function createServices(
     importService,
     pdsSyncService,
     graphAlgorithmCache,
+    governancePdsWriter,
     profileHydrator,
     relevanceLogger,
     activityService,

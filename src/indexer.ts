@@ -52,6 +52,7 @@ import { CollectionService } from './services/collection/collection-service.js';
 import { createResiliencePolicy } from './services/common/resilience.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { AutomaticProposalService } from './services/governance/automatic-proposal-service.js';
+import { readGovernancePDSCredentials } from './services/governance/governance-pds-config.js';
 import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { NodeService } from './services/governance/node-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
@@ -75,7 +76,6 @@ import { TagManager } from './storage/neo4j/tag-manager.js';
 import { PostgreSQLAdapter } from './storage/postgresql/adapter.js';
 import { getDatabaseConfig } from './storage/postgresql/config.js';
 import { closePool, createPool } from './storage/postgresql/connection.js';
-import type { DID } from './types/atproto.js';
 
 /**
  * Indexer configuration loaded from environment variables.
@@ -110,10 +110,8 @@ interface IndexerConfig {
   // PLC Directory
   readonly plcDirectoryUrl: string;
 
-  // Graph PDS (optional for automatic proposals)
-  readonly graphPdsUrl?: string;
-  readonly graphPdsDid?: string;
-  readonly graphPdsSigningKey?: string;
+  // Graph PDS (optional for automatic proposals); see
+  // readGovernancePDSCredentials, which is the single gate both processes use.
 
   // Indexer settings
   readonly concurrency: number;
@@ -153,11 +151,6 @@ function loadConfig(): IndexerConfig {
 
     // PLC Directory
     plcDirectoryUrl: process.env.PLC_DIRECTORY_URL ?? 'https://plc.directory',
-
-    // Graph PDS (optional)
-    graphPdsUrl: process.env.GRAPH_PDS_URL,
-    graphPdsDid: process.env.GRAPH_PDS_DID,
-    graphPdsSigningKey: process.env.GRAPH_PDS_SIGNING_KEY,
 
     // Indexer settings
     concurrency: parseInt(process.env.INDEXER_CONCURRENCY ?? '10', 10),
@@ -458,13 +451,15 @@ async function main(): Promise<void> {
 
     logger.info('Citation extraction pipeline initialized');
 
-    // Create automatic proposal service if graph PDS is configured
+    // Create automatic proposal service if the governance account is configured
     let automaticProposalService: AutomaticProposalService | undefined;
-    if (config.graphPdsUrl && config.graphPdsDid && config.graphPdsSigningKey) {
+    const governanceCredentials = readGovernancePDSCredentials();
+    if (governanceCredentials) {
       const graphPdsWriter = new GovernancePDSWriter({
-        graphPdsDid: config.graphPdsDid as DID,
-        pdsUrl: config.graphPdsUrl,
-        signingKey: config.graphPdsSigningKey,
+        graphPdsDid: governanceCredentials.graphPdsDid,
+        pdsUrl: governanceCredentials.pdsUrl,
+        handle: governanceCredentials.handle,
+        password: governanceCredentials.password,
         pool: pgPool,
         cache: redis,
         logger,
@@ -475,13 +470,13 @@ async function main(): Promise<void> {
         graph: graphAdapter,
         logger,
         governancePdsWriter: graphPdsWriter,
-        graphPdsDid: config.graphPdsDid as DID,
+        graphPdsDid: governanceCredentials.graphPdsDid,
         tagManager,
       });
 
       logger.info('Automatic proposal service initialized', {
-        graphPdsDid: config.graphPdsDid,
-        graphPdsUrl: config.graphPdsUrl,
+        graphPdsDid: governanceCredentials.graphPdsDid,
+        graphPdsUrl: governanceCredentials.pdsUrl,
       });
 
       // Start field promotion job (daily check for tag-to-field promotions)

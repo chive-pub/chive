@@ -21,7 +21,7 @@
  * @public
  */
 
-import { Agent } from '@atproto/api';
+import { AtpAgent } from '@atproto/api';
 import type { Redis } from 'ioredis';
 import type { Pool } from 'pg';
 
@@ -100,7 +100,10 @@ export interface CreateRecordResult {
 export interface GovernancePDSWriterOptions {
   graphPdsDid: DID;
   pdsUrl: string;
-  signingKey: string;
+  /** Handle of the governance account on the PDS */
+  handle: string;
+  /** App password for that account */
+  password: string;
   pool: Pool;
   cache: Redis;
   logger: ILogger;
@@ -114,7 +117,8 @@ export interface GovernancePDSWriterOptions {
  * const writer = new GovernancePDSWriter({
  *   graphPdsDid: 'did:plc:chive-governance' as DID,
  *   pdsUrl: 'https://governance.chive.pub',
- *   signingKey: process.env.GOVERNANCE_SIGNING_KEY!,
+ *   handle: process.env.GRAPH_PDS_HANDLE!,
+ *   password: process.env.GRAPH_PDS_PASSWORD!,
  *   pool,
  *   cache: redis,
  *   logger,
@@ -141,31 +145,59 @@ export interface GovernancePDSWriterOptions {
 export class GovernancePDSWriter {
   private readonly graphPdsDid: DID;
   private readonly pdsUrl: string;
+  private readonly handle: string;
+  private readonly password: string;
   private readonly pool: Pool;
   private readonly logger: ILogger;
-  private agent: Agent | null = null;
+  private agent: AtpAgent | null = null;
+  private login: Promise<AtpAgent> | null = null;
 
   constructor(options: GovernancePDSWriterOptions) {
     this.graphPdsDid = options.graphPdsDid;
     this.pdsUrl = options.pdsUrl;
+    this.handle = options.handle;
+    this.password = options.password;
     this.pool = options.pool;
     this.logger = options.logger;
-
-    // Initialize agent (authentication handled per-operation if needed)
-    void this.initializeAgent(options.signingKey);
-  }
-
-  private initializeAgent(_signingKey: string): void {
-    this.agent = new Agent({ service: this.pdsUrl });
-
-    // For bootstrap operations (like automatic proposals), we may not need authentication
-    // The agent will be used to create records, but authentication may be handled differently
-    // depending on the PDS configuration
 
     this.logger.info('GovernancePDSWriter initialized', {
       graphPdsDid: this.graphPdsDid,
       pdsUrl: this.pdsUrl,
+      handle: this.handle,
     });
+  }
+
+  /**
+   * Get a session-bearing agent for the governance account.
+   *
+   * @returns An authenticated agent
+   *
+   * @remarks
+   * Authentication is deferred to the first write rather than done in the
+   * constructor: a PDS that is briefly unreachable at boot should not take the
+   * whole process down, and most requests never write to the governance
+   * repository at all.
+   *
+   * A failed login clears the cached promise so the next write retries instead
+   * of returning the same rejection forever. Concurrent writes share one login
+   * attempt.
+   */
+  private async getAgent(): Promise<AtpAgent> {
+    if (this.agent?.session) {
+      return this.agent;
+    }
+
+    this.login ??= (async () => {
+      const agent = new AtpAgent({ service: this.pdsUrl });
+      await agent.login({ identifier: this.handle, password: this.password });
+      this.agent = agent;
+      return agent;
+    })().catch((error: unknown) => {
+      this.login = null;
+      throw error;
+    });
+
+    return this.login;
   }
 
   /**
@@ -654,15 +686,9 @@ export class GovernancePDSWriter {
     rkey: string,
     record: unknown
   ): Promise<Result<CreateRecordResult, DatabaseError>> {
-    if (!this.agent) {
-      return {
-        ok: false,
-        error: new DatabaseError('WRITE', 'Agent not initialized'),
-      };
-    }
-
     try {
-      const response = await this.agent.com.atproto.repo.createRecord({
+      const agent = await this.getAgent();
+      const response = await agent.com.atproto.repo.createRecord({
         repo: this.graphPdsDid,
         collection,
         rkey,
