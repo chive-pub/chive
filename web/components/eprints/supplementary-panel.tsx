@@ -66,11 +66,34 @@ export interface SupplementaryItem {
 }
 
 /**
+ * A Layers dataset linked to this eprint.
+ *
+ * @remarks
+ * These are not Chive records. `pub.layers.eprint.dataLink` lives in its
+ * author's repository and the Layers AppView is authoritative for it; Chive
+ * federates the read. They appear here rather than in a panel of their own
+ * because a reader looking for the data behind a paper is looking in the same
+ * place they look for its appendix.
+ */
+export interface DataLinkItem {
+  /** AT-URI of the dataLink record */
+  uri: string;
+  /** Data kind slug, as Layers records it */
+  dataKind: string;
+  /** Free-text description, when the author gave one */
+  description?: string;
+  /** Which part of the paper the data belongs to, such as 'Table 3' */
+  paperSection?: string;
+}
+
+/**
  * Props for SupplementaryPanel component.
  */
 export interface SupplementaryPanelProps {
   /** List of supplementary materials */
   items: SupplementaryItem[];
+  /** Layers datasets linked to this eprint */
+  dataLinks?: DataLinkItem[];
   /** Initial number of items to show before collapse */
   initialVisibleCount?: number;
   /** Additional class names */
@@ -170,6 +193,65 @@ function SupplementaryItemCard({ item }: { item: SupplementaryItem }) {
 }
 
 /**
+ * A single linked dataset.
+ *
+ * @remarks
+ * `paperSection` is given prominence because it is what makes a link useful:
+ * "the corpus" is an offer, "the corpus behind Table 3" is an answer.
+ *
+ * The card does not link out. All we hold is the AT-URI of the dataLink record
+ * in its author's repository, and Layers' web routing is not settled, so any
+ * URL we built from that URI today would be a guess that may 404. Showing the
+ * dataset and saying where it lives is worth more than a broken link.
+ */
+function DataLinkCard({ link }: { link: DataLinkItem }) {
+  return (
+    <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
+      <div className="shrink-0 mt-0.5 text-violet-500">
+        <Database className="h-5 w-5" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate">{formatDataKind(link.dataKind)}</span>
+          {link.paperSection && (
+            <Badge variant="secondary" className="text-xs shrink-0">
+              {link.paperSection}
+            </Badge>
+          )}
+        </div>
+        {link.description && (
+          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{link.description}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Render a Layers data kind slug as a label.
+ *
+ * @param kind - Slug such as `annotation-layer`
+ * @returns A human label, or the slug itself when it is not one we know
+ *
+ * @remarks
+ * Layers' lexicon uses `knownValues`, not a closed enum, so a slug this build
+ * has never heard of is expected rather than exceptional. Showing the raw slug
+ * is better than showing nothing or guessing.
+ */
+function formatDataKind(kind: string): string {
+  const known: Record<string, string> = {
+    corpus: 'Corpus',
+    'annotation-layer': 'Annotation layer',
+    'model-output': 'Model output',
+    'gold-standard': 'Gold standard',
+    'evaluation-data': 'Evaluation data',
+    supplementary: 'Supplementary data',
+    replication: 'Replication data',
+  };
+  return known[kind] ?? kind;
+}
+
+/**
  * Supplementary materials panel component.
  *
  * @param props - Component props
@@ -177,6 +259,7 @@ function SupplementaryItemCard({ item }: { item: SupplementaryItem }) {
  */
 export function SupplementaryPanel({
   items,
+  dataLinks = [],
   initialVisibleCount = 5,
   className,
 }: SupplementaryPanelProps) {
@@ -186,7 +269,9 @@ export function SupplementaryPanel({
     setIsExpanded((prev) => !prev);
   }, []);
 
-  if (items.length === 0) {
+  // Either kind of material is reason enough to show the panel. A paper with
+  // linked datasets and no uploaded appendix still has auxiliary material.
+  if (items.length === 0 && dataLinks.length === 0) {
     return null;
   }
 
@@ -231,6 +316,17 @@ export function SupplementaryPanel({
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
+        {dataLinks.length > 0 && (
+          <div className="space-y-2 pb-1">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              Linked datasets
+              <span className="ml-2 font-normal">on Layers</span>
+            </h3>
+            {dataLinks.map((link) => (
+              <DataLinkCard key={link.uri} link={link} />
+            ))}
+          </div>
+        )}
         <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
           <div className="space-y-2">
             {visibleItems.map((item) => (
