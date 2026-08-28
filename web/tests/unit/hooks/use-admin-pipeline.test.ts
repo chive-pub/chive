@@ -20,7 +20,9 @@ const { mockInstrumentedFetch, mockCreateInstrumentedFetch, mockGetServiceAuthTo
     const mockInstrumentedFetch = vi.fn();
     return {
       mockInstrumentedFetch,
-      mockCreateInstrumentedFetch: vi.fn(() => mockInstrumentedFetch),
+      mockCreateInstrumentedFetch: vi.fn(
+        (_options: { authenticated: boolean }) => mockInstrumentedFetch
+      ),
       mockGetServiceAuthToken: vi.fn(),
       mockAgent: { did: 'did:plc:admin' },
     };
