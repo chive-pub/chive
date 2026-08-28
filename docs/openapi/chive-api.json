@@ -6677,6 +6677,47 @@
         ],
         "type": "object"
       },
+      "pub.chive.eprint.listDataLinks.dataLinkView": {
+        "properties": {
+          "corpusRef": {
+            "format": "at-uri",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dataKind": {
+            "description": "Data kind slug, as Layers records it",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "dataKindUri": {
+            "description": "Knowledge graph node for the data kind, when Layers resolved one",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          "paperSection": {
+            "description": "Which part of the paper the data belongs to, such as 'Table 3'",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the dataLink record in its author's repository",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "dataKind"
+        ],
+        "type": "object"
+      },
       "pub.chive.eprint.listRelatedWorks.relatedWorkView": {
         "properties": {
           "createdAt": {
@@ -26052,6 +26093,87 @@
           }
         },
         "summary": "pub.chive.eprint.listCitations",
+        "tags": [
+          "eprint"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.eprint.listDataLinks": {
+      "get": {
+        "description": "List Layers datasets linked to an eprint. Chive does not index pub.layers.eprint.dataLink records; it asks the Layers AppView, which is authoritative for them, and caches the answer briefly. Returns an empty list when Layers is unreachable, so an eprint page never depends on another service being up.",
+        "operationId": "pub_chive_eprint_listDataLinks",
+        "parameters": [
+          {
+            "description": "AT-URI of the eprint whose data links to list",
+            "in": "query",
+            "name": "eprintUri",
+            "required": true,
+            "schema": {
+              "description": "AT-URI of the eprint whose data links to list",
+              "format": "at-uri",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "dataLinks": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.eprint.listDataLinks.dataLinkView"
+                      },
+                      "type": "array"
+                    },
+                    "source": {
+                      "description": "Where the answer came from, so a client can tell an empty list from an unavailable one.",
+                      "enum": [
+                        "layers",
+                        "cache",
+                        "unavailable"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "dataLinks",
+                    "source"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "pub.chive.eprint.listDataLinks",
         "tags": [
           "eprint"
         ]

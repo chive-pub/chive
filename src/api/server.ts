@@ -43,6 +43,7 @@ import type { TrustedEditorService } from '../services/governance/trusted-editor
 import type { PersonalGraphService } from '../services/graph/personal-graph-service.js';
 import type { ImportService } from '../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-service.js';
+import type { LayersDataLinkService } from '../services/layers/data-link-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
 import type { ContentReportService } from '../services/moderation/content-report-service.js';
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
@@ -239,6 +240,9 @@ export interface ServerConfig {
    */
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
 
+  /** Federated reads of Layers data links; omit to disable the dataset panel. */
+  readonly layersDataLinks?: LayersDataLinkService;
+
   /**
    * Shared, Redis-backed profile lookup.
    *
@@ -428,6 +432,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       import: config.importService,
       pdsSync: config.pdsSyncService,
       graphAlgorithmCache: config.graphAlgorithmCache,
+      layersDataLinks: config.layersDataLinks,
       profileHydrator: config.profileHydrator,
       relevanceLogger: config.relevanceLogger,
       ranking: config.rankingService,

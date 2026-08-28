@@ -67,6 +67,7 @@ import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { useEprint } from '@/lib/hooks/use-eprint';
+import { useDataLinks } from '@/lib/hooks/use-data-links';
 import {
   useReviews,
   useCreateReview,
@@ -168,6 +169,7 @@ export interface EprintDetailContentProps {
  */
 export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const { data: eprint, isLoading, error } = useEprint(uri);
+  const { dataLinks } = useDataLinks(uri);
   const [currentVersion, setCurrentVersion] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string>('abstract');
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -1287,12 +1289,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             </>
           )}
 
-          {/* Supplementary materials */}
-          {eprint.supplementaryMaterials && eprint.supplementaryMaterials.length > 0 && (
+          {/* Supplementary materials, including datasets linked on Layers */}
+          {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
             <>
               <Separator />
               <SupplementaryPanel
-                items={eprint.supplementaryMaterials.map((item, index) => {
+                dataLinks={dataLinks.map((link) => ({
+                  uri: link.uri,
+                  dataKind: link.dataKind,
+                  description: link.description,
+                  paperSection: link.paperSection,
+                }))}
+                items={(eprint.supplementaryMaterials ?? []).map((item, index) => {
                   const did = eprint.paperDid ?? eprint.submittedBy;
                   const blobCid = item.blob?.ref?.toString();
                   const downloadUrl =

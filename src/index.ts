@@ -64,6 +64,7 @@ import { TrustedEditorService } from './services/governance/trusted-editor-servi
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
+import { LayersDataLinkService } from './services/layers/data-link-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
 import { ContentReportService } from './services/moderation/content-report-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
@@ -463,6 +464,16 @@ function createServices(
   // never used its cache. Same Redis, same key space as the job.
   const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
 
+  // Layers is a separate AppView and is authoritative for `pub.layers.*`
+  // records, so Chive asks it rather than indexing that collection. The service
+  // degrades to an empty list when Layers cannot be reached, which is currently
+  // the usual case — the public AppView is not yet answering.
+  const layersDataLinks = new LayersDataLinkService({
+    redis,
+    logger,
+    ...(process.env.LAYERS_APPVIEW_URL ? { appViewUrl: process.env.LAYERS_APPVIEW_URL } : {}),
+  });
+
   // The hydrator's cache is the point of it: without one it makes the same
   // appview request per page render. Redis is already here, so it gets one.
   const profileHydrator = new ProfileHydrator({ logger, cache: redis });
@@ -591,6 +602,7 @@ function createServices(
     importService,
     pdsSyncService,
     graphAlgorithmCache,
+    layersDataLinks,
     profileHydrator,
     relevanceLogger,
     activityService,
