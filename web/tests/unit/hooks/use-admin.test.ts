@@ -24,6 +24,25 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('@/lib/api/client', () => ({
   getApiBaseUrl: () => 'https://api.chive.test',
+  // The admin hooks now build their requests on the shared instrumented
+  // pipeline rather than raw fetch. This stands in for it, keeping the same
+  // contract the real one has: a non-ok response throws an APIError carrying
+  // the server's message, so the suite still exercises the error paths through
+  // the stubbed global fetch below.
+  createInstrumentedFetch:
+    () =>
+    async (...args: Parameters<typeof globalThis.fetch>) => {
+      const response = await globalThis.fetch(...args);
+      if (!response.ok) {
+        const body = (await response.json().catch(() => ({}))) as { message?: string };
+        throw new APIError(
+          body.message ?? 'An unknown error occurred',
+          response.status,
+          typeof args[0] === 'string' ? args[0] : undefined
+        );
+      }
+      return response;
+    },
 }));
 
 vi.mock('@/lib/auth/service-auth', () => ({
@@ -37,6 +56,8 @@ vi.mock('@/lib/auth/oauth-client', () => ({
 // ---------------------------------------------------------------------------
 // Import after mocks are established
 // ---------------------------------------------------------------------------
+
+import { APIError } from '@/lib/errors';
 
 import {
   adminKeys,
@@ -265,7 +286,9 @@ describe('adminFetch (via query hooks)', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(result.current.error?.message).toBe('Request failed');
+    // The shared pipeline's wording. The admin surface used to say "Request
+    // failed" here, which was its own phrasing for the same condition.
+    expect(result.current.error?.message).toBe('An unknown error occurred');
   });
 
   it('propagates error when getServiceAuthToken throws', async () => {

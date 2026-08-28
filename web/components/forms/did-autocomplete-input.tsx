@@ -18,7 +18,7 @@ import { logger } from '@/lib/observability';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { getApiBaseUrl } from '@/lib/api/client';
+import { api } from '@/lib/api/client';
 import type { AuthorAffiliation } from './affiliation-input';
 
 const log = logger.child({ component: 'did-autocomplete-input' });
@@ -124,34 +124,27 @@ function useActorSearch() {
     setIsSearching(true);
     try {
       // Step 1: Search Chive authors first (users with eprints or profiles on Chive)
-      const baseUrl = getApiBaseUrl();
       let chiveActors: AtprotoActor[] = [];
 
       try {
-        const chiveResponse = await fetch(
-          `${baseUrl}/xrpc/pub.chive.author.searchAuthors?q=${encodeURIComponent(cleanQuery)}&limit=8`,
+        const chiveResponse = await api.pub.chive.author.searchAuthors(
+          { q: cleanQuery, limit: 8 },
           { signal: controller.signal }
         );
 
-        if (chiveResponse.ok) {
-          const chiveData = await chiveResponse.json();
-          chiveActors = (chiveData.authors ?? []).map(
-            (author: {
-              did: string;
-              handle?: string;
-              displayName?: string;
-              avatar?: string;
-              hasEprints: boolean;
-              hasProfile: boolean;
-            }) => ({
-              did: author.did,
-              handle: author.handle ?? author.did.split(':')[2]?.slice(0, 8) ?? 'unknown',
-              displayName: author.displayName,
-              avatar: author.avatar,
-              description: author.hasEprints ? 'Has eprints on Chive' : 'Has Chive profile',
-            })
-          );
-        }
+        chiveActors = (chiveResponse.data.authors ?? []).map((author) => ({
+          did: author.did,
+          handle: author.handle ?? author.did.split(':')[2]?.slice(0, 8) ?? 'unknown',
+          displayName: author.displayName,
+          avatar: author.avatar,
+          // `hasEprints` was read here and the lexicon does not declare it, so
+          // every Chive author was labelled "Has Chive profile" regardless.
+          // `eprintCount` is the field the API actually returns.
+          description:
+            author.eprintCount && author.eprintCount > 0
+              ? `${author.eprintCount} eprint${author.eprintCount === 1 ? '' : 's'} on Chive`
+              : 'Has Chive profile',
+        }));
       } catch {
         // Chive search failed, continue with Bluesky fallback
       }
@@ -240,19 +233,12 @@ function getInitials(name?: string, handle?: string): string {
  */
 async function fetchChiveProfile(did: string): Promise<ChiveProfile | null> {
   try {
-    const baseUrl = getApiBaseUrl();
-    const response = await fetch(
-      `${baseUrl}/xrpc/pub.chive.author.getProfile?did=${encodeURIComponent(did)}`,
+    const response = await api.pub.chive.author.getProfile(
+      { did },
       { signal: AbortSignal.timeout(3000) }
     );
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    // Profile data is nested under 'profile' in the API response
-    const profile = data.profile;
+    const profile = response.data.profile;
     if (!profile) {
       return null;
     }
@@ -260,13 +246,11 @@ async function fetchChiveProfile(did: string): Promise<ChiveProfile | null> {
     return {
       orcid: profile.orcid ?? undefined,
       affiliations:
-        profile.affiliations?.map(
-          (aff: { name: string; rorId?: string; children?: AuthorAffiliation[] }) => ({
-            name: aff.name,
-            rorId: aff.rorId,
-            children: aff.children,
-          })
-        ) ?? undefined,
+        profile.affiliations?.map((aff) => ({
+          name: aff.name,
+          rorId: aff.rorId,
+          children: aff.children as AuthorAffiliation[] | undefined,
+        })) ?? undefined,
     };
   } catch {
     // Profile fetch is best-effort, don't fail selection

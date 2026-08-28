@@ -344,6 +344,33 @@ function createFetchHandler(options: { authenticated: boolean }): typeof globalT
   };
 }
 
+/**
+ * An instrumented `fetch` for call sites the generated client cannot cover.
+ *
+ * @param options - Whether the request should carry the user's session
+ * @returns A `fetch` that adds correlation headers, logs, and throws `APIError`
+ *
+ * @remarks
+ * The generated client routes every call through {@link createFetchHandler},
+ * which is where request IDs, W3C traceparent headers, structured logging,
+ * Faro reporting and `APIError` all come from. A handful of call sites cannot
+ * use the generated client — the admin surface builds its own service-auth
+ * token per NSID — and those were calling `fetch` directly, so admin requests
+ * carried no trace headers and were invisible in tracing, and their failures
+ * surfaced as bare `Error` rather than `APIError`.
+ *
+ * This gives them the same pipeline. Callers supplying their own
+ * `Authorization` header should pass `authenticated: false`, since the header
+ * they set is preserved and the session lookup would only duplicate work.
+ *
+ * @public
+ */
+export function createInstrumentedFetch(options: {
+  authenticated: boolean;
+}): typeof globalThis.fetch {
+  return createFetchHandler(options);
+}
+
 // =============================================================================
 // API CLIENTS
 // =============================================================================
