@@ -29,6 +29,12 @@ export {
   // Standard.site records
   createStandardDocument,
   updateStandardDocument,
+  // Layers records
+  createLayersDataLinks,
+  LAYERS_DATA_KINDS,
+  type LayersDataLinkInput,
+  type CreateLayersDataLinksInput,
+  type CreateLayersDataLinksResult,
   // Record management
   deleteRecord,
   // Utilities
