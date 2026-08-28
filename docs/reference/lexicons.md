@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 127 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 128 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
@@ -1387,6 +1387,7 @@ Discovery preferences for personalized recommendations.
 | `pub.chive.actor.autocompleteKeyword`     | Query | 1   | Autocomplete research keywords              |
 | `pub.chive.actor.autocompleteOpenReview`  | Query | 1   | Autocomplete OpenReview profiles            |
 | `pub.chive.actor.discoverAuthorIds`       | Query | 1   | Discover author identifiers from ORCID/name |
+| `pub.chive.actor.listMutes`               | Query | 1   | List the authenticated user's muted authors |
 
 `getMyProfile` (revision 2) returns `affiliations` as an array of `pub.chive.defs#affiliation` objects (not a flat string), plus `previousAffiliations`, `nameVariants`, `researchKeywords`, and external academic IDs.
 
