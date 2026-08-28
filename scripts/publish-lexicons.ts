@@ -24,7 +24,7 @@
  * - `LEXICON_PUBLISH_PASSWORD`  account/app password (required unless `--dry-run`)
  *
  * Usage:
- *   pnpm tsx scripts/publish-lexicons.ts [--dry-run] [nsid ...]
+ *   pnpm tsx scripts/publish-lexicons.ts [--dry-run] [--allow-dirty] [nsid ...]
  *
  * Examples:
  *   # Preview what would change against the live PDS (no credentials needed):
@@ -38,6 +38,8 @@
  *
  * @packageDocumentation
  */
+
+import { execSync } from 'node:child_process';
 
 import { AtpAgent } from '@atproto/api';
 
@@ -98,10 +100,67 @@ async function fetchPublished(
   }
 }
 
+/**
+ * Refuse to write from a working tree that is not a released commit.
+ *
+ * @param dryRun - Whether this is a preview run
+ * @param force - Whether `--allow-dirty` was passed
+ *
+ * @remarks
+ * The publisher reads `lexicons/` from the working tree, not from a tag. That
+ * is convenient and it is a trap: publishing from a feature branch pushes
+ * schemas that have not shipped to the account external services resolve
+ * `pub.chive.*` from.
+ *
+ * It nearly happened. A dry run during the 0.10.0 release listed eight changes
+ * instead of seven; the extra was a lexicon written minutes earlier on an
+ * unmerged branch. Only the count gave it away.
+ *
+ * So: writes require a clean tree at a commit carrying a version tag. A dry run
+ * is always allowed — previewing from a branch is exactly how you check what a
+ * change would do. `--allow-dirty` exists for a deliberate out-of-band fix and
+ * says what it is.
+ */
+function assertPublishableCheckout(dryRun: boolean, force: boolean): void {
+  if (dryRun || force) return;
+
+  const status = execSync('git status --porcelain', { encoding: 'utf8' }).trim();
+  if (status.length > 0) {
+    console.error(
+      '✗ Refusing to publish from a dirty working tree.\n' +
+        '  The publisher reads lexicons/ from disk, so uncommitted edits would be\n' +
+        '  written to the PDS as though they had shipped.\n' +
+        '  Commit or stash them, or pass --allow-dirty if that is deliberate.'
+    );
+    process.exit(1);
+  }
+
+  const tags = execSync('git tag --points-at HEAD', { encoding: 'utf8' })
+    .split('\n')
+    .map((t) => t.trim())
+    .filter((t) => /^v\d+\.\d+\.\d+$/.test(t));
+
+  if (tags.length === 0) {
+    const head = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim();
+    console.error(
+      `✗ Refusing to publish from ${head}, which carries no version tag.\n` +
+        '  Check out the released commit (git checkout v0.10.0) and publish from\n' +
+        '  there, so what reaches the PDS is what shipped.\n' +
+        '  Pass --allow-dirty to override.'
+    );
+    process.exit(1);
+  }
+
+  console.log(`  Checkout:   ${tags.join(', ')} (clean)`);
+}
+
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
+  const allowDirty = args.includes('--allow-dirty');
   const nsidFilter = new Set(args.filter((a) => !a.startsWith('--')));
+
+  assertPublishableCheckout(dryRun, allowDirty);
 
   // The lexicon account is only the authority for `pub.chive.*` NSIDs.
   // Other namespaces present in lexicons/ (com.atproto.*, site.standard.*) are
