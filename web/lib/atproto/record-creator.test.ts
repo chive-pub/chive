@@ -24,6 +24,7 @@ import {
   buildAtUri,
   parseAtUri,
   createStandardDocument,
+  createLayersDataLinks,
   updateStandardDocument,
   deleteStandardDocumentsForEprint,
 } from './record-creator';
@@ -1184,5 +1185,159 @@ describe('updateStandardDocument', () => {
         title: 'Updated Title',
       })
     ).rejects.toThrow('Agent is not authenticated');
+  });
+});
+
+// =============================================================================
+// LAYERS DATA LINK TESTS
+// =============================================================================
+
+describe('createLayersDataLinks', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+
+  it('writes one dataLink record per dataset', async () => {
+    const agent = createMockAgent({ did });
+
+    const result = await createLayersDataLinks(agent, {
+      eprintUri,
+      dataLinks: [{ dataKind: 'corpus' }, { dataKind: 'annotation-layer' }],
+    });
+
+    expect(result.created).toHaveLength(2);
+    expect(result.failed).toEqual([]);
+    expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledTimes(2);
+  });
+
+  it('writes into the Layers collection, not a Chive one', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, { eprintUri, dataLinks: [{ dataKind: 'corpus' }] });
+
+    expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ repo: did, collection: 'pub.layers.eprint.dataLink' })
+    );
+  });
+
+  it('carries the eprint URI, kind and timestamp the lexicon requires', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, { eprintUri, dataLinks: [{ dataKind: 'corpus' }] });
+
+    const { record } = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(record.$type).toBe('pub.layers.eprint.dataLink');
+    expect(record.eprintUri).toBe(eprintUri);
+    expect(record.dataKind).toBe('corpus');
+    expect(record.createdAt).toEqual(expect.any(String));
+  });
+
+  it('passes through the optional fields that were given', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, {
+      eprintUri,
+      dataLinks: [
+        {
+          dataKind: 'corpus',
+          dataKindUri: 'at://did:plc:graph/pub.chive.graph.node/corpus',
+          corpusRef: 'at://did:plc:author/pub.layers.corpus/xyz',
+          description: 'Sentences used in the main experiment.',
+          paperSection: 'Table 3',
+        },
+      ],
+    });
+
+    const { record } = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(record.dataKindUri).toBe('at://did:plc:graph/pub.chive.graph.node/corpus');
+    expect(record.corpusRef).toBe('at://did:plc:author/pub.layers.corpus/xyz');
+    expect(record.paperSection).toBe('Table 3');
+  });
+
+  it('omits optional fields rather than writing empty ones', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, { eprintUri, dataLinks: [{ dataKind: 'corpus' }] });
+
+    const { record } = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(record).not.toHaveProperty('paperSection');
+    expect(record).not.toHaveProperty('corpusRef');
+    expect(record).not.toHaveProperty('eprintDid');
+  });
+
+  it('reports a failed link instead of throwing, so a created eprint is never orphaned', async () => {
+    const agent = createMockAgent({ did });
+    (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('rate limited')
+    );
+
+    const result = await createLayersDataLinks(agent, {
+      eprintUri,
+      dataLinks: [{ dataKind: 'corpus' }],
+    });
+
+    expect(result.created).toEqual([]);
+    expect(result.failed).toEqual([{ dataKind: 'corpus', error: 'rate limited' }]);
+  });
+
+  it('keeps writing the rest of the batch after one link fails', async () => {
+    const agent = createMockAgent({ did });
+    (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('rate limited')
+    );
+
+    const result = await createLayersDataLinks(agent, {
+      eprintUri,
+      dataLinks: [{ dataKind: 'corpus' }, { dataKind: 'model-output' }],
+    });
+
+    expect(result.failed).toHaveLength(1);
+    expect(result.created).toHaveLength(1);
+  });
+
+  it('truncates a description to the length the lexicon allows', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, {
+      eprintUri,
+      dataLinks: [{ dataKind: 'corpus', description: 'x'.repeat(20000) }],
+    });
+
+    const { record } = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(record.description).toHaveLength(10000);
+  });
+
+  it('records the paper DID when the eprint lives in a paper account', async () => {
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, {
+      eprintUri,
+      eprintDid: 'did:plc:paperaccount',
+      dataLinks: [{ dataKind: 'corpus' }],
+    });
+
+    const { record } = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
+      .calls[0][0];
+    expect(record.eprintDid).toBe('did:plc:paperaccount');
+  });
+
+  it('writes nothing when there are no links', async () => {
+    const agent = createMockAgent({ did });
+
+    const result = await createLayersDataLinks(agent, { eprintUri, dataLinks: [] });
+
+    expect(result).toEqual({ created: [], failed: [] });
+    expect(agent.com.atproto.repo.createRecord).not.toHaveBeenCalled();
+  });
+
+  it('refuses to write for an unauthenticated agent', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(
+      createLayersDataLinks(agent, { eprintUri, dataLinks: [{ dataKind: 'corpus' }] })
+    ).rejects.toThrow('not authenticated');
   });
 });
