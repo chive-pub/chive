@@ -1,0 +1,69 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.eprint.listDataLinks",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List Layers datasets linked to an eprint. Chive does not index pub.layers.eprint.dataLink records; it asks the Layers AppView, which is authoritative for them, and caches the answer briefly. Returns an empty list when Layers is unreachable, so an eprint page never depends on another service being up.",
+      "parameters": {
+        "type": "params",
+        "required": ["eprintUri"],
+        "properties": {
+          "eprintUri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint whose data links to list"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["dataLinks", "source"],
+          "properties": {
+            "dataLinks": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#dataLinkView" }
+            },
+            "source": {
+              "type": "string",
+              "description": "Where the answer came from, so a client can tell an empty list from an unavailable one.",
+              "knownValues": ["layers", "cache", "unavailable"]
+            }
+          }
+        }
+      }
+    },
+    "dataLinkView": {
+      "type": "object",
+      "required": ["uri", "dataKind"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the dataLink record in its author's repository"
+        },
+        "dataKind": {
+          "type": "string",
+          "description": "Data kind slug, as Layers records it",
+          "maxLength": 128
+        },
+        "dataKindUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "Knowledge graph node for the data kind, when Layers resolved one"
+        },
+        "description": { "type": "string", "maxLength": 10000 },
+        "paperSection": {
+          "type": "string",
+          "description": "Which part of the paper the data belongs to, such as 'Table 3'",
+          "maxLength": 256
+        },
+        "corpusRef": { "type": "string", "format": "at-uri" },
+        "createdAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

@@ -2153,6 +2153,144 @@ export async function createStandardDocument(
 }
 
 /**
+ * The vocabulary Layers publishes for `dataKind`.
+ *
+ * @remarks
+ * These are the lexicon's `knownValues`, not an enum: Layers accepts any slug
+ * up to 128 characters, and the knowledge graph is the real vocabulary. This
+ * list is the fallback offered when no graph node has been chosen, so a
+ * submitter is never blocked on the graph being reachable.
+ *
+ * @public
+ */
+export const LAYERS_DATA_KINDS = [
+  'corpus',
+  'annotation-layer',
+  'model-output',
+  'gold-standard',
+  'evaluation-data',
+  'supplementary',
+  'replication',
+] as const;
+
+/**
+ * One dataset an author is linking to an eprint.
+ *
+ * @public
+ */
+export interface LayersDataLinkInput {
+  /** Data kind slug, from the knowledge graph node or the fallback vocabulary */
+  dataKind: string;
+  /** AT-URI of the knowledge graph node for the kind, when one was chosen */
+  dataKindUri?: string;
+  /** AT-URI of the Layers corpus this data lives in */
+  corpusRef?: string;
+  /** What the data is */
+  description?: string;
+  /** Where in the paper it belongs, such as `Table 3` */
+  paperSection?: string;
+}
+
+/**
+ * Input for {@link createLayersDataLinks}.
+ *
+ * @public
+ */
+export interface CreateLayersDataLinksInput {
+  /** AT-URI of the eprint the data belongs to */
+  eprintUri: string;
+  /** DID of the repository holding the eprint */
+  eprintDid?: string;
+  /** The datasets to link */
+  dataLinks: LayersDataLinkInput[];
+}
+
+/**
+ * The outcome of writing a batch of data links.
+ *
+ * @public
+ */
+export interface CreateLayersDataLinksResult {
+  /** AT-URIs of the records that were written */
+  created: string[];
+  /** The links that could not be written, each with the reason */
+  failed: Array<{ dataKind: string; error: string }>;
+}
+
+/**
+ * Write `pub.layers.eprint.dataLink` records into the author's PDS.
+ *
+ * @param agent - Authenticated ATProto Agent for the repo the records go into
+ * @param input - The eprint and the datasets to link to it
+ * @returns Which links were written and which were not
+ *
+ * @throws Error if the agent is not authenticated
+ *
+ * @remarks
+ * A data link needs the eprint's AT-URI, so it cannot be written in the same
+ * call as the submission. This runs after the eprint exists, and its failures
+ * are reported rather than thrown: an eprint that was created successfully must
+ * not be rolled back or orphaned because a secondary link failed. Each record
+ * is written independently for the same reason, so one bad link does not take
+ * the rest of the batch with it.
+ *
+ * The records are Layers' own lexicon written into the author's repository —
+ * the author's data, in the author's PDS, which Layers indexes from the
+ * firehose. Chive writes nothing to its own store here.
+ *
+ * @example
+ * ```typescript
+ * const eprint = await createEprintRecord(agent, eprintData);
+ * const { created, failed } = await createLayersDataLinks(agent, {
+ *   eprintUri: eprint.uri,
+ *   dataLinks: [{ dataKind: 'corpus', paperSection: 'Table 3' }],
+ * });
+ * ```
+ */
+export async function createLayersDataLinks(
+  agent: Agent,
+  input: CreateLayersDataLinksInput
+): Promise<CreateLayersDataLinksResult> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  const created: string[] = [];
+  const failed: Array<{ dataKind: string; error: string }> = [];
+
+  for (const link of input.dataLinks) {
+    const record = {
+      $type: 'pub.layers.eprint.dataLink',
+      eprintUri: input.eprintUri,
+      dataKind: link.dataKind,
+      createdAt: new Date().toISOString(),
+      ...(input.eprintDid && { eprintDid: input.eprintDid }),
+      ...(link.dataKindUri && { dataKindUri: link.dataKindUri }),
+      ...(link.corpusRef && { corpusRef: link.corpusRef }),
+      ...(link.description && { description: link.description.substring(0, 10000) }),
+      ...(link.paperSection && { paperSection: link.paperSection.substring(0, 256) }),
+    };
+
+    try {
+      const response = await agent.com.atproto.repo.createRecord({
+        repo: did,
+        collection: 'pub.layers.eprint.dataLink',
+        record,
+      });
+      created.push(response.data.uri);
+    } catch (error) {
+      failed.push({
+        dataKind: link.dataKind,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return { created, failed };
+}
+
+/**
  * Find and delete every `site.standard.document` record in a repo that points
  * at a given eprint.
  *

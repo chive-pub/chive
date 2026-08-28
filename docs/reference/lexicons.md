@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 127 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 128 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
@@ -756,17 +756,18 @@ User-curated related paper link between eprints. Both eprints must exist in Chiv
 
 ### Eprint queries and procedures
 
-| Lexicon                              | Type      | Description                            |
-| ------------------------------------ | --------- | -------------------------------------- |
-| `pub.chive.eprint.getSubmission`     | Query     | Get a single eprint by URI             |
-| `pub.chive.eprint.searchSubmissions` | Query     | Full-text search across eprints        |
-| `pub.chive.eprint.listByAuthor`      | Query     | List eprints by a specific author DID  |
-| `pub.chive.eprint.getChangelog`      | Query     | Get a single changelog entry           |
-| `pub.chive.eprint.listChangelogs`    | Query     | List changelogs for an eprint          |
-| `pub.chive.eprint.listCitations`     | Query     | List citations for an eprint           |
-| `pub.chive.eprint.listRelatedWorks`  | Query     | List related works for an eprint       |
-| `pub.chive.eprint.updateSubmission`  | Procedure | Authorize and prepare an eprint update |
-| `pub.chive.eprint.deleteSubmission`  | Procedure | Authorize an eprint deletion           |
+| Lexicon                              | Type      | Description                              |
+| ------------------------------------ | --------- | ---------------------------------------- |
+| `pub.chive.eprint.getSubmission`     | Query     | Get a single eprint by URI               |
+| `pub.chive.eprint.searchSubmissions` | Query     | Full-text search across eprints          |
+| `pub.chive.eprint.listByAuthor`      | Query     | List eprints by a specific author DID    |
+| `pub.chive.eprint.getChangelog`      | Query     | Get a single changelog entry             |
+| `pub.chive.eprint.listChangelogs`    | Query     | List changelogs for an eprint            |
+| `pub.chive.eprint.listCitations`     | Query     | List citations for an eprint             |
+| `pub.chive.eprint.listRelatedWorks`  | Query     | List related works for an eprint         |
+| `pub.chive.eprint.listDataLinks`     | Query     | List Layers datasets linked to an eprint |
+| `pub.chive.eprint.updateSubmission`  | Procedure | Authorize and prepare an eprint update   |
+| `pub.chive.eprint.deleteSubmission`  | Procedure | Authorize an eprint deletion             |
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 
@@ -1386,6 +1387,7 @@ Discovery preferences for personalized recommendations.
 | `pub.chive.actor.autocompleteKeyword`     | Query | 1   | Autocomplete research keywords              |
 | `pub.chive.actor.autocompleteOpenReview`  | Query | 1   | Autocomplete OpenReview profiles            |
 | `pub.chive.actor.discoverAuthorIds`       | Query | 1   | Discover author identifiers from ORCID/name |
+| `pub.chive.actor.listMutes`               | Query | 1   | List the authenticated user's muted authors |
 
 `getMyProfile` (revision 2) returns `affiliations` as an array of `pub.chive.defs#affiliation` objects (not a flat string), plus `previousAffiliations`, `nameVariants`, `researchKeywords`, and external academic IDs.
 
