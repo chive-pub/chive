@@ -1,0 +1,61 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.actor.listMutes",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List the authors the authenticated user has muted. Reads the index built from the user's own pub.chive.actor.mute records, so the list follows the user between devices rather than living in one browser.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "default": 100,
+            "description": "Maximum number of mutes to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor from a previous response"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["mutes"],
+          "properties": {
+            "mutes": {
+              "type": "array",
+              "items": { "type": "ref", "ref": "#mutedAuthor" }
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Cursor for the next page, absent when there are no more"
+            }
+          }
+        }
+      }
+    },
+    "mutedAuthor": {
+      "type": "object",
+      "required": ["subjectDid", "uri", "createdAt"],
+      "properties": {
+        "subjectDid": {
+          "type": "string",
+          "format": "did",
+          "description": "DID of the muted author"
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the mute record in the muter's repository"
+        },
+        "createdAt": { "type": "string", "format": "datetime" }
+      }
+    }
+  }
+}

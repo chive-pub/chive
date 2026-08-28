@@ -58,26 +58,25 @@ describe('indexed collections, lexicons and write scopes agree', () => {
     }
   });
 
-  it('separates collections read through from the PDS from ones that are simply dropped', () => {
+  it('every granted write scope is either indexed or read through from the PDS', () => {
     // Not every granted write scope should be indexed. `discovery.settings` is
     // read on demand straight from the user's PDS
     // (`actor/getDiscoverySettings.ts` issues `com.atproto.repo.getRecord`), so
-    // it is deliberately absent from the firehose set — a per-user preference
-    // does not belong in a shared index.
+    // it is deliberately outside the firehose set — a per-user preference does
+    // not belong in a shared index.
     //
-    // `actor.mute` is the other kind. The frontend writes those records to the
-    // user's PDS (`web/lib/atproto/record-creator.ts`), nothing reads them from
-    // the PDS, and the firehose processor has no branch for them, so they are
-    // dropped. The mute list the UI shows comes from `localStorage`, which is
-    // why mutes do not follow a user to another device.
+    // What must not exist is a third category: a collection Chive asks to write
+    // and then never sees again. `pub.chive.actor.mute` was exactly that until
+    // 0.11.0 — the client read the records straight from the PDS, so muting
+    // worked in the interface, while the server had no idea any mute existed
+    // and so could not apply one in a feed, a search or a notification.
     const READ_THROUGH = ['pub.chive.discovery.settings'];
-    const KNOWN_DROPPED = ['pub.chive.actor.mute'];
 
     const unconsumed = [...GRANTED_WRITES]
       .filter((s) => !INDEXED_COLLECTIONS.includes(s))
       .filter((s) => !READ_THROUGH.includes(s))
       .sort();
 
-    expect(unconsumed).toEqual(KNOWN_DROPPED);
+    expect(unconsumed).toEqual([]);
   });
 });

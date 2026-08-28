@@ -734,6 +734,30 @@
         },
         "type": "object"
       },
+      "pub.chive.actor.listMutes.mutedAuthor": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "subjectDid": {
+            "description": "DID of the muted author",
+            "format": "did",
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the mute record in the muter's repository",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectDid",
+          "uri",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "pub.chive.actor.mute": {
         "properties": {
           "createdAt": {
@@ -15861,6 +15885,110 @@
           }
         },
         "summary": "pub.chive.actor.getProfileConfig",
+        "tags": [
+          "actor"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.actor.listMutes": {
+      "get": {
+        "description": "List the authors the authenticated user has muted. Reads the index built from the user's own pub.chive.actor.mute records, so the list follows the user between devices rather than living in one browser.",
+        "operationId": "pub_chive_actor_listMutes",
+        "parameters": [
+          {
+            "description": "Maximum number of mutes to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum number of mutes to return",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pagination cursor from a previous response",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Pagination cursor from a previous response",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cursor": {
+                      "description": "Cursor for the next page, absent when there are no more",
+                      "type": "string"
+                    },
+                    "mutes": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.actor.listMutes.mutedAuthor"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "mutes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "ExpiredToken",
+                        "InvalidToken"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "pub.chive.actor.listMutes",
         "tags": [
           "actor"
         ]
