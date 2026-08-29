@@ -1,0 +1,17 @@
+{
+  // TypeDoc's view of the backend, for the published code reference.
+  //
+  // Same reason as web/tsconfig.typedoc.json: TypeDoc typechecks the whole
+  // program its tsconfig describes, and the ordinary one includes tests,
+  // scripts and config. A type error in any of those made TypeDoc emit nothing
+  // for the reference, and the failure surfaced only as a Docusaurus link check
+  // complaining about every page that links to the missing section. The
+  // reference is generated from the src/ entry points; nothing else belongs in
+  // the program that decides whether it exists.
+  "extends": "./tsconfig.json",
+  // `scripts/` is here because src/ imports from it (see
+  // automatic-proposal-service.ts); TypeScript requires every file in the
+  // program to be listed.
+  "include": ["src/**/*", "scripts/**/*"],
+  "exclude": ["node_modules", "dist", ".turbo", "src/lexicons/validators", "src/**/*.test.ts"]
+}
