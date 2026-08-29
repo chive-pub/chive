@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-08-29
+
+### Added
+
+- **Layers dataset links.** Chive now reads and writes `pub.layers.eprint.dataLink`, the record Layers defines to associate a dataset with an eprint. The submission wizard attaches a corpus, annotation layer or model output alongside supplementary files and code repositories, writing the records into the author's own PDS. Because a dataLink requires the eprint's AT-URI, the records are written after the eprint exists, one at a time, and a failure to write one neither rolls back the eprint nor stops the rest of the batch; the submitter is told which links did not land.
+- The eprint page shows those datasets, grouped by kind, with the section of the paper each belongs to. The list is read from the Layers AppView rather than indexed: Layers is authoritative for its own lexicons. Answers are cached in Redis for five minutes, the request times out after two seconds, and failures are not cached. `source` distinguishes an empty list from an unreachable Layers, so a paper with no datasets is not presented the same way as a paper whose datasets could not be fetched.
+- Dataset cards do not link out. Chive holds only the AT-URI of the record in its author's repository, and Layers' web routing is not settled.
+- **Server-side mutes.** `pub.chive.actor.mute` records are indexed, and `pub.chive.actor.listMutes` serves them. The frontend continues to read mutes directly from the user's PDS, which is immediately consistent where the index lags the firehose.
+- `LAYERS_APPVIEW_URL` configures the Layers AppView, defaulting to `https://api.layers.pub`.
+
+### Fixed
+
+- **Governance PDS writing did not work in any configuration.** `GovernancePDSWriter` was constructed only when `GRAPH_PDS_SIGNING_KEY` was set — a variable no configuration sets, and not a credential this system uses; the scripts that write to the governance PDS authenticate with `GRAPH_PDS_PASSWORD`. Independently, the writer discarded the key it was given and built an unauthenticated agent, so writes would have been rejected even with the variable set. It now logs in with the governance account, deferring authentication to the first write so an unreachable PDS at boot does not take the process down. Set `GRAPH_PDS_PASSWORD` to enable it; `GRAPH_PDS_SIGNING_KEY` and `GOVERNANCE_SIGNING_KEY` are removed.
+- **`grantDelegation` and `revokeDelegation` returned 503 on every call.** Only the indexer constructed a governance PDS writer, so the API's was always undefined. Both processes now use the same configuration gate, and startup logs when governance writing is disabled and which endpoints will refuse.
+- **`pub.chive.graph.getCommunities` returned an empty list on every request.** `GraphAlgorithmJob`, the only producer for the cache the handler reads, was never scheduled. It now runs every 24 hours by default (`GRAPH_ALGORITHM_INTERVAL_MS`) and once on start.
+- **Nine hooks truncated at 100 results without indicating it.** Collections, mutes, personal graph nodes, node and field edges, endorsement kinds and citations each requested a single page from a cursor-paginated endpoint. A user with more than a hundred of any of them saw only the first hundred; an author muted past the hundredth record reappeared in the feed. All nine follow the cursor, and a walk stopped by the safety ceiling logs which caller it truncated.
+- **Every Chive author in the DID autocomplete was described as "Has Chive profile".** The component read `author.hasEprints`, which `pub.chive.author.searchAuthors` does not return, so the condition was always false. It reports `eprintCount` instead.
+- Facet suggestions used node UUIDs in place of slugs, because `node.slug` is not a field `pub.chive.graph.searchNodes` returns.
+- The Layers data link fetch did not clear its abort timer, leaving a live two-second timer per eprint view.
+- **A type error in a test file removed the generated code reference from the documentation site.** TypeDoc typechecks the whole program its tsconfig describes, and both tsconfigs included tests, so an unrelated test error made TypeDoc emit nothing and the Docusaurus build failed its link check instead of reporting the type error. The reference is generated from a tsconfig that excludes tests, and a typecheck over exactly the programs TypeDoc compiles runs before the build.
+
+### Changed
+
+- **The admin surface uses the instrumented API client.** All of `use-admin.ts` called `fetch` directly, so roughly forty admin endpoints sent no request ID or `traceparent` and did not appear in tracing, and their failures were `Error` rather than `APIError` with a status. Admin calls now share the handler behind the generated client while still supplying the per-NSID service-auth token their endpoints require. Three form components calling Chive's own XRPC moved to the typed client; calls to Crossref, DBLP, arXiv and the Bluesky AppView are unchanged.
+- **`scripts/publish-lexicons.ts` refuses to run from a dirty or untagged checkout**, which would publish schemas belonging to no release. `--dry-run` is always permitted and `--allow-dirty` overrides the check.
+- **Removed 11,161 lines of unreachable code**: the blob proxy with its cache, CID verifier, request coalescer and R2 adapter, injected into every request context but reachable from no route; the notification service and its two push transports, with no importer; the enrichment worker, never constructed; the email and Zulip services, imported only by a script for testing them; and seven unreferenced Neo4j and Elasticsearch modules. Four compliance tests that scanned those files for repository writes now assert the files are absent. Blobs are read from the origin PDS on every request.
+- Line coverage measures 49.8%, up from 47.5%, because the deleted code was untested and left the denominator. The ratchet is raised to match.
+
 ## [0.10.0] - 2026-08-27
 
 Third tranche of the 0.8.0 backlog remediation. The theme of this one is signals that were reporting something other than what was happening: tests that asserted nothing, a coverage number measured against a subset of itself, manifests nobody had ever built, and an audit log that had never returned a row.
@@ -855,7 +883,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.11.0...HEAD
+[0.11.0]: https://github.com/chive-pub/chive/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/chive-pub/chive/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/chive-pub/chive/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/chive-pub/chive/compare/v0.8.0...v0.8.1
