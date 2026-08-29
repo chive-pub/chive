@@ -12,6 +12,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNodesBySubkind, useNode, type GraphNode } from './use-nodes';
 import { api } from '../api/client';
+import { fetchAllPages } from '../api/paginate';
 
 /**
  * Endorsement type with related data.
@@ -82,16 +83,22 @@ export function useEndorsementCategories() {
       const allEdges: Array<{ sourceUri: string; targetUri: string }> = [];
       for (const type of typesData.nodes) {
         try {
-          const response = await api.pub.chive.graph.listEdges({
-            sourceUri: type.uri,
-            relationSlug: 'relates-to',
-            status: 'established',
-            limit: 100,
-          });
-          if (response.data?.edges) {
-            for (const edge of response.data.edges) {
-              allEdges.push({ sourceUri: edge.sourceUri, targetUri: edge.targetUri });
-            }
+          const { items } = await fetchAllPages(
+            async (cursor) => {
+              const response = await api.pub.chive.graph.listEdges({
+                sourceUri: type.uri,
+                relationSlug: 'relates-to',
+                status: 'established',
+                limit: 100,
+                ...(cursor ? { cursor } : {}),
+              });
+              return { items: response.data?.edges ?? [], cursor: response.data?.cursor };
+            },
+            { label: 'graph.listEdges.endorsementKinds' }
+          );
+
+          for (const edge of items) {
+            allEdges.push({ sourceUri: edge.sourceUri, targetUri: edge.targetUri });
           }
         } catch {
           // Continue if edge query fails

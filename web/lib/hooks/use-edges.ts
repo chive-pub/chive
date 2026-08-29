@@ -31,6 +31,7 @@ import {
   PubChiveGraphGetNode,
   PubChiveGraphListNodes,
 } from '@/lib/api/client';
+import { fetchAllPages } from '@/lib/api/paginate';
 import type { OutputSchema as ListEdgesOutput } from '@/lib/api/generated/types/pub/chive/graph/listEdges';
 
 // =============================================================================
@@ -395,15 +396,22 @@ export function useNodeChildren(nodeUri: string, options: UseEdgeOptions = {}) {
   return useQuery({
     queryKey: edgeKeys.children(nodeUri),
     queryFn: async (): Promise<ConnectedNodesResponse> => {
-      const response = await api.pub.chive.graph.listEdges({
-        limit: 100,
-        sourceUri: nodeUri,
-        relationSlug: 'narrower',
-        status: 'established',
-      });
+      const { items: childEdges } = await fetchAllPages(
+        async (cursor) => {
+          const response = await api.pub.chive.graph.listEdges({
+            limit: 100,
+            sourceUri: nodeUri,
+            relationSlug: 'narrower',
+            status: 'established',
+            ...(cursor ? { cursor } : {}),
+          });
+          return { items: response.data.edges, cursor: response.data.cursor };
+        },
+        { label: 'graph.listEdges.nodeChildren' }
+      );
 
       // Extract unique target URIs and fetch nodes
-      const targetUris = [...new Set(response.data.edges.map((e: GraphEdge) => e.targetUri))];
+      const targetUris = [...new Set(childEdges.map((e: GraphEdge) => e.targetUri))];
 
       // Fetch each node (could be optimized with batch endpoint)
       const nodes: GraphNode[] = [];
@@ -417,7 +425,7 @@ export function useNodeChildren(nodeUri: string, options: UseEdgeOptions = {}) {
         }
       }
 
-      return { nodes, edges: response.data.edges };
+      return { nodes, edges: childEdges };
     },
     enabled: !!nodeUri && (options.enabled ?? true),
     staleTime: 5 * 60 * 1000,

@@ -35,6 +35,7 @@ import { useQuery, useInfiniteQuery, useMutation, useQueryClient } from '@tansta
 
 import { APIError } from '@/lib/errors';
 import { api, authApi } from '@/lib/api/client';
+import { fetchAllPages } from '@/lib/api/paginate';
 import { createLogger } from '@/lib/observability/logger';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 import {
@@ -298,8 +299,23 @@ export function useMyCollections(did: string, options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: collectionKeys.myCollections(did),
     queryFn: async (): Promise<ListCollectionsResponse> => {
-      const response = await authApi.pub.chive.collection.listByOwner({ did, limit: 100 });
-      return response.data as unknown as ListCollectionsResponse;
+      // A user's own collection list is meant to be complete. Asking for one
+      // page of 100 meant a user's collections simply stopped at 100 with
+      // nothing saying so.
+      const { items } = await fetchAllPages(
+        async (cursor) => {
+          const response = await authApi.pub.chive.collection.listByOwner({
+            did,
+            limit: 100,
+            ...(cursor ? { cursor } : {}),
+          });
+          const page = response.data as unknown as ListCollectionsResponse & { cursor?: string };
+          return { items: page.collections ?? [], cursor: page.cursor };
+        },
+        { label: 'collections.listByOwner' }
+      );
+
+      return { collections: items } as unknown as ListCollectionsResponse;
     },
     enabled: !!did && (options?.enabled ?? true),
     staleTime: 2 * 60 * 1000,
