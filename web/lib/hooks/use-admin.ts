@@ -13,7 +13,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { getApiBaseUrl } from '@/lib/api/client';
+import { createInstrumentedFetch, getApiBaseUrl } from '@/lib/api/client';
 import { getServiceAuthToken } from '@/lib/auth/service-auth';
 import { getCurrentAgent } from '@/lib/auth/oauth-client';
 
@@ -28,6 +28,19 @@ import { getCurrentAgent } from '@/lib/auth/oauth-client';
  * @param params - Optional query parameters
  * @returns Parsed JSON response
  */
+/**
+ * The admin surface's request pipeline.
+ *
+ * @remarks
+ * `authenticated: false` because these calls set their own `Authorization`
+ * header: the admin endpoints take a service-auth token scoped to the specific
+ * NSID being called, which the session-based path does not produce. Everything
+ * else — request IDs, traceparent, structured logging, Faro reporting and
+ * `APIError` — is shared with the generated client. These calls used raw
+ * `fetch` and so appeared nowhere in tracing.
+ */
+const adminRequest = createInstrumentedFetch({ authenticated: false });
+
 async function adminFetch<T>(nsid: string, params?: Record<string, string>): Promise<T> {
   const apiBase = getApiBaseUrl();
   const headers: Record<string, string> = {};
@@ -46,14 +59,7 @@ async function adminFetch<T>(nsid: string, params?: Record<string, string>): Pro
     }
   }
 
-  const response = await fetch(url.toString(), { headers });
-
-  if (!response.ok) {
-    const error = (await response.json().catch(() => ({ message: 'Request failed' }))) as {
-      message?: string;
-    };
-    throw new Error(error.message ?? `Admin API error: ${response.status}`);
-  }
+  const response = await adminRequest(url.toString(), { headers });
 
   return response.json() as Promise<T>;
 }
@@ -75,18 +81,11 @@ async function adminPost<T>(nsid: string, body: unknown): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${apiBase}/xrpc/${nsid}`, {
+  const response = await adminRequest(`${apiBase}/xrpc/${nsid}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(body),
   });
-
-  if (!response.ok) {
-    const error = (await response.json().catch(() => ({ message: 'Request failed' }))) as {
-      message?: string;
-    };
-    throw new Error(error.message ?? `Admin API error: ${response.status}`);
-  }
 
   return response.json() as Promise<T>;
 }

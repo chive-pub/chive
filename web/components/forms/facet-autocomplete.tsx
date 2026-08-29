@@ -24,6 +24,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Layers, Search, Loader2, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
+import { api } from '@/lib/api/client';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -486,40 +487,28 @@ async function searchFacetValues(
   const subkind = DIMENSION_SUBKINDS[dimension];
 
   try {
-    // Build search parameters
-    const params = new URLSearchParams({ query });
-    if (subkind) {
-      params.set('subkind', subkind);
-      params.set('kind', 'type');
-    } else {
-      // For dimensions without subkind, search all objects
-      params.set('kind', 'object');
-    }
-    params.set('status', 'established');
-    params.set('limit', '20');
+    const response = await api.pub.chive.graph.searchNodes({
+      query,
+      ...(subkind ? { subkind, kind: 'type' } : { kind: 'object' }),
+      status: 'established',
+      limit: 20,
+    });
 
-    const response = await fetch(`/xrpc/pub.chive.graph.searchNodes?${params.toString()}`);
-
-    if (!response.ok) {
-      console.debug('Facet search not available');
-      return [];
-    }
-
-    const data = await response.json();
-    return (data.nodes ?? []).map(
-      (node: { id: string; uri: string; label: string; description?: string; slug?: string }) => {
-        const slug = node.slug ?? node.id;
-        return {
-          id: slug,
-          slug,
-          uri: node.uri,
-          label: node.label,
-          description: node.description ?? null,
-          dimension,
-          usageCount: 0,
-        };
-      }
-    );
+    return (response.data.nodes ?? []).map((node) => {
+      // `node.slug` was read here, and the lexicon does not declare one, so it
+      // was always undefined and every suggestion fell back to the node UUID.
+      // `id` is the identifier the API actually returns.
+      const slug = node.id;
+      return {
+        id: slug,
+        slug,
+        uri: node.uri,
+        label: node.label,
+        description: node.description ?? null,
+        dimension,
+        usageCount: 0,
+      };
+    });
   } catch (error) {
     console.debug('Facet search failed:', error);
     return [];
