@@ -1,0 +1,20 @@
+{
+  // TypeDoc's view of the frontend, for the published code reference.
+  //
+  // The reference is generated from `web/lib/index.ts`, but TypeDoc typechecks
+  // the whole program its tsconfig describes, and the ordinary one includes
+  // test files. A type error in a test therefore made TypeDoc emit nothing,
+  // and the only visible symptom was a Docusaurus link check failing on every
+  // page that links to the missing section — an error naming neither
+  // TypeScript, nor the test, nor `web/`. Tests are not part of the public API
+  // and have no business deciding whether the reference exists.
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    "vitest.config.ts",
+    "playwright-ct.config.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "tests/**/*"
+  ]
+}

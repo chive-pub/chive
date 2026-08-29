@@ -18,7 +18,6 @@ services/
 ├── backlink/                    # Backlink tracking
 │   ├── index.ts                 # Barrel exports
 │   └── backlink-service.ts      # Cross-platform mention tracking
-├── blob-proxy/                  # Blob proxying (PDFs, images)
 │   ├── cid-verifier.ts          # CID verification
 │   ├── cdn-adapter.ts           # CDN integration
 │   ├── proxy-service.ts         # Blob fetch and cache
@@ -37,8 +36,6 @@ services/
 ├── discovery/                   # Content discovery
 │   ├── index.ts                 # Barrel exports
 │   └── discovery-service.ts     # Recommendations and similar papers
-├── email/                       # Email notifications
-│   ├── email-service.ts         # SMTP sending
 │   └── templates/               # Email templates
 │       └── alpha-approval.ts    # Alpha approval email
 ├── eprint/                      # Eprint operations
@@ -73,7 +70,6 @@ services/
 │   └── crossref-enrichment.ts   # Crossref metadata fetch
 ├── metrics/                     # View/download metrics
 │   └── metrics-service.ts       # Metrics tracking
-├── notification/                # Real-time notifications
 │   ├── notification-service.ts  # Notification dispatch
 │   ├── sse-handler.ts           # Server-sent events
 │   └── websocket-handler.ts     # WebSocket connections
@@ -101,8 +97,6 @@ services/
 │   ├── relevance-logger.ts      # Click/dwell logging
 │   ├── search-service.ts        # Search orchestration
 │   └── text-scorer.ts           # Text relevance scoring
-└── zulip/                       # Zulip integration
-    └── zulip-service.ts         # Zulip messaging
 ```
 
 ## Key Services

@@ -37,7 +37,9 @@ const source = (name: string): string =>
  */
 const queryText = (name: string): string => source(name).replace(/\/\*[\s\S]*?\*\//g, '');
 
-const READ_SIDE = ['recommendations', 'graph-algorithms', 'collaboration-graph'] as const;
+// `collaboration-graph` was deleted in 0.11.0: it had no importer anywhere, so
+// its labels could not be misaligned with anything.
+const READ_SIDE = ['recommendations', 'graph-algorithms'] as const;
 
 describe('read queries use labels the write side creates', () => {
   it.each(READ_SIDE)('%s does not match the non-existent :FieldNode label', (name) => {
@@ -50,16 +52,6 @@ describe('read queries use labels the write side creates', () => {
       expect(source(name)).toMatch(/:Node:Field/);
     }
   );
-
-  it('matches authors the way createCoauthorship writes them', () => {
-    const contents = source('collaboration-graph');
-    expect(contents).toMatch(/:Node:Object:Person/);
-    expect(contents).toMatch(/metadata\.did = \$did1/);
-  });
-
-  it('no longer matches the non-existent (:Author {did}) shape', () => {
-    expect(queryText('collaboration-graph')).not.toMatch(/:Author \{did:/);
-  });
 });
 
 describe('the missing INTERESTED_IN writer is recorded', () => {

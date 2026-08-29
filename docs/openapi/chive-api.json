@@ -734,6 +734,30 @@
         },
         "type": "object"
       },
+      "pub.chive.actor.listMutes.mutedAuthor": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "subjectDid": {
+            "description": "DID of the muted author",
+            "format": "did",
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the mute record in the muter's repository",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subjectDid",
+          "uri",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "pub.chive.actor.mute": {
         "properties": {
           "createdAt": {
@@ -6650,6 +6674,47 @@
         "required": [
           "title",
           "source"
+        ],
+        "type": "object"
+      },
+      "pub.chive.eprint.listDataLinks.dataLinkView": {
+        "properties": {
+          "corpusRef": {
+            "format": "at-uri",
+            "type": "string"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "dataKind": {
+            "description": "Data kind slug, as Layers records it",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "dataKindUri": {
+            "description": "Knowledge graph node for the data kind, when Layers resolved one",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "description": {
+            "maxLength": 10000,
+            "type": "string"
+          },
+          "paperSection": {
+            "description": "Which part of the paper the data belongs to, such as 'Table 3'",
+            "maxLength": 256,
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the dataLink record in its author's repository",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "dataKind"
         ],
         "type": "object"
       },
@@ -15820,6 +15885,110 @@
           }
         },
         "summary": "pub.chive.actor.getProfileConfig",
+        "tags": [
+          "actor"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.actor.listMutes": {
+      "get": {
+        "description": "List the authors the authenticated user has muted. Reads the index built from the user's own pub.chive.actor.mute records, so the list follows the user between devices rather than living in one browser.",
+        "operationId": "pub_chive_actor_listMutes",
+        "parameters": [
+          {
+            "description": "Maximum number of mutes to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 100,
+              "description": "Maximum number of mutes to return",
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pagination cursor from a previous response",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Pagination cursor from a previous response",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cursor": {
+                      "description": "Cursor for the next page, absent when there are no more",
+                      "type": "string"
+                    },
+                    "mutes": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.actor.listMutes.mutedAuthor"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "mutes"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "ExpiredToken",
+                        "InvalidToken"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "pub.chive.actor.listMutes",
         "tags": [
           "actor"
         ]
@@ -25924,6 +26093,87 @@
           }
         },
         "summary": "pub.chive.eprint.listCitations",
+        "tags": [
+          "eprint"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.eprint.listDataLinks": {
+      "get": {
+        "description": "List Layers datasets linked to an eprint. Chive does not index pub.layers.eprint.dataLink records; it asks the Layers AppView, which is authoritative for them, and caches the answer briefly. Returns an empty list when Layers is unreachable, so an eprint page never depends on another service being up.",
+        "operationId": "pub_chive_eprint_listDataLinks",
+        "parameters": [
+          {
+            "description": "AT-URI of the eprint whose data links to list",
+            "in": "query",
+            "name": "eprintUri",
+            "required": true,
+            "schema": {
+              "description": "AT-URI of the eprint whose data links to list",
+              "format": "at-uri",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "dataLinks": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.eprint.listDataLinks.dataLinkView"
+                      },
+                      "type": "array"
+                    },
+                    "source": {
+                      "description": "Where the answer came from, so a client can tell an empty list from an unavailable one.",
+                      "enum": [
+                        "layers",
+                        "cache",
+                        "unavailable"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "dataLinks",
+                    "source"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "pub.chive.eprint.listDataLinks",
         "tags": [
           "eprint"
         ]

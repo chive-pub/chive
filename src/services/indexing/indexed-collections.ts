@@ -43,6 +43,7 @@
  * @public
  */
 export const INDEXED_COLLECTIONS: readonly string[] = [
+  'pub.chive.actor.mute',
   'pub.chive.actor.profile',
   'pub.chive.actor.profileConfig',
   'pub.chive.annotation.comment',

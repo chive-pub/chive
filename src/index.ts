@@ -28,6 +28,7 @@ import { CitationExtractionJob } from './jobs/citation-extraction-job.js';
 import { CollaborativeFilteringSyncJob } from './jobs/collaborative-filtering-sync.js';
 import { FreshnessScanJob } from './jobs/freshness-scan-job.js';
 import { GovernanceSyncJob } from './jobs/governance-sync-job.js';
+import { GraphAlgorithmJob, createGraphAlgorithmJobScheduler } from './jobs/graph-algorithm-job.js';
 import { PDSScanSchedulerJob } from './jobs/pds-scan-scheduler-job.js';
 import { TagSyncJob } from './jobs/tag-sync-job.js';
 import { PinoLogger } from './observability/logger.js';
@@ -48,11 +49,6 @@ import { AdminService } from './services/admin/admin-service.js';
 import { BackfillManager } from './services/admin/backfill-manager.js';
 import { AnnotationService } from './services/annotation/annotation-service.js';
 import { BacklinkService } from './services/backlink/backlink-service.js';
-import { CDNAdapter } from './services/blob-proxy/cdn-adapter.js';
-import { CIDVerifier } from './services/blob-proxy/cid-verifier.js';
-import { BlobProxyService, type BlobFetchResult } from './services/blob-proxy/proxy-service.js';
-import { RedisCache } from './services/blob-proxy/redis-cache.js';
-import { RequestCoalescer } from './services/blob-proxy/request-coalescer.js';
 import { CitationExtractionService } from './services/citation/citation-extraction-service.js';
 import { DocumentTextExtractor } from './services/citation/document-text-extractor.js';
 import { GrobidClient } from './services/citation/grobid-client.js';
@@ -63,11 +59,14 @@ import { createResiliencePolicy } from './services/common/resilience.js';
 import { DiscoveryService } from './services/discovery/discovery-service.js';
 import { EprintService } from './services/eprint/eprint-service.js';
 import { EdgeService } from './services/governance/edge-service.js';
+import { readGovernancePDSCredentials } from './services/governance/governance-pds-config.js';
+import { GovernancePDSWriter } from './services/governance/governance-pds-writer.js';
 import { NodeService } from './services/governance/node-service.js';
 import { TrustedEditorService } from './services/governance/trusted-editor-service.js';
 import { PersonalGraphService } from './services/graph/personal-graph-service.js';
 import { ImportService } from './services/import/import-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
+import { LayersDataLinkService } from './services/layers/data-link-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
 import { ContentReportService } from './services/moderation/content-report-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
@@ -90,6 +89,7 @@ import { Neo4jConnection } from './storage/neo4j/connection.js';
 import { EdgeRepository } from './storage/neo4j/edge-repository.js';
 import { FacetManager } from './storage/neo4j/facet-manager.js';
 import { GraphAlgorithmCache } from './storage/neo4j/graph-algorithm-cache.js';
+import { GraphAlgorithms } from './storage/neo4j/graph-algorithms.js';
 import { NodeRepository } from './storage/neo4j/node-repository.js';
 import { RecommendationService } from './storage/neo4j/recommendations.js';
 import { TagManager } from './storage/neo4j/tag-manager.js';
@@ -132,13 +132,6 @@ interface EnvConfig {
   // Security
   readonly jwtSecret: string;
   readonly sessionSecret: string;
-
-  // Cloudflare R2 / CDN (optional; blob proxy will skip CDN if not configured)
-  readonly r2Endpoint?: string;
-  readonly r2Bucket?: string;
-  readonly r2AccessKeyId?: string;
-  readonly r2SecretAccessKey?: string;
-  readonly cdnBaseUrl?: string;
 
   // PLC Directory
   readonly plcDirectoryUrl: string;
@@ -199,13 +192,6 @@ function loadConfig(): EnvConfig {
     jwtSecret: process.env.JWT_SECRET ?? 'dev-jwt-secret-not-for-production',
     sessionSecret: process.env.SESSION_SECRET ?? 'dev-session-secret-not-for-production',
 
-    // Cloudflare R2 / CDN (optional)
-    r2Endpoint: process.env.R2_ENDPOINT,
-    r2Bucket: process.env.R2_BUCKET,
-    r2AccessKeyId: process.env.R2_ACCESS_KEY_ID,
-    r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    cdnBaseUrl: process.env.CDN_BASE_URL,
-
     // PLC Directory
     plcDirectoryUrl: process.env.PLC_DIRECTORY_URL ?? 'https://plc.directory',
 
@@ -236,6 +222,20 @@ function loadConfig(): EnvConfig {
 }
 
 /**
+ * How often the graph algorithm job recomputes communities and PageRank.
+ *
+ * @remarks
+ * Community detection over the whole knowledge graph is expensive and its
+ * results change slowly, so daily is the right order of magnitude. The job runs
+ * once immediately on start, so a fresh deployment does not serve an empty
+ * `getCommunities` for a day.
+ */
+const GRAPH_ALGORITHM_INTERVAL_MS = Number.parseInt(
+  process.env.GRAPH_ALGORITHM_INTERVAL_MS ?? String(24 * 60 * 60 * 1000),
+  10
+);
+
+/**
  * Application state for cleanup.
  */
 interface AppState {
@@ -248,6 +248,7 @@ interface AppState {
   server?: ReturnType<typeof serve>;
   importScheduler?: ImportScheduler;
   governanceSyncJob?: GovernanceSyncJob;
+  graphAlgorithmScheduler?: { start: () => void; stop: () => void };
   freshnessWorker?: FreshnessWorker;
   freshnessScanJob?: FreshnessScanJob;
   pdsScanSchedulerJob?: PDSScanSchedulerJob;
@@ -368,26 +369,6 @@ function createServices(
     },
   });
 
-  // Create blob proxy dependencies
-  const redisCache = new RedisCache({
-    redis,
-    defaultTTL: 3600, // 1 hour
-    beta: 1.0,
-    maxBlobSize: 10 * 1024 * 1024, // 10MB
-    keyPrefix: 'chive:blob:',
-    logger,
-  });
-
-  const cidVerifier = new CIDVerifier({ logger });
-
-  const coalescer = new RequestCoalescer<BlobFetchResult>({
-    maxWaitTime: 30000, // 30 seconds
-    logger,
-  });
-
-  // Create CDN adapter (optional; only if R2 is configured)
-  const cdnAdapter = createCDNAdapter(config, logger);
-
   // Create tag manager early so it can be used by EprintService for keyword-to-tag indexing
   const tagManager = new TagManager({
     connection: neo4jConnection,
@@ -420,17 +401,6 @@ function createServices(
   const graphService = new KnowledgeGraphService({
     graph: graphAdapter,
     storage: storageAdapter,
-    logger,
-  });
-
-  const blobProxyService = new BlobProxyService({
-    repository,
-    identity: identityResolver,
-    redisCache,
-    cdnAdapter,
-    cidVerifier,
-    coalescer,
-    resiliencePolicy: pdsResiliencePolicy,
     logger,
   });
 
@@ -495,6 +465,39 @@ function createServices(
   // `getCommunities` returned an empty list on every request and `getTrending`
   // never used its cache. Same Redis, same key space as the job.
   const graphAlgorithmCache = new GraphAlgorithmCache({ redis, logger });
+
+  // The governance PDS writer. Only the indexer ever built one, so in the API
+  // process `services.governancePdsWriter` was always undefined and both
+  // `grantDelegation` and `revokeDelegation` answered 503 on every call — the
+  // delegation surface was unreachable rather than merely unused.
+  const governanceCredentials = readGovernancePDSCredentials();
+  const governancePdsWriter = governanceCredentials
+    ? new GovernancePDSWriter({
+        graphPdsDid: governanceCredentials.graphPdsDid,
+        pdsUrl: governanceCredentials.pdsUrl,
+        handle: governanceCredentials.handle,
+        password: governanceCredentials.password,
+        pool: pgPool,
+        cache: redis,
+        logger,
+      })
+    : undefined;
+
+  if (!governancePdsWriter) {
+    logger.warn(
+      'Governance PDS writing is disabled: GRAPH_PDS_PASSWORD is unset. ' +
+        'grantDelegation and revokeDelegation will answer 503.'
+    );
+  }
+  // Layers is a separate AppView and is authoritative for `pub.layers.*`
+  // records, so Chive asks it rather than indexing that collection. The service
+  // degrades to an empty list when Layers cannot be reached, which is currently
+  // the usual case — the public AppView is not yet answering.
+  const layersDataLinks = new LayersDataLinkService({
+    redis,
+    logger,
+    ...(process.env.LAYERS_APPVIEW_URL ? { appViewUrl: process.env.LAYERS_APPVIEW_URL } : {}),
+  });
 
   // The hydrator's cache is the point of it: without one it makes the same
   // appview request per page render. Redis is already here, so it gets one.
@@ -611,7 +614,6 @@ function createServices(
     searchService,
     metricsService,
     graphService,
-    blobProxyService,
     reviewService,
     annotationService,
     tagManager,
@@ -625,6 +627,8 @@ function createServices(
     importService,
     pdsSyncService,
     graphAlgorithmCache,
+    governancePdsWriter,
+    layersDataLinks,
     profileHydrator,
     relevanceLogger,
     activityService,
@@ -654,67 +658,6 @@ function createServices(
 }
 
 /**
- * Creates CDN adapter if R2 is configured.
- *
- * @remarks
- * Returns a minimal no-op adapter if R2 is not configured. This allows the
- * blob proxy service to function without CDN caching in development.
- */
-function createCDNAdapter(config: EnvConfig, logger: PinoLogger): CDNAdapter {
-  if (
-    config.r2Endpoint &&
-    config.r2Bucket &&
-    config.r2AccessKeyId &&
-    config.r2SecretAccessKey &&
-    config.cdnBaseUrl
-  ) {
-    logger.info('Initializing CDN adapter with Cloudflare R2');
-    return new CDNAdapter({
-      endpoint: config.r2Endpoint,
-      bucket: config.r2Bucket,
-      accessKeyId: config.r2AccessKeyId,
-      secretAccessKey: config.r2SecretAccessKey,
-      cdnBaseURL: config.cdnBaseUrl,
-      defaultTTL: 86400, // 24 hours
-      maxBlobSize: 100 * 1024 * 1024, // 100MB
-      logger,
-    });
-  }
-
-  // Return no-op CDN adapter for development
-  logger.warn('CDN not configured - blob proxy will skip L2 caching');
-  return createNoOpCDNAdapter();
-}
-
-/**
- * Creates a no-op CDN adapter for development without R2.
- *
- * @remarks
- * Uses BLOB_BASE_URL environment variable if set, otherwise falls back to
- * a development-mode URL pattern that indicates blobs should be fetched
- * directly from the user's PDS.
- */
-function createNoOpCDNAdapter(): CDNAdapter {
-  const blobBaseUrl = process.env.BLOB_BASE_URL ?? process.env.CDN_BASE_URL;
-
-  // Create a minimal adapter that always misses
-  return {
-    get: () => Promise.resolve(null),
-    set: () => Promise.resolve({ ok: true, value: undefined }),
-    has: () => Promise.resolve(false),
-    delete: () => Promise.resolve({ ok: true, value: undefined }),
-    getPublicURL: (cid: string) => {
-      if (blobBaseUrl) {
-        return `${blobBaseUrl}/blobs/${cid}`;
-      }
-      // Development fallback: indicate blob should be fetched from PDS
-      // This URL signals to clients that they should use the blob proxy endpoint
-      return `/api/v1/blobs/${cid}`;
-    },
-  } as unknown as CDNAdapter;
-}
-
-/**
  * Gracefully shuts down all connections.
  */
 async function shutdown(state: AppState, signal: string): Promise<void> {
@@ -733,6 +676,10 @@ async function shutdown(state: AppState, signal: string): Promise<void> {
   }
 
   // Stop governance sync job
+  if (state.graphAlgorithmScheduler) {
+    state.graphAlgorithmScheduler.stop();
+  }
+
   if (state.governanceSyncJob) {
     state.logger.info('Stopping governance sync job...');
     state.governanceSyncJob.stop();
@@ -1182,6 +1129,35 @@ async function main(): Promise<void> {
       pdsUrl: config.graphPdsUrl,
       graphPdsDid: config.graphPdsDid,
     });
+
+    // Compute the community and PageRank results `pub.chive.graph.getCommunities`
+    // reads.
+    //
+    // The job was written, tested and never constructed. 0.9.0 built the cache
+    // the handler reads, which had never existed, and stopped there — so the
+    // endpoint went from failing on an undefined service to succeeding with an
+    // empty list, which is harder to notice. This is the producer.
+    if (serverConfig.graphAlgorithmCache) {
+      const graphAlgorithmJob = new GraphAlgorithmJob({
+        algorithms: new GraphAlgorithms(neo4jConnection),
+        cache: serverConfig.graphAlgorithmCache,
+        logger,
+      });
+      state.graphAlgorithmScheduler = createGraphAlgorithmJobScheduler(
+        graphAlgorithmJob,
+        GRAPH_ALGORITHM_INTERVAL_MS
+      );
+      state.graphAlgorithmScheduler.start();
+      logger.info('Graph algorithm job scheduled', {
+        intervalMs: GRAPH_ALGORITHM_INTERVAL_MS,
+      });
+    } else {
+      // Loudly, because the endpoint stays empty and that is now the only way
+      // it can be — which is the state this job was scheduled to end.
+      logger.warn(
+        'Graph algorithm cache is not configured; getCommunities will return an empty list'
+      );
+    }
 
     // Initialize freshness system (if enabled)
     if (config.freshnessEnabled) {

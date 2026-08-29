@@ -22,7 +22,6 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 
 import { createServer, type ServerConfig } from '@/api/server.js';
 import type { ChiveEnv } from '@/api/types/context.js';
-import type { BlobProxyService } from '@/services/blob-proxy/proxy-service.js';
 import { EprintService, type RecordMetadata } from '@/services/eprint/eprint-service.js';
 import type { KnowledgeGraphService } from '@/services/knowledge-graph/graph-service.js';
 import type { MetricsService } from '@/services/metrics/metrics-service.js';
@@ -231,16 +230,6 @@ function createMockGraphService(): KnowledgeGraphService {
       total: 0,
     }),
   } as unknown as KnowledgeGraphService;
-}
-
-/**
- * Creates mock blob proxy service.
- */
-function createMockBlobProxyService(): BlobProxyService {
-  return {
-    getProxiedBlobUrl: vi.fn().mockResolvedValue('https://cdn.chive.example.com/blob/xyz'),
-    streamBlob: vi.fn().mockResolvedValue(null),
-  } as unknown as BlobProxyService;
 }
 
 /**
@@ -556,7 +545,6 @@ describe('API Layer ATProto Compliance', () => {
       searchService: createMockSearchService(searchEngine),
       metricsService: createMockMetricsService(),
       graphService: createMockGraphService(),
-      blobProxyService: createMockBlobProxyService(),
       reviewService: createMockReviewService(),
       annotationService: {} as ServerConfig['annotationService'],
       tagManager: createMockTagManager(),

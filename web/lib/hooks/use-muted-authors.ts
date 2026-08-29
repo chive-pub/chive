@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
+import { fetchAllPages } from '@/lib/api/paginate';
 import { useCurrentUser, useAgent } from '@/lib/auth';
 import { createMuteRecord, deleteMuteRecord } from '@/lib/atproto/record-creator';
 import type { MuteRecord } from '@/lib/atproto/record-creator';
@@ -60,18 +61,25 @@ export function useMutedAuthors() {
     queryFn: async (): Promise<MutedAuthorsData> => {
       if (isAuthenticated && agent) {
         try {
-          // TODO: Only fetches the first 100 mute records. Users with 100+
-          // mutes would need cursor-based pagination across multiple requests.
-          const response = await agent.com.atproto.repo.listRecords({
-            repo: agent.did!,
-            collection: 'pub.chive.actor.mute',
-            limit: 100,
-          });
+          // A partial mute list is worse than none: an author the user muted
+          // past the hundredth record would silently reappear in their feed.
+          const { items } = await fetchAllPages(
+            async (cursor) => {
+              const response = await agent.com.atproto.repo.listRecords({
+                repo: agent.did!,
+                collection: 'pub.chive.actor.mute',
+                limit: 100,
+                ...(cursor ? { cursor } : {}),
+              });
+              return { items: response.data.records, cursor: response.data.cursor };
+            },
+            { label: 'actor.mute' }
+          );
 
           const records = new Map<string, string>();
           const dids = new Set<string>();
 
-          for (const record of response.data.records) {
+          for (const record of items) {
             const value = record.value as MuteRecord;
             records.set(value.subjectDid, record.uri);
             dids.add(value.subjectDid);

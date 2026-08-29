@@ -46,7 +46,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 // Note: Categories are fetched via NodeAutocomplete with subkind='supplementary-category'
-import type { EprintFormValues, SupplementaryMaterialInput } from './submission-wizard';
+import type {
+  DataLinkDraft,
+  EprintFormValues,
+  SupplementaryMaterialInput,
+} from './submission-wizard';
 
 // =============================================================================
 // TYPES
@@ -117,6 +121,10 @@ const SUPPLEMENTARY_ACCEPT = {
 
 const MAX_SUPPLEMENTARY_SIZE = 104857600; // 100MB per file
 const MAX_SUPPLEMENTARY_FILES = 50;
+
+// Each link is a separate record write after the eprint exists, so the ceiling
+// is about how long a submitter waits at the end, not about storage.
+const MAX_DATA_LINKS = 20;
 
 /**
  * Category labels for display (fallback when knowledge graph name not available).
@@ -489,8 +497,129 @@ function SupplementaryItem({
  * @param props - Component props
  * @returns Supplementary materials step element
  */
+/**
+ * Human labels for the vocabulary Layers publishes.
+ *
+ * @remarks
+ * Only a fallback. When a knowledge graph node is chosen its own label wins,
+ * which is the point of the graph being community-expandable.
+ */
+const DATA_KIND_LABELS: Record<string, string> = {
+  corpus: 'Corpus',
+  'annotation-layer': 'Annotation layer',
+  'model-output': 'Model output',
+  'gold-standard': 'Gold standard',
+  'evaluation-data': 'Evaluation data',
+  supplementary: 'Supplementary data',
+  replication: 'Replication data',
+};
+
+interface DataLinkRowProps {
+  item: DataLinkDraft;
+  index: number;
+  onUpdate: (index: number, updates: Partial<DataLinkDraft>) => void;
+  onRemove: (index: number) => void;
+}
+
+/**
+ * One dataset being linked to the eprint.
+ */
+function DataLinkRow({ item, index, onUpdate, onRemove }: DataLinkRowProps) {
+  return (
+    <div className="rounded-lg border bg-card p-4">
+      <div className="flex items-start gap-3">
+        <Database className="h-5 w-5 text-muted-foreground shrink-0 mt-2" />
+
+        <div className="flex-1 space-y-3 min-w-0">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">Kind of data</label>
+              <NodeAutocomplete
+                kind="type"
+                subkind="data-kind"
+                label="Data Kind"
+                value={item.dataKindUri}
+                onSelect={(node) =>
+                  onUpdate(index, {
+                    dataKind: node.id,
+                    dataKindUri: node.uri,
+                    dataKindName: node.label,
+                  })
+                }
+                placeholder={item.dataKindName ?? DATA_KIND_LABELS[item.dataKind] ?? item.dataKind}
+                className="h-8"
+              />
+              {!item.dataKindUri && (
+                <select
+                  aria-label="Kind of data"
+                  value={item.dataKind}
+                  onChange={(e) => onUpdate(index, { dataKind: e.target.value })}
+                  className="w-full h-8 rounded-md border bg-background px-2 text-sm"
+                >
+                  {Object.entries(DATA_KIND_LABELS).map(([slug, label]) => (
+                    <option key={slug} value={slug}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-xs text-muted-foreground">
+                Section of the paper <span className="font-normal">(optional)</span>
+              </label>
+              <Input
+                value={item.paperSection ?? ''}
+                onChange={(e) => onUpdate(index, { paperSection: e.target.value || undefined })}
+                placeholder="Table 3, Section 4.2, Appendix A..."
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">
+              Layers corpus <span className="font-normal">(optional)</span>
+            </label>
+            <Input
+              value={item.corpusRef ?? ''}
+              onChange={(e) => onUpdate(index, { corpusRef: e.target.value || undefined })}
+              placeholder="at://did:plc:.../pub.layers.corpus/..."
+              className="h-8 text-sm font-mono"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs text-muted-foreground">Description (optional)</label>
+            <Textarea
+              value={item.description ?? ''}
+              onChange={(e) => onUpdate(index, { description: e.target.value || undefined })}
+              placeholder="What this data is..."
+              rows={2}
+              className="resize-none text-sm"
+            />
+          </div>
+        </div>
+
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemove(index)}
+          aria-label="Remove dataset link"
+          className="shrink-0"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function StepSupplementary({ form, className }: StepSupplementaryProps) {
   const watchedMaterials = form.watch('supplementaryMaterials');
+  const watchedDataLinks = form.watch('dataLinks');
   const materials = useMemo(() => watchedMaterials ?? [], [watchedMaterials]);
 
   const [dragIndex, setDragIndex] = useState<number | null>(null);
@@ -573,6 +702,31 @@ export function StepSupplementary({ form, className }: StepSupplementaryProps) {
 
   const canAddMore = materials.length < MAX_SUPPLEMENTARY_FILES;
 
+  const dataLinks = useMemo(() => watchedDataLinks ?? [], [watchedDataLinks]);
+
+  const handleAddDataLink = useCallback(() => {
+    form.setValue('dataLinks', [...dataLinks, { dataKind: 'corpus' }], { shouldValidate: true });
+  }, [dataLinks, form]);
+
+  const handleUpdateDataLink = useCallback(
+    (index: number, updates: Partial<DataLinkDraft>) => {
+      const updated = dataLinks.map((link, i) => (i === index ? { ...link, ...updates } : link));
+      form.setValue('dataLinks', updated, { shouldValidate: true });
+    },
+    [dataLinks, form]
+  );
+
+  const handleRemoveDataLink = useCallback(
+    (index: number) => {
+      form.setValue(
+        'dataLinks',
+        dataLinks.filter((_, i) => i !== index),
+        { shouldValidate: true }
+      );
+    },
+    [dataLinks, form]
+  );
+
   return (
     <div className={cn('space-y-6', className)}>
       {/* Header */}
@@ -629,6 +783,43 @@ export function StepSupplementary({ form, className }: StepSupplementaryProps) {
           </div>
         </div>
       )}
+
+      {/* Datasets linked on Layers */}
+      <section className="space-y-3">
+        <div>
+          <h4 className="font-medium flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            Linked datasets
+            <span className="text-sm font-normal text-muted-foreground">(optional)</span>
+          </h4>
+          <p className="text-sm text-muted-foreground mt-1">
+            Link a corpus, annotation layer or model output that already lives on Layers. These are
+            written to your PDS as Layers records, so they stay yours and stay readable by both
+            services. Naming the section they belong to is what makes them useful to a reader.
+          </p>
+        </div>
+
+        {dataLinks.length > 0 && (
+          <div className="space-y-2">
+            {dataLinks.map((item, index) => (
+              <DataLinkRow
+                key={index}
+                item={item}
+                index={index}
+                onUpdate={handleUpdateDataLink}
+                onRemove={handleRemoveDataLink}
+              />
+            ))}
+          </div>
+        )}
+
+        {dataLinks.length < MAX_DATA_LINKS && (
+          <Button type="button" variant="outline" size="sm" onClick={handleAddDataLink}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add a dataset link
+          </Button>
+        )}
+      </section>
 
       {/* Category guide */}
       <section className="rounded-lg border border-muted bg-muted/30 p-4">

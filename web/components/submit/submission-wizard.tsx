@@ -32,6 +32,7 @@ import { useAuth, useAgent } from '@/lib/auth/auth-context';
 import {
   createEprintRecord,
   createStandardDocument,
+  createLayersDataLinks,
   type CreateRecordResult,
   type EprintRecord,
 } from '@/lib/atproto';
@@ -96,6 +97,31 @@ export type PublicationStatusValue = PublicationStatus;
 // are stored in platformUri/presentationTypeUri fields.
 // Display names are stored in platformName/presentationTypeName fields.
 
+/**
+ * One dataset link as the wizard holds it before submission.
+ *
+ * @remarks
+ * `dataKindName` is carried only so the form can show the label the knowledge
+ * graph gave a node; it is not part of the record. The record keeps the slug
+ * and the node URI, which is what Layers reads.
+ *
+ * @public
+ */
+export interface DataLinkDraft {
+  /** Data kind slug, from the graph node or the fallback vocabulary */
+  dataKind: string;
+  /** AT-URI of the knowledge graph node, when one was chosen */
+  dataKindUri?: string;
+  /** Label of the chosen node, for display only */
+  dataKindName?: string;
+  /** AT-URI of the Layers corpus the data lives in */
+  corpusRef?: string;
+  /** What the data is */
+  description?: string;
+  /** Where in the paper it belongs */
+  paperSection?: string;
+}
+
 export interface EprintFormValues {
   // Step 1: Files
   documentFile?: File;
@@ -108,6 +134,8 @@ export interface EprintFormValues {
 
   // Step 2: Supplementary Materials
   supplementaryMaterials?: SupplementaryMaterialInput[];
+  /** Datasets on Layers to link to this eprint, written after the eprint exists */
+  dataLinks?: DataLinkDraft[];
 
   // Cross-platform discovery (standard.site)
   /** Whether to create a site.standard.document record for cross-platform discovery */
@@ -367,6 +395,19 @@ const formSchema = z.object({
 
   // Step 2: Supplementary Materials
   supplementaryMaterials: z.array(supplementaryMaterialSchema).max(50).optional(),
+  dataLinks: z
+    .array(
+      z.object({
+        dataKind: z.string().min(1, 'Choose a kind of data').max(128),
+        dataKindUri: z.string().optional(),
+        dataKindName: z.string().optional(),
+        corpusRef: z.string().optional(),
+        description: z.string().max(10000).optional(),
+        paperSection: z.string().max(256).optional(),
+      })
+    )
+    .max(20)
+    .optional(),
 
   // Step 3: Metadata
   title: z.string().min(1, 'Title is required').max(500, 'Title too long'),
@@ -979,6 +1020,55 @@ export function SubmissionWizard({
                   : String(standardDocError),
             }
           );
+        }
+      }
+
+      // Write the Layers data links, now that the eprint has a URI.
+      //
+      // A dataLink record requires eprintUri, so this cannot be part of the
+      // submission write. It runs afterwards and never throws: an eprint that
+      // was created successfully must not be rolled back or left orphaned
+      // because a secondary link failed. The submitter is told what did not
+      // land so they can add it again from the eprint page.
+      const dataLinkDrafts = values.dataLinks ?? [];
+      if (dataLinkDrafts.length > 0) {
+        try {
+          submitLogger.info('Creating Layers data links', {
+            eprintUri: result.uri,
+            count: dataLinkDrafts.length,
+          });
+          const { created, failed } = await createLayersDataLinks(targetAgent ?? agent, {
+            eprintUri: result.uri,
+            eprintDid: values.usePaperPds ? values.paperDid : undefined,
+            dataLinks: dataLinkDrafts.map((link) => ({
+              dataKind: link.dataKind,
+              dataKindUri: link.dataKindUri,
+              corpusRef: link.corpusRef,
+              description: link.description,
+              paperSection: link.paperSection,
+            })),
+          });
+
+          if (failed.length > 0) {
+            submitLogger.warn('Some Layers data links were not created', { failed });
+            toast.warning(
+              failed.length === dataLinkDrafts.length
+                ? 'Your paper was saved, but the dataset links were not.'
+                : `Your paper was saved, but ${failed.length} of ${dataLinkDrafts.length} dataset links were not.`,
+              { description: 'You can add them again from the eprint page.' }
+            );
+          } else {
+            submitLogger.info('Layers data links created', { count: created.length });
+          }
+        } catch (dataLinkError) {
+          // Only an unauthenticated agent reaches here; per-record failures are
+          // reported in `failed` rather than thrown.
+          submitLogger.warn('Failed to create Layers data links; eprint was created successfully', {
+            error: dataLinkError instanceof Error ? dataLinkError.message : String(dataLinkError),
+          });
+          toast.warning('Your paper was saved, but the dataset links were not.', {
+            description: 'You can add them again from the eprint page.',
+          });
         }
       }
 

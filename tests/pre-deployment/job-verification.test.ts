@@ -20,7 +20,6 @@ import * as GraphAlgorithmJob from '../../src/jobs/graph-algorithm-job.js';
 import * as PdsScanSchedulerJob from '../../src/jobs/pds-scan-scheduler-job.js';
 import * as TagSyncJob from '../../src/jobs/tag-sync-job.js';
 // Import worker modules
-import * as EnrichmentWorker from '../../src/workers/enrichment-worker.js';
 import * as FreshnessWorker from '../../src/workers/freshness-worker.js';
 import * as IndexRetryWorker from '../../src/workers/index-retry-worker.js';
 
@@ -67,11 +66,6 @@ describe('Pre-Deployment Job Verification', () => {
       expect(typeof IndexRetryWorker).toBe('object');
     });
 
-    it('enrichment-worker module exports correctly', () => {
-      expect(EnrichmentWorker).toBeDefined();
-      expect(typeof EnrichmentWorker).toBe('object');
-    });
-
     it('freshness-worker module exports correctly', () => {
       expect(FreshnessWorker).toBeDefined();
       expect(typeof FreshnessWorker).toBe('object');
@@ -87,13 +81,6 @@ describe('Pre-Deployment Job Verification', () => {
       // Check if the worker class exists and has expected structure
       if ('IndexRetryWorker' in IndexRetryWorker) {
         const WorkerClass = (IndexRetryWorker as Record<string, unknown>).IndexRetryWorker;
-        expect(typeof WorkerClass).toBe('function');
-      }
-    });
-
-    it('EnrichmentWorker can be instantiated', () => {
-      if ('EnrichmentWorker' in EnrichmentWorker) {
-        const WorkerClass = (EnrichmentWorker as Record<string, unknown>).EnrichmentWorker;
         expect(typeof WorkerClass).toBe('function');
       }
     });

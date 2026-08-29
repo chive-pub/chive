@@ -8,48 +8,9 @@ Workers process background jobs queued via Redis/BullMQ. Each worker handles a s
 
 ## Workers
 
-| Worker             | Queue               | Description                                  |
-| ------------------ | ------------------- | -------------------------------------------- |
-| `EnrichmentWorker` | `eprint-enrichment` | Enriches eprints with external metadata      |
-| `FreshnessWorker`  | `eprint-freshness`  | Checks record freshness against source PDSes |
-
-## Enrichment Worker
-
-Fetches metadata from external APIs and indexes citations:
-
-```typescript
-import { EnrichmentWorker, ENRICHMENT_QUEUE_NAME } from './workers/enrichment-worker.js';
-
-const worker = new EnrichmentWorker({
-  redis: { host: 'localhost', port: 6379 },
-  discoveryService,
-  eventBus,
-  logger,
-});
-
-await worker.start();
-
-// Queue enrichment job
-await EnrichmentWorker.enqueue(queue, {
-  uri: 'at://did:plc:example/pub.chive.eprint.submission/abc',
-  doi: '10.1234/example',
-});
-```
-
-**Processing Flow:**
-
-1. Receive job with eprint URI/DOI/arXiv ID
-2. Fetch data from Semantic Scholar (citations, influence)
-3. Fetch data from OpenAlex (concepts, topics)
-4. Index Chive-to-Chive citations in Neo4j
-5. Update eprint record with enrichment data
-6. Emit `eprint.enriched` event
-
-**Priority Levels:**
-
-- `CLAIMED` (1) - User-triggered, highest priority
-- `INDEXED` (5) - Recently indexed eprint
-- `BACKGROUND` (10) - Background re-enrichment
+| Worker            | Queue              | Description                                  |
+| ----------------- | ------------------ | -------------------------------------------- |
+| `FreshnessWorker` | `eprint-freshness` | Checks record freshness against source PDSes |
 
 ## Freshness Worker
 

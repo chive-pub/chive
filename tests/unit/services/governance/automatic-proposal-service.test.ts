@@ -47,7 +47,8 @@ describe('AutomaticProposalService', () => {
     mockGovernancePdsWriter = new GovernancePDSWriter({
       graphPdsDid,
       pdsUrl: 'https://governance.test',
-      signingKey: 'test-key',
+      handle: 'chive-governance.test',
+      password: 'test-password',
       pool: mockPool,
       cache: mockRedis,
       logger: mockLogger,

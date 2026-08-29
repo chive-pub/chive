@@ -1,6 +1,6 @@
 {
   "name": "@chive/docs",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "author": {
     "name": "Aaron Steven White",
@@ -14,7 +14,7 @@
   "scripts": {
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
-    "build": "npm run gen-api-docs && docusaurus build",
+    "build": "npm run typecheck:typedoc && npm run gen-api-docs && docusaurus build",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
     "clear": "docusaurus clear",
@@ -26,7 +26,8 @@
     "clean-api-docs": "docusaurus clean-api-docs all",
     "export-openapi": "./scripts/export-openapi.sh",
     "rebuild": "./scripts/rebuild-docs.sh",
-    "clean:all": "rm -rf code-reference/backend/* code-reference/frontend/* api-docs/* .docusaurus build"
+    "clean:all": "rm -rf code-reference/backend/* code-reference/frontend/* api-docs/* .docusaurus build",
+    "typecheck:typedoc": "tsc -p ../tsconfig.typedoc.json --noEmit && tsc -p ../web/tsconfig.typedoc.json --noEmit"
   },
   "dependencies": {
     "@docusaurus/core": "^3.7.0",

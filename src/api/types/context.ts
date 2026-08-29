@@ -17,7 +17,6 @@ import type { AdminService } from '../../services/admin/admin-service.js';
 import type { BackfillManager } from '../../services/admin/backfill-manager.js';
 import type { AnnotationService } from '../../services/annotation/annotation-service.js';
 import type { BacklinkService } from '../../services/backlink/backlink-service.js';
-import type { BlobProxyService } from '../../services/blob-proxy/proxy-service.js';
 import type { CitationExtractionService } from '../../services/citation/citation-extraction-service.js';
 import type { ClaimingService } from '../../services/claiming/claiming-service.js';
 import type { CollaborationService } from '../../services/collaboration/collaboration-service.js';
@@ -31,6 +30,7 @@ import type { TrustedEditorService } from '../../services/governance/trusted-edi
 import type { PersonalGraphService } from '../../services/graph/personal-graph-service.js';
 import type { ImportService } from '../../services/import/import-service.js';
 import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph-service.js';
+import type { LayersDataLinkService } from '../../services/layers/data-link-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
 import type { ContentReportService } from '../../services/moderation/content-report-service.js';
 import type { IPDSRegistry } from '../../services/pds-discovery/pds-registry.js';
@@ -63,7 +63,6 @@ export interface ChiveServices {
   readonly relevanceLogger: IRelevanceLogger;
   readonly metrics: MetricsService;
   readonly graph: KnowledgeGraphService;
-  readonly blobProxy: BlobProxyService;
   readonly review: ReviewService;
   readonly annotation: AnnotationService;
   readonly tagManager: TagManager;
@@ -80,6 +79,14 @@ export interface ChiveServices {
   readonly discovery?: DiscoveryService;
   readonly recommendationService?: RecommendationService;
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
+
+  /**
+   * Federated reads of Layers data links.
+   *
+   * Optional: an instance that does not federate to Layers simply has no
+   * dataset panel, and the handler says so rather than failing.
+   */
+  readonly layersDataLinks?: LayersDataLinkService;
   readonly profileHydrator?: ProfileHydrator;
   readonly trustedEditor?: TrustedEditorService;
   readonly governancePdsWriter?: GovernancePDSWriter;
