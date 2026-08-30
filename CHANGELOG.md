@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.1] - 2026-08-30
+
+### Fixed
+
+- **Sign-in failed with `Failed to resolve identity`, and record writes would have failed the same way.** The Content-Security-Policy introduced in 0.10.0 set `connect-src` to the app origin and the Chive API, which is too narrow to run an ATProto client: the browser connects to hosts it discovers at runtime, and the policy blocked all of them. Handle resolution reads DNS over `https://dns.google` and falls back to the public AppView; `plc.directory` supplies the DID document naming the PDS; the OAuth authorization server is that PDS; and every record the app writes — eprints, reviews, mutes, Layers data links — is a direct browser-to-PDS `com.atproto.repo.*` call. External autocompletes against Crossref, DBLP, arXiv, ORCID and ROR were blocked for the same reason. `connect-src` now allows `https:` and `wss:`, which is the narrowest form that works: the set of PDS hosts is open by design and CSP cannot express "any host this document later learns about". Plaintext HTTP and non-HTTP schemes remain blocked, and `script-src`, `object-src`, `base-uri`, `form-action` and `frame-ancestors` are unchanged.
+
+  The 0.10.0 entry describing that policy said everything other than `script-src` was enforced. That was wrong of `connect-src`, which was not enforcing a boundary but breaking the application.
+
 ## [0.11.0] - 2026-08-29
 
 ### Added
@@ -883,7 +891,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.11.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.11.1...HEAD
+[0.11.1]: https://github.com/chive-pub/chive/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/chive-pub/chive/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/chive-pub/chive/compare/v0.9.0...v0.10.0
 [0.9.0]: https://github.com/chive-pub/chive/compare/v0.8.1...v0.9.0
