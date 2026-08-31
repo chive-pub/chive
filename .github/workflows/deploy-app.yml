@@ -18,7 +18,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate required secrets and variables
         run: |
@@ -136,7 +136,7 @@ jobs:
           ls -la docker-env/
 
       - name: Copy env files to server
-        uses: appleboy/scp-action@v0.1.7
+        uses: appleboy/scp-action@v1.0.0
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -146,7 +146,7 @@ jobs:
           strip_components: 1
 
       - name: Deploy to server
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -281,7 +281,7 @@ jobs:
             echo "Timestamp: $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
       - name: Setup Governance PDS
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -353,7 +353,7 @@ jobs:
             fi
 
       - name: Sync Governance PDS to Neo4j
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -382,7 +382,7 @@ jobs:
             echo "=== Governance sync complete ==="
 
       - name: Setup Elasticsearch Index
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -414,7 +414,7 @@ jobs:
             echo "=== Elasticsearch index setup complete ==="
 
       - name: Reindex Elasticsearch
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
