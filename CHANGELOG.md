@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-08-31
+
+### Changed
+
+- **Every autocomplete can now be operated from a keyboard and announced by a screen reader.** Chive has around twenty of them and two implemented the WAI-ARIA combobox pattern; the rest offered their suggestions to a mouse only. Most handled Escape and no other key, so a keyboard user could open a list of suggestions and had no way to reach one. Ten delegate to `AutocompleteInput`, which implements the pattern once; the nine that render their own grouped list — Chive events beside DBLP venues, personal nodes beside global ones, Chive institutions beside ROR — adopt a new `useCombobox` hook that owns the keyboard and the ARIA wiring without touching their markup. All of them gain arrow keys, Home, End, Enter to commit, Escape to dismiss, and an `aria-activedescendant` naming the current suggestion. A test over the whole directory now fails if a new autocomplete does none of the three.
+- Two Enter behaviours changed with it. `fast-autocomplete` committed the first suggestion regardless of what the user had moved to, which was the only thing it could do; it now commits what is highlighted, and nothing when nothing is. `affiliation-input` keeps its free-text fallback — an affiliation in neither Chive nor ROR is still a real affiliation — so Enter with nothing highlighted still adds the typed value.
+
+### Fixed
+
+- **The eprint page sorted its reviews, endorsements and annotations on every request.** All three are read as `WHERE eprint_uri = $1 AND deleted_at IS NULL ORDER BY created_at DESC`, and the indexes covered `eprint_uri` alone — so PostgreSQL matched the URI, filtered the soft-deleted rows, then sorted, on every view. Partial indexes on `(eprint_uri, created_at DESC) WHERE deleted_at IS NULL` answer the query from the index, already ordered. The busiest papers are the ones most often opened, so they were paying the most for it.
+- **Search and endorsement pages issued one query per result.** Both looped a single-record fetch over their results — a page of 25 search hits cost 25 round-trips to Postgres, a page of 50 endorsements cost 50 to read 50 titles. A batch getter already existed and issued a single `uri = ANY($1)`; both endpoints now use it. Search did this in two separate code paths, so fixing one would have left the endpoint unbatched for queries without text.
+- **A large batch staleness check could not run at all.** `checkBatch` built one query parameter per URI, and the PostgreSQL wire protocol caps a statement at 65535 of them — so a batch past that failed inside the driver before the query was sent, and every distinct batch size produced a differently-shaped statement for the planner to parse afresh. It now passes the list as one array parameter.
+
 ## [0.12.0] - 2026-08-31
 
 Chive now reads and writes other applications' lexicons against what those applications actually publish. Several of the records it was already emitting turned out to be invalid, and several it was already subscribed to were never reaching it.
@@ -930,7 +943,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.12.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/chive-pub/chive/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/chive-pub/chive/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/chive-pub/chive/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/chive-pub/chive/compare/v0.10.0...v0.11.0
