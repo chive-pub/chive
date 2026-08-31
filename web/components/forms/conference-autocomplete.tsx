@@ -29,6 +29,7 @@ import { useDebouncedCallback } from 'use-debounce';
 
 import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 
@@ -425,11 +426,17 @@ export function ConferenceAutocomplete({
     }
   }, [hasResults, query]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowResults(false);
-    }
-  }, []);
+  // The two groups render in this order, so the keyboard cursor walks them
+  // in the same order a reader sees them.
+  const visibleOptions = [...results.chiveEvents, ...results.dblpVenues];
+
+  const combobox = useCombobox({
+    options: visibleOptions,
+    isOpen: showResults,
+    onSelect: handleSelect,
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
 
   // Close results when clicking outside
   useEffect(() => {
@@ -458,7 +465,7 @@ export function ConferenceAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
+          {...combobox.inputProps}
           placeholder={placeholder}
           disabled={disabled}
           className="pr-8"
@@ -493,17 +500,25 @@ export function ConferenceAutocomplete({
                 <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
                   Chive Events
                 </div>
-                <div className="p-1">
-                  {results.chiveEvents.map((event) => (
-                    <button
-                      key={event.uri}
-                      type="button"
-                      onClick={() => handleSelect(event)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <ConferenceResultItem conference={event} />
-                    </button>
-                  ))}
+                <div className="p-1" {...(0 === 0 ? combobox.listboxProps : {})}>
+                  {results.chiveEvents.map((event, i) => {
+                    const optionIndex = 0 + i;
+                    return (
+                      <button
+                        key={event.uri}
+                        {...combobox.getOptionProps(optionIndex)}
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => handleSelect(event)}
+                        className={cn(
+                          'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                          optionIndex === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                        )}
+                      >
+                        <ConferenceResultItem conference={event} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -514,17 +529,28 @@ export function ConferenceAutocomplete({
                 <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
                   DBLP Venues
                 </div>
-                <div className="p-1">
-                  {results.dblpVenues.map((venue) => (
-                    <button
-                      key={venue.id}
-                      type="button"
-                      onClick={() => handleSelect(venue)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <ConferenceResultItem conference={venue} />
-                    </button>
-                  ))}
+                <div
+                  className="p-1"
+                  {...(results.chiveEvents.length === 0 ? combobox.listboxProps : {})}
+                >
+                  {results.dblpVenues.map((venue, i) => {
+                    const optionIndex = results.chiveEvents.length + i;
+                    return (
+                      <button
+                        key={venue.id}
+                        {...combobox.getOptionProps(optionIndex)}
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => handleSelect(venue)}
+                        className={cn(
+                          'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                          optionIndex === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                        )}
+                      >
+                        <ConferenceResultItem conference={venue} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

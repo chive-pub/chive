@@ -27,6 +27,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { Loader2, ExternalLink, X, Tag } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -154,17 +155,13 @@ export function FastAutocomplete({
     inputRef.current?.focus();
   }, [onClear]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false);
-      } else if (e.key === 'Enter' && suggestions.length > 0) {
-        e.preventDefault();
-        handleSelect(suggestions[0]);
-      }
-    },
-    [suggestions, handleSelect]
-  );
+  const combobox = useCombobox({
+    options: suggestions,
+    isOpen: shouldShowDropdown,
+    onSelect: handleSelect,
+    onClose: () => setOpen(false),
+    onOpen: () => setOpen(true),
+  });
 
   const showClearButton = (inputValue.length > 0 || value) && !disabled;
 
@@ -184,7 +181,7 @@ export function FastAutocomplete({
                   setOpen(true);
                 }
               }}
-              onKeyDown={handleKeyDown}
+              {...combobox.inputProps}
               onFocus={() => inputValue.length >= 2 && setOpen(true)}
               placeholder={value ? `Selected: ${extractFastId(value)}` : placeholder}
               className={cn('pl-9', showClearButton && 'pr-10')}
@@ -228,9 +225,13 @@ export function FastAutocomplete({
                   {suggestions.map((suggestion, index) => (
                     <CommandItem
                       key={`fast-${suggestion.id}-${index}`}
+                      {...combobox.getOptionProps(index)}
                       value={suggestion.id}
                       onSelect={() => handleSelect(suggestion)}
-                      className="cursor-pointer"
+                      className={cn(
+                        'cursor-pointer',
+                        index === combobox.activeIndex && 'bg-accent'
+                      )}
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">

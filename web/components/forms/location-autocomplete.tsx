@@ -27,6 +27,7 @@ import { useDebouncedCallback } from 'use-debounce';
 
 import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { Input } from '@/components/ui/input';
 
 const log = logger.child({ component: 'location-autocomplete' });
@@ -334,11 +335,13 @@ export function LocationAutocomplete({
     }
   }, [results.length, query]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowResults(false);
-    }
-  }, []);
+  const combobox = useCombobox({
+    options: results,
+    isOpen: showResults,
+    onSelect: handleSelect,
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
 
   // Close results when clicking outside
   useEffect(() => {
@@ -367,7 +370,7 @@ export function LocationAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
+          {...combobox.inputProps}
           placeholder={placeholder}
           disabled={disabled}
           className="pr-8"
@@ -397,13 +400,18 @@ export function LocationAutocomplete({
         >
           <div className="max-h-72 overflow-y-auto">
             {results.length > 0 ? (
-              <div className="p-1">
-                {results.map((location) => (
+              <div className="p-1" {...combobox.listboxProps}>
+                {results.map((location, index) => (
                   <button
                     key={location.wikidataId}
+                    {...combobox.getOptionProps(index)}
                     type="button"
+                    tabIndex={-1}
                     onClick={() => handleSelect(location)}
-                    className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                    className={cn(
+                      'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                      index === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                    )}
                   >
                     <LocationResultItem location={location} />
                   </button>

@@ -25,6 +25,7 @@ import { Layers, Search, Loader2, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api/client';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -612,11 +613,16 @@ export function FacetAutocomplete({
     onClear?.();
   }, [onClear]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-    }
-  }, []);
+  // The rendered options are the sliced list, so the cursor walks that.
+  const visibleSuggestions = suggestions.slice(0, 10);
+
+  const combobox = useCombobox({
+    options: visibleSuggestions,
+    isOpen,
+    onSelect: handleSelect,
+    onClose: () => setIsOpen(false),
+    onOpen: () => setIsOpen(true),
+  });
 
   // Open popover when typing or focusing
   const handleFocus = useCallback(() => {
@@ -661,7 +667,7 @@ export function FacetAutocomplete({
             id={id}
             value={query}
             onChange={handleInputChange}
-            onKeyDown={handleKeyDown}
+            {...combobox.inputProps}
             onFocus={handleFocus}
             placeholder={placeholder ?? defaultPlaceholder}
             disabled={disabled}
@@ -680,7 +686,7 @@ export function FacetAutocomplete({
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <Command>
-          <CommandList>
+          <CommandList {...combobox.listboxProps}>
             {isLoading && (
               <div className="flex items-center justify-center py-4">
                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -695,12 +701,13 @@ export function FacetAutocomplete({
 
             {suggestions.length > 0 && (
               <CommandGroup heading={`${DIMENSION_LABELS[dimension]} Values`}>
-                {suggestions.slice(0, 10).map((suggestion) => (
+                {visibleSuggestions.map((suggestion, index) => (
                   <CommandItem
                     key={suggestion.id}
+                    {...combobox.getOptionProps(index)}
                     value={suggestion.id}
                     onSelect={() => handleSelect(suggestion)}
-                    className="cursor-pointer"
+                    className={cn('cursor-pointer', index === combobox.activeIndex && 'bg-accent')}
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
                       <div className="flex flex-col gap-0.5 flex-1 min-w-0">

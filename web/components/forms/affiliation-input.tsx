@@ -27,6 +27,7 @@ import { logger } from '@/lib/observability';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 
 const log = logger.child({ component: 'affiliation-input' });
 
@@ -310,23 +311,51 @@ function InlineSearchInput({ onAdd, disabled, placeholder }: InlineSearchInputPr
     setShowResults(false);
   }, [query, onAdd, setQuery, clearResults]);
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (results.chiveInstitutions.length > 0) {
-          handleSelectChive(results.chiveInstitutions[0]);
-        } else if (results.rorOrganizations.length > 0) {
-          handleSelectRor(results.rorOrganizations[0]);
-        } else if (query.trim()) {
-          handleManualAdd();
-        }
-      }
-      if (e.key === 'Escape') {
-        setShowResults(false);
+  // Two groups, two different select handlers. The cursor walks them in render
+  // order and dispatches on which list the option came from.
+  const chiveCount = results.chiveInstitutions.length;
+  const visibleOptions = [
+    ...results.chiveInstitutions.map((inst) => ({ kind: 'chive' as const, value: inst })),
+    ...results.rorOrganizations.map((org) => ({ kind: 'ror' as const, value: org })),
+  ];
+
+  const combobox = useCombobox({
+    options: visibleOptions,
+    isOpen: showResults,
+    onSelect: (option) => {
+      if (option.kind === 'chive') {
+        handleSelectChive(option.value);
+      } else {
+        handleSelectRor(option.value);
       }
     },
-    [results, query, handleSelectChive, handleSelectRor, handleManualAdd]
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
+
+  /**
+   * Keyboard handling, composed with the combobox pattern.
+   *
+   * @remarks
+   * The combobox owns the arrows, Home, End, Escape, and Enter-when-something-
+   * is-highlighted. What it cannot know is this field's own rule: an
+   * affiliation that appears in neither Chive nor ROR is still a real
+   * affiliation, and Enter should add what the user typed.
+   *
+   * The previous handler committed `chiveInstitutions[0]` on Enter regardless
+   * of what the user had moved to — which was the only behaviour available,
+   * since there was no way to move.
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      combobox.inputProps.onKeyDown(e);
+
+      if (e.key === 'Enter' && combobox.activeIndex < 0 && query.trim()) {
+        e.preventDefault();
+        handleManualAdd();
+      }
+    },
+    [combobox, query, handleManualAdd]
   );
 
   return (
@@ -342,6 +371,7 @@ function InlineSearchInput({ onAdd, disabled, placeholder }: InlineSearchInputPr
           }}
           onFocus={() => query.length >= 2 && setShowResults(true)}
           onBlur={() => setTimeout(() => setShowResults(false), 200)}
+          {...combobox.inputProps}
           onKeyDown={handleKeyDown}
           placeholder={placeholder ?? 'Search or type name...'}
           disabled={disabled}
@@ -360,13 +390,18 @@ function InlineSearchInput({ onAdd, disabled, placeholder }: InlineSearchInputPr
                 <div className="sticky top-0 bg-muted/80 px-2 py-1 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
                   Chive Institutions
                 </div>
-                <div className="p-1">
-                  {results.chiveInstitutions.map((inst) => (
+                <div className="p-1" {...combobox.listboxProps}>
+                  {results.chiveInstitutions.map((inst, i) => (
                     <button
                       key={inst.uri}
+                      {...combobox.getOptionProps(i)}
                       type="button"
+                      tabIndex={-1}
                       onClick={() => handleSelectChive(inst)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                      className={cn(
+                        'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                        i === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                      )}
                     >
                       <span className="font-medium">{inst.name}</span>
                       <span className="text-xs text-muted-foreground">
@@ -385,12 +420,18 @@ function InlineSearchInput({ onAdd, disabled, placeholder }: InlineSearchInputPr
                   ROR Registry
                 </div>
                 <div className="p-1">
-                  {results.rorOrganizations.map((org) => (
+                  {results.rorOrganizations.map((org, i) => (
                     <button
                       key={org.id}
+                      {...combobox.getOptionProps(chiveCount + i)}
                       type="button"
+                      tabIndex={-1}
                       onClick={() => handleSelectRor(org)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                      className={cn(
+                        'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                        chiveCount + i === combobox.activeIndex &&
+                          'bg-accent text-accent-foreground'
+                      )}
                     >
                       <span className="font-medium">{getRorDisplayName(org)}</span>
                       <span className="text-xs text-muted-foreground">

@@ -35,6 +35,7 @@ import { useDebouncedCallback } from 'use-debounce';
 
 import { logger } from '@/lib/observability';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { Input } from '@/components/ui/input';
 
 const log = logger.child({ component: 'funder-autocomplete' });
@@ -435,11 +436,17 @@ export function FunderAutocomplete({
     }
   }, [hasResults, query]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setShowResults(false);
-    }
-  }, []);
+  // The two groups render in this order, so the keyboard cursor walks them
+  // in the same order a reader sees them.
+  const visibleOptions = [...results.chiveInstitutions, ...results.crossrefFunders];
+
+  const combobox = useCombobox({
+    options: visibleOptions,
+    isOpen: showResults,
+    onSelect: handleSelect,
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
 
   // Close results when clicking outside
   useEffect(() => {
@@ -468,7 +475,7 @@ export function FunderAutocomplete({
           value={query}
           onChange={handleInputChange}
           onFocus={handleInputFocus}
-          onKeyDown={handleKeyDown}
+          {...combobox.inputProps}
           placeholder={placeholder}
           disabled={disabled}
           className="pr-8"
@@ -503,17 +510,25 @@ export function FunderAutocomplete({
                 <div className="sticky top-0 bg-muted/80 px-2 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur-sm">
                   Chive Institutions
                 </div>
-                <div className="p-1">
-                  {results.chiveInstitutions.map((inst) => (
-                    <button
-                      key={inst.uri}
-                      type="button"
-                      onClick={() => handleSelect(inst)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <FunderResultItem funder={inst} />
-                    </button>
-                  ))}
+                <div className="p-1" {...combobox.listboxProps}>
+                  {results.chiveInstitutions.map((inst, i) => {
+                    const optionIndex = 0 + i;
+                    return (
+                      <button
+                        key={inst.uri}
+                        {...combobox.getOptionProps(optionIndex)}
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => handleSelect(inst)}
+                        className={cn(
+                          'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                          optionIndex === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                        )}
+                      >
+                        <FunderResultItem funder={inst} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -525,16 +540,24 @@ export function FunderAutocomplete({
                   CrossRef Funders
                 </div>
                 <div className="p-1">
-                  {results.crossrefFunders.map((funder) => (
-                    <button
-                      key={funder.doi}
-                      type="button"
-                      onClick={() => handleSelect(funder)}
-                      className="flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
-                    >
-                      <FunderResultItem funder={funder} />
-                    </button>
-                  ))}
+                  {results.crossrefFunders.map((funder, i) => {
+                    const optionIndex = results.chiveInstitutions.length + i;
+                    return (
+                      <button
+                        key={funder.doi}
+                        {...combobox.getOptionProps(optionIndex)}
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => handleSelect(funder)}
+                        className={cn(
+                          'flex w-full flex-col items-start gap-0.5 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                          optionIndex === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                        )}
+                      >
+                        <FunderResultItem funder={funder} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}

@@ -16,6 +16,7 @@ import { Hash, Loader2 } from 'lucide-react';
 
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { useTagSearch } from '@/lib/hooks/use-tags';
 
 /**
@@ -60,6 +61,18 @@ export function TagAutocomplete({
     [onSelect]
   );
 
+  // Options a keyboard user can reach: an already-added tag is rendered
+  // disabled, so it is not one of them.
+  const selectableTags = tags.filter((tag) => !existingTags.includes(tag.normalizedForm));
+
+  const combobox = useCombobox({
+    options: selectableTags,
+    isOpen: showResults && query.length >= 2,
+    onSelect: (tag) => handleSelect(tag.normalizedForm),
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -84,6 +97,7 @@ export function TagAutocomplete({
           onFocus={() => setShowResults(true)}
           placeholder={placeholder}
           className="pl-9"
+          {...combobox.inputProps}
         />
         {isLoading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
@@ -97,20 +111,27 @@ export function TagAutocomplete({
               No tags found for &quot;{query}&quot;
             </div>
           ) : (
-            <ul className="max-h-[200px] overflow-y-auto py-1">
+            <ul className="max-h-[200px] overflow-y-auto py-1" {...combobox.listboxProps}>
               {tags.map((tag) => {
                 const isAlreadyAdded = existingTags.includes(tag.normalizedForm);
+                const optionIndex = selectableTags.indexOf(tag);
+                const isActive = optionIndex >= 0 && optionIndex === combobox.activeIndex;
                 return (
-                  <li key={tag.normalizedForm}>
+                  <li
+                    key={tag.normalizedForm}
+                    {...(optionIndex >= 0 ? combobox.getOptionProps(optionIndex) : {})}
+                  >
                     <button
                       type="button"
+                      tabIndex={-1}
                       disabled={isAlreadyAdded}
                       onClick={() => handleSelect(tag.normalizedForm)}
                       className={cn(
                         'flex w-full items-center justify-between gap-2 px-3 py-2 text-sm',
                         isAlreadyAdded
                           ? 'cursor-default opacity-50'
-                          : 'cursor-pointer hover:bg-accent'
+                          : 'cursor-pointer hover:bg-accent',
+                        isActive && 'bg-accent'
                       )}
                     >
                       <span className="truncate">{tag.displayForms[0] ?? tag.normalizedForm}</span>
