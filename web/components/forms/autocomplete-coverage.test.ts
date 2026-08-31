@@ -31,7 +31,10 @@ const FORMS_DIR = dirname(fileURLToPath(import.meta.url));
 const AUTOCOMPLETES = readdirSync(FORMS_DIR)
   .filter((f) => f.endsWith('.tsx'))
   .filter((f) => !f.includes('.test.'))
-  .filter((f) => /autocomplete|-input\.tsx$/.test(f))
+  // Written as two predicates rather than one alternation: `/autocomplete|-input\.tsx$/`
+  // anchors only its second branch, which reads as though the anchor applies to
+  // both and is exactly the ambiguity CodeQL's missing-anchor rule flags.
+  .filter((f) => f.includes('autocomplete') || f.endsWith('-input.tsx'))
   // The shared base implements the pattern directly; it is asserted separately.
   .filter((f) => f !== 'autocomplete-input.tsx');
 
