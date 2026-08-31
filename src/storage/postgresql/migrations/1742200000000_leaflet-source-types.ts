@@ -1,11 +1,15 @@
 /**
- * Replace the `leaflet.list` backlink source type with the two Leaflet
- * actually publishes.
+ * Correct the backlink source types to the records that actually exist.
  *
  * @remarks
  * `leaflet.list` corresponded to `xyz.leaflet.list`, an NSID that does not
  * exist. Leaflet publishes `pub.leaflet.document` and `pub.leaflet.comment`,
  * and the plugin now reads both.
+ *
+ * `standard.document` is added at the same time: a `site.standard.document`
+ * describing an eprint is a backlink, and it is also the mapping through which
+ * a standard.site recommend or an embedded document block resolves to the work
+ * it ultimately refers to.
  *
  * Production rows are unlikely to carry the old value, since the plugin that
  * would have written it was never loaded and matched no record even when it
@@ -27,6 +31,7 @@ const SOURCE_TYPES = [
   'cosmik.follow',
   'leaflet.document',
   'leaflet.comment',
+  'standard.document',
   'whitewind.blog',
   'bluesky.post',
   'bluesky.embed',

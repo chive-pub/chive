@@ -36,6 +36,7 @@ import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
 import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
 import { MarginNotesPlugin, MarginRepliesPlugin } from './plugins/builtin/margin-annotations.js';
+import { StandardSiteBacklinksPlugin } from './plugins/builtin/standard-site-backlinks.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
@@ -546,6 +547,15 @@ async function main(): Promise<void> {
       logger.info('Cosmik ecosystem plugins loaded');
     } catch (err) {
       logger.error('Failed to load Cosmik plugins', err instanceof Error ? err : undefined);
+    }
+
+    // standard.site — the cross-ecosystem document record. Also the mapping a
+    // recommend or an embedded document block resolves through.
+    try {
+      await pluginManager.loadBuiltinPlugin(new StandardSiteBacklinksPlugin(), pluginContext);
+      logger.info('standard.site backlinks plugin loaded');
+    } catch (err) {
+      logger.error('Failed to load standard.site plugin', err instanceof Error ? err : undefined);
     }
 
     // Margin (W3C Web Annotation) ecosystem plugins

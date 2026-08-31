@@ -1486,6 +1486,10 @@ export type BacklinkSourceType =
   | 'margin.annotation'
   | 'margin.highlight'
   | 'margin.bookmark'
+  // A `site.standard.document` describing an eprint. Also the mapping other
+  // references resolve through: a standard.site recommend and a Leaflet
+  // standardSitePost block both name a document rather than the work.
+  | 'standard.document'
   | 'other';
 
 /**

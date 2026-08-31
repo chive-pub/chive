@@ -119,6 +119,10 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   // references to eprints; see `leaflet-backlinks.ts` for the four routes.
   'pub.leaflet.document',
   'pub.leaflet.comment',
+  // standard.site — the ecosystem's shared "document on the web" record. Any
+  // publisher may write one describing a Chive eprint, and it is also the
+  // mapping that lets a reference addressed to a document resolve to the work.
+  'site.standard.document',
 ] as const;
 
 /**
