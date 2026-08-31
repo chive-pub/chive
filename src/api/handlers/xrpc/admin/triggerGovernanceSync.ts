@@ -34,7 +34,12 @@ export const triggerGovernanceSync: XRPCMethod<void, void, unknown> = {
       throw new ServiceUnavailableError('Backfill manager is not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('governanceSync');
+    // `signal` was dropped here. `startOperation` hands back an AbortSignal so
+    // a long-running background job can be cancelled — an admin who cancels an
+    // operation expects it to stop, and without reading the signal the work
+    // continued to completion and then reported success against a cancelled
+    // operation.
+    const { operation, signal } = await backfillManager.startOperation('governanceSync');
 
     logger.info('Governance sync triggered', { operationId: operation.id });
 
@@ -51,6 +56,13 @@ export const triggerGovernanceSync: XRPCMethod<void, void, unknown> = {
 
         // Run a single sync cycle (do not start the periodic timer)
         await syncJob.run();
+
+        if (signal.aborted) {
+          logger.info('Governance sync was cancelled; not marking it complete', {
+            operationId: operation.id,
+          });
+          return;
+        }
 
         await backfillManager.completeOperation(operation.id);
       } catch (error) {
