@@ -390,7 +390,29 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
+    // sifa.id records live in the researcher's own repository, so this is a
+    // read of their PDS — the same place the Chive profile above came from. It
+    // is an enrichment: an instance with no sifa service, a researcher with no
+    // sifa profile, and an unreachable PDS all simply produce no `sifa` block.
+    const { sifaProfile: sifaService } = c.get('services');
+    const sifaRead = sifaService ? await sifaService.getProfile(did) : null;
+    // Copied field by field rather than spread: the service's type is readonly
+    // throughout, and the wire type is not, so this is where the two meet.
+    const sifa =
+      sifaRead?.hasProfile === true
+        ? {
+            hasProfile: true,
+            ...(sifaRead.displayName ? { displayName: sifaRead.displayName } : {}),
+            ...(sifaRead.headline ? { headline: sifaRead.headline } : {}),
+            ...(sifaRead.about ? { about: sifaRead.about } : {}),
+            ...(sifaRead.pronouns ? { pronouns: sifaRead.pronouns } : {}),
+            currentRoles: [...sifaRead.currentRoles],
+            previousRoles: [...sifaRead.previousRoles],
+          }
+        : undefined;
+
     const response: OutputSchema = {
+      ...(sifa ? { sifa } : {}),
       profile: {
         did,
         handle: handle ?? profileData?.handle,

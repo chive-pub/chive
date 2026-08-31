@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.13.0] - 2026-08-31
 
+### Added
+
+- **A researcher's sifa.id profile appears on their Chive profile.** sifa.id is an ATProto professional profile service whose records live in each user's own repository, so Chive reads their positions and education from the same place it already reads their eprints — neither service needs an account with the other. Employment with no end date shows as a current role and employment with one as a previous role, which is the split Chive's own profile already makes; education is read too, since for academics a PhD institution is an affiliation that older papers carry. A researcher with no sifa profile sees nothing, and an unreachable PDS costs the rest of the profile nothing. The schemas were read from the lexicons sifa.id publishes, resolved through its `_lexicon.sifa.id` DNS record.
+- **An eprint can be recorded on sifa.id as it is submitted.** Writing `id.sifa.profile.publication` and `id.sifa.profile.presentationDelivery` records saves entering the same publication twice. The record is written by the researcher's own agent to their own repository, as their `pub.chive.*` records are, and its `sameAs` points at the eprint's AT-URI so a sifa consumer can resolve back to the work — without a CID, so the reference follows the eprint's edits rather than pinning one version.
+
 ### Changed
 
 - **Applying an Elasticsearch mapping change no longer means deleting the index.** Mappings are fixed once an index exists, so an edited template reached a deployment only through a script that deleted `eprints-v1` outright — search down for the length of a full rebuild. `pnpm db:migrate:elasticsearch` builds the next index version from the current template, copies the documents, and moves the alias atomically; search serves the old index throughout. The author-name fix below is a mapping change and needs this run against any existing deployment.

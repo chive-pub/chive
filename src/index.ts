@@ -80,6 +80,7 @@ import { RankingService } from './services/search/ranking-service.js';
 import { NoOpRelevanceLogger, RelevanceLogger } from './services/search/relevance-logger.js';
 import { SearchService } from './services/search/search-service.js';
 import { AcademicTextScorer } from './services/search/text-scorer.js';
+import { SifaProfileService } from './services/sifa/sifa-profile-service.js';
 import { ElasticsearchAdapter } from './storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.js';
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
@@ -499,6 +500,11 @@ function createServices(
     ...(process.env.LAYERS_APPVIEW_URL ? { appViewUrl: process.env.LAYERS_APPVIEW_URL } : {}),
   });
 
+  // sifa.id keeps its records in each user's own repository, so reading a
+  // researcher's positions and education needs nothing but the repository
+  // reader Chive already uses for their eprints.
+  const sifaProfile = new SifaProfileService(repository, logger);
+
   // The hydrator's cache is the point of it: without one it makes the same
   // appview request per page render. Redis is already here, so it gets one.
   const profileHydrator = new ProfileHydrator({ logger, cache: redis });
@@ -628,6 +634,7 @@ function createServices(
     pdsSyncService,
     graphAlgorithmCache,
     governancePdsWriter,
+    sifaProfile,
     layersDataLinks,
     profileHydrator,
     relevanceLogger,

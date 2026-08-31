@@ -41,6 +41,7 @@ import type { ReviewService } from '../../services/review/review-service.js';
 import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
 import type { SearchService } from '../../services/search/search-service.js';
+import type { SifaProfileService } from '../../services/sifa/sifa-profile-service.js';
 import type { EdgeRepository } from '../../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../../storage/neo4j/facet-manager.js';
 import type { GraphAlgorithmCache } from '../../storage/neo4j/graph-algorithm-cache.js';
@@ -86,6 +87,13 @@ export interface ChiveServices {
    * Optional: an instance that does not federate to Layers simply has no
    * dataset panel, and the handler says so rather than failing.
    */
+  /**
+   * Reads a researcher's sifa.id profile from their own repository.
+   *
+   * Optional: an instance that does not enrich from sifa simply omits the
+   * `sifa` block from an author profile.
+   */
+  readonly sifaProfile?: SifaProfileService;
   readonly layersDataLinks?: LayersDataLinkService;
   readonly profileHydrator?: ProfileHydrator;
   readonly trustedEditor?: TrustedEditorService;

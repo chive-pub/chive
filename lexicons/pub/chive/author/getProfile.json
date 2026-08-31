@@ -30,6 +30,10 @@
             "metrics": {
               "type": "ref",
               "ref": "#authorMetrics"
+            },
+            "sifa": {
+              "type": "ref",
+              "ref": "#sifaProfile"
             }
           }
         }
@@ -164,6 +168,81 @@
         },
         "totalEndorsements": {
           "type": "integer"
+        }
+      }
+    },
+    "sifaRole": {
+      "type": "object",
+      "description": "A role held at an institution, read from the researcher's own id.sifa.* records.",
+      "required": ["institution", "source"],
+      "properties": {
+        "institution": {
+          "type": "string",
+          "description": "Institution or employer name."
+        },
+        "title": {
+          "type": "string",
+          "description": "Job title, or degree and field for education."
+        },
+        "institutionDid": {
+          "type": "string",
+          "format": "did",
+          "description": "The institution's own DID, when sifa records one."
+        },
+        "startedAt": {
+          "type": "string",
+          "description": "ISO date the role began."
+        },
+        "endedAt": {
+          "type": "string",
+          "description": "ISO date the role ended. Absent means current."
+        },
+        "isPrimary": {
+          "type": "boolean",
+          "description": "Whether sifa marks this the primary position."
+        },
+        "source": {
+          "type": "string",
+          "description": "Which sifa collection this came from.",
+          "knownValues": ["position", "education"]
+        }
+      }
+    },
+    "sifaProfile": {
+      "type": "object",
+      "description": "A researcher's sifa.id profile, read from their own repository. Chive never writes these records; they belong to the researcher.",
+      "required": ["hasProfile"],
+      "properties": {
+        "hasProfile": {
+          "type": "boolean",
+          "description": "Whether the researcher has any sifa records."
+        },
+        "displayName": {
+          "type": "string"
+        },
+        "headline": {
+          "type": "string",
+          "description": "One-line description of what the researcher does."
+        },
+        "about": {
+          "type": "string"
+        },
+        "pronouns": {
+          "type": "string"
+        },
+        "currentRoles": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#sifaRole"
+          }
+        },
+        "previousRoles": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "#sifaRole"
+          }
         }
       }
     }

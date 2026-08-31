@@ -54,6 +54,7 @@ import type { ReviewService } from '../services/review/review-service.js';
 import type { RankingService } from '../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../services/search/relevance-logger.js';
 import type { SearchService } from '../services/search/search-service.js';
+import type { SifaProfileService } from '../services/sifa/sifa-profile-service.js';
 import type { EdgeRepository } from '../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../storage/neo4j/facet-manager.js';
 import type { GraphAlgorithmCache } from '../storage/neo4j/graph-algorithm-cache.js';
@@ -241,6 +242,7 @@ export interface ServerConfig {
   readonly graphAlgorithmCache?: GraphAlgorithmCache;
 
   /** Federated reads of Layers data links; omit to disable the dataset panel. */
+  readonly sifaProfile?: SifaProfileService;
   readonly layersDataLinks?: LayersDataLinkService;
 
   /**
@@ -432,6 +434,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       import: config.importService,
       pdsSync: config.pdsSyncService,
       graphAlgorithmCache: config.graphAlgorithmCache,
+      sifaProfile: config.sifaProfile,
       layersDataLinks: config.layersDataLinks,
       profileHydrator: config.profileHydrator,
       relevanceLogger: config.relevanceLogger,
