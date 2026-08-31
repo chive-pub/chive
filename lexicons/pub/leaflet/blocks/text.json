@@ -1,0 +1,26 @@
+{
+  "id": "pub.leaflet.blocks.text",
+  "defs": {
+    "main": {
+      "type": "object",
+      "required": ["plaintext"],
+      "properties": {
+        "facets": {
+          "type": "array",
+          "items": {
+            "ref": "pub.leaflet.richtext.facet",
+            "type": "ref"
+          }
+        },
+        "textSize": {
+          "enum": ["default", "small", "large"],
+          "type": "string"
+        },
+        "plaintext": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  "lexicon": 1
+}

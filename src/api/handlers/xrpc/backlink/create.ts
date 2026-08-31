@@ -13,6 +13,7 @@ import type {
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/backlink/create.js';
 import { AuthenticationError, ValidationError } from '../../../../types/errors.js';
+import type { BacklinkSourceType } from '../../../../types/interfaces/plugin.interface.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -41,14 +42,11 @@ export const create: XRPCMethod<void, InputSchema, OutputSchema> = {
       targetUri: input.targetUri,
     });
 
-    // Cast lexicon type to service type (lexicon uses (string & {}) for extensibility)
-    type ServiceSourceType =
-      | 'cosmik.collection'
-      | 'leaflet.list'
-      | 'whitewind.blog'
-      | 'bluesky.post'
-      | 'bluesky.embed'
-      | 'other';
+    // The lexicon types this as `(string & {})` for extensibility, so it is
+    // narrowed to the canonical union here. This used to redeclare its own
+    // copy of the list, which had drifted: it was missing the two cosmik
+    // types and all three margin ones, and still named `leaflet.list`.
+    type ServiceSourceType = BacklinkSourceType;
 
     const result = await backlink.createBacklink({
       sourceUri: input.sourceUri,

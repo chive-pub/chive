@@ -1,0 +1,27 @@
+{
+  "id": "pub.leaflet.blocks.website",
+  "defs": {
+    "main": {
+      "type": "object",
+      "required": ["src"],
+      "properties": {
+        "src": {
+          "type": "string",
+          "format": "uri"
+        },
+        "title": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "previewImage": {
+          "type": "blob",
+          "accept": ["image/*"],
+          "maxSize": 1000000
+        }
+      }
+    }
+  },
+  "lexicon": 1
+}

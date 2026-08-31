@@ -1474,7 +1474,12 @@ export type BacklinkSourceType =
   | 'cosmik.collection'
   | 'cosmik.connection'
   | 'cosmik.follow'
-  | 'leaflet.list'
+  // Leaflet publishes `pub.leaflet.document` and `pub.leaflet.comment`; there
+  // is no list record type, and `leaflet.list` named an NSID that does not
+  // exist. No backlink was ever written with it, so nothing carries the old
+  // value.
+  | 'leaflet.document'
+  | 'leaflet.comment'
   | 'whitewind.blog'
   | 'bluesky.post'
   | 'bluesky.embed'

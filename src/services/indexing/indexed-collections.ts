@@ -115,14 +115,11 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   'at.margin.reply',
   // WhiteWind — blog entries that may cite an eprint.
   'com.whtwnd.blog.entry',
+  // Leaflet — long-form documents and the comments on them. Both carry
+  // references to eprints; see `leaflet-backlinks.ts` for the four routes.
+  'pub.leaflet.document',
+  'pub.leaflet.comment',
 ] as const;
-
-// Leaflet is deliberately absent. `leaflet-backlinks.ts` still points at
-// `xyz.leaflet.list`, an NSID that does not exist, and its parser expects an
-// invented record shape. Admitting `pub.leaflet.document` here would deliver
-// records to a plugin that cannot read them, and repointing the plugin without
-// Leaflet's published lexicon would turn "indexes nothing" into "indexes wrong
-// backlinks". This list names collections a subscriber can actually consume.
 
 /**
  * Foreign collections whose volume makes observing them a capacity decision.
