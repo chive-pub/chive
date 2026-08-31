@@ -38,11 +38,25 @@ import type { ChiveEnv } from '../../types/context.js';
  * @public
  */
 export function standardPublicationHandler(c: Context<ChiveEnv>): Response {
-  // Get service DID from environment
-  const serviceDid = process.env.CHIVE_SERVICE_DID ?? 'did:web:chive.pub';
+  // This used to answer `at://<serviceDid>/site.standard.publication/self`
+  // unconditionally. Two things were wrong with that, and they compound:
+  //
+  //   - No such record exists. The collection is absent from the service
+  //     repository entirely, so a reader following the URI gets nothing.
+  //   - `self` is not a legal record key here. `site.standard.publication`
+  //     declares `key: tid`, so the rkey is a timestamp identifier and cannot
+  //     be a fixed literal.
+  //
+  // Advertising a URI that cannot resolve is worse than advertising none: it
+  // reads as a broken publication rather than an unconfigured one. So the URI
+  // is now configuration, and absent configuration this answers 404.
+  const publicationUri = process.env.CHIVE_PUBLICATION_URI;
 
-  // Return the AT-URI pointing to Chive's publication record
-  const publicationUri = `at://${serviceDid}/site.standard.publication/self`;
+  if (!publicationUri) {
+    return c.text('No publication record is configured for this deployment.', 404, {
+      'Content-Type': 'text/plain; charset=utf-8',
+    });
+  }
 
   return c.text(publicationUri, 200, {
     'Content-Type': 'text/plain; charset=utf-8',

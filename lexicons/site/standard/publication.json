@@ -1,54 +1,65 @@
 {
-  "lexicon": 1,
   "id": "site.standard.publication",
   "defs": {
     "main": {
+      "key": "tid",
       "type": "record",
-      "key": "self",
-      "description": "A publication identity record for a publishing platform or author.",
       "record": {
         "type": "object",
-        "required": ["name", "createdAt"],
+        "required": ["url", "name"],
         "properties": {
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Base publication url (ex: https://standard.site). The canonical document URL is formed by combining this value with the document path."
+          },
+          "icon": {
+            "type": "blob",
+            "accept": ["image/*"],
+            "maxSize": 1000000,
+            "description": "Square image to identify the publication. Should be at least 256x256."
+          },
           "name": {
             "type": "string",
-            "maxLength": 100,
-            "description": "Name of the publication"
+            "maxLength": 5000,
+            "description": "Name of the publication.",
+            "maxGraphemes": 500
+          },
+          "labels": {
+            "refs": ["com.atproto.label.defs#selfLabels"],
+            "type": "union",
+            "description": "Self-label values for this publication. Effectively content warnings."
+          },
+          "basicTheme": {
+            "ref": "site.standard.theme.basic",
+            "type": "ref",
+            "description": "Simplified publication theme for tools and apps to utilize when displaying content."
           },
           "description": {
             "type": "string",
-            "maxLength": 1000,
-            "description": "Brief description of the publication"
+            "maxLength": 30000,
+            "description": "Brief description of the publication.",
+            "maxGraphemes": 3000
           },
-          "avatar": {
-            "type": "blob",
-            "accept": ["image/png", "image/jpeg", "image/webp"],
-            "maxSize": 1000000,
-            "description": "Square image identifying the publication (256x256 minimum)"
-          },
-          "theme": {
+          "preferences": {
+            "ref": "#preferences",
             "type": "ref",
-            "ref": "#theme"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "datetime"
+            "description": "Object containing platform specific preferences (with a few shared properties)."
           }
         }
-      }
+      },
+      "description": "A publication record representing a blog, website, or content platform. Publications serve as containers for documents and define the overall branding and settings."
     },
-    "theme": {
+    "preferences": {
       "type": "object",
       "properties": {
-        "primaryColor": {
-          "type": "string",
-          "description": "Primary brand color in hex format"
-        },
-        "accentColor": {
-          "type": "string",
-          "description": "Accent color in hex format"
+        "showInDiscover": {
+          "type": "boolean",
+          "default": true,
+          "description": "Boolean which decides whether the publication should appear in discovery feeds."
         }
       }
     }
-  }
+  },
+  "lexicon": 1
 }

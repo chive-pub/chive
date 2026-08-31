@@ -2053,6 +2053,71 @@ export function parseAtUri(uri: string): {
 // =============================================================================
 
 /**
+ * The eprint URI a legacy document pointed at.
+ *
+ * @param value - A record that may predate the schema fix
+ * @returns The URI from `content.uri`, or undefined
+ *
+ * @internal
+ */
+function legacyEprintUri(value: unknown): string | undefined {
+  if (value === null || typeof value !== 'object') return undefined;
+  const content = (value as { content?: { uri?: unknown } }).content;
+  return typeof content?.uri === 'string' ? content.uri : undefined;
+}
+
+/**
+ * Whether a standard.site document describes a given eprint.
+ *
+ * @param value - The record as stored
+ * @param eprintUri - AT-URI of the eprint
+ * @returns True when the document is about that eprint
+ *
+ * @remarks
+ * Matches on `path`, which is where the link now lives, and also on the legacy
+ * `content.uri`. The legacy branch is not optional: documents written before
+ * this change carry `content.uri` and no `path`, and they still need to be
+ * findable so deleting an eprint can clean them up. Dropping it would strand
+ * every document already in a user's repository.
+ *
+ * @public
+ */
+export function describesEprint(value: unknown, eprintUri: string): boolean {
+  if (value === null || typeof value !== 'object') return false;
+  const record = value as { path?: unknown; content?: unknown };
+
+  if (record.path === eprintPath(eprintUri)) return true;
+
+  const legacyContent = record.content as { uri?: unknown } | undefined;
+  return legacyContent?.uri === eprintUri;
+}
+
+/**
+ * Default origin for `site.standard.document.site`.
+ *
+ * @remarks
+ * Matches `NEXT_PUBLIC_SITE_URL`'s default. No trailing slash: the lexicon
+ * says to avoid one, because `site` is concatenated with `path`.
+ */
+const DEFAULT_SITE_URL = 'https://chive.pub';
+
+/**
+ * The path of an eprint's page under the site origin.
+ *
+ * @param eprintUri - AT-URI of the eprint
+ * @returns Path beginning with a slash
+ *
+ * @remarks
+ * Mirrors the frontend route `/eprints/[...uri]`, so `site + path` resolves to
+ * the page describing the same eprint.
+ *
+ * @public
+ */
+export function eprintPath(eprintUri: string): string {
+  return `/eprints/${encodeURIComponent(eprintUri)}`;
+}
+
+/**
  * Standard document record as stored in ATProto (site.standard.document).
  *
  * @remarks
@@ -2063,15 +2128,31 @@ export function parseAtUri(uri: string): {
 export interface StandardDocumentRecord {
   [key: string]: unknown;
   $type: 'site.standard.document';
+  /** Publication record or site URL this document belongs to. Required. */
+  site: string;
   title: string;
+  /** When the document was published. Required. */
+  publishedAt: string;
+  /** Path under `site`, with a leading slash, forming the canonical URL */
+  path?: string;
   description?: string;
-  content: {
-    uri: string;
-    cid?: string;
-  };
-  visibility: 'public' | 'private' | 'unlisted';
-  createdAt: string;
+  /** Plaintext of the document, with no markdown or other formatting */
+  textContent?: string;
+  /** Everyone credited on the document beyond the record's author */
+  contributors?: StandardDocumentContributor[];
+  tags?: string[];
   updatedAt?: string;
+}
+
+/**
+ * A participant on a standard.site document beyond its author.
+ *
+ * @public
+ */
+export interface StandardDocumentContributor {
+  did: string;
+  role?: string;
+  displayName?: string;
 }
 
 /**
@@ -2080,12 +2161,29 @@ export interface StandardDocumentRecord {
 export interface CreateStandardDocumentInput {
   /** Title of the document */
   title: string;
-  /** Brief description or abstract (max 2000 chars) */
+  /** Brief description or abstract */
   description?: string;
-  /** AT-URI of the platform-specific content record (e.g., eprint) */
+  /** AT-URI of the eprint this document describes */
   eprintUri: string;
-  /** CID of the content record for verification */
+  /** CID of the eprint record */
   eprintCid?: string;
+  /**
+   * Origin this deployment serves from, without a trailing slash.
+   *
+   * @remarks
+   * Becomes the record's `site`. Combined with `path` it is the canonical URL
+   * of the eprint, which is how a standard.site reader verifies that the
+   * document and the page describe the same thing.
+   */
+  siteUrl?: string;
+  /** When the eprint was published; defaults to now */
+  publishedAt?: string;
+  /** Plaintext abstract */
+  textContent?: string;
+  /** Authors, mapped to standard.site contributors */
+  contributors?: StandardDocumentContributor[];
+  /** Keywords */
+  tags?: string[];
 }
 
 /**
@@ -2126,18 +2224,35 @@ export async function createStandardDocument(
 
   const record: StandardDocumentRecord = {
     $type: 'site.standard.document',
+    // `site` and `publishedAt` are required by the lexicon, and neither was
+    // being written. `content` was an object with `uri`/`cid`, where the schema
+    // has an open union whose members carry a `$type`, and `visibility` and
+    // `createdAt` are not fields at all. Every document written before this was
+    // therefore invalid, which is why nothing in the standard.site ecosystem
+    // ever picked one up.
+    site: input.siteUrl ?? DEFAULT_SITE_URL,
     title: input.title,
-    content: {
-      uri: input.eprintUri,
-      ...(input.eprintCid && { cid: input.eprintCid }),
-    },
-    visibility: 'public',
-    createdAt: new Date().toISOString(),
+    publishedAt: input.publishedAt ?? new Date().toISOString(),
+    // `site` + `path` is the canonical URL of the eprint page. A reader
+    // fetching it and finding the same document is how verification works, and
+    // it is what replaces the invented `content.uri` as the link back.
+    path: eprintPath(input.eprintUri),
   };
 
-  // Add optional description (truncated to 2000 chars per lexicon spec)
   if (input.description) {
-    record.description = input.description.substring(0, 2000);
+    record.description = input.description.substring(0, 30000);
+  }
+
+  if (input.textContent) {
+    record.textContent = input.textContent;
+  }
+
+  if (input.contributors && input.contributors.length > 0) {
+    record.contributors = input.contributors;
+  }
+
+  if (input.tags && input.tags.length > 0) {
+    record.tags = input.tags;
   }
 
   const response = await agent.com.atproto.repo.createRecord({
@@ -2339,8 +2454,7 @@ export async function deleteStandardDocumentsForEprint(
     });
 
     for (const record of response.data.records) {
-      const value = record.value as StandardDocumentRecord;
-      if (value.content?.uri === eprintUri) {
+      if (describesEprint(record.value, eprintUri)) {
         await deleteRecord(agent, record.uri);
         deleted.push(record.uri);
       }
@@ -2416,26 +2530,41 @@ export async function updateStandardDocument(
 
   const existing = existingResponse.data.value as StandardDocumentRecord;
 
-  // Build updated record, preserving existing values for fields not specified
+  // Build the updated record, keeping what the caller did not supply.
+  //
+  // An existing record may predate the schema fix and carry neither `site` nor
+  // `publishedAt`. Both are required, so they are filled in rather than copied
+  // blindly — updating a document is also the moment an invalid one becomes
+  // valid.
   const record: StandardDocumentRecord = {
     $type: 'site.standard.document',
+    site: existing.site ?? DEFAULT_SITE_URL,
     title: input.title ?? existing.title,
-    content: {
-      uri: input.eprintUri ?? existing.content.uri,
-      ...(input.eprintCid
-        ? { cid: input.eprintCid }
-        : existing.content.cid && { cid: existing.content.cid }),
-    },
-    visibility: existing.visibility,
-    createdAt: existing.createdAt,
+    publishedAt: existing.publishedAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  // Update description if provided, otherwise preserve existing
+  const linkedUri = input.eprintUri ?? legacyEprintUri(existing);
+  if (linkedUri) {
+    record.path = eprintPath(linkedUri);
+  } else if (existing.path) {
+    record.path = existing.path;
+  }
+
   if (input.description !== undefined) {
-    record.description = input.description.substring(0, 2000);
+    record.description = input.description.substring(0, 30000);
   } else if (existing.description) {
     record.description = existing.description;
+  }
+
+  if (existing.textContent !== undefined) {
+    record.textContent = existing.textContent;
+  }
+  if (existing.contributors !== undefined) {
+    record.contributors = existing.contributors;
+  }
+  if (existing.tags !== undefined) {
+    record.tags = existing.tags;
   }
 
   const response = await agent.com.atproto.repo.putRecord({

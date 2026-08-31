@@ -998,15 +998,38 @@ export function SubmissionWizard({
         targetAgent
       );
 
-      // Optionally create a standard.site document for cross-platform discovery
-      if (values.enableCrossPlatformDiscovery && agent) {
+      // Create the standard.site document for cross-platform discovery.
+      //
+      // Emitted by default: the toggle now has to be turned off rather than on.
+      // A standard.site document is how an eprint becomes legible to the rest
+      // of the publishing ecosystem — a Bluesky card, a Leaflet embed, a
+      // standard.site reader — and there is no reason a public eprint would
+      // want to be invisible to it.
+      if ((values.enableCrossPlatformDiscovery ?? true) && agent) {
         try {
           submitLogger.info('Creating standard.site document', { eprintUri: result.uri });
           await createStandardDocument(agent, {
             title: values.title,
-            description: values.abstract?.substring(0, 2000),
+            description: values.abstract?.substring(0, 30000),
             eprintUri: result.uri,
             eprintCid: result.cid,
+            siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://chive.pub',
+            publishedAt: new Date().toISOString(),
+            // The abstract is the document's plaintext; `textContent` is
+            // specified as carrying no markdown or other formatting.
+            ...(values.abstract ? { textContent: values.abstract } : {}),
+            // Chive's authorship maps onto standard.site contributors. Only
+            // authors with a DID can be expressed: `contributor.did` is
+            // required, and an external collaborator without one has no
+            // ATProto identity to name.
+            contributors: transformedAuthors
+              .filter((a): a is typeof a & { did: string } => typeof a.did === 'string' && !!a.did)
+              .map((a) => ({
+                did: a.did,
+                ...(a.name ? { displayName: a.name.substring(0, 1000) } : {}),
+                ...(a.isCorrespondingAuthor ? { role: 'corresponding-author' } : {}),
+              })),
+            ...(values.keywords && values.keywords.length > 0 ? { tags: values.keywords } : {}),
           });
           submitLogger.info('Standard.site document created for cross-platform discovery');
         } catch (standardDocError) {
