@@ -224,102 +224,101 @@ jobs:
           echo "All compliance tests must pass (100% required for ATProto data sovereignty)." >> $GITHUB_STEP_SUMMARY
 
   # ==============================================================================
-  # Stage 5: E2E Tests (DISABLED - re-enable when infrastructure is ready)
+  # Stage 5: E2E Tests
   # ==============================================================================
+  #
+  # Only the unauthenticated project runs here. It covers the sign-in and
+  # landing pages — 24 tests, about two minutes — and is green.
+  #
+  # The authenticated project is 487 tests and takes hours on one worker, which
+  # is too slow to gate every pull request and has not been triaged end to end.
+  # Enabling it needs its own pass: a decision about sharding, and a review of
+  # what currently fails. Running the part that is known good is worth more
+  # than running nothing, which is what happened while the whole job sat
+  # commented out.
 
-  # e2e-tests:
-  #   name: E2E Tests (${{ matrix.browser }})
-  #   runs-on: ubuntu-latest
-  #   needs: [integration-tests]
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       browser: ${{ github.event_name == 'pull_request' && fromJSON('["chromium"]') || fromJSON('["chromium", "firefox", "webkit"]') }}
-  #
-  #   services:
-  #     postgres:
-  #       image: postgres:16-alpine
-  #       env:
-  #         POSTGRES_DB: chive_test
-  #         POSTGRES_USER: chive
-  #         POSTGRES_PASSWORD: chive_test_password
-  #       ports:
-  #         - 5432:5432
-  #       options: >-
-  #         --health-cmd pg_isready
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
-  #
-  #     redis:
-  #       image: redis:7-alpine
-  #       ports:
-  #         - 6379:6379
-  #       options: >-
-  #         --health-cmd "redis-cli ping"
-  #         --health-interval 10s
-  #         --health-timeout 5s
-  #         --health-retries 5
-  #
-  #   env:
-  #     POSTGRES_HOST: localhost
-  #     POSTGRES_PORT: 5432
-  #     POSTGRES_USER: chive
-  #     POSTGRES_PASSWORD: chive_test_password
-  #     POSTGRES_DB: chive_test
-  #     DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
-  #     REDIS_URL: redis://localhost:6379
-  #     ELASTICSEARCH_URL: http://localhost:9200
-  #     NEO4J_URI: bolt://localhost:7687
-  #     NEO4J_USER: neo4j
-  #     NEO4J_PASSWORD: chive_test_password
-  #     DISABLE_RATE_LIMITING: 'true'
-  #
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: ./.github/actions/setup-node-pnpm
-  #     - uses: ./.github/actions/start-services
-  #
-  #     - name: Cache Playwright browsers
-  #       uses: actions/cache@v4
-  #       id: playwright-cache
-  #       with:
-  #         path: ~/.cache/ms-playwright
-  #         key: playwright-${{ runner.os }}-${{ matrix.browser }}-${{ hashFiles('**/pnpm-lock.yaml') }}
-  #
-  #     - name: Install Playwright browsers
-  #       if: steps.playwright-cache.outputs.cache-hit != 'true'
-  #       run: |
-  #         # Always install chromium (needed for setup:auth project)
-  #         pnpm exec playwright install --with-deps chromium
-  #         # Install matrix browser if different from chromium
-  #         if [ "${{ matrix.browser }}" != "chromium" ]; then
-  #           pnpm exec playwright install --with-deps ${{ matrix.browser }}
-  #         fi
-  #
-  #     - name: Install Playwright dependencies (cached)
-  #       if: steps.playwright-cache.outputs.cache-hit == 'true'
-  #       run: |
-  #         pnpm exec playwright install-deps chromium
-  #         if [ "${{ matrix.browser }}" != "chromium" ]; then
-  #           pnpm exec playwright install-deps ${{ matrix.browser }}
-  #         fi
-  #
-  #     - name: Run database migrations
-  #       run: pnpm db:migrate:up
-  #
-  #     - name: Run E2E tests
-  #       run: pnpm test:e2e --project="${{ matrix.browser }}:*"
-  #
-  #     - name: Upload Playwright report
-  #       if: always()
-  #       uses: actions/upload-artifact@v4
-  #       with:
-  #         name: playwright-report-${{ matrix.browser }}
-  #         path: |
-  #           playwright-report/
-  #           tests/e2e/test-results/
-  #         retention-days: 14
+  e2e-tests:
+    name: E2E Tests (unauthenticated)
+    runs-on: ubuntu-latest
+    needs: [integration-tests]
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: chive_test
+          POSTGRES_USER: chive
+          POSTGRES_PASSWORD: chive_test_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: chive
+      POSTGRES_PASSWORD: chive_test_password
+      POSTGRES_DB: chive_test
+      DATABASE_URL: postgresql://chive:chive_test_password@localhost:5432/chive_test
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: chive
+      PGPASSWORD: chive_test_password
+      PGDATABASE: chive_test
+      REDIS_URL: redis://localhost:6379
+      ELASTICSEARCH_URL: http://localhost:9200
+      NEO4J_URI: bolt://localhost:7687
+      NEO4J_USER: neo4j
+      NEO4J_PASSWORD: chive_test_password
+      ADMIN_DIDS: did:plc:test-admin-did
+      DISABLE_RATE_LIMITING: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - uses: ./.github/actions/start-services
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-chromium-${{ hashFiles('**/pnpm-lock.yaml') }}
+
+      - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm test:e2e --project="chromium:unauthenticated"
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            tests/e2e/test-results/
+          retention-days: 14
 
   # ==============================================================================
   # Stage 6: Build Verification

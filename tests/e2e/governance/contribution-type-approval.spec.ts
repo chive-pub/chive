@@ -158,9 +158,9 @@ trailer << /Size 4 /Root 1 0 R >>
       .getByText(/recently approved|just approved/i)
       .or(page.locator('[data-testid="recently-approved"]'));
 
-    // This may or may not be visible depending on test data
-    const isVisible = await recentlyApproved.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(true).toBe(true); // Just verify page loads
+    // Whether anything was recently approved depends on test data, so that is
+    // not assertable. That the page rendered is.
+    await expect(page.getByRole('heading').first()).toBeVisible();
   });
 });
 

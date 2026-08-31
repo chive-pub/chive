@@ -322,9 +322,11 @@ test.describe('Contribution Type Proposals - Detail View', () => {
         .getByText(/external.*mapping|credit|cro|ontolog/i)
         .or(page.locator('[data-testid="external-mappings"]'));
 
-      // Mappings are optional
-      const isVisible = await mappingsSection.isVisible({ timeout: 3000 }).catch(() => false);
-      expect(true).toBe(true); // Just verify page loaded
+      // Mappings are genuinely optional, so their presence is not assertable.
+      // What is assertable is that following the link reached a proposal page
+      // rather than an error, which is what "verify page loaded" meant.
+      await expect(page).toHaveURL(/\/governance\/proposals\//);
+      await expect(page.getByRole('heading').first()).toBeVisible();
     }
   });
 });
@@ -356,18 +358,29 @@ test.describe('Contribution Type Proposals - Existing Types', () => {
       /supervision/i,
     ];
 
-    // At least one CRediT role should be visible if types are loaded
-    let foundRole = false;
+    // The loop used to compute `foundRole` and the assertion discarded it, so
+    // the test passed whether or not any CRediT role rendered.
+    let matched: RegExp | undefined;
     for (const role of creditRoles) {
-      const roleElement = page.getByText(role);
-      if (await roleElement.isVisible({ timeout: 1000 }).catch(() => false)) {
-        foundRole = true;
+      if (
+        await page
+          .getByText(role)
+          .first()
+          .isVisible({ timeout: 1000 })
+          .catch(() => false)
+      ) {
+        matched = role;
         break;
       }
     }
 
-    // If governance page shows types, at least one should be found
-    // (this may be 0 if types are on a different page)
-    expect(true).toBe(true);
+    // The governance page itself must render.
+    await expect(page.getByRole('heading').first()).toBeVisible();
+
+    // CRediT roles may legitimately live on a different page, so requiring one
+    // here would be wrong. Say so in the report rather than passing silently:
+    // a skip is visible, an unconditional pass is not.
+    test.skip(matched === undefined, 'No CRediT role is rendered on /governance');
+    await expect(page.getByText(matched!).first()).toBeVisible();
   });
 });

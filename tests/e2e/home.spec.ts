@@ -28,8 +28,8 @@ test.describe('Home page', () => {
     await expect(landingPage.tagline).toContainText(/decentralized eprints/i);
   });
 
-  // Skip: Browse button not present during alpha - will be restored post-alpha
-  test.skip('displays browse eprints button', async ({ page }) => {
+  test('displays browse eprints button', async ({ page }) => {
+    test.skip(true, 'Browse button is not on the alpha landing page; restore post-alpha');
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
@@ -37,8 +37,8 @@ test.describe('Home page', () => {
     await expect(browseButton).toBeVisible();
   });
 
-  // Skip: Browse button not present during alpha - will be restored post-alpha
-  test.skip('browse button navigates to eprints page', async ({ page }) => {
+  test('browse button navigates to eprints page', async ({ page }) => {
+    test.skip(true, 'Browse button is not on the alpha landing page; restore post-alpha');
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
@@ -48,8 +48,8 @@ test.describe('Home page', () => {
     await expect(page).toHaveURL(/\/eprints/);
   });
 
-  // Skip: Submit CTA not present during alpha - will be restored post-alpha
-  test.skip('displays submit eprint CTA', async ({ page }) => {
+  test('displays submit eprint CTA', async ({ page }) => {
+    test.skip(true, 'Submit CTA is not on the alpha landing page; restore post-alpha');
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
@@ -61,8 +61,8 @@ test.describe('Home page', () => {
     await expect(submitButton).toBeVisible();
   });
 
-  // Skip: Features section not present during alpha - will be restored post-alpha
-  test.skip('displays features section with Why Chive heading', async ({ page }) => {
+  test('displays features section with Why Chive heading', async ({ page }) => {
+    test.skip(true, 'Features section is not on the alpha landing page; restore post-alpha');
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
@@ -70,8 +70,8 @@ test.describe('Home page', () => {
     await expect(featuresHeading).toBeVisible();
   });
 
-  // Skip: Feature cards not present during alpha - will be restored post-alpha
-  test.skip('displays feature cards', async ({ page }) => {
+  test('displays feature cards', async ({ page }) => {
+    test.skip(true, 'Feature cards are not on the alpha landing page; restore post-alpha');
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
@@ -127,8 +127,21 @@ test.describe('Home page', () => {
     const landingPage = new AlphaLandingPage(page);
     await landingPage.goto();
 
-    const signInButton = page.getByRole('button', { name: /sign in with bluesky/i });
+    // The button says ATProto, not Bluesky: Chive signs in any ATProto
+    // identity, and naming one PDS operator in the button was wrong about the
+    // product as well as about the markup.
+    const signInButton = page.getByRole('button', { name: /sign in with atproto/i });
     await expect(signInButton).toBeVisible();
+  });
+
+  test('offers a handle field to sign in with', async ({ page }) => {
+    const landingPage = new AlphaLandingPage(page);
+    await landingPage.goto();
+
+    // Sign-in begins by resolving a handle. Nothing covered that this field
+    // renders, and it is the first thing a user touches.
+    const handleInput = page.getByRole('textbox');
+    await expect(handleInput.first()).toBeVisible();
   });
 
   test('displays external links', async ({ page }) => {
@@ -143,8 +156,9 @@ test.describe('Home page', () => {
     const githubLink = page.getByRole('link', { name: /github/i });
     await expect(githubLink).toBeVisible();
 
-    // Check for Bluesky link
-    const blueskyLink = page.getByRole('link', { name: /bluesky/i });
-    await expect(blueskyLink).toBeVisible();
+    // The third link is ATProto. There is no Bluesky link on this page, and
+    // asserting one had been failing rather than protecting anything.
+    const atprotoLink = page.getByRole('link', { name: /^atproto$/i });
+    await expect(atprotoLink).toBeVisible();
   });
 });

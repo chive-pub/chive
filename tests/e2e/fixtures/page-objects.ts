@@ -247,8 +247,14 @@ export class SignInPage {
 
   constructor(page: Page) {
     this.page = page;
-    // The login form uses a handle/DID input (accessible name comes from placeholder)
-    this.handleInput = page.getByRole('textbox', { name: /bsky\.social/i });
+    // The field is labelled "Handle or DID", and that label is what gives the
+    // textbox its accessible name. The previous selector matched the
+    // placeholder instead, which said `bsky.social` and now says
+    // `yourhandle.example.com` — so it stopped matching, and every test that
+    // touched the sign-in form failed on a locator rather than on behaviour.
+    // A label is also the right thing to bind to: it is the accessible name a
+    // screen reader announces, where a placeholder is not.
+    this.handleInput = page.getByRole('textbox', { name: /handle or did/i });
     this.continueButton = page.getByRole('button', { name: /continue with at protocol/i });
     // Server-side errors shown in Alert (exclude Next.js route announcer)
     this.errorMessage = page.locator('[role="alert"]:not(#__next-route-announcer__)');

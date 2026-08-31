@@ -31,10 +31,12 @@ test.describe('Paper-Centric Submission - Display', () => {
       .locator('[data-testid="paper-identity"]')
       .or(page.getByText(/paper account|paper identity/i));
 
-    // May or may not be visible depending on whether seeded data has paperDid
-    const isVisible = await paperIdentity.isVisible({ timeout: 3000 }).catch(() => false);
-    // Paper-centric is optional, so just verify page loads
-    expect(true).toBe(true);
+    // scripts/seed-test-data.ts sets no paperDid on any eprint, so every
+    // seeded submission is traditional and the badge must be absent. That is
+    // worth asserting: showing a paper-identity badge on a submission that has
+    // no paper account would misattribute the work, and the previous form of
+    // this test passed either way.
+    await expect(paperIdentity.first()).toBeHidden();
   });
 
   test('shows "Submitted by" separately from paper identity', async ({ page }) => {
@@ -60,9 +62,9 @@ test.describe('Paper-Centric Submission - Display', () => {
       .locator('a[href*="/papers/"]')
       .or(page.getByRole('link', { name: /view paper profile/i }));
 
-    // Only present for paper-centric submissions
-    const isVisible = await paperProfileLink.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(true).toBe(true);
+    // Same reasoning: no seeded eprint is paper-centric, so a link to a paper
+    // profile would point at something that does not exist.
+    await expect(paperProfileLink.first()).toBeHidden();
   });
 });
 
@@ -92,9 +94,10 @@ test.describe('Paper-Centric Submission - Blob Fetching', () => {
       .getByText(/supplementary|additional files/i)
       .or(page.locator('[data-testid="supplementary-files"]'));
 
-    // Supplementary files are optional
-    const isVisible = await supplementary.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(true).toBe(true);
+    // No supplementary materials are seeded, so the panel should not render.
+    // SupplementaryPanel returns null when it has nothing to show, and this
+    // catches a regression that renders an empty one.
+    await expect(supplementary.first()).toBeHidden();
   });
 });
 
@@ -125,10 +128,9 @@ test.describe('Paper-Centric vs Traditional - Detection', () => {
       .locator('[data-testid="paper-identity-badge"]')
       .or(page.getByText(/paper account/i));
 
-    const isPaperCentric = await paperIdentityBadge.isVisible({ timeout: 3000 }).catch(() => false);
-
-    // Either way is valid - just verify the page handles both
-    expect(true).toBe(true);
+    // The seeded eprints are all traditional, so this resolves to the
+    // traditional branch rather than "either way is valid".
+    await expect(paperIdentityBadge.first()).toBeHidden();
   });
 
   test('shows submitter for both paper-centric and traditional', async ({ page }) => {

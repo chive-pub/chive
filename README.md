@@ -80,6 +80,13 @@ cd chive
 # Install dependencies
 pnpm install
 
+# Generate the lexicon types.
+#
+# `src/lexicons/generated/` and `web/lib/api/generated/` are gitignored and
+# built from `lexicons/`, so on a fresh clone they do not exist yet and
+# `pnpm typecheck` fails with "Cannot find module" until this has run.
+pnpm lexicons:generate
+
 # Start the development database stack
 ./scripts/start-test-stack.sh
 
@@ -192,12 +199,19 @@ pnpm db:migrate:down
 
 Chive uses a hybrid plugin architecture with dependency injection (TSyringe) and event hooks (EventEmitter2).
 
-Plugins run in isolated sandboxes with declared permissions. Built-in plugins include:
+Plugins run in isolated sandboxes with declared permissions. The plugins the
+running services register today are:
 
-- GitHub integration
-- ORCID linking
-- DOI registration
-- Wikidata field import
+- arXiv, PsyArXiv, LingBuzz and Semantics Archive preprint metadata
+- OpenReview review metadata
+- Cosmik backlinks, connections, follows and link removals
+- Margin notes and replies
+
+`src/plugins/builtin/` holds more than are registered — GitHub, ORCID, DOI
+registration, Wikidata, Crossref, OpenAlex, ROR, Zenodo, Figshare, Dryad, OSF,
+Software Heritage and others are written but not constructed by any service.
+This list names the ones that actually run; the others are wired up as the
+integrations they belong to are finished.
 
 See [docs.chive.pub](https://docs.chive.pub) for plugin development details.
 
