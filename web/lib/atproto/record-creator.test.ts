@@ -23,6 +23,7 @@ import {
   getAuthenticatedDid,
   buildAtUri,
   parseAtUri,
+  attachBlueskyPostToDocument,
   createStandardDocument,
   describesEprint,
   createLayersDataLinks,
@@ -1497,5 +1498,90 @@ describe('citation links in the standard.site links union', () => {
     await createStandardDocument(agent, { title: 'A paper', eprintUri, citations: [] });
 
     expect(writtenRecord(agent)).not.toHaveProperty('links');
+  });
+});
+
+describe('attachBlueskyPostToDocument', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+  const postRef = { uri: `at://${did}/app.bsky.feed.post/post1`, cid: 'bafypost' };
+
+  // The base mock agent has no listRecords; build one that answers with the
+  // given documents in a single page.
+  function agentListing(records: unknown[]) {
+    const agent = createMockAgent({ did });
+    const listRecords = vi.fn().mockResolvedValue({ data: { records, cursor: undefined } });
+    (agent.com.atproto.repo as unknown as { listRecords: typeof listRecords }).listRecords =
+      listRecords;
+    return agent;
+  }
+
+  it('records the post on the document describing that eprint', async () => {
+    const docUri = `at://${did}/site.standard.document/doc1`;
+    const agent = agentListing([
+      { uri: docUri, value: { path: `/eprints/${encodeURIComponent(eprintUri)}` } },
+    ]);
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { uri: docUri, cid: 'bafydoc', value: { title: 'A paper', site: 'https://chive.pub' } },
+    });
+
+    const result = await attachBlueskyPostToDocument(agent, eprintUri, postRef);
+
+    expect(result).toBe(docUri);
+    const written = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record;
+    expect(written.bskyPostRef).toEqual(postRef);
+  });
+
+  it('finds a legacy document by its content.uri', async () => {
+    const docUri = `at://${did}/site.standard.document/legacy`;
+    const agent = agentListing([{ uri: docUri, value: { content: { uri: eprintUri } } }]);
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        uri: docUri,
+        cid: 'bafydoc',
+        value: { title: 'A paper', content: { uri: eprintUri } },
+      },
+    });
+
+    expect(await attachBlueskyPostToDocument(agent, eprintUri, postRef)).toBe(docUri);
+  });
+
+  it('returns null when the eprint has no document', async () => {
+    // Sharing an eprint whose submitter turned cross-platform discovery off is
+    // ordinary. The share has already succeeded; this must not throw.
+    const agent = agentListing([
+      { uri: 'at://x/site.standard.document/other', value: { path: '/other' } },
+    ]);
+
+    expect(await attachBlueskyPostToDocument(agent, eprintUri, postRef)).toBeNull();
+    expect(agent.com.atproto.repo.putRecord).not.toHaveBeenCalled();
+  });
+
+  it('refuses to write for an unauthenticated agent', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(attachBlueskyPostToDocument(agent, eprintUri, postRef)).rejects.toThrow(
+      'not authenticated'
+    );
+  });
+
+  it('keeps an existing post ref when updating for other reasons', async () => {
+    const agent = createMockAgent({ did });
+    const docUri = `at://${did}/site.standard.document/doc1`;
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        uri: docUri,
+        cid: 'bafydoc',
+        value: { title: 'A paper', site: 'https://chive.pub', bskyPostRef: postRef },
+      },
+    });
+
+    await updateStandardDocument(agent, { uri: docUri, title: 'Renamed' });
+
+    const written = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record;
+    // Renaming a document must not discard its discussion thread.
+    expect(written.bskyPostRef).toEqual(postRef);
   });
 });

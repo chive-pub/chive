@@ -2142,6 +2142,16 @@ export interface StandardDocumentRecord {
   contributors?: StandardDocumentContributor[];
   /** Typed citations, written into the lexicon's reserved `links` union */
   links?: StandardCitationLink[];
+  /**
+   * Strong reference to the Bluesky post announcing this document.
+   *
+   * @remarks
+   * The lexicon describes this as "useful to keep track of comments
+   * off-platform", which is exactly its use here: the announcing post's reply
+   * thread is the discussion of the eprint that happens on Bluesky rather than
+   * on Chive.
+   */
+  bskyPostRef?: StrongRef;
   tags?: string[];
   updatedAt?: string;
 }
@@ -2185,6 +2195,20 @@ export interface StandardCitationTarget {
   authors?: string[];
   year?: number;
   venue?: string;
+}
+
+/**
+ * A strong reference to another record: its URI and the CID it had.
+ *
+ * @remarks
+ * `com.atproto.repo.strongRef`. The CID pins the version, so a reader can tell
+ * whether the record has changed since the reference was made.
+ *
+ * @public
+ */
+export interface StrongRef {
+  uri: string;
+  cid: string;
 }
 
 /**
@@ -2461,6 +2485,63 @@ export async function createLayersDataLinks(
 }
 
 /**
+ * Attach the announcing Bluesky post to an eprint's standard.site document.
+ *
+ * @param agent - Authenticated agent for the repo holding the document
+ * @param eprintUri - AT-URI of the eprint that was shared
+ * @param postRef - Strong reference to the Bluesky post
+ * @returns AT-URI of the document updated, or null when there is none
+ *
+ * @throws Error if the agent is not authenticated
+ *
+ * @remarks
+ * `site.standard.document.bskyPostRef` exists to "keep track of comments
+ * off-platform". Recording it makes the announcing post's reply thread
+ * discoverable from the document, which is what lets a reader — Chive's own
+ * eprint page, or any other standard.site consumer — show the Bluesky
+ * discussion of a paper alongside it.
+ *
+ * Returns null rather than throwing when no document exists: sharing an eprint
+ * whose submitter turned cross-platform discovery off is an ordinary thing to
+ * do, and the share has already succeeded by the time this runs. A share must
+ * never fail because a secondary record could not be updated.
+ *
+ * @public
+ */
+export async function attachBlueskyPostToDocument(
+  agent: Agent,
+  eprintUri: string,
+  postRef: StrongRef
+): Promise<string | null> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  let cursor: string | undefined;
+
+  do {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'site.standard.document',
+      limit: 100,
+      cursor,
+    });
+
+    for (const record of response.data.records) {
+      if (describesEprint(record.value, eprintUri)) {
+        await updateStandardDocument(agent, { uri: record.uri, bskyPostRef: postRef });
+        return record.uri;
+      }
+    }
+
+    cursor = response.data.cursor;
+  } while (cursor);
+
+  return null;
+}
+
+/**
  * Find and delete every `site.standard.document` record in a repo that points
  * at a given eprint.
  *
@@ -2535,6 +2616,8 @@ export interface UpdateStandardDocumentInput {
   eprintUri?: string;
   /** Updated eprint CID */
   eprintCid?: string;
+  /** Bluesky post announcing the document, recorded as its discussion thread */
+  bskyPostRef?: StrongRef;
 }
 
 /**
@@ -2620,6 +2703,16 @@ export async function updateStandardDocument(
   }
   if (existing.tags !== undefined) {
     record.tags = existing.tags;
+  }
+  if (existing.links !== undefined) {
+    record.links = existing.links;
+  }
+
+  // A newly supplied post ref replaces whatever was there; otherwise the
+  // existing one survives, so updating a title does not discard the thread.
+  const bskyPostRef = input.bskyPostRef ?? existing.bskyPostRef;
+  if (bskyPostRef !== undefined) {
+    record.bskyPostRef = bskyPostRef;
   }
 
   const response = await agent.com.atproto.repo.putRecord({

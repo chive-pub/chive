@@ -29,6 +29,12 @@ export {
   // Standard.site records
   createStandardDocument,
   updateStandardDocument,
+  attachBlueskyPostToDocument,
+  describesEprint,
+  eprintPath,
+  type StrongRef,
+  type StandardCitationLink,
+  type StandardCitationTarget,
   // Layers records
   createLayersDataLinks,
   LAYERS_DATA_KINDS,
