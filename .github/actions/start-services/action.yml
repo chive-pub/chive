@@ -43,17 +43,23 @@ runs:
       if: contains(inputs.services, 'neo4j') || inputs.services == 'all'
       shell: bash
       run: |
+        # Neo4j is the slowest of the four to accept connections, and 90s was
+        # not enough headroom on a loaded runner: the E2E job failed on it
+        # while the same commit passed on another run. A wait that is too short
+        # fails the build for runner weather rather than for a defect, so this
+        # is generous. It costs nothing when Neo4j is ready early, because the
+        # loop exits on the first success.
         echo "Waiting for Neo4j to be ready..."
-        for i in {1..45}; do
+        for i in {1..120}; do
           if docker compose -f docker/docker-compose.yml exec -T neo4j \
              cypher-shell -u neo4j -p chive_test_password 'RETURN 1' 2>/dev/null; then
-            echo "Neo4j is ready"
+            echo "Neo4j is ready after $((i * 2))s"
             exit 0
           fi
-          echo "Attempt $i/45 - Neo4j not ready yet..."
+          echo "Attempt $i/120 - Neo4j not ready yet..."
           sleep 2
         done
-        echo "ERROR: Neo4j failed to start within 90 seconds"
+        echo "ERROR: Neo4j failed to start within 240 seconds"
         docker compose -f docker/docker-compose.yml logs neo4j
         exit 1
 
