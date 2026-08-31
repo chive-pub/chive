@@ -14,6 +14,10 @@ import userEvent from '@testing-library/user-event';
 
 import { DidAutocompleteInput } from './did-autocomplete-input';
 
+// The field is queried as a combobox, not a textbox: it now implements the
+// WAI-ARIA combobox pattern, which is what a screen reader needs to be told a
+// list of suggestions exists.
+
 const { mockSearchAuthors } = vi.hoisted(() => ({ mockSearchAuthors: vi.fn() }));
 
 vi.mock('@/lib/api/client', () => ({
@@ -41,7 +45,7 @@ describe('DidAutocompleteInput Chive author results', () => {
     const user = userEvent.setup();
 
     render(<DidAutocompleteInput onSelect={vi.fn()} />);
-    await user.type(screen.getByRole('textbox'), 'alice');
+    await user.type(screen.getByRole('combobox'), 'alice');
 
     expect(await screen.findByText('4 eprints on Chive')).toBeInTheDocument();
   });
@@ -51,7 +55,7 @@ describe('DidAutocompleteInput Chive author results', () => {
     const user = userEvent.setup();
 
     render(<DidAutocompleteInput onSelect={vi.fn()} />);
-    await user.type(screen.getByRole('textbox'), 'alice');
+    await user.type(screen.getByRole('combobox'), 'alice');
 
     expect(await screen.findByText('1 eprint on Chive')).toBeInTheDocument();
   });
@@ -61,7 +65,7 @@ describe('DidAutocompleteInput Chive author results', () => {
     const user = userEvent.setup();
 
     render(<DidAutocompleteInput onSelect={vi.fn()} />);
-    await user.type(screen.getByRole('textbox'), 'alice');
+    await user.type(screen.getByRole('combobox'), 'alice');
 
     expect(await screen.findByText('Has Chive profile')).toBeInTheDocument();
   });
@@ -71,7 +75,7 @@ describe('DidAutocompleteInput Chive author results', () => {
     const user = userEvent.setup();
 
     render(<DidAutocompleteInput onSelect={vi.fn()} />);
-    await user.type(screen.getByRole('textbox'), 'alice');
+    await user.type(screen.getByRole('combobox'), 'alice');
 
     expect(await screen.findByText('Has Chive profile')).toBeInTheDocument();
   });
@@ -81,7 +85,7 @@ describe('DidAutocompleteInput Chive author results', () => {
     const user = userEvent.setup();
 
     render(<DidAutocompleteInput onSelect={vi.fn()} />);
-    await user.type(screen.getByRole('textbox'), 'alice');
+    await user.type(screen.getByRole('combobox'), 'alice');
 
     await screen.findByText('2 eprints on Chive');
     expect(mockSearchAuthors).toHaveBeenCalledWith(

@@ -28,7 +28,7 @@
           },
           "name_analyzer": {
             "type": "custom",
-            "tokenizer": "keyword",
+            "tokenizer": "standard",
             "filter": ["lowercase", "asciifolding"]
           },
           "ngram_analyzer": {
@@ -77,6 +77,10 @@
       }
     },
     "mappings": {
+      "_meta": {
+        "templateVersion": 2,
+        "description": "Bump templateVersion whenever this file changes in a way that needs a new index. `pnpm db:migrate:elasticsearch` migrates only when the live index reports a different version, so bumping it is what makes a mapping change reach a deployment."
+      },
       "dynamic": "false",
       "properties": {
         "@timestamp": {

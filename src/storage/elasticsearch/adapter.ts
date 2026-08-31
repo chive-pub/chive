@@ -576,19 +576,45 @@ export class ElasticsearchAdapter implements ISearchEngine {
 
     // Skip multi_match for empty queries or wildcard-only queries
     if (query.q?.trim() && query.q.trim() !== '*') {
+      // `authors` is mapped as `nested`, and a nested field cannot be reached
+      // from an ordinary `multi_match`: nested objects are indexed as separate
+      // documents, so listing `authors.name` among the fields matched nothing.
+      // Searching an author's name therefore returned zero results, which also
+      // broke author autocomplete — it searches eprints and reads the authors
+      // off the hits, so it found none and fell through to Bluesky for every
+      // query.
+      //
+      // The name search now goes through a `nested` query, and the two are
+      // combined with `should` so a match on either scores the document.
       must.push({
-        multi_match: {
-          query: query.q,
-          fields: [
-            'title^5',
-            'abstract^1.5',
-            'full_text^0.5',
-            'authors.name^2.5',
-            'keywords^2',
-            'tags.text^0.8',
+        bool: {
+          should: [
+            {
+              multi_match: {
+                query: query.q,
+                fields: ['title^5', 'abstract^1.5', 'full_text^0.5', 'keywords^2', 'tags.text^0.8'],
+                type: 'bool_prefix',
+                operator: 'and',
+              },
+            },
+            {
+              nested: {
+                path: 'authors',
+                query: {
+                  multi_match: {
+                    query: query.q,
+                    fields: ['authors.name^2.5'],
+                    type: 'bool_prefix',
+                    operator: 'and',
+                  },
+                },
+                // An eprint with five matching authors is not five times as
+                // relevant as one with a single matching author.
+                score_mode: 'max',
+              },
+            },
           ],
-          type: 'bool_prefix',
-          operator: 'and',
+          minimum_should_match: 1,
         },
       });
     }

@@ -3480,6 +3480,87 @@
         ],
         "type": "object"
       },
+      "pub.chive.author.getProfile.sifaProfile": {
+        "description": "A researcher's sifa.id profile, read from their own repository. Chive never writes these records; they belong to the researcher.",
+        "properties": {
+          "about": {
+            "type": "string"
+          },
+          "currentRoles": {
+            "items": {
+              "$ref": "#/components/schemas/pub.chive.author.getProfile.sifaRole"
+            },
+            "type": "array"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "hasProfile": {
+            "description": "Whether the researcher has any sifa records.",
+            "type": "boolean"
+          },
+          "headline": {
+            "description": "One-line description of what the researcher does.",
+            "type": "string"
+          },
+          "previousRoles": {
+            "items": {
+              "$ref": "#/components/schemas/pub.chive.author.getProfile.sifaRole"
+            },
+            "type": "array"
+          },
+          "pronouns": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "hasProfile"
+        ],
+        "type": "object"
+      },
+      "pub.chive.author.getProfile.sifaRole": {
+        "description": "A role held at an institution, read from the researcher's own id.sifa.* records.",
+        "properties": {
+          "endedAt": {
+            "description": "ISO date the role ended. Absent means current.",
+            "type": "string"
+          },
+          "institution": {
+            "description": "Institution or employer name.",
+            "type": "string"
+          },
+          "institutionDid": {
+            "description": "The institution's own DID, when sifa records one.",
+            "format": "did",
+            "type": "string"
+          },
+          "isPrimary": {
+            "description": "Whether sifa marks this the primary position.",
+            "type": "boolean"
+          },
+          "source": {
+            "description": "Which sifa collection this came from.",
+            "enum": [
+              "position",
+              "education"
+            ],
+            "type": "string"
+          },
+          "startedAt": {
+            "description": "ISO date the role began.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Job title, or degree and field for education.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "institution",
+          "source"
+        ],
+        "type": "object"
+      },
       "pub.chive.author.searchAuthors.authorSearchResult": {
         "properties": {
           "affiliation": {
@@ -20892,6 +20973,9 @@
                     },
                     "profile": {
                       "$ref": "#/components/schemas/pub.chive.author.getProfile.authorProfile"
+                    },
+                    "sifa": {
+                      "$ref": "#/components/schemas/pub.chive.author.getProfile.sifaProfile"
                     }
                   },
                   "required": [

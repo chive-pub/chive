@@ -281,23 +281,45 @@ export class SearchQueryBuilder {
       `title^${boosts.title}`,
       `abstract^${boosts.abstract}`,
       `full_text^${boosts.fullText}`,
-      `authors.name^${boosts.authorName}`,
       `keywords^${boosts.keywords}`,
       `tags^${boosts.tags}`,
     ];
 
     const isBoolPrefix = this.config.multiMatchType === 'bool_prefix';
+    const shared = {
+      type: this.config.multiMatchType,
+      operator: this.config.operator,
+      // These parameters don't apply to bool_prefix type
+      ...(!isBoolPrefix && this.config.fuzziness !== 0 && { fuzziness: this.config.fuzziness }),
+      ...(!isBoolPrefix && { minimum_should_match: this.config.minimumShouldMatch }),
+      ...(!isBoolPrefix && { prefix_length: this.config.prefixLength }),
+    };
 
+    // `authors` is mapped as `nested`, so its subfields are indexed as separate
+    // documents and cannot be reached from an ordinary `multi_match`. Listing
+    // `authors.name` alongside the flat fields matched nothing at all, which is
+    // why searching for an author's name returned no eprints.
     return {
-      multi_match: {
-        query: queryText,
-        fields,
-        type: this.config.multiMatchType,
-        operator: this.config.operator,
-        // These parameters don't apply to bool_prefix type
-        ...(!isBoolPrefix && this.config.fuzziness !== 0 && { fuzziness: this.config.fuzziness }),
-        ...(!isBoolPrefix && { minimum_should_match: this.config.minimumShouldMatch }),
-        ...(!isBoolPrefix && { prefix_length: this.config.prefixLength }),
+      bool: {
+        should: [
+          { multi_match: { query: queryText, fields, ...shared } },
+          {
+            nested: {
+              path: 'authors',
+              query: {
+                multi_match: {
+                  query: queryText,
+                  fields: [`authors.name^${boosts.authorName}`],
+                  ...shared,
+                },
+              },
+              // An eprint with five matching authors is not five times as
+              // relevant as one with a single matching author.
+              score_mode: 'max',
+            },
+          },
+        ],
+        minimum_should_match: 1,
       },
     };
   }

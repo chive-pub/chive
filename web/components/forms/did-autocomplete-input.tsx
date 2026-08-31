@@ -18,6 +18,7 @@ import { logger } from '@/lib/observability';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { useCombobox } from '@/lib/hooks/use-combobox';
 import { api } from '@/lib/api/client';
 import type { AuthorAffiliation } from './affiliation-input';
 
@@ -345,18 +346,17 @@ export function DidAutocompleteInput({
     [selectedUser, onChange, setQuery, clearResults]
   );
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowResults(false);
-      }
-      if (e.key === 'Enter' && results.length > 0) {
-        e.preventDefault();
-        handleSelectActor(results[0]);
-      }
-    },
-    [results, handleSelectActor]
-  );
+  // Enter used to commit `results[0]` regardless of what the user had moved
+  // to, because there was no way to move: the only other key handled was
+  // Escape. It now commits whatever is highlighted, and nothing when nothing
+  // is.
+  const combobox = useCombobox({
+    options: results,
+    isOpen: showResults && !selectedUser,
+    onSelect: handleSelectActor,
+    onClose: () => setShowResults(false),
+    onOpen: () => setShowResults(true),
+  });
 
   return (
     <div className={cn('relative', className)} data-testid="did-autocomplete-input">
@@ -412,7 +412,7 @@ export function DidAutocompleteInput({
                 // Delay to allow click on results
                 setTimeout(() => setShowResults(false), 200);
               }}
-              onKeyDown={handleKeyDown}
+              {...combobox.inputProps}
               placeholder={placeholder}
               disabled={disabled}
               className={cn('pl-9 pr-9', error && 'border-destructive')}
@@ -427,13 +427,18 @@ export function DidAutocompleteInput({
       {/* Search results dropdown */}
       {showResults && !selectedUser && results.length > 0 && (
         <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-md">
-          <div className="max-h-64 overflow-y-auto p-1">
-            {results.map((actor) => (
+          <div className="max-h-64 overflow-y-auto p-1" {...combobox.listboxProps}>
+            {results.map((actor, index) => (
               <button
                 key={actor.did}
+                {...combobox.getOptionProps(index)}
                 type="button"
+                tabIndex={-1}
                 onClick={() => handleSelectActor(actor)}
-                className="flex w-full items-center gap-3 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+                className={cn(
+                  'flex w-full items-center gap-3 rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground',
+                  index === combobox.activeIndex && 'bg-accent text-accent-foreground'
+                )}
               >
                 <Avatar className="h-8 w-8 shrink-0">
                   {actor.avatar && <AvatarImage src={actor.avatar} alt={actor.handle} />}

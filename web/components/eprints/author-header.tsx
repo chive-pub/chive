@@ -18,7 +18,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
-import { getAffiliationPaths } from '@/lib/utils/affiliation';
+import { getAffiliationDisplay } from '@/lib/utils/affiliation';
 import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
 
 /**
@@ -100,8 +100,10 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
 
           {/* DID */}
           {profile.did && (
-            <div className="mt-1 flex items-center gap-1">
-              <code className="text-xs text-muted-foreground font-mono">{profile.did}</code>
+            <div className="mt-1 flex items-center justify-center gap-1 sm:justify-start">
+              <code className="min-w-0 break-all text-xs text-muted-foreground font-mono">
+                {profile.did}
+              </code>
               <CopyButton value={profile.did} />
             </div>
           )}
@@ -113,26 +115,41 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
             </p>
           )}
 
-          {/* Affiliations */}
+          {/* Affiliations, grouped by institution.
+
+              Each affiliation is a tree, and this used to render one line per
+              leaf — so three departments at one university produced three long
+              lines that each repeated the university's name. Naming the
+              institution once and listing its units beneath keeps a profile
+              with several affiliations readable, and on a phone keeps a
+              department name from pushing a line to three rows. */}
           {hasAffiliations && (
-            <div className="mt-3 space-y-1">
-              {extendedProfile.affiliations!.flatMap((aff, affIdx) =>
-                getAffiliationPaths(aff).map((path, pathIdx) => (
-                  <div
-                    key={`${affIdx}-${pathIdx}`}
-                    className="flex items-center justify-center gap-2 text-muted-foreground sm:justify-start"
+            <ul className="mt-3 space-y-2">
+              {extendedProfile.affiliations!.map((aff, affIdx) => {
+                const { institution, units } = getAffiliationDisplay(aff);
+                return (
+                  <li
+                    key={affIdx}
+                    className="flex items-start justify-center gap-2 sm:justify-start"
                   >
-                    <Building2 className="h-4 w-4 shrink-0" />
-                    <span>{path}</span>
-                    {affIdx === 0 && pathIdx === 0 && (
-                      <Badge variant="outline" className="text-xs">
-                        Primary
-                      </Badge>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
+                    <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:justify-start">
+                        <span className="font-medium">{institution}</span>
+                        {affIdx === 0 && (
+                          <Badge variant="outline" className="text-xs font-normal">
+                            Primary
+                          </Badge>
+                        )}
+                      </div>
+                      {units.length > 0 && (
+                        <p className="text-sm text-muted-foreground">{units.join(' · ')}</p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           )}
 
           {/* Fallback to single affiliation if no affiliations array */}
@@ -309,19 +326,22 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
             <GraduationCap className="h-4 w-4" />
             Previous Affiliations
           </div>
-          <div className="flex flex-wrap gap-2">
-            {extendedProfile.previousAffiliations!.flatMap((aff, affIdx) =>
-              getAffiliationPaths(aff).map((path, pathIdx) => (
-                <Badge
-                  key={`${affIdx}-${pathIdx}`}
-                  variant="outline"
-                  className="text-muted-foreground"
-                >
-                  {path}
-                </Badge>
-              ))
-            )}
-          </div>
+          {/* One entry per institution rather than one per leaf: a badge
+              holding a full three-level path wraps to several lines on a phone
+              and reads as a paragraph rather than a label. */}
+          <ul className="space-y-1.5">
+            {extendedProfile.previousAffiliations!.map((aff, affIdx) => {
+              const { institution, units } = getAffiliationDisplay(aff);
+              return (
+                <li key={affIdx} className="text-sm">
+                  <span className="text-foreground">{institution}</span>
+                  {units.length > 0 && (
+                    <span className="text-muted-foreground"> — {units.join(' · ')}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
     </header>

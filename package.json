@@ -1,6 +1,6 @@
 {
   "name": "@chive/monorepo",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "private": true,
   "type": "module",
   "description": "A decentralized eprint service built on AT Protocol",
@@ -62,6 +62,7 @@
     "db:migrate:down": "tsx scripts/db/migrate.ts down",
     "db:migrate:create": "tsx scripts/db/migrate.ts create",
     "db:seed:knowledge-graph": "tsx scripts/db/seed-knowledge-graph.ts",
+    "db:migrate:elasticsearch": "tsx scripts/db/migrate-elasticsearch-index.ts",
     "mcp": "tsx src/mcp/index.ts"
   },
   "devDependencies": {

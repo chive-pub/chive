@@ -70,3 +70,6 @@ scripts/ngrok.yml
 /tmp/lt-output.txt
 .claude/
 notes/
+
+# Copied out of pdfjs-dist by web/scripts/copy-pdf-worker.mjs before dev and build.
+web/public/pdfjs/

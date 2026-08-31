@@ -95,6 +95,8 @@ import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
 import { ReportContentDialog } from '@/components/moderation/report-content-dialog';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
+import { EprintDocument } from '@/components/documents/eprint-document';
+import { detectDocumentFormat, formatExtension } from '@/lib/documents/document-format';
 import { toast } from 'sonner';
 
 /**
@@ -798,7 +800,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 blobRef={eprint.document}
                 pdsEndpoint={eprint.pdsUrl}
                 did={eprint.paperDid ?? eprint.submittedBy}
-                filename={`${eprint.title}.pdf`}
+                filename={`${eprint.title}.${formatExtension(detectDocumentFormat(eprint.document?.mimeType))}`}
               />
             )}
 
@@ -907,7 +909,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                       blobRef={eprint.document}
                       pdsEndpoint={eprint.pdsUrl}
                       did={eprint.paperDid ?? eprint.submittedBy}
-                      filename={`${eprint.title}.pdf`}
+                      filename={`${eprint.title}.${formatExtension(detectDocumentFormat(eprint.document?.mimeType))}`}
                       className="h-8 text-xs"
                     />
                   )}
@@ -927,20 +929,28 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 </div>
               </div>
               {eprint.document ? (
-                <AnnotatedPDFViewer
+                <EprintDocument
                   blobRef={eprint.document}
                   pdsEndpoint={eprint.pdsUrl}
                   did={eprint.paperDid ?? eprint.submittedBy}
-                  eprintUri={uri}
-                  onAnnotationSelect={handleAnnotationSelect}
-                  onAddReview={handleAddInlineReview}
-                  onLinkEntity={handleLinkEntity}
-                  scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
                   className="min-h-[400px] md:min-h-[600px]"
+                  renderPdf={() => (
+                    <AnnotatedPDFViewer
+                      blobRef={eprint.document}
+                      pdsEndpoint={eprint.pdsUrl}
+                      did={eprint.paperDid ?? eprint.submittedBy}
+                      eprintUri={uri}
+                      onAnnotationSelect={handleAnnotationSelect}
+                      onAddReview={handleAddInlineReview}
+                      onLinkEntity={handleLinkEntity}
+                      scrollToAnnotationUri={selectedAnnotationUri ?? undefined}
+                      className="min-h-[400px] md:min-h-[600px]"
+                    />
+                  )}
                 />
               ) : (
                 <div className="flex min-h-[400px] md:min-h-[600px] items-center justify-center rounded-lg border border-dashed">
-                  <p className="text-muted-foreground">No PDF document available</p>
+                  <p className="text-muted-foreground">No document available</p>
                 </div>
               )}
             </div>

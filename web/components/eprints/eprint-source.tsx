@@ -108,7 +108,7 @@ function EprintSourceCard({ source, className }: EprintSourceProps) {
             href={source.pdsEndpoint}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 font-mono text-xs hover:text-primary hover:underline"
+            className="flex max-w-full flex-wrap items-center gap-1 break-all font-mono text-xs hover:text-primary hover:underline"
           >
             {formatPdsEndpoint(source.pdsEndpoint)}
             <ExternalLink className="h-3 w-3" />

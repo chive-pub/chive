@@ -179,3 +179,4 @@ export type { VersionHistoryProps } from './version-history';
 // Edit sections for dedicated edit page
 export { EprintEditSections } from './eprint-edit-sections';
 export type { EprintEditSectionsProps } from './eprint-edit-sections';
+export { SifaPanel, type SifaPanelProps } from './sifa-panel';

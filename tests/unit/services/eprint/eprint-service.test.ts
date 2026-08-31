@@ -893,11 +893,47 @@ describe('EprintService', () => {
         },
       ];
       storage.getEprintsByAuthor.mockResolvedValue(storedEprints);
+      storage.countEprintsByAuthor.mockResolvedValue(2);
 
       const result = await service.getEprintsByAuthor('did:plc:author123' as DID);
 
       expect(result.eprints).toHaveLength(2);
       expect(result.total).toBe(2);
+    });
+
+    it('reports how many the author has, not how many this page holds', async () => {
+      // `total` used to be `eprints.length`, which made it equal to the page
+      // size. Everything downstream reads it: the XRPC handler emits a cursor
+      // only when `offset + page.length < total`, so no cursor was ever sent
+      // and the profile's infinite scroll saw no next page, however many
+      // eprints the author had.
+      const page = [
+        {
+          uri: 'at://did:plc:author123/pub.chive.eprint.submission/abc123' as AtUri,
+          cid: 'bafyrei123' as CID,
+          title: 'Page of one',
+          authors: [],
+          submittedBy: 'did:plc:author123' as DID,
+          indexedAt: new Date(),
+          createdAt: new Date(),
+        },
+      ];
+      storage.getEprintsByAuthor.mockResolvedValue(page);
+      storage.countEprintsByAuthor.mockResolvedValue(87);
+
+      const result = await service.getEprintsByAuthor('did:plc:author123' as DID, { limit: 1 });
+
+      expect(result.eprints).toHaveLength(1);
+      expect(result.total).toBe(87);
+    });
+
+    it('counts against the same author as the page it returns', async () => {
+      storage.getEprintsByAuthor.mockResolvedValue([]);
+      storage.countEprintsByAuthor.mockResolvedValue(0);
+
+      await service.getEprintsByAuthor('did:plc:author123' as DID);
+
+      expect(storage.countEprintsByAuthor).toHaveBeenCalledWith('did:plc:author123');
     });
   });
 });

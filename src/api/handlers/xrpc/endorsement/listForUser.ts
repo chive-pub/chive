@@ -13,7 +13,7 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/endorsement/listForUser.js';
-import type { DID } from '../../../../types/atproto.js';
+import type { AtUri, DID } from '../../../../types/atproto.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
 /**
@@ -92,36 +92,45 @@ export const listForUser: XRPCMethod<QueryParams, void, OutputSchema> = {
       logger.warn('Failed to resolve handle for endorser', { did: params.endorserDid, error });
     }
 
-    // Fetch eprint titles for each endorsement
-    const endorsementsWithTitles = await Promise.all(
-      result.items.map(async (item) => {
-        let eprintTitle: string | undefined;
-        try {
-          const eprintData = await eprint.getEprint(item.eprintUri);
-          eprintTitle = eprintData?.title;
-        } catch {
-          // Eprint may have been deleted
-        }
+    // Fetch the eprint titles in one query rather than one per endorsement.
+    // A user with a page of 50 endorsements previously cost 50 round-trips to
+    // read 50 titles.
+    //
+    // A failure here loses the titles for the page rather than the page: an
+    // endorsement is still worth returning without the title of the paper it
+    // is about, and the eprint may genuinely have been deleted.
+    let eprintsByUri = new Map<AtUri, Awaited<ReturnType<typeof eprint.getEprint>>>();
+    try {
+      eprintsByUri = await eprint.getEprints(result.items.map((item) => item.eprintUri));
+    } catch (error) {
+      logger.warn('Could not fetch eprint titles for endorsements', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
-        return {
-          uri: item.uri,
-          // The CID is stored at index time and now selected; it was previously
-          // reported as the literal string 'placeholder', which no client could
-          // use for the optimistic-concurrency writes the lexicon intends.
-          cid: item.cid ?? '',
-          eprintUri: item.eprintUri,
-          eprintTitle,
-          endorser: {
-            did: item.endorser,
-            handle: endorserHandle,
-            avatar: endorserAvatar,
-          },
-          contributions: [...item.contributions],
-          comment: item.comment,
-          createdAt: item.createdAt.toISOString(),
-        };
-      })
-    );
+    // No longer async: the eprint fetch is hoisted above, so nothing in here
+    // awaits and Promise.all would only add a tick.
+    const endorsementsWithTitles = result.items.map((item) => {
+      const eprintTitle = eprintsByUri.get(item.eprintUri)?.title;
+
+      return {
+        uri: item.uri,
+        // The CID is stored at index time and now selected; it was previously
+        // reported as the literal string 'placeholder', which no client could
+        // use for the optimistic-concurrency writes the lexicon intends.
+        cid: item.cid ?? '',
+        eprintUri: item.eprintUri,
+        eprintTitle,
+        endorser: {
+          did: item.endorser,
+          handle: endorserHandle,
+          avatar: endorserAvatar,
+        },
+        contributions: [...item.contributions],
+        comment: item.comment,
+        createdAt: item.createdAt.toISOString(),
+      };
+    });
 
     const response: OutputSchema = {
       endorsements: endorsementsWithTitles,

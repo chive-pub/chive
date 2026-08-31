@@ -63,3 +63,45 @@ function collectPaths(
 export function formatAffiliationCompact(aff: AffNode): string {
   return getAffiliationPaths(aff, ' > ').join('; ');
 }
+
+/**
+ * An affiliation grouped for display: the institution, and its sub-units.
+ *
+ * @public
+ */
+export interface AffiliationDisplay {
+  /** The root institution */
+  institution: string;
+  /** Each sub-unit path below the root, without the institution prefix */
+  units: string[];
+}
+
+/**
+ * Groups an affiliation tree by its institution.
+ *
+ * @param aff - Affiliation tree
+ * @returns The root institution and the sub-unit paths beneath it
+ *
+ * @remarks
+ * {@link getAffiliationPaths} returns one fully-qualified path per leaf, so a
+ * profile listing three departments at one university produced three lines that
+ * each repeated the university's name — and with several affiliations the
+ * header became a wall of near-identical long strings. Naming the institution
+ * once and listing what sits under it says the same thing in a fraction of the
+ * space, and it is how affiliations are conventionally written.
+ *
+ * A leaf-only affiliation returns no units, which renders as the institution
+ * alone.
+ *
+ * @public
+ */
+export function getAffiliationDisplay(aff: AffNode, separator = ' > '): AffiliationDisplay {
+  const paths = getAffiliationPaths(aff, separator);
+  const prefix = `${aff.name}${separator}`;
+
+  const units = paths
+    .filter((path) => path !== aff.name)
+    .map((path) => (path.startsWith(prefix) ? path.slice(prefix.length) : path));
+
+  return { institution: aff.name, units };
+}
