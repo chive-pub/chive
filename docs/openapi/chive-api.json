@@ -7467,6 +7467,7 @@
               "paperswithcode",
               "codeberg",
               "sourcehut",
+              "tangled",
               "software_heritage",
               "colab",
               "kaggle",
@@ -7476,6 +7477,11 @@
           },
           "platformUri": {
             "description": "AT-URI to platform node (subkind=platform-code)",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "recordUri": {
+            "description": "AT-URI of the repository record when the host is an ATProto application, such as sh.tangled.repo. Addresses the repository on the network rather than at one web host, so it survives the host moving or disappearing.",
             "format": "at-uri",
             "type": "string"
           },

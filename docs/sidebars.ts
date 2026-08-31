@@ -85,6 +85,7 @@ const sidebars: SidebarsConfig = {
         'api-reference/overview',
         'api-reference/authentication',
         'api-reference/xrpc-endpoints',
+        'api-reference/resolving-identifiers',
         'api-reference/admin-endpoints',
         'api-reference/rest-endpoints',
         {

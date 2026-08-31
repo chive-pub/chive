@@ -200,7 +200,7 @@
           "publicationStatusSlug": {
             "type": "ref",
             "ref": "pub.chive.defs#publicationStatus",
-            "description": "Publication status slug for display fallback. The Lexicon spec allows `default` only on primitive types, not on a ref, so the `default: preprint` that used to sit here was never applied — a record omitting this field got nothing, not a preprint. Removing it changes no behaviour and stops the schema promising one it does not keep; consumers supply their own fallback."
+            "description": "Publication status slug for display fallback. The Lexicon spec allows `default` only on primitive types, not on a ref, so the `default: preprint` that used to sit here was never applied \u2014 a record omitting this field got nothing, not a preprint. Removing it changes no behaviour and stops the schema promising one it does not keep; consumers supply their own fallback."
           },
           "paperTypeUri": {
             "type": "string",
@@ -573,6 +573,7 @@
             "paperswithcode",
             "codeberg",
             "sourcehut",
+            "tangled",
             "software_heritage",
             "colab",
             "kaggle",
@@ -591,6 +592,11 @@
         "swhid": {
           "type": "string",
           "description": "Software Heritage Identifier"
+        },
+        "recordUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the repository record when the host is an ATProto application, such as sh.tangled.repo. Addresses the repository on the network rather than at one web host, so it survives the host moving or disappearing."
         }
       }
     },

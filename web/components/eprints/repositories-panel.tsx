@@ -83,6 +83,12 @@ const CODE_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
     color: 'text-gray-600',
     bgColor: 'bg-gray-50 dark:bg-gray-900',
   },
+  tangled: {
+    label: 'Tangled',
+    icon: Code,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 dark:bg-purple-950',
+  },
   software_heritage: {
     label: 'Software Heritage',
     icon: Code,
