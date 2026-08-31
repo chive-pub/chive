@@ -7,6 +7,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-08-31
+
+Chive now reads and writes other applications' lexicons against what those applications actually publish. Several of the records it was already emitting turned out to be invalid, and several it was already subscribed to were never reaching it.
+
+### Added
+
+- **Leaflet documents and comments are read for references to eprints.** Leaflet's schemas are vendored under `lexicons/vendor/leaflet/`, taken from its own lexicon repository. A document reaches an eprint by four routes and all four are followed: a comment's `subject`, a `website` block's `src`, an inline richtext link, and a `standardSitePost` block naming an eprint directly.
+- **standard.site documents that describe an eprint are recorded as backlinks**, whoever wrote them. This is also the mapping that lets a reference addressed to a _document_ — a standard.site recommend, an embedded document block — resolve to the work it ultimately means.
+- **Talks and presentations appear as backlinks.** A `community.lexicon.calendar.event` naming an eprint among its URIs is evidence the work was presented, and where. Cancelled and postponed events are skipped.
+- **`pub.chive.site.citationLink`**, a typed document-to-work link for `site.standard.document`'s reserved `links` union, with a CiTO-style vocabulary. A consumer that knows CiTO can read a Chive citation without knowing anything about Chive. Opt-in.
+- **The Bluesky post announcing an eprint is recorded on its standard.site document** as `bskyPostRef`, which makes the post's reply thread findable as the paper's off-platform discussion.
+- **An MCP server over the public read API** (`pnpm mcp`): search, resolve-by-identifier, citations and reviews. It calls the same unauthenticated XRPC a browser does, so it holds no credentials and can be pointed at any deployment. Every tool is read-only.
+- **Tangled repositories are a first-class code artifact.** A repository hosted there is an ATProto record, so `codeRepository` gains `recordUri` alongside `url` — an address on the network rather than at one web host.
+- The external identifier resolver is documented for other applications at `docs/api-reference/resolving-identifiers.md`.
+
+### Fixed
+
+- **The firehose filter was dropping seven of the twenty collections Chive indexes.** Its NSID validator required every segment to be lowercase. An NSID is a domain authority followed by a name, and only the authority is a domain label; the name segment is where camelCase lives. With strict validation on — which is what the indexing service sets — `pub.chive.eprint.userTag`, `eprint.relatedWork`, `annotation.entityLink`, `collaboration.inviteAcceptance`, `actor.profileConfig` and both graph proposal types were rejected before the processor saw them. Each is in the indexed set, each has a handler, and the PDS scanner backfills each; only the live firehose path refused them, silently. The name rule now matches the grammar `@atproto/syntax` implements.
+- **Five registered backlink plugins could never be called.** The event processor already forwarded foreign records to the plugin bus, and the plugins already subscribed; the filter rejected every collection outside `pub.chive.*` upstream. Cosmik backlinks, connections, follows and link removals, and Margin annotations were constructed, subscribed, and unreachable.
+- **Every `site.standard.document` Chive had written was invalid.** The lexicon requires `site` and `publishedAt`; neither was written. `content` was an object where the schema has an open union, and `visibility` and `createdAt` are not properties at all. No standard.site consumer could accept such a record, which is why the cross-platform discovery this feature promised never appeared. Documents now carry the required fields and a `path`, so `site` + `path` is the canonical URL of the eprint page — which is how a reader verifies that document and page describe the same work.
+- Deleting an eprint still finds its documents. The lookup matched the invented `content.uri`; it now matches `path` and the legacy field both, because documents already in users' repositories carry the old shape. Updating one repairs it in place.
+- **`/.well-known/site.standard.publication` advertised a record that cannot exist.** The collection is absent from the service repository, and `self` is not a legal record key for a lexicon whose key is `tid`. It is now `CHIVE_PUBLICATION_URI`, and unset the endpoint answers 404 — an unconfigured publication rather than a broken one.
+- **The Leaflet plugin matched no record that any repository holds.** It tracked `xyz.leaflet.list`, an NSID Leaflet does not publish, and parsed an invented shape; its `shouldProcess` filtered on a `visibility` field that does not exist, so even repointed it would have skipped everything.
+- **The sign-in field had no accessible name.** `FormControl` passes `id` and `aria-*` to its child; `HandleInput` accepted none of them and forwarded none, so the label never associated and a screen reader announced an unlabelled text box on the first field of the login page.
+- **The autocompletes could not be operated from a keyboard.** Around twenty of them, of which two implemented the combobox pattern; the shared base implemented none of it and `node-autocomplete` — behind every knowledge-graph field — handled Escape and no other key. A keyboard user could open a list of suggestions and had no way to reach one. Both now implement the pattern: arrow keys, Home, End, Enter, Escape, with `aria-activedescendant` and marked-up options.
+- **Cancelling an admin operation did not stop it.** `startOperation` returns an AbortSignal that the governance sync and DID sync handlers dropped, so the work ran to completion and reported success against a cancelled operation.
+- **`triggerBackfill` recorded operations nothing ran.** It called `startOperation` and returned, leaving an operation pending forever. It now names the endpoint that does the work for the requested type.
+- The Helm chart still set the governance PDS DID to `did:plc:chive-governance`, which is not a PLC identifier. Every other configuration was corrected in 0.10.0; a Helm deployment would have carried it. A test now sweeps every tracked config rather than the ones someone remembers.
+- Integration tests ran under Vitest's 5-second default while talking to four datastores, so a slow runner failed the build with no defect behind it. The datastore-backed suite gets 30 seconds; the unit suite keeps the 5-second default.
+- A type error in a test file removed the generated code reference from the documentation site, and the only symptom was a link check naming every page that pointed at the missing section.
+
+### Changed
+
+- Dependency updates target `staging`. Work reaches production through staging here, so nine dependency PRs had accumulated against a branch the normal flow cannot merge them into.
+- `traefik` and the PDS image are pinned in production compose, to the versions production already runs. `latest` meant a `compose pull` could replace the ingress every request passes through without anyone choosing to.
+- The README names the plugins that actually register. It advertised GitHub, ORCID, DOI registration and Wikidata — the four that are written and not constructed by any service.
+- A clean clone can typecheck: `pnpm lexicons:generate` is documented as the step that must precede it.
+- E2E runs in CI again, for the unauthenticated project. Seventeen assertions of the form `expect(true).toBe(true)` now assert something.
+
 ## [0.11.1] - 2026-08-30
 
 ### Fixed
@@ -891,7 +930,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.11.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/chive-pub/chive/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/chive-pub/chive/compare/v0.11.0...v0.11.1
 [0.11.0]: https://github.com/chive-pub/chive/compare/v0.10.0...v0.11.0
 [0.10.0]: https://github.com/chive-pub/chive/compare/v0.9.0...v0.10.0

@@ -1,6 +1,6 @@
 {
   "name": "@chive/monorepo",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "description": "A decentralized eprint service built on AT Protocol",
