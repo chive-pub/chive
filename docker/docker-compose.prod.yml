@@ -19,35 +19,39 @@
 # Prevents unbounded log growth (we've hit 12GB single-file incidents).
 # 50MB per file × 3 files = 150MB max per container.
 x-logging: &default-logging
-  driver: "json-file"
+  driver: 'json-file'
   options:
-    max-size: "50m"
-    max-file: "3"
+    max-size: '50m'
+    max-file: '3'
 
 services:
   # ---------------------------------------------------------------------------
   # Reverse Proxy - Traefik (auto-SSL with Let's Encrypt)
   # ---------------------------------------------------------------------------
   traefik:
-    image: traefik:latest
+    # Pinned to what production is already running. `latest` meant the next
+    # `compose pull` could swap the ingress for a new major without anyone
+    # choosing to, and Traefik is the single point every request passes
+    # through. Upgrade by changing this line deliberately.
+    image: traefik:v3.7.12
     container_name: chive-traefik
     restart: unless-stopped
     logging: *default-logging
     command:
-      - "--api.dashboard=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
-      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - '--api.dashboard=true'
+      - '--providers.docker=true'
+      - '--providers.docker.exposedbydefault=false'
+      - '--entrypoints.web.address=:80'
+      - '--entrypoints.websecure.address=:443'
+      - '--entrypoints.web.http.redirections.entrypoint.to=websecure'
+      - '--entrypoints.web.http.redirections.entrypoint.scheme=https'
+      - '--certificatesresolvers.letsencrypt.acme.httpchallenge=true'
+      - '--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web'
+      - '--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}'
+      - '--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json'
     ports:
-      - "80:80"
-      - "443:443"
+      - '80:80'
+      - '443:443'
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik_certs:/letsencrypt
@@ -87,23 +91,24 @@ services:
           cpus: '0.25'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3001/']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.web.rule=Host(`${DOMAIN}`)"
-      - "traefik.http.routers.web.entrypoints=websecure"
-      - "traefik.http.routers.web.tls.certresolver=letsencrypt"
-      - "traefik.http.services.web.loadbalancer.server.port=3001"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.web.rule=Host(`${DOMAIN}`)'
+      - 'traefik.http.routers.web.entrypoints=websecure'
+      - 'traefik.http.routers.web.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.web.loadbalancer.server.port=3001'
 
   # ---------------------------------------------------------------------------
   # Governance PDS (Bluesky PDS for community governance records)
   # ---------------------------------------------------------------------------
   governance-pds:
-    image: ghcr.io/bluesky-social/pds:latest
+    # Pinned for the same reason; this holds the governance repository.
+    image: ghcr.io/bluesky-social/pds:0.4.208
     container_name: chive-governance-pds
     restart: unless-stopped
     logging: *default-logging
@@ -133,17 +138,17 @@ services:
           cpus: '0.1'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/xrpc/_health"]
+      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:3000/xrpc/_health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.governance-pds.rule=Host(`governance.${DOMAIN}`)"
-      - "traefik.http.routers.governance-pds.entrypoints=websecure"
-      - "traefik.http.routers.governance-pds.tls.certresolver=letsencrypt"
-      - "traefik.http.services.governance-pds.loadbalancer.server.port=3000"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.governance-pds.rule=Host(`governance.${DOMAIN}`)'
+      - 'traefik.http.routers.governance-pds.entrypoints=websecure'
+      - 'traefik.http.routers.governance-pds.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.governance-pds.loadbalancer.server.port=3000'
 
   # ---------------------------------------------------------------------------
   # Chive Documentation (Docusaurus)
@@ -170,7 +175,7 @@ services:
           cpus: '0.1'
           memory: 64M
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -S -O /dev/null http://127.0.0.1:80/ 2>&1 | grep -q 'HTTP/'"]
+      test: ['CMD-SHELL', "wget -q -S -O /dev/null http://127.0.0.1:80/ 2>&1 | grep -q 'HTTP/'"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -178,11 +183,11 @@ services:
     profiles:
       - docs
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.docs.rule=Host(`docs.${DOMAIN}`)"
-      - "traefik.http.routers.docs.entrypoints=websecure"
-      - "traefik.http.routers.docs.tls.certresolver=letsencrypt"
-      - "traefik.http.services.docs.loadbalancer.server.port=80"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.docs.rule=Host(`docs.${DOMAIN}`)'
+      - 'traefik.http.routers.docs.entrypoints=websecure'
+      - 'traefik.http.routers.docs.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.docs.loadbalancer.server.port=80'
 
   # ---------------------------------------------------------------------------
   # GROBID - PDF Reference Extraction
@@ -192,7 +197,7 @@ services:
     container_name: chive-grobid
     restart: unless-stopped
     logging: *default-logging
-    entrypoint: ["/tini", "-s", "--"]
+    entrypoint: ['/tini', '-s', '--']
     command:
       - /bin/bash
       - -c
@@ -215,7 +220,7 @@ services:
           cpus: '0.25'
           memory: 2G
     healthcheck:
-      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/8070'"]
+      test: ['CMD-SHELL', "bash -c 'echo > /dev/tcp/localhost/8070'"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -227,7 +232,12 @@ services:
   chive-migrate:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-migrate
-    command: ["sh", "-c", "node node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir dist/src/storage/postgresql/migrations --ignore-pattern '.*\\.(map|d\\.ts)$'"]
+    command:
+      [
+        'sh',
+        '-c',
+        "node node_modules/node-pg-migrate/bin/node-pg-migrate up --migrations-dir dist/src/storage/postgresql/migrations --ignore-pattern '.*\\.(map|d\\.ts)$'",
+      ]
     env_file:
       - .env.production
     environment:
@@ -237,7 +247,7 @@ services:
         condition: service_healthy
     networks:
       - chive-network
-    restart: "no"
+    restart: 'no'
     logging: *default-logging
 
   # ---------------------------------------------------------------------------
@@ -246,7 +256,7 @@ services:
   chive-es-setup:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-es-setup
-    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-elasticsearch.js"]
+    command: ['node', '--enable-source-maps', 'dist/scripts/db/setup-elasticsearch.js']
     env_file:
       - .env.production
     depends_on:
@@ -254,7 +264,7 @@ services:
         condition: service_healthy
     networks:
       - chive-network
-    restart: "no"
+    restart: 'no'
     logging: *default-logging
 
   # ---------------------------------------------------------------------------
@@ -263,7 +273,7 @@ services:
   chive-neo4j-setup:
     image: chive:${CHIVE_VERSION:-latest}
     container_name: chive-neo4j-setup
-    command: ["node", "--enable-source-maps", "dist/scripts/db/setup-neo4j.js"]
+    command: ['node', '--enable-source-maps', 'dist/scripts/db/setup-neo4j.js']
     env_file:
       - .env.production
     depends_on:
@@ -271,7 +281,7 @@ services:
         condition: service_healthy
     networks:
       - chive-network
-    restart: "no"
+    restart: 'no'
     logging: *default-logging
 
   # ---------------------------------------------------------------------------
@@ -316,29 +326,29 @@ services:
           cpus: '0.5'
           memory: 512M
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 30s
     labels:
-      - "traefik.enable=true"
+      - 'traefik.enable=true'
       # API subdomain route
-      - "traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)"
-      - "traefik.http.routers.api.entrypoints=websecure"
-      - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.api.loadbalancer.server.port=3000"
+      - 'traefik.http.routers.api.rule=Host(`api.${DOMAIN}`)'
+      - 'traefik.http.routers.api.entrypoints=websecure'
+      - 'traefik.http.routers.api.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.api.loadbalancer.server.port=3000'
       # Path-based route for /api on main domain (used by Next.js frontend)
-      - "traefik.http.routers.api-path.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)"
-      - "traefik.http.routers.api-path.entrypoints=websecure"
-      - "traefik.http.routers.api-path.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.api-path.service=api"
-      - "traefik.http.middlewares.api-strip.stripprefix.prefixes=/api"
-      - "traefik.http.routers.api-path.middlewares=api-strip,api-ratelimit"
+      - 'traefik.http.routers.api-path.rule=Host(`${DOMAIN}`) && PathPrefix(`/api`)'
+      - 'traefik.http.routers.api-path.entrypoints=websecure'
+      - 'traefik.http.routers.api-path.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.api-path.service=api'
+      - 'traefik.http.middlewares.api-strip.stripprefix.prefixes=/api'
+      - 'traefik.http.routers.api-path.middlewares=api-strip,api-ratelimit'
       # Rate limiting middleware
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.average=2000"
-      - "traefik.http.middlewares.api-ratelimit.ratelimit.burst=500"
-      - "traefik.http.routers.api.middlewares=api-ratelimit"
+      - 'traefik.http.middlewares.api-ratelimit.ratelimit.average=2000'
+      - 'traefik.http.middlewares.api-ratelimit.ratelimit.burst=500'
+      - 'traefik.http.routers.api.middlewares=api-ratelimit'
       # Block /metrics from the public internet.
       #
       # The Prometheus scrape endpoint is unauthenticated by default so an
@@ -355,13 +365,13 @@ services:
       # Setting METRICS_TOKEN additionally enforces a bearer token at the
       # application layer; this is the network half of the same control, and
       # does not depend on that variable being set.
-      - "traefik.http.routers.api-metrics.rule=(Host(`api.${DOMAIN}`) && Path(`/metrics`)) || (Host(`${DOMAIN}`) && Path(`/api/metrics`))"
-      - "traefik.http.routers.api-metrics.priority=200"
-      - "traefik.http.routers.api-metrics.entrypoints=websecure"
-      - "traefik.http.routers.api-metrics.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.api-metrics.service=api"
-      - "traefik.http.middlewares.metrics-deny.ipallowlist.sourcerange=127.0.0.1/32"
-      - "traefik.http.routers.api-metrics.middlewares=metrics-deny"
+      - 'traefik.http.routers.api-metrics.rule=(Host(`api.${DOMAIN}`) && Path(`/metrics`)) || (Host(`${DOMAIN}`) && Path(`/api/metrics`))'
+      - 'traefik.http.routers.api-metrics.priority=200'
+      - 'traefik.http.routers.api-metrics.entrypoints=websecure'
+      - 'traefik.http.routers.api-metrics.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.api-metrics.service=api'
+      - 'traefik.http.middlewares.metrics-deny.ipallowlist.sourcerange=127.0.0.1/32'
+      - 'traefik.http.routers.api-metrics.middlewares=metrics-deny'
 
   # ---------------------------------------------------------------------------
   # Chive Indexer (Firehose Consumer)
@@ -371,7 +381,7 @@ services:
     container_name: chive-indexer
     restart: unless-stopped
     logging: *default-logging
-    command: ["node", "--enable-source-maps", "dist/src/indexer.js"]
+    command: ['node', '--enable-source-maps', 'dist/src/indexer.js']
     env_file:
       - .env.production
     environment:
@@ -406,7 +416,7 @@ services:
     # past the watchdog's tolerance, so a wedged firehose is detected here
     # instead of being silently reported "healthy".
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:3001/health"]
+      test: ['CMD-SHELL', 'wget -q -O /dev/null http://127.0.0.1:3001/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -425,44 +435,44 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-chive}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       # Performance tuning for small server
-      POSTGRES_INITDB_ARGS: "--data-checksums"
+      POSTGRES_INITDB_ARGS: '--data-checksums'
     command:
-      - "postgres"
-      - "-c"
-      - "shared_buffers=256MB"
-      - "-c"
-      - "effective_cache_size=768MB"
-      - "-c"
-      - "maintenance_work_mem=64MB"
-      - "-c"
-      - "checkpoint_completion_target=0.9"
-      - "-c"
-      - "wal_buffers=8MB"
-      - "-c"
-      - "default_statistics_target=100"
-      - "-c"
-      - "random_page_cost=1.1"
-      - "-c"
-      - "effective_io_concurrency=200"
-      - "-c"
-      - "work_mem=8MB"
-      - "-c"
-      - "huge_pages=off"
-      - "-c"
-      - "min_wal_size=1GB"
-      - "-c"
-      - "max_wal_size=4GB"
-      - "-c"
-      - "max_connections=100"
-      - "-c"
-      - "log_statement=none"
-      - "-c"
-      - "log_min_duration_statement=1000"
+      - 'postgres'
+      - '-c'
+      - 'shared_buffers=256MB'
+      - '-c'
+      - 'effective_cache_size=768MB'
+      - '-c'
+      - 'maintenance_work_mem=64MB'
+      - '-c'
+      - 'checkpoint_completion_target=0.9'
+      - '-c'
+      - 'wal_buffers=8MB'
+      - '-c'
+      - 'default_statistics_target=100'
+      - '-c'
+      - 'random_page_cost=1.1'
+      - '-c'
+      - 'effective_io_concurrency=200'
+      - '-c'
+      - 'work_mem=8MB'
+      - '-c'
+      - 'huge_pages=off'
+      - '-c'
+      - 'min_wal_size=1GB'
+      - '-c'
+      - 'max_wal_size=4GB'
+      - '-c'
+      - 'max_connections=100'
+      - '-c'
+      - 'log_statement=none'
+      - '-c'
+      - 'log_min_duration_statement=1000'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       # Bind to localhost only for SSH tunnel access (admin scripts)
-      - "127.0.0.1:5432:5432"
+      - '127.0.0.1:5432:5432'
     networks:
       - chive-network
     deploy:
@@ -474,7 +484,7 @@ services:
           cpus: '0.5'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-chive} -d ${POSTGRES_DB:-chive}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-chive} -d ${POSTGRES_DB:-chive}']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -489,26 +499,26 @@ services:
     restart: unless-stopped
     logging: *default-logging
     command:
-      - "redis-server"
-      - "--maxmemory"
-      - "256mb"
-      - "--maxmemory-policy"
-      - "allkeys-lru"
-      - "--appendonly"
-      - "yes"
-      - "--appendfsync"
-      - "everysec"
-      - "--save"
-      - "900 1"
-      - "--save"
-      - "300 10"
-      - "--save"
-      - "60 10000"
+      - 'redis-server'
+      - '--maxmemory'
+      - '256mb'
+      - '--maxmemory-policy'
+      - 'allkeys-lru'
+      - '--appendonly'
+      - 'yes'
+      - '--appendfsync'
+      - 'everysec'
+      - '--save'
+      - '900 1'
+      - '--save'
+      - '300 10'
+      - '--save'
+      - '60 10000'
     volumes:
       - redis_data:/data
     ports:
       # Bind to localhost only for SSH tunnel access (admin scripts)
-      - "127.0.0.1:6379:6379"
+      - '127.0.0.1:6379:6379'
     networks:
       - chive-network
     deploy:
@@ -520,7 +530,7 @@ services:
           cpus: '0.1'
           memory: 128M
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -542,7 +552,7 @@ services:
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
       # Heap: 1.5GB (50% of 3GB container)
-      - "ES_JAVA_OPTS=-Xms1536m -Xmx1536m"
+      - 'ES_JAVA_OPTS=-Xms1536m -Xmx1536m'
       - cluster.name=chive-cluster
       - bootstrap.memory_lock=true
       - cluster.routing.allocation.disk.threshold_enabled=true
@@ -568,7 +578,11 @@ services:
         soft: 65536
         hard: 65536
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1"]
+      test:
+        [
+          'CMD-SHELL',
+          'curl -sf http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=30s || exit 1',
+        ]
       interval: 30s
       timeout: 30s
       retries: 5
@@ -610,7 +624,7 @@ services:
           cpus: '0.25'
           memory: 512M
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:7474 || exit 1"]
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:7474 || exit 1']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -647,7 +661,11 @@ services:
       - loki
     healthcheck:
       # Alloy image doesn't include wget/curl, use bash TCP
-      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/12345 && echo -e \"GET /-/ready HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'"]
+      test:
+        [
+          'CMD-SHELL',
+          "bash -c 'exec 3<>/dev/tcp/localhost/12345 && echo -e \"GET /-/ready HTTP/1.0\\r\\n\\r\\n\" >&3 && grep -q \"200 OK\" <&3'",
+        ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -655,12 +673,12 @@ services:
     profiles:
       - observability
     labels:
-      - "traefik.enable=true"
+      - 'traefik.enable=true'
       # Faro collector endpoint (frontend telemetry)
-      - "traefik.http.routers.faro.rule=Host(`faro.${DOMAIN}`)"
-      - "traefik.http.routers.faro.entrypoints=websecure"
-      - "traefik.http.routers.faro.tls.certresolver=letsencrypt"
-      - "traefik.http.services.faro.loadbalancer.server.port=12347"
+      - 'traefik.http.routers.faro.rule=Host(`faro.${DOMAIN}`)'
+      - 'traefik.http.routers.faro.entrypoints=websecure'
+      - 'traefik.http.routers.faro.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.faro.loadbalancer.server.port=12347'
 
   # ---------------------------------------------------------------------------
   # Tempo - Distributed Tracing Backend
@@ -686,7 +704,7 @@ services:
           cpus: '0.1'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3200/ready"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3200/ready']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -718,7 +736,7 @@ services:
           cpus: '0.1'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3100/ready']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -736,12 +754,12 @@ services:
     restart: unless-stopped
     logging: *default-logging
     command:
-      - "--config.file=/etc/prometheus/prometheus.yml"
-      - "--storage.tsdb.path=/prometheus"
-      - "--storage.tsdb.retention.time=7d"
-      - "--web.enable-remote-write-receiver"
-      - "--web.console.libraries=/etc/prometheus/console_libraries"
-      - "--web.console.templates=/etc/prometheus/consoles"
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=7d'
+      - '--web.enable-remote-write-receiver'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
     volumes:
       - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
@@ -756,7 +774,7 @@ services:
           cpus: '0.1'
           memory: 256M
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:9090/-/healthy"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:9090/-/healthy']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -796,7 +814,7 @@ services:
       - loki
       - prometheus
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:3000/api/health']
       interval: 30s
       timeout: 10s
       retries: 3
@@ -804,11 +822,11 @@ services:
     profiles:
       - observability
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)"
-      - "traefik.http.routers.grafana.entrypoints=websecure"
-      - "traefik.http.routers.grafana.tls.certresolver=letsencrypt"
-      - "traefik.http.services.grafana.loadbalancer.server.port=3000"
+      - 'traefik.enable=true'
+      - 'traefik.http.routers.grafana.rule=Host(`grafana.${DOMAIN}`)'
+      - 'traefik.http.routers.grafana.entrypoints=websecure'
+      - 'traefik.http.routers.grafana.tls.certresolver=letsencrypt'
+      - 'traefik.http.services.grafana.loadbalancer.server.port=3000'
 
 # =============================================================================
 # Volumes

@@ -47,12 +47,7 @@
     "vitest.config.ts",
     "playwright.config.ts"
   ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    ".turbo",
-    "tests/e2e",
-    "src/lexicons/validators",
-    "tests/integration/lexicons/codegen.test.ts"
-  ]
+  // `tests/e2e` is excluded because Playwright's types conflict with Vitest's
+  // globals in the same program; it has its own typecheck.
+  "exclude": ["node_modules", "dist", ".turbo", "tests/e2e"]
 }
