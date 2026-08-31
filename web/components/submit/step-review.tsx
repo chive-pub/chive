@@ -706,6 +706,47 @@ export function StepReview({
         </div>
       </section>
 
+      {/* sifa.id publication record.
+
+          Off by default: this writes into a namespace another service owns, and
+          that is not something to do on a researcher's behalf without asking.
+          The standard.site toggle above is on by default because that record is
+          about making the eprint legible to readers; this one adds an entry to
+          the researcher's own professional profile, which is their call. */}
+      <section className="rounded-lg border border-muted bg-muted/30 p-4">
+        <div className="flex items-start space-x-3">
+          <Checkbox
+            id="recordOnSifa"
+            checked={form.watch('recordOnSifa') ?? false}
+            onCheckedChange={(checked) => {
+              form.setValue('recordOnSifa', checked === true);
+            }}
+          />
+          <div className="space-y-1">
+            <Label
+              htmlFor="recordOnSifa"
+              className="text-sm font-medium leading-none cursor-pointer"
+            >
+              Add this to my sifa.id profile
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Writes an <code>id.sifa.profile.publication</code> record to your own repository, so
+              this eprint appears among your publications on{' '}
+              <a
+                href="https://sifa.id"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline hover:text-foreground"
+              >
+                sifa.id
+              </a>{' '}
+              without entering it twice. The record points back at this eprint, and it is yours —
+              you can edit or delete it there.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Submission notice */}
       <section className="rounded-lg border border-muted bg-muted/30 p-4">
         <h4 className="font-medium mb-2">What Happens Next</h4>

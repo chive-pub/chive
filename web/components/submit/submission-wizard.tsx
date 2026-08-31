@@ -36,6 +36,7 @@ import {
   type CreateRecordResult,
   type EprintRecord,
 } from '@/lib/atproto';
+import { createSifaPublication } from '@/lib/atproto/sifa-records';
 import { SUPPORTED_DOCUMENT_FORMATS } from '@/lib/schemas/eprint';
 import { authApi } from '@/lib/api/client';
 
@@ -140,6 +141,7 @@ export interface EprintFormValues {
   // Cross-platform discovery (standard.site)
   /** Whether to create a site.standard.document record for cross-platform discovery */
   enableCrossPlatformDiscovery?: boolean;
+  recordOnSifa?: boolean;
 
   // Step 3: Metadata
   title: string;
@@ -733,6 +735,9 @@ export function SubmissionWizard({
       conferencePresentation: {},
       // Cross-platform discovery is enabled by default
       enableCrossPlatformDiscovery: true,
+      // Off by default: writing into a namespace another service owns is the
+      // researcher's decision, not a default.
+      recordOnSifa: false,
     }),
     // Recomputed only when the claim-mode source changes; the wizard's own
     // edits live in the form, not here.
@@ -1043,6 +1048,36 @@ export function SubmissionWizard({
                   : String(standardDocError),
             }
           );
+        }
+      }
+
+      // Record the eprint on the researcher's sifa.id profile, if they asked.
+      //
+      // Written by their agent to their own repository, like every other record
+      // this wizard creates. It is an addition to their professional profile,
+      // not part of the eprint, so a failure here must not fail a submission
+      // that has already succeeded.
+      if (values.recordOnSifa === true && agent) {
+        try {
+          submitLogger.info('Creating sifa.id publication record', { eprintUri: result.uri });
+          await createSifaPublication(agent, {
+            title: values.title,
+            eprintUri: result.uri,
+            url: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://chive.pub'}/eprints/${encodeURIComponent(result.uri)}`,
+            ...(values.abstract ? { description: values.abstract } : {}),
+            publishedAt: new Date().toISOString(),
+            authors: transformedAuthors
+              .filter((a) => typeof a.name === 'string' && a.name.length > 0)
+              .map((a) => ({
+                name: a.name,
+                ...(a.did ? { did: a.did } : {}),
+              })),
+          });
+          submitLogger.info('sifa.id publication record created');
+        } catch (sifaError) {
+          submitLogger.warn('Failed to create sifa.id record; eprint was created successfully', {
+            error: sifaError instanceof Error ? sifaError.message : String(sifaError),
+          });
         }
       }
 
