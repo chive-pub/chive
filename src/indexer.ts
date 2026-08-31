@@ -31,6 +31,7 @@ import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
 import { initTelemetry } from './observability/telemetry.js';
+import { CalendarEventsPlugin } from './plugins/builtin/calendar-events.js';
 import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
@@ -553,7 +554,8 @@ async function main(): Promise<void> {
     // recommend or an embedded document block resolves through.
     try {
       await pluginManager.loadBuiltinPlugin(new StandardSiteBacklinksPlugin(), pluginContext);
-      logger.info('standard.site backlinks plugin loaded');
+      await pluginManager.loadBuiltinPlugin(new CalendarEventsPlugin(), pluginContext);
+      logger.info('standard.site and calendar plugins loaded');
     } catch (err) {
       logger.error('Failed to load standard.site plugin', err instanceof Error ? err : undefined);
     }

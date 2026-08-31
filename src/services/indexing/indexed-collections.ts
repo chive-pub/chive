@@ -123,6 +123,9 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   // publisher may write one describing a Chive eprint, and it is also the
   // mapping that lets a reference addressed to a document resolve to the work.
   'site.standard.document',
+  // Community calendar — a talk or presentation that names an eprint among its
+  // URIs is evidence the work was presented, and where.
+  'community.lexicon.calendar.event',
 ] as const;
 
 /**

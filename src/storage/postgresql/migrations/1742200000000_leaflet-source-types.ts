@@ -32,6 +32,7 @@ const SOURCE_TYPES = [
   'leaflet.document',
   'leaflet.comment',
   'standard.document',
+  'calendar.event',
   'whitewind.blog',
   'bluesky.post',
   'bluesky.embed',

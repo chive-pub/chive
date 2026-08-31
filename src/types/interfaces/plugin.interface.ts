@@ -1490,6 +1490,8 @@ export type BacklinkSourceType =
   // references resolve through: a standard.site recommend and a Leaflet
   // standardSitePost block both name a document rather than the work.
   | 'standard.document'
+  // A talk or presentation that names an eprint among its URIs.
+  | 'calendar.event'
   | 'other';
 
 /**
