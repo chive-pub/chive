@@ -58,6 +58,22 @@ export interface EventFilterOptions {
   readonly collections?: readonly NSID[];
 
   /**
+   * Foreign collections to admit for the plugin bus.
+   *
+   * @remarks
+   * Collections outside `pub.chive.*` that Chive observes but does not index.
+   * They are forwarded to the backlink plugins by the event processor; nothing
+   * writes them to a Chive index. Omitted means no foreign collection is
+   * admitted, which is what starved every backlink plugin.
+   *
+   * @example
+   * ```typescript
+   * { observedCollections: ['at.margin.note', 'com.whtwnd.blog.entry'] }
+   * ```
+   */
+  readonly observedCollections?: readonly string[];
+
+  /**
    * Enable strict validation of collection NSIDs.
    *
    * @remarks
@@ -83,6 +99,7 @@ export interface EventFilterOptions {
  */
 export class EventFilter {
   private readonly collections?: ReadonlySet<NSID>;
+  private readonly observedCollections: ReadonlySet<string>;
   private readonly strictValidation: boolean;
 
   /**
@@ -92,6 +109,7 @@ export class EventFilter {
    */
   constructor(options: EventFilterOptions = {}) {
     this.collections = options.collections ? new Set(options.collections) : undefined;
+    this.observedCollections = new Set(options.observedCollections ?? []);
     this.strictValidation = options.strictValidation ?? true;
   }
 
@@ -127,7 +145,15 @@ export class EventFilter {
       return false;
     }
 
-    // Reject non-Chive collections early
+    // Foreign collections Chive observes for backlinks. They are admitted so
+    // the event processor can forward them to the plugin bus, and are checked
+    // before the `collections` allow-list below because that list names the
+    // Chive collections to index and says nothing about these.
+    if (this.observedCollections.has(collection)) {
+      return this.strictValidation ? this.isValidNSID(collection) : true;
+    }
+
+    // Reject everything else outside the Chive namespace.
     if (!collection.startsWith('pub.chive.')) {
       return false;
     }
@@ -202,14 +228,49 @@ export class EventFilter {
       return false;
     }
 
-    // Validate each segment
-    for (const segment of segments) {
+    // An NSID is a domain authority followed by a name. They have different
+    // rules, and treating them alike is what made this filter drop seven of
+    // Chive's own collections: the authority segments are domain labels and
+    // are lowercase, but the final name segment allows any letter, which is
+    // where camelCase lives — `userTag`, `nodeProposal`, `createRecord`.
+    const name = segments[segments.length - 1];
+    const authority = segments.slice(0, -1);
+
+    if (name === undefined) {
+      return false;
+    }
+
+    for (const segment of authority) {
       if (!this.isValidNSIDSegment(segment)) {
         return false;
       }
     }
 
-    return true;
+    return this.isValidNSIDName(name);
+  }
+
+  /**
+   * Validates the final (name) segment of an NSID.
+   *
+   * @param segment - Name segment
+   * @returns `true` if valid
+   *
+   * @remarks
+   * The grammar is `name = alpha *( alpha / number )`: a letter, then letters
+   * or digits, up to 63 characters. Unlike the authority segments it carries no
+   * hyphens and cannot begin with a digit, and its conventional form is
+   * camelCase — which is the part this filter used to reject.
+   *
+   * Checked against the regex `@atproto/syntax` uses, so `userTag`,
+   * `collectionLinkRemoval` and `submission3` are accepted while
+   * `submission-type` and `user_tag` are not.
+   *
+   * @see {@link https://atproto.com/specs/nsid | NSID specification}
+   *
+   * @internal
+   */
+  private isValidNSIDName(segment: string): boolean {
+    return /^[A-Za-z][A-Za-z0-9]{0,62}$/.test(segment);
   }
 
   /**

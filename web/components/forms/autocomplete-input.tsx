@@ -25,7 +25,7 @@
  */
 
 import * as React from 'react';
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Check, X } from 'lucide-react';
 import { logger } from '@/lib/observability';
@@ -149,6 +149,25 @@ export function AutocompleteInput<T>({
     }
   }, [selectedValue, getItemValue]);
 
+  // Index of the option keyboard focus is on, or -1 for none.
+  //
+  // The combobox pattern keeps DOM focus in the input and moves a *virtual*
+  // cursor over the listbox, announced through `aria-activedescendant`. Moving
+  // real focus into the list would take it off the text field the user is
+  // typing in.
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  // Stable ids so `aria-controls` and `aria-activedescendant` can point at the
+  // listbox and the active option.
+  const generatedId = useId();
+  const listboxId = `${id ?? generatedId}-listbox`;
+  const optionId = (index: number) => `${listboxId}-option-${index}`;
+
+  // A new result set invalidates the cursor.
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [results]);
+
   // Handle input change
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -192,6 +211,67 @@ export function AutocompleteInput<T>({
     setTimeout(() => setOpen(false), 200);
   }, []);
 
+  /**
+   * Keyboard interaction for the combobox pattern.
+   *
+   * @remarks
+   * Previously the only key handled anywhere in this family was Escape, so a
+   * keyboard user could open a list of suggestions and had no way to choose
+   * one. Arrow keys move the virtual cursor, Home and End jump to the ends,
+   * Enter commits, and Escape closes without committing — which is the whole
+   * contract a screen reader user is entitled to expect from `role="combobox"`.
+   */
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setActiveIndex(-1);
+        return;
+      }
+
+      if (!open || results.length === 0) {
+        // Down opens a closed list rather than doing nothing.
+        if (event.key === 'ArrowDown' && inputValue.length >= minChars) {
+          event.preventDefault();
+          setOpen(true);
+        }
+        return;
+      }
+
+      switch (event.key) {
+        case 'ArrowDown':
+          event.preventDefault();
+          setActiveIndex((i) => (i + 1) % results.length);
+          break;
+        case 'ArrowUp':
+          event.preventDefault();
+          setActiveIndex((i) => (i <= 0 ? results.length - 1 : i - 1));
+          break;
+        case 'Home':
+          event.preventDefault();
+          setActiveIndex(0);
+          break;
+        case 'End':
+          event.preventDefault();
+          setActiveIndex(results.length - 1);
+          break;
+        case 'Enter': {
+          const item = results[activeIndex];
+          if (item !== undefined) {
+            // Only when a suggestion is actually highlighted; otherwise Enter
+            // belongs to the surrounding form.
+            event.preventDefault();
+            handleSelect(item);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [open, results, activeIndex, handleSelect, inputValue.length, minChars]
+  );
+
   const showClearButton = clearable && inputValue.length > 0 && !disabled;
 
   return (
@@ -208,8 +288,14 @@ export function AutocompleteInput<T>({
               onChange={handleInputChange}
               onFocus={handleFocus}
               onBlur={handleBlur}
+              onKeyDown={handleKeyDown}
               disabled={disabled}
               className={cn(showClearButton && 'pr-10')}
+              role="combobox"
+              aria-expanded={open && shouldSearch}
+              aria-controls={listboxId}
+              aria-autocomplete="list"
+              aria-activedescendant={activeIndex >= 0 && open ? optionId(activeIndex) : undefined}
             />
             {isLoading && shouldSearch && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -238,20 +324,25 @@ export function AutocompleteInput<T>({
             onOpenAutoFocus={(e) => e.preventDefault()}
           >
             <Command>
-              <CommandList>
+              <CommandList id={listboxId} role="listbox">
                 {results.length === 0 && !isLoading ? (
                   <CommandEmpty>{emptyMessage}</CommandEmpty>
                 ) : (
                   <CommandGroup heading={groupLabel}>
-                    {results.map((item) => {
+                    {results.map((item, index) => {
                       const key = getItemKey(item);
                       const isSelected = selectedValue != null && getItemKey(selectedValue) === key;
+                      const isActive = index === activeIndex;
                       return (
                         <CommandItem
                           key={key}
+                          id={optionId(index)}
+                          role="option"
+                          aria-selected={isActive}
                           value={key}
                           onSelect={() => handleSelect(item)}
-                          className="cursor-pointer"
+                          onMouseEnter={() => setActiveIndex(index)}
+                          className={cn('cursor-pointer', isActive && 'bg-accent')}
                         >
                           {isSelected && <Check className="mr-2 h-4 w-4 shrink-0" />}
                           <div className={cn(!isSelected && 'ml-6', 'flex-1')}>

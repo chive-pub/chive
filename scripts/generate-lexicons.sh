@@ -24,6 +24,10 @@ if [ ! -d "$ATPROTO_LEXICONS_DIR" ]; then
   # Copy only the com/atproto/repo lexicons (needed for record CRUD operations)
   mkdir -p "$LEXICONS_DIR/com/atproto/repo"
   cp "$TEMP_DIR/atproto-main/lexicons/com/atproto/repo/"*.json "$LEXICONS_DIR/com/atproto/repo/"
+  # `com.atproto.label.defs` too: site.standard.document and .publication both
+  # reference `#selfLabels`, so codegen fails without it.
+  mkdir -p "$LEXICONS_DIR/com/atproto/label"
+  cp "$TEMP_DIR/atproto-main/lexicons/com/atproto/label/defs.json" "$LEXICONS_DIR/com/atproto/label/"
 
   rm -rf "$TEMP_DIR"
   echo "✅ Downloaded ATProto base lexicons"
@@ -37,7 +41,7 @@ echo "Generating server types..."
 rm -rf "$SERVER_OUTPUT_DIR"
 mkdir -p "$SERVER_OUTPUT_DIR"
 
-pnpm exec lex gen-server --yes "$SERVER_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" -not -path "*/auth/*" -not -path "*/permission-sets/*" | xargs)
+pnpm exec lex gen-server --yes "$SERVER_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" -not -path "*/auth/*" -not -path "*/permission-sets/*" -not -path "*/vendor/*" | xargs)
 
 # Post-process server files for NodeNext module resolution
 echo "Fixing server import paths for NodeNext module resolution..."
@@ -70,7 +74,7 @@ echo "Generating web client types..."
 rm -rf "$WEB_OUTPUT_DIR"
 mkdir -p "$WEB_OUTPUT_DIR"
 
-pnpm exec lex gen-api --yes "$WEB_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" -not -path "*/auth/*" -not -path "*/permission-sets/*" | xargs)
+pnpm exec lex gen-api --yes "$WEB_OUTPUT_DIR" $(find "$LEXICONS_DIR" -name "*.json" -not -path "*/auth/*" -not -path "*/permission-sets/*" -not -path "*/vendor/*" | xargs)
 
 # Remove .js extensions from web client imports.
 # Next.js/webpack resolves .ts imports without extensions, but the

@@ -34,6 +34,10 @@ const VALID_TYPES = [
 export const triggerBackfill: XRPCMethod<void, TriggerBackfillInput, unknown> = {
   type: 'procedure',
   auth: true,
+  // The handler contract returns a Promise and every path here throws. Making
+  // it synchronous would turn a rejected promise into a synchronous throw,
+  // which the XRPC adapter and its callers do not expect.
+  // eslint-disable-next-line @typescript-eslint/require-await
   handler: async ({ input, c }): Promise<XRPCResponse<unknown>> => {
     const user = c.get('user');
     if (!user?.isAdmin) {
@@ -53,19 +57,36 @@ export const triggerBackfill: XRPCMethod<void, TriggerBackfillInput, unknown> = 
       throw new ServiceUnavailableError('Backfill manager is not configured');
     }
 
-    const { type, ...metadata } = input;
-    const { operation } = await backfillManager.startOperation(
-      type as (typeof VALID_TYPES)[number],
-      { ...metadata, startedBy: user.did }
-    );
+    // This used to call `startOperation` and return, running nothing. Each of
+    // the six types has a dedicated endpoint that does the work — this one
+    // recorded an operation that stayed pending forever, so an admin saw a
+    // backfill start and never finish.
+    //
+    // Rather than duplicate five handlers' worth of service wiring here, it
+    // says where the work lives. Nothing calls this endpoint today; if
+    // something does, it now gets an actionable answer instead of a ghost
+    // operation.
+    const { type } = input;
+    const dedicated: Record<(typeof VALID_TYPES)[number], string> = {
+      pdsScan: 'pub.chive.admin.triggerPDSScan',
+      freshnessScan: 'pub.chive.admin.triggerFreshnessScan',
+      citationExtraction: 'pub.chive.admin.triggerCitationExtraction',
+      fullReindex: 'pub.chive.admin.triggerFullReindex',
+      governanceSync: 'pub.chive.admin.triggerGovernanceSync',
+      didSync: 'pub.chive.admin.triggerDIDSync',
+    };
 
-    const logger = c.get('logger');
-    logger.info('Backfill triggered via admin dashboard', {
+    const endpoint = dedicated[type as (typeof VALID_TYPES)[number]];
+
+    c.get('logger').info('Generic backfill trigger redirected to its dedicated endpoint', {
       type,
-      operationId: operation.id,
+      endpoint,
       startedBy: user.did,
     });
 
-    return { encoding: 'application/json', body: { operation } };
+    throw new ValidationError(
+      `Use ${endpoint} to run a ${type} backfill. This endpoint records an operation without running one.`,
+      'type'
+    );
   },
 };

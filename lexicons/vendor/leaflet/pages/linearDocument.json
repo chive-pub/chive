@@ -1,0 +1,105 @@
+{
+  "id": "pub.leaflet.pages.linearDocument",
+  "defs": {
+    "main": {
+      "type": "object",
+      "required": ["blocks"],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "blocks": {
+          "type": "array",
+          "items": {
+            "ref": "#block",
+            "type": "ref"
+          }
+        }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["block"],
+      "properties": {
+        "block": {
+          "refs": [
+            "pub.leaflet.blocks.iframe",
+            "pub.leaflet.blocks.html",
+            "pub.leaflet.blocks.text",
+            "pub.leaflet.blocks.blockquote",
+            "pub.leaflet.blocks.header",
+            "pub.leaflet.blocks.image",
+            "pub.leaflet.blocks.imageGallery",
+            "pub.leaflet.blocks.unorderedList",
+            "pub.leaflet.blocks.orderedList",
+            "pub.leaflet.blocks.website",
+            "pub.leaflet.blocks.math",
+            "pub.leaflet.blocks.code",
+            "pub.leaflet.blocks.horizontalRule",
+            "pub.leaflet.blocks.bskyPost",
+            "pub.leaflet.blocks.standardSitePost",
+            "pub.leaflet.blocks.standardSitePublication",
+            "pub.leaflet.blocks.page",
+            "pub.leaflet.blocks.poll",
+            "pub.leaflet.blocks.button",
+            "pub.leaflet.blocks.postsList",
+            "pub.leaflet.blocks.signup",
+            "pub.leaflet.blocks.membersOnlyDelimiter"
+          ],
+          "type": "union"
+        },
+        "alignment": {
+          "type": "string",
+          "knownValues": [
+            "#textAlignLeft",
+            "#textAlignCenter",
+            "#textAlignRight",
+            "#textAlignJustify"
+          ]
+        }
+      }
+    },
+    "quote": {
+      "type": "object",
+      "required": ["start", "end"],
+      "properties": {
+        "end": {
+          "ref": "#position",
+          "type": "ref"
+        },
+        "start": {
+          "ref": "#position",
+          "type": "ref"
+        }
+      }
+    },
+    "position": {
+      "type": "object",
+      "required": ["block", "offset"],
+      "properties": {
+        "block": {
+          "type": "array",
+          "items": {
+            "type": "integer"
+          }
+        },
+        "offset": {
+          "type": "integer"
+        }
+      }
+    },
+    "textAlignLeft": {
+      "type": "token"
+    },
+    "textAlignRight": {
+      "type": "token"
+    },
+    "textAlignCenter": {
+      "type": "token"
+    },
+    "textAlignJustify": {
+      "type": "token"
+    }
+  },
+  "lexicon": 1
+}

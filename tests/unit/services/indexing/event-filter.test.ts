@@ -256,15 +256,26 @@ describe('EventFilter', () => {
         ).toBe(false);
       });
 
-      it('accepts NSIDs with hyphens in segments after pub.chive', () => {
+      it('accepts hyphens in the authority but not in the name segment', () => {
+        // `name = alpha *( alpha / number )` — no hyphens. This previously
+        // asserted `submission-type` was accepted, which the NSID grammar
+        // forbids and the regex in `@atproto/syntax` rejects. Hyphens remain
+        // valid in the authority segments, which are domain labels.
         const filter = new EventFilter({ strictValidation: true });
+
+        expect(
+          filter.shouldProcess({
+            action: 'create',
+            path: 'pub.chive.eprint-app.submission/abc',
+          })
+        ).toBe(true);
 
         expect(
           filter.shouldProcess({
             action: 'create',
             path: 'pub.chive.eprint-app.submission-type/abc',
           })
-        ).toBe(true);
+        ).toBe(false);
       });
 
       it('accepts NSIDs with digits in later segments', () => {

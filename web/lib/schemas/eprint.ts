@@ -645,6 +645,9 @@ export const stepPublicationSchema = z.object({
         .array(
           z.object({
             url: z.string().optional(),
+            // AT-URI of the repository record, for hosts that are ATProto
+            // applications (Tangled publishes `sh.tangled.repo`).
+            recordUri: z.string().optional(),
             platformUri: z.string().optional(),
             platformSlug: z.string().optional(),
             label: z.string().optional(),

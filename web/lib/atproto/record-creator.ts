@@ -2053,6 +2053,71 @@ export function parseAtUri(uri: string): {
 // =============================================================================
 
 /**
+ * The eprint URI a legacy document pointed at.
+ *
+ * @param value - A record that may predate the schema fix
+ * @returns The URI from `content.uri`, or undefined
+ *
+ * @internal
+ */
+function legacyEprintUri(value: unknown): string | undefined {
+  if (value === null || typeof value !== 'object') return undefined;
+  const content = (value as { content?: { uri?: unknown } }).content;
+  return typeof content?.uri === 'string' ? content.uri : undefined;
+}
+
+/**
+ * Whether a standard.site document describes a given eprint.
+ *
+ * @param value - The record as stored
+ * @param eprintUri - AT-URI of the eprint
+ * @returns True when the document is about that eprint
+ *
+ * @remarks
+ * Matches on `path`, which is where the link now lives, and also on the legacy
+ * `content.uri`. The legacy branch is not optional: documents written before
+ * this change carry `content.uri` and no `path`, and they still need to be
+ * findable so deleting an eprint can clean them up. Dropping it would strand
+ * every document already in a user's repository.
+ *
+ * @public
+ */
+export function describesEprint(value: unknown, eprintUri: string): boolean {
+  if (value === null || typeof value !== 'object') return false;
+  const record = value as { path?: unknown; content?: unknown };
+
+  if (record.path === eprintPath(eprintUri)) return true;
+
+  const legacyContent = record.content as { uri?: unknown } | undefined;
+  return legacyContent?.uri === eprintUri;
+}
+
+/**
+ * Default origin for `site.standard.document.site`.
+ *
+ * @remarks
+ * Matches `NEXT_PUBLIC_SITE_URL`'s default. No trailing slash: the lexicon
+ * says to avoid one, because `site` is concatenated with `path`.
+ */
+const DEFAULT_SITE_URL = 'https://chive.pub';
+
+/**
+ * The path of an eprint's page under the site origin.
+ *
+ * @param eprintUri - AT-URI of the eprint
+ * @returns Path beginning with a slash
+ *
+ * @remarks
+ * Mirrors the frontend route `/eprints/[...uri]`, so `site + path` resolves to
+ * the page describing the same eprint.
+ *
+ * @public
+ */
+export function eprintPath(eprintUri: string): string {
+  return `/eprints/${encodeURIComponent(eprintUri)}`;
+}
+
+/**
  * Standard document record as stored in ATProto (site.standard.document).
  *
  * @remarks
@@ -2063,15 +2128,98 @@ export function parseAtUri(uri: string): {
 export interface StandardDocumentRecord {
   [key: string]: unknown;
   $type: 'site.standard.document';
+  /** Publication record or site URL this document belongs to. Required. */
+  site: string;
   title: string;
+  /** When the document was published. Required. */
+  publishedAt: string;
+  /** Path under `site`, with a leading slash, forming the canonical URL */
+  path?: string;
   description?: string;
-  content: {
-    uri: string;
-    cid?: string;
-  };
-  visibility: 'public' | 'private' | 'unlisted';
-  createdAt: string;
+  /** Plaintext of the document, with no markdown or other formatting */
+  textContent?: string;
+  /** Everyone credited on the document beyond the record's author */
+  contributors?: StandardDocumentContributor[];
+  /** Typed citations, written into the lexicon's reserved `links` union */
+  links?: StandardCitationLink[];
+  /**
+   * Strong reference to the Bluesky post announcing this document.
+   *
+   * @remarks
+   * The lexicon describes this as "useful to keep track of comments
+   * off-platform", which is exactly its use here: the announcing post's reply
+   * thread is the discussion of the eprint that happens on Bluesky rather than
+   * on Chive.
+   */
+  bskyPostRef?: StrongRef;
+  tags?: string[];
   updatedAt?: string;
+}
+
+/**
+ * A typed citation written into a standard.site document's `links` union.
+ *
+ * @remarks
+ * `site.standard.document.links` is declared as a union with no members —
+ * reserved, and left open for extensions. `pub.chive.site.citationLink` is
+ * Chive's proposal for what belongs there: a document-to-work link with a
+ * CiTO-style relation, so a consumer that knows the Citation Typing Ontology
+ * can read a Chive citation without knowing anything about Chive.
+ *
+ * Shipping it in Chive's emissions is the proposal. It is staged behind
+ * {@link CreateStandardDocumentInput.citations} rather than emitted for every
+ * document, because writing an unratified extension into other people's
+ * records by default would be presumptuous.
+ *
+ * @public
+ */
+export interface StandardCitationLink {
+  $type: 'pub.chive.site.citationLink';
+  /** CiTO-style relation; `cites` when nothing more specific is known */
+  relation: string;
+  target: StandardCitationTarget;
+  /** Where in the document the citation occurs, or the citing sentence */
+  context?: string;
+}
+
+/**
+ * The work a {@link StandardCitationLink} points at.
+ *
+ * @public
+ */
+export interface StandardCitationTarget {
+  title: string;
+  uri?: string;
+  doi?: string;
+  url?: string;
+  authors?: string[];
+  year?: number;
+  venue?: string;
+}
+
+/**
+ * A strong reference to another record: its URI and the CID it had.
+ *
+ * @remarks
+ * `com.atproto.repo.strongRef`. The CID pins the version, so a reader can tell
+ * whether the record has changed since the reference was made.
+ *
+ * @public
+ */
+export interface StrongRef {
+  uri: string;
+  cid: string;
+}
+
+/**
+ * A participant on a standard.site document beyond its author.
+ *
+ * @public
+ */
+export interface StandardDocumentContributor {
+  did: string;
+  role?: string;
+  displayName?: string;
 }
 
 /**
@@ -2080,12 +2228,37 @@ export interface StandardDocumentRecord {
 export interface CreateStandardDocumentInput {
   /** Title of the document */
   title: string;
-  /** Brief description or abstract (max 2000 chars) */
+  /** Brief description or abstract */
   description?: string;
-  /** AT-URI of the platform-specific content record (e.g., eprint) */
+  /** AT-URI of the eprint this document describes */
   eprintUri: string;
-  /** CID of the content record for verification */
+  /** CID of the eprint record */
   eprintCid?: string;
+  /**
+   * Origin this deployment serves from, without a trailing slash.
+   *
+   * @remarks
+   * Becomes the record's `site`. Combined with `path` it is the canonical URL
+   * of the eprint, which is how a standard.site reader verifies that the
+   * document and the page describe the same thing.
+   */
+  siteUrl?: string;
+  /** When the eprint was published; defaults to now */
+  publishedAt?: string;
+  /** Plaintext abstract */
+  textContent?: string;
+  /** Authors, mapped to standard.site contributors */
+  contributors?: StandardDocumentContributor[];
+  /** Keywords */
+  tags?: string[];
+  /**
+   * Typed citations to write into the document's `links` union.
+   *
+   * @remarks
+   * Omitted, no `links` are written. See {@link StandardCitationLink} for why
+   * this is opt-in rather than automatic.
+   */
+  citations?: StandardCitationLink[];
 }
 
 /**
@@ -2126,18 +2299,39 @@ export async function createStandardDocument(
 
   const record: StandardDocumentRecord = {
     $type: 'site.standard.document',
+    // `site` and `publishedAt` are required by the lexicon, and neither was
+    // being written. `content` was an object with `uri`/`cid`, where the schema
+    // has an open union whose members carry a `$type`, and `visibility` and
+    // `createdAt` are not fields at all. Every document written before this was
+    // therefore invalid, which is why nothing in the standard.site ecosystem
+    // ever picked one up.
+    site: input.siteUrl ?? DEFAULT_SITE_URL,
     title: input.title,
-    content: {
-      uri: input.eprintUri,
-      ...(input.eprintCid && { cid: input.eprintCid }),
-    },
-    visibility: 'public',
-    createdAt: new Date().toISOString(),
+    publishedAt: input.publishedAt ?? new Date().toISOString(),
+    // `site` + `path` is the canonical URL of the eprint page. A reader
+    // fetching it and finding the same document is how verification works, and
+    // it is what replaces the invented `content.uri` as the link back.
+    path: eprintPath(input.eprintUri),
   };
 
-  // Add optional description (truncated to 2000 chars per lexicon spec)
   if (input.description) {
-    record.description = input.description.substring(0, 2000);
+    record.description = input.description.substring(0, 30000);
+  }
+
+  if (input.textContent) {
+    record.textContent = input.textContent;
+  }
+
+  if (input.contributors && input.contributors.length > 0) {
+    record.contributors = input.contributors;
+  }
+
+  if (input.tags && input.tags.length > 0) {
+    record.tags = input.tags;
+  }
+
+  if (input.citations && input.citations.length > 0) {
+    record.links = input.citations;
   }
 
   const response = await agent.com.atproto.repo.createRecord({
@@ -2291,6 +2485,63 @@ export async function createLayersDataLinks(
 }
 
 /**
+ * Attach the announcing Bluesky post to an eprint's standard.site document.
+ *
+ * @param agent - Authenticated agent for the repo holding the document
+ * @param eprintUri - AT-URI of the eprint that was shared
+ * @param postRef - Strong reference to the Bluesky post
+ * @returns AT-URI of the document updated, or null when there is none
+ *
+ * @throws Error if the agent is not authenticated
+ *
+ * @remarks
+ * `site.standard.document.bskyPostRef` exists to "keep track of comments
+ * off-platform". Recording it makes the announcing post's reply thread
+ * discoverable from the document, which is what lets a reader — Chive's own
+ * eprint page, or any other standard.site consumer — show the Bluesky
+ * discussion of a paper alongside it.
+ *
+ * Returns null rather than throwing when no document exists: sharing an eprint
+ * whose submitter turned cross-platform discovery off is an ordinary thing to
+ * do, and the share has already succeeded by the time this runs. A share must
+ * never fail because a secondary record could not be updated.
+ *
+ * @public
+ */
+export async function attachBlueskyPostToDocument(
+  agent: Agent,
+  eprintUri: string,
+  postRef: StrongRef
+): Promise<string | null> {
+  const did = getAgentDid(agent);
+  if (!did) {
+    throw new Error('Agent is not authenticated');
+  }
+
+  let cursor: string | undefined;
+
+  do {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'site.standard.document',
+      limit: 100,
+      cursor,
+    });
+
+    for (const record of response.data.records) {
+      if (describesEprint(record.value, eprintUri)) {
+        await updateStandardDocument(agent, { uri: record.uri, bskyPostRef: postRef });
+        return record.uri;
+      }
+    }
+
+    cursor = response.data.cursor;
+  } while (cursor);
+
+  return null;
+}
+
+/**
  * Find and delete every `site.standard.document` record in a repo that points
  * at a given eprint.
  *
@@ -2339,8 +2590,7 @@ export async function deleteStandardDocumentsForEprint(
     });
 
     for (const record of response.data.records) {
-      const value = record.value as StandardDocumentRecord;
-      if (value.content?.uri === eprintUri) {
+      if (describesEprint(record.value, eprintUri)) {
         await deleteRecord(agent, record.uri);
         deleted.push(record.uri);
       }
@@ -2366,6 +2616,8 @@ export interface UpdateStandardDocumentInput {
   eprintUri?: string;
   /** Updated eprint CID */
   eprintCid?: string;
+  /** Bluesky post announcing the document, recorded as its discussion thread */
+  bskyPostRef?: StrongRef;
 }
 
 /**
@@ -2416,26 +2668,51 @@ export async function updateStandardDocument(
 
   const existing = existingResponse.data.value as StandardDocumentRecord;
 
-  // Build updated record, preserving existing values for fields not specified
+  // Build the updated record, keeping what the caller did not supply.
+  //
+  // An existing record may predate the schema fix and carry neither `site` nor
+  // `publishedAt`. Both are required, so they are filled in rather than copied
+  // blindly — updating a document is also the moment an invalid one becomes
+  // valid.
   const record: StandardDocumentRecord = {
     $type: 'site.standard.document',
+    site: existing.site ?? DEFAULT_SITE_URL,
     title: input.title ?? existing.title,
-    content: {
-      uri: input.eprintUri ?? existing.content.uri,
-      ...(input.eprintCid
-        ? { cid: input.eprintCid }
-        : existing.content.cid && { cid: existing.content.cid }),
-    },
-    visibility: existing.visibility,
-    createdAt: existing.createdAt,
+    publishedAt: existing.publishedAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
 
-  // Update description if provided, otherwise preserve existing
+  const linkedUri = input.eprintUri ?? legacyEprintUri(existing);
+  if (linkedUri) {
+    record.path = eprintPath(linkedUri);
+  } else if (existing.path) {
+    record.path = existing.path;
+  }
+
   if (input.description !== undefined) {
-    record.description = input.description.substring(0, 2000);
+    record.description = input.description.substring(0, 30000);
   } else if (existing.description) {
     record.description = existing.description;
+  }
+
+  if (existing.textContent !== undefined) {
+    record.textContent = existing.textContent;
+  }
+  if (existing.contributors !== undefined) {
+    record.contributors = existing.contributors;
+  }
+  if (existing.tags !== undefined) {
+    record.tags = existing.tags;
+  }
+  if (existing.links !== undefined) {
+    record.links = existing.links;
+  }
+
+  // A newly supplied post ref replaces whatever was there; otherwise the
+  // existing one survives, so updating a title does not discard the thread.
+  const bskyPostRef = input.bskyPostRef ?? existing.bskyPostRef;
+  if (bskyPostRef !== undefined) {
+    record.bskyPostRef = bskyPostRef;
   }
 
   const response = await agent.com.atproto.repo.putRecord({

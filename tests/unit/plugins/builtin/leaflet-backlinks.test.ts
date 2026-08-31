@@ -8,7 +8,6 @@ import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 import { LeafletBacklinksPlugin } from '../../../../src/plugins/builtin/leaflet-backlinks.js';
-import type { FirehoseRecord } from '../../../../src/plugins/core/backlink-plugin.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 import type {
   ICacheProvider,
@@ -63,8 +62,8 @@ const createMockEventBus = (): IPluginEventBus => ({
 const createMockBacklinkService = (): IBacklinkService => ({
   createBacklink: vi.fn().mockResolvedValue({
     id: 1,
-    sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-    sourceType: 'leaflet.list',
+    sourceUri: 'at://did:plc:user/pub.leaflet.document/abc123',
+    sourceType: 'leaflet.document',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
     indexedAt: new Date(),
     deleted: false,
@@ -95,651 +94,291 @@ const createMockContext = (overrides?: Partial<IPluginContext>): IPluginContext 
 
 // ============================================================================
 // Sample Data
+//
+// Shaped to the vendored lexicons under `lexicons/pub/leaflet/`, which come
+// from Leaflet's own repository. The previous fixtures were built on
+// `xyz.leaflet.list`, an NSID Leaflet does not publish.
 // ============================================================================
 
-/**
- * Sample Leaflet reading list with eprints.
- */
-const SAMPLE_LEAFLET_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'Reading Queue: Semantics Papers',
-  description: 'Papers on semantics and pragmatics I want to read',
-  visibility: 'public' as const,
-  items: [
-    {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T10:00:00Z',
-      status: 'unread' as const,
-      notes: 'Interesting approach to quantifier scope',
-      rating: 5,
-    },
-    {
-      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
-      addedAt: '2024-01-16T11:30:00Z',
-      status: 'reading' as const,
-    },
-    {
-      uri: 'at://did:plc:author3/pub.chive.eprint.submission/ghi789',
-      addedAt: '2024-01-17T14:00:00Z',
-      status: 'read' as const,
-      rating: 4,
-    },
-  ],
-  createdAt: '2024-01-15T10:00:00Z',
-  updatedAt: '2024-01-17T14:00:00Z',
-  tags: ['semantics', 'pragmatics'],
-};
+const EPRINT_A = 'at://did:plc:author1/pub.chive.eprint.submission/abc123';
+const EPRINT_B = 'at://did:plc:author2/pub.chive.eprint.submission/def456';
 
-/**
- * Sample Leaflet list with mixed URIs (eprints and non-eprints).
- */
-const SAMPLE_MIXED_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'Mixed Reading List',
-  visibility: 'public' as const,
-  items: [
+/** A document whose text block links an eprint through a richtext facet. */
+const DOCUMENT_WITH_FACET_LINK = {
+  $type: 'pub.leaflet.document',
+  title: 'Notes on quantifier scope',
+  description: 'Reading notes',
+  author: 'reader.example.com',
+  pages: [
     {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T10:00:00Z',
-    },
-    {
-      uri: 'at://did:plc:user/app.bsky.feed.post/xyz789',
-      addedAt: '2024-01-15T11:00:00Z',
-    },
-    {
-      uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
-      addedAt: '2024-01-15T12:00:00Z',
-    },
-    {
-      uri: 'https://example.com/paper',
-      addedAt: '2024-01-15T13:00:00Z',
+      $type: 'pub.leaflet.pages.linearDocument',
+      blocks: [
+        {
+          block: {
+            $type: 'pub.leaflet.blocks.text',
+            plaintext: 'The clearest treatment is in this paper.',
+            facets: [
+              {
+                index: { byteStart: 30, byteEnd: 39 },
+                features: [{ $type: 'pub.leaflet.richtext.facet#link', uri: EPRINT_A }],
+              },
+            ],
+          },
+        },
+      ],
     },
   ],
-  createdAt: '2024-01-15T10:00:00Z',
 };
 
-/**
- * Sample private Leaflet list.
- */
-const SAMPLE_PRIVATE_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'Private Reading List',
-  visibility: 'private' as const,
-  items: [
+/** A document embedding an eprint as a website block. */
+const DOCUMENT_WITH_WEBSITE_BLOCK = {
+  $type: 'pub.leaflet.document',
+  title: 'Linked reading',
+  pages: [
     {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T10:00:00Z',
+      blocks: [{ block: { $type: 'pub.leaflet.blocks.website', src: EPRINT_B, title: 'A paper' } }],
     },
   ],
-  createdAt: '2024-01-15T10:00:00Z',
+};
+
+/** A comment whose subject is an eprint. */
+const COMMENT_ON_EPRINT = {
+  $type: 'pub.leaflet.comment',
+  subject: EPRINT_A,
+  plaintext: 'This replicates the 2019 result almost exactly.',
+  createdAt: '2026-08-31T10:00:00Z',
 };
 
 /**
- * Sample followers-only Leaflet list.
+ * The protected surface these tests exercise.
+ *
+ * @remarks
+ * `extractContext` and `shouldProcess` are protected. Accessing them through a
+ * narrow named type keeps the tests readable and stops `dot-notation` from
+ * rewriting bracket access into a member access that does not compile.
  */
-const SAMPLE_FOLLOWERS_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'Followers Only List',
-  visibility: 'followers' as const,
-  items: [
-    {
-      uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-      addedAt: '2024-01-15T10:00:00Z',
-    },
-  ],
-  createdAt: '2024-01-15T10:00:00Z',
-};
-
-/**
- * Sample Leaflet list with empty items array.
- */
-const SAMPLE_EMPTY_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'Empty List',
-  visibility: 'public' as const,
-  items: [],
-  createdAt: '2024-01-15T10:00:00Z',
-};
-
-/**
- * Sample Leaflet list without items field.
- */
-const SAMPLE_NO_ITEMS_LIST = {
-  $type: 'xyz.leaflet.list',
-  name: 'No Items List',
-  visibility: 'public' as const,
-  createdAt: '2024-01-15T10:00:00Z',
-};
-
-// ============================================================================
-// Testable Subclass
-// ============================================================================
-
-/**
- * Testable subclass that exposes protected methods and properties for testing.
- */
-class TestableLeafletBacklinksPlugin extends LeafletBacklinksPlugin {
-  /**
-   * Exposes the protected extractContext method for testing.
-   */
-  public testExtractContext(record: unknown): string | undefined {
-    return this.extractContext(record);
-  }
-
-  /**
-   * Exposes the protected shouldProcess method for testing.
-   */
-  public testShouldProcess(record: unknown): boolean {
-    return this.shouldProcess(record);
-  }
-
-  /**
-   * Exposes the protected backlinkService for testing.
-   */
-  public getBacklinkService(): IBacklinkService | undefined {
-    return this.backlinkService;
-  }
+interface PluginInternals {
+  extractContext(record: unknown): string | undefined;
+  shouldProcess(record: unknown): boolean;
 }
+
+const internals = (p: LeafletBacklinksPlugin): PluginInternals => p as unknown as PluginInternals;
 
 // ============================================================================
 // Tests
 // ============================================================================
 
 describe('LeafletBacklinksPlugin', () => {
-  let plugin: TestableLeafletBacklinksPlugin;
-  let context: IPluginContext;
-  let backlinkService: IBacklinkService;
+  let plugin: LeafletBacklinksPlugin;
 
   beforeEach(() => {
-    backlinkService = createMockBacklinkService();
-    context = createMockContext({
-      config: {
-        backlinkService,
-      },
-    });
-    plugin = new TestableLeafletBacklinksPlugin();
+    plugin = new LeafletBacklinksPlugin();
   });
 
   afterEach(() => {
     vi.clearAllMocks();
   });
 
-  describe('manifest and properties', () => {
-    it('should have correct plugin ID', () => {
-      expect(plugin.id).toBe('pub.chive.plugin.leaflet-backlinks');
+  describe('identity', () => {
+    it('tracks the collection Leaflet actually publishes', () => {
+      // The whole reason this plugin indexed nothing: `xyz.leaflet.list` does
+      // not exist, so it matched no record in any repository.
+      expect(plugin.trackedCollection).toBe('pub.leaflet.document');
     });
 
-    it('should have correct tracked collection', () => {
-      expect(plugin.trackedCollection).toBe('xyz.leaflet.list');
+    it('declares hooks for both Leaflet collections', () => {
+      expect(plugin.manifest.permissions?.hooks).toEqual([
+        'firehose.pub.leaflet.document',
+        'firehose.pub.leaflet.comment',
+      ]);
     });
 
-    it('should have correct source type', () => {
-      expect(plugin.sourceType).toBe('leaflet.list');
-    });
-
-    it('should have correct manifest ID', () => {
-      expect(plugin.manifest.id).toBe('pub.chive.plugin.leaflet-backlinks');
-    });
-
-    it('should have correct manifest name', () => {
-      expect(plugin.manifest.name).toBe('Leaflet Backlinks');
-    });
-
-    it('should have correct manifest version', () => {
-      expect(plugin.manifest.version).toBe('0.4.0');
-    });
-
-    it('should have correct manifest description', () => {
-      expect(plugin.manifest.description).toBe(
-        'Tracks references to Chive eprints from Leaflet reading lists'
-      );
-    });
-
-    it('should have correct manifest author', () => {
-      expect(plugin.manifest.author).toBe('Aaron Steven White');
-    });
-
-    it('should have correct manifest license', () => {
-      expect(plugin.manifest.license).toBe('MIT');
-    });
-
-    it('should declare correct firehose hook permission', () => {
-      expect(plugin.manifest.permissions.hooks).toContain('firehose.xyz.leaflet.list');
-    });
-
-    it('should declare storage permission with correct max size', () => {
-      expect(plugin.manifest.permissions.storage?.maxSize).toBe(10 * 1024 * 1024); // 10MB
-    });
-
-    it('should have correct entrypoint', () => {
-      expect(plugin.manifest.entrypoint).toBe('leaflet-backlinks.js');
+    it('reports a source type that names a real record type', () => {
+      expect(plugin.sourceType).toBe('leaflet.document');
     });
   });
 
-  describe('initialize', () => {
-    it('should initialize successfully', async () => {
+  describe('subscription', () => {
+    it('subscribes to comments as well as documents', async () => {
+      const context = createMockContext();
       await plugin.initialize(context);
 
-      expect(context.logger.info).toHaveBeenCalledWith(
-        'Backlink tracking initialized',
-        expect.objectContaining({
-          collection: 'xyz.leaflet.list',
-          sourceType: 'leaflet.list',
-        })
+      const subscribed = (context.eventBus.on as ReturnType<typeof vi.fn>).mock.calls.map(
+        (c) => c[0] as string
       );
-    });
-
-    it('should subscribe to firehose events for xyz.leaflet.list', async () => {
-      await plugin.initialize(context);
-
-      expect(context.eventBus.on).toHaveBeenCalledWith(
-        'firehose.xyz.leaflet.list',
-        expect.any(Function)
-      );
-    });
-
-    it('should retrieve backlink service from context', async () => {
-      await plugin.initialize(context);
-
-      expect(plugin.getBacklinkService()).toBe(backlinkService);
+      expect(subscribed).toContain('firehose.pub.leaflet.document');
+      expect(subscribed).toContain('firehose.pub.leaflet.comment');
     });
   });
 
   describe('extractEprintRefs', () => {
-    it('should extract eprint URIs from list items', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_LEAFLET_LIST);
-
-      expect(refs).toHaveLength(3);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
-      expect(refs).toContain('at://did:plc:author3/pub.chive.eprint.submission/ghi789');
+    it('finds an eprint linked from a richtext facet', () => {
+      // A citation inside a paragraph, which is the ordinary way a document
+      // refers to a paper.
+      expect(plugin.extractEprintRefs(DOCUMENT_WITH_FACET_LINK)).toEqual([EPRINT_A]);
     });
 
-    it('should filter out non-eprint URIs', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_MIXED_LIST);
-
-      expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
-      expect(refs).not.toContain('at://did:plc:user/app.bsky.feed.post/xyz789');
-      expect(refs).not.toContain('https://example.com/paper');
+    it('finds an eprint embedded as a website block', () => {
+      expect(plugin.extractEprintRefs(DOCUMENT_WITH_WEBSITE_BLOCK)).toEqual([EPRINT_B]);
     });
 
-    it('should return empty array for empty items', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_EMPTY_LIST);
-
-      expect(refs).toEqual([]);
+    it('finds the subject of a comment', () => {
+      expect(plugin.extractEprintRefs(COMMENT_ON_EPRINT)).toEqual([EPRINT_A]);
     });
 
-    it('should return empty array when items field is missing', () => {
-      const refs = plugin.extractEprintRefs(SAMPLE_NO_ITEMS_LIST);
-
-      expect(refs).toEqual([]);
-    });
-
-    it('should return empty array when items is not an array', () => {
-      const invalidList = {
-        $type: 'xyz.leaflet.list',
-        name: 'Invalid List',
-        visibility: 'public',
-        items: 'not-an-array',
-        createdAt: '2024-01-15T10:00:00Z',
+    it('finds a quoted document in a comment attachment', () => {
+      const comment = {
+        $type: 'pub.leaflet.comment',
+        subject: 'at://did:plc:other/pub.leaflet.document/xyz',
+        plaintext: 'Quoting this',
+        attachment: { document: EPRINT_B },
       };
-
-      const refs = plugin.extractEprintRefs(invalidList);
-
-      expect(refs).toEqual([]);
+      expect(plugin.extractEprintRefs(comment)).toEqual([EPRINT_B]);
     });
 
-    it('should handle items with undefined URIs', () => {
-      const listWithUndefinedUris = {
-        $type: 'xyz.leaflet.list',
-        name: 'List with Undefined URIs',
-        visibility: 'public' as const,
-        items: [
+    it('finds a standardSitePost block pointing straight at an eprint', () => {
+      const doc = {
+        $type: 'pub.leaflet.document',
+        pages: [
+          { blocks: [{ block: { $type: 'pub.leaflet.blocks.standardSitePost', uri: EPRINT_A } }] },
+        ],
+      };
+      expect(plugin.extractEprintRefs(doc)).toEqual([EPRINT_A]);
+    });
+
+    it('collects references across several pages and blocks', () => {
+      const doc = {
+        $type: 'pub.leaflet.document',
+        pages: [
+          { blocks: [{ block: { $type: 'pub.leaflet.blocks.website', src: EPRINT_A } }] },
+          { blocks: [{ block: { $type: 'pub.leaflet.blocks.website', src: EPRINT_B } }] },
+        ],
+      };
+      expect(plugin.extractEprintRefs(doc).sort()).toEqual([EPRINT_A, EPRINT_B].sort());
+    });
+
+    it('reports each eprint once however many times it is referenced', () => {
+      const doc = {
+        $type: 'pub.leaflet.document',
+        pages: [
           {
-            uri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-            addedAt: '2024-01-15T10:00:00Z',
-          },
-          {
-            uri: undefined as unknown as string,
-            addedAt: '2024-01-15T11:00:00Z',
-          },
-          {
-            uri: 'at://did:plc:author2/pub.chive.eprint.submission/def456',
-            addedAt: '2024-01-15T12:00:00Z',
+            blocks: [
+              { block: { $type: 'pub.leaflet.blocks.website', src: EPRINT_A } },
+              {
+                block: {
+                  $type: 'pub.leaflet.blocks.text',
+                  plaintext: 'again',
+                  facets: [{ features: [{ uri: EPRINT_A }] }],
+                },
+              },
+            ],
           },
         ],
-        createdAt: '2024-01-15T10:00:00Z',
       };
+      expect(plugin.extractEprintRefs(doc)).toEqual([EPRINT_A]);
+    });
 
-      const refs = plugin.extractEprintRefs(listWithUndefinedUris);
+    it('ignores links that are not eprints', () => {
+      const doc = {
+        $type: 'pub.leaflet.document',
+        pages: [
+          {
+            blocks: [
+              { block: { $type: 'pub.leaflet.blocks.website', src: 'https://example.com/blog' } },
+              {
+                block: {
+                  $type: 'pub.leaflet.blocks.standardSitePost',
+                  uri: 'at://did:plc:someone/site.standard.document/abc',
+                },
+              },
+            ],
+          },
+        ],
+      };
+      expect(plugin.extractEprintRefs(doc)).toEqual([]);
+    });
 
-      expect(refs).toHaveLength(2);
-      expect(refs).toContain('at://did:plc:author1/pub.chive.eprint.submission/abc123');
-      expect(refs).toContain('at://did:plc:author2/pub.chive.eprint.submission/def456');
+    it('ignores facet features that carry no link', () => {
+      const doc = {
+        $type: 'pub.leaflet.document',
+        pages: [
+          {
+            blocks: [
+              {
+                block: {
+                  $type: 'pub.leaflet.blocks.text',
+                  plaintext: 'bold text',
+                  facets: [{ features: [{ $type: 'pub.leaflet.richtext.facet#bold' }] }],
+                },
+              },
+            ],
+          },
+        ],
+      };
+      expect(plugin.extractEprintRefs(doc)).toEqual([]);
+    });
+
+    it('survives a document with no pages', () => {
+      expect(plugin.extractEprintRefs({ $type: 'pub.leaflet.document', title: 'Empty' })).toEqual(
+        []
+      );
+    });
+
+    it('survives a page with no blocks and a block with no content', () => {
+      const doc = { $type: 'pub.leaflet.document', pages: [{}, { blocks: [{}] }] };
+      expect(plugin.extractEprintRefs(doc)).toEqual([]);
+    });
+
+    it('survives values that are not records at all', () => {
+      for (const value of [null, undefined, 'a string', 42]) {
+        expect(plugin.extractEprintRefs(value)).toEqual([]);
+      }
     });
   });
 
   describe('extractContext', () => {
-    it('should extract list name when description is present', () => {
-      const extractedContext = plugin.testExtractContext(SAMPLE_LEAFLET_LIST);
-
-      expect(extractedContext).toBe(
-        'Reading Queue: Semantics Papers: Papers on semantics and pragmatics I want to read'
+    it('uses a document title and description', () => {
+      expect(internals(plugin).extractContext(DOCUMENT_WITH_FACET_LINK)).toBe(
+        'Notes on quantifier scope: Reading notes'
       );
     });
 
-    it('should extract only list name when description is absent', () => {
-      const listWithoutDescription = {
-        $type: 'xyz.leaflet.list',
-        name: 'My Reading List',
-        visibility: 'public' as const,
-        items: [],
-        createdAt: '2024-01-15T10:00:00Z',
-      };
-
-      const extractedContext = plugin.testExtractContext(listWithoutDescription);
-
-      expect(extractedContext).toBe('My Reading List');
+    it('uses the title alone when there is no description', () => {
+      expect(internals(plugin).extractContext(DOCUMENT_WITH_WEBSITE_BLOCK)).toBe('Linked reading');
     });
 
-    it('should return undefined when name is missing', () => {
-      const listWithoutName = {
-        $type: 'xyz.leaflet.list',
-        visibility: 'public' as const,
-        items: [],
-        createdAt: '2024-01-15T10:00:00Z',
-      };
-
-      const extractedContext = plugin.testExtractContext(listWithoutName);
-
-      expect(extractedContext).toBeUndefined();
+    it('falls back to a comment body, which has no title', () => {
+      expect(internals(plugin).extractContext(COMMENT_ON_EPRINT)).toBe(
+        'This replicates the 2019 result almost exactly.'
+      );
     });
 
-    it('should handle empty string name', () => {
-      const listWithEmptyName = {
-        $type: 'xyz.leaflet.list',
-        name: '',
-        description: 'Some description',
-        visibility: 'public' as const,
-        items: [],
-        createdAt: '2024-01-15T10:00:00Z',
-      };
+    it('truncates a long comment rather than storing the whole thing', () => {
+      const long = { $type: 'pub.leaflet.comment', plaintext: 'x'.repeat(500) };
+      const context = internals(plugin).extractContext(long);
+      expect(context).toHaveLength(200);
+      expect(context?.endsWith('...')).toBe(true);
+    });
 
-      const extractedContext = plugin.testExtractContext(listWithEmptyName);
-
-      expect(extractedContext).toBeUndefined();
+    it('returns nothing for a record with neither', () => {
+      expect(internals(plugin).extractContext({ $type: 'pub.leaflet.document' })).toBeUndefined();
     });
   });
 
   describe('shouldProcess', () => {
-    it('should return true for public lists', () => {
-      const result = plugin.testShouldProcess(SAMPLE_LEAFLET_LIST);
-
-      expect(result).toBe(true);
+    it('accepts a document', () => {
+      expect(internals(plugin).shouldProcess(DOCUMENT_WITH_FACET_LINK)).toBe(true);
     });
 
-    it('should return false for private lists', () => {
-      const result = plugin.testShouldProcess(SAMPLE_PRIVATE_LIST);
-
-      expect(result).toBe(false);
+    it('accepts a comment', () => {
+      // The previous version required `visibility === 'public'`, a field the
+      // real lexicons do not have — so every record would have been skipped.
+      expect(internals(plugin).shouldProcess(COMMENT_ON_EPRINT)).toBe(true);
     });
 
-    it('should return false for followers-only lists', () => {
-      const result = plugin.testShouldProcess(SAMPLE_FOLLOWERS_LIST);
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle missing visibility field', () => {
-      const listWithoutVisibility = {
-        $type: 'xyz.leaflet.list',
-        name: 'List Without Visibility',
-        items: [],
-        createdAt: '2024-01-15T10:00:00Z',
-      };
-
-      const result = plugin.testShouldProcess(listWithoutVisibility);
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('firehose event handling', () => {
-    it('should process public list and create backlinks', async () => {
-      await plugin.initialize(context);
-
-      // Get the event handler that was registered
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      // Create a firehose record
-      const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: SAMPLE_LEAFLET_LIST,
-        deleted: false,
-        cid: 'bafyreicid',
-        timestamp: new Date(),
-      };
-
-      // Call the handler
-      handler(firehoseRecord);
-
-      // Wait for async processing
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(backlinkService.createBacklink).toHaveBeenCalledTimes(3);
-      expect(backlinkService.createBacklink).toHaveBeenCalledWith({
-        sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        sourceType: 'leaflet.list',
-        targetUri: 'at://did:plc:author1/pub.chive.eprint.submission/abc123',
-        context:
-          'Reading Queue: Semantics Papers: Papers on semantics and pragmatics I want to read',
-      });
-    });
-
-    it('should not process private lists', async () => {
-      await plugin.initialize(context);
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/xyz789',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'xyz789',
-        record: SAMPLE_PRIVATE_LIST,
-        deleted: false,
-        cid: 'bafyreicid',
-        timestamp: new Date(),
-      };
-
-      handler(firehoseRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(backlinkService.createBacklink).not.toHaveBeenCalled();
-    });
-
-    it('should handle deletion events', async () => {
-      await plugin.initialize(context);
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const deletionRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: null,
-        deleted: true,
-        timestamp: new Date(),
-      };
-
-      handler(deletionRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(backlinkService.deleteBacklink).toHaveBeenCalledWith(
-        'at://did:plc:user/xyz.leaflet.list/abc123'
-      );
-    });
-
-    it('should emit backlink.created event when backlink is created', async () => {
-      await plugin.initialize(context);
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: SAMPLE_LEAFLET_LIST,
-        deleted: false,
-        cid: 'bafyreicid',
-        timestamp: new Date(),
-      };
-
-      handler(firehoseRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(context.eventBus.emit).toHaveBeenCalledWith(
-        'backlink.created',
-        expect.objectContaining({
-          sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-          sourceType: 'leaflet.list',
-        })
-      );
-    });
-
-    it('should emit backlink.deleted event when deletion is processed', async () => {
-      await plugin.initialize(context);
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const deletionRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: null,
-        deleted: true,
-        timestamp: new Date(),
-      };
-
-      handler(deletionRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(context.eventBus.emit).toHaveBeenCalledWith(
-        'backlink.deleted',
-        expect.objectContaining({
-          sourceUri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-          sourceType: 'leaflet.list',
-        })
-      );
-    });
-
-    it('should record metrics when backlinks are created', async () => {
-      await plugin.initialize(context);
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: SAMPLE_LEAFLET_LIST,
-        deleted: false,
-        cid: 'bafyreicid',
-        timestamp: new Date(),
-      };
-
-      handler(firehoseRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(context.metrics.incrementCounter).toHaveBeenCalledWith(
-        'backlinks_created',
-        {
-          source_type: 'leaflet.list',
-        },
-        undefined
-      );
-    });
-
-    it('should log warnings on processing errors', async () => {
-      await plugin.initialize(context);
-
-      // Make createBacklink throw an error
-      vi.mocked(backlinkService.createBacklink).mockRejectedValueOnce(new Error('Database error'));
-
-      const onCall = vi
-        .mocked(context.eventBus.on)
-        .mock.calls.find((call) => call[0] === 'firehose.xyz.leaflet.list');
-      expect(onCall).toBeDefined();
-      const handler = onCall?.[1];
-      if (!handler) throw new Error('Handler not found');
-
-      const firehoseRecord: FirehoseRecord = {
-        uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        collection: 'xyz.leaflet.list',
-        did: 'did:plc:user',
-        rkey: 'abc123',
-        record: SAMPLE_LEAFLET_LIST,
-        deleted: false,
-        cid: 'bafyreicid',
-        timestamp: new Date(),
-      };
-
-      handler(firehoseRecord);
-
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      expect(context.logger.warn).toHaveBeenCalledWith(
-        'Failed to process firehose record',
-        expect.objectContaining({
-          error: 'Database error',
-          uri: 'at://did:plc:user/xyz.leaflet.list/abc123',
-        })
-      );
+    it('rejects a non-record', () => {
+      expect(internals(plugin).shouldProcess(null)).toBe(false);
+      expect(internals(plugin).shouldProcess('nope')).toBe(false);
     });
   });
 });
