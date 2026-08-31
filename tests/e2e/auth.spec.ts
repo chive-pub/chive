@@ -157,11 +157,13 @@ test.describe('Authentication', () => {
     const signInPage = new SignInPage(page);
     await signInPage.goto();
 
-    // Form should have a visible label
-    const label = page.getByText('Handle or DID');
-    await expect(label).toBeVisible();
-
-    // Input should be visible and focusable
+    // Assert the association, not merely that the words appear somewhere:
+    // `getByLabel` only matches when the label is actually bound to the
+    // control, which is the property a screen reader depends on. The old
+    // `getByText('Handle or DID')` matched the label and the description
+    // both, and would have passed even while the input had no accessible
+    // name at all — which is exactly the state the page was in.
+    await expect(page.getByLabel('Handle or DID')).toBeVisible();
     await expect(signInPage.handleInput).toBeVisible();
 
     // Button should be focusable

@@ -154,9 +154,14 @@ test.describe('Contribution Type Voting - Cast Vote', () => {
           .getByText(/your vote|voted|already voted/i)
           .or(page.locator('[data-testid="user-vote"]'));
 
-        // May show auth prompt instead if not authenticated
-        const isVisible = await confirmation.isVisible({ timeout: 5000 }).catch(() => false);
-        expect(true).toBe(true); // Just verify interaction works
+        // After clicking, the page must land in one of the two states this
+        // test's own comment names: a vote confirmation, or a prompt to sign
+        // in. Anything else — a blank panel, an unhandled error — is a real
+        // failure the previous unconditional pass could not surface.
+        const authPrompt = page
+          .getByText(/sign in|log in|authentication required/i)
+          .or(page.getByRole('dialog'));
+        await expect(confirmation.first().or(authPrompt.first())).toBeVisible({ timeout: 5000 });
       }
     }
   });
@@ -227,9 +232,11 @@ test.describe('Contribution Type Voting - Duplicate Prevention', () => {
         .getByText(/you voted|your vote|voted/i)
         .or(page.locator('[data-testid="user-vote-indicator"]'));
 
-      // May or may not be visible depending on vote state
-      const isVisible = await votedIndicator.isVisible({ timeout: 3000 }).catch(() => false);
-      expect(true).toBe(true);
+      // Reaching the proposal page is the assertable outcome of following the
+      // link; the indicator depends on vote state, which this test does not
+      // control.
+      await expect(page).toHaveURL(/\/governance\/proposals\//);
+      await expect(page.getByRole('heading').first()).toBeVisible();
     }
   });
 
@@ -246,12 +253,20 @@ test.describe('Contribution Type Voting - Duplicate Prevention', () => {
       const approveButton = page.getByRole('button', { name: /approve/i });
       const rejectButton = page.getByRole('button', { name: /reject/i });
 
-      // Check if buttons exist and their state
-      const approveVisible = await approveButton.isVisible({ timeout: 3000 }).catch(() => false);
-      const rejectVisible = await rejectButton.isVisible({ timeout: 3000 }).catch(() => false);
+      // The two buttons are a pair: a proposal page offering one without the
+      // other is broken regardless of vote state. That is assertable where
+      // "are they disabled" is not, since this test does not control whether
+      // the user has already voted.
+      const approveVisible = await approveButton
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false);
+      const rejectVisible = await rejectButton
+        .first()
+        .isVisible({ timeout: 3000 })
+        .catch(() => false);
 
-      // Buttons either don't exist, are disabled, or show "voted" state
-      expect(true).toBe(true);
+      expect(approveVisible).toBe(rejectVisible);
     }
   });
 
@@ -297,9 +312,12 @@ test.describe('Contribution Type Voting - Authentication', () => {
           .or(page.getByRole('dialog'))
           .or(page.locator('[data-testid="auth-required"]'));
 
-        // May show auth prompt or vote confirmation depending on auth state
-        const isVisible = await authPrompt.isVisible({ timeout: 5000 }).catch(() => false);
-        expect(true).toBe(true);
+        // Same two-state rule as above. Whichever branch the app takes, it
+        // must show one of them rather than swallowing the click.
+        const confirmation = page
+          .getByText(/your vote|voted|already voted/i)
+          .or(page.locator('[data-testid="user-vote"]'));
+        await expect(authPrompt.first().or(confirmation.first())).toBeVisible({ timeout: 5000 });
       }
     }
   });
