@@ -206,7 +206,7 @@ export function DoiLink({ doi, showFull = false, className }: DoiLinkProps) {
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        'inline-flex items-center gap-1 font-mono text-sm hover:text-primary hover:underline',
+        'inline-flex max-w-full flex-wrap items-center gap-1 break-all font-mono text-sm hover:text-primary hover:underline',
         className
       )}
     >

@@ -77,9 +77,14 @@ export function EprintHeader({ eprint, titleAction, className }: EprintHeaderPro
         {eprint.metrics && <EprintMetrics metrics={eprint.metrics} size="sm" showAll />}
       </div>
 
-      {/* Fields */}
+      {/* Fields.
+
+          The label sits beside the chips from `sm` up and above them on a
+          phone: inline, a narrow screen gave the chips the width left over
+          after "Fields:", so a single chip could be pushed onto its own
+          cramped row. */}
       {eprint.fields && eprint.fields.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
           <span className="text-sm font-medium text-muted-foreground">Fields:</span>
           <FieldBadgeList fields={eprint.fields} max={10} />
         </div>
@@ -87,16 +92,20 @@ export function EprintHeader({ eprint, titleAction, className }: EprintHeaderPro
 
       {/* Keywords */}
       {eprint.keywords && eprint.keywords.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col gap-1.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
           <span className="text-sm font-medium text-muted-foreground">Keywords:</span>
-          <ul role="list" aria-label="Keywords" className="flex flex-wrap gap-1">
+          <ul role="list" aria-label="Keywords" className="flex flex-wrap gap-1.5">
             {eprint.keywords.map((keyword: string) => (
-              <li key={keyword}>
+              <li key={keyword} className="min-w-0">
                 <Link
                   href={`/tags/${encodeURIComponent(normalizeTag(keyword))}`}
-                  className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs hover:bg-accent transition-colors"
+                  title={keyword}
+                  // `whitespace-nowrap` keeps a multi-word keyword from wrapping
+                  // inside its own pill, which left the pill with single-line
+                  // padding around two lines of text.
+                  className="inline-flex max-w-full items-center gap-1 truncate whitespace-nowrap rounded-full bg-muted px-2.5 py-1 text-xs transition-colors hover:bg-accent"
                 >
-                  <Tag className="mr-1 h-3 w-3" />
+                  <Tag className="h-3 w-3 shrink-0" />
                   {keyword}
                 </Link>
               </li>

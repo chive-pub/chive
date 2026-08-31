@@ -481,7 +481,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                     <div className="min-w-0">
                       <p className="text-sm font-medium truncate">{material.label || 'Material'}</p>
                       {material.rrid && (
-                        <p className="text-xs text-muted-foreground font-mono">
+                        <p className="break-all text-xs text-muted-foreground font-mono">
                           RRID: {material.rrid}
                         </p>
                       )}
