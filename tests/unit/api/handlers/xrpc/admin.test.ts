@@ -1692,39 +1692,48 @@ describe('XRPC Admin Handlers', () => {
       ).rejects.toThrow(ServiceUnavailableError);
     });
 
-    it('starts operation with type and metadata', async () => {
-      const result = await triggerBackfill.handler({
-        params: undefined,
-        input: { type: 'fullReindex' },
-        auth: null,
-        c: mockContext as never,
-      });
-      expect(mockBackfillManager.startOperation).toHaveBeenCalledWith('fullReindex', {
-        startedBy: ADMIN_DID,
-      });
-      expect(result.body).toHaveProperty('operation');
+    // These two used to assert the handler called `startOperation` and returned
+    // the operation. It did — and then nothing ran it, so the operation stayed
+    // pending forever and an admin saw a backfill that never finished. The
+    // handler now names the endpoint that does the work instead, which is a
+    // behaviour change worth pinning rather than a regression to route around.
+
+    it('does not start an operation it cannot run', async () => {
+      await expect(
+        triggerBackfill.handler({
+          params: undefined,
+          input: { type: 'fullReindex' },
+          auth: null,
+          c: mockContext as never,
+        })
+      ).rejects.toThrow(/triggerFullReindex/);
+
+      expect(mockBackfillManager.startOperation).not.toHaveBeenCalled();
     });
 
-    it('accepts all valid backfill types', async () => {
-      const validTypes = [
-        'pdsScan',
-        'freshnessScan',
-        'citationExtraction',
-        'fullReindex',
-        'governanceSync',
-        'didSync',
-      ];
-      for (const type of validTypes) {
+    it('names the dedicated endpoint for every valid type', async () => {
+      const expected: Record<string, string> = {
+        pdsScan: 'triggerPDSScan',
+        freshnessScan: 'triggerFreshnessScan',
+        citationExtraction: 'triggerCitationExtraction',
+        fullReindex: 'triggerFullReindex',
+        governanceSync: 'triggerGovernanceSync',
+        didSync: 'triggerDIDSync',
+      };
+
+      for (const [type, endpoint] of Object.entries(expected)) {
         vi.clearAllMocks();
         mockBackfillManager = createMockBackfillManager();
         mockContext = buildContext(adminUser);
-        await triggerBackfill.handler({
-          params: undefined,
-          input: { type },
-          auth: null,
-          c: mockContext as never,
-        });
-        expect(mockBackfillManager.startOperation).toHaveBeenCalledWith(type, expect.any(Object));
+
+        await expect(
+          triggerBackfill.handler({
+            params: undefined,
+            input: { type },
+            auth: null,
+            c: mockContext as never,
+          })
+        ).rejects.toThrow(new RegExp(endpoint));
       }
     });
   });

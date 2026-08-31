@@ -21,10 +21,12 @@ runs:
           sudo apt-get install -y build-essential python3
         fi
 
+    # No `version:` here on purpose. action-setup then reads `packageManager`
+    # from package.json, so CI runs the exact pnpm the repo pins rather than
+    # whatever the latest 10.x happens to be that day. Pinning the version in
+    # two places is how they drift apart.
     - name: Setup pnpm
       uses: pnpm/action-setup@v3
-      with:
-        version: 10
 
     - name: Setup Node.js
       uses: actions/setup-node@v4

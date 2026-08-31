@@ -120,6 +120,16 @@ export interface IndexingServiceOptions {
   readonly collections?: readonly NSID[];
 
   /**
+   * Foreign collections to observe for the plugin bus.
+   *
+   * @remarks
+   * Passed to {@link EventFilter}. These are other applications' lexicons that
+   * Chive forwards to backlink plugins without indexing. See
+   * `OBSERVED_COLLECTIONS`.
+   */
+  readonly observedCollections?: readonly string[];
+
+  /**
    * Event processor function.
    *
    * @remarks
@@ -411,6 +421,7 @@ interface RelayConsumerState {
 export class IndexingService {
   private readonly relays: readonly string[];
   private readonly collections?: readonly NSID[];
+  private readonly observedCollections?: readonly string[];
   private readonly processor: EventProcessor;
   private readonly logger: ILogger;
 
@@ -444,6 +455,7 @@ export class IndexingService {
     this.relays = options.relays;
 
     this.collections = options.collections;
+    this.observedCollections = options.observedCollections;
     this.processor = options.processor;
     this.logger = options.logger;
 
@@ -519,6 +531,7 @@ export class IndexingService {
     // Initialize filter
     this.filter = new EventFilter({
       collections: this.collections,
+      ...(this.observedCollections ? { observedCollections: this.observedCollections } : {}),
       strictValidation: true,
     });
 
@@ -642,7 +655,11 @@ export class IndexingService {
     const events = state.consumer.subscribe({
       relay,
       cursor,
-      filter: this.collections ? { collections: this.collections } : undefined,
+      // The relay-side filter must cover the observed collections too, or they
+      // are dropped upstream and never reach the local EventFilter.
+      filter: this.collections
+        ? { collections: [...this.collections, ...(this.observedCollections ?? [])] as NSID[] }
+        : undefined,
     });
 
     state.connected = true;

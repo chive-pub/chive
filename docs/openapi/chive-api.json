@@ -16,6 +16,185 @@
         ],
         "type": "object"
       },
+      "com.atproto.label.defs.label": {
+        "description": "Metadata tag on an atproto resource (eg, repo or record).",
+        "properties": {
+          "cid": {
+            "description": "Optionally, CID specifying the specific version of 'uri' resource this label applies to.",
+            "format": "cid",
+            "type": "string"
+          },
+          "cts": {
+            "description": "Timestamp when this label was created.",
+            "format": "date-time",
+            "type": "string"
+          },
+          "exp": {
+            "description": "Timestamp at which this label expires (no longer applies).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "neg": {
+            "description": "If true, this is a negation label, overwriting a previous label.",
+            "type": "boolean"
+          },
+          "sig": {
+            "description": "Signature of dag-cbor encoded label.",
+            "format": "byte",
+            "type": "string"
+          },
+          "src": {
+            "description": "DID of the actor who created this label.",
+            "format": "did",
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT URI of the record, repository (account), or other resource that this label applies to.",
+            "format": "uri",
+            "type": "string"
+          },
+          "val": {
+            "description": "The short string name of the value or type of this label.",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "ver": {
+            "description": "The AT Protocol version of the label object.",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "src",
+          "uri",
+          "val",
+          "cts"
+        ],
+        "type": "object"
+      },
+      "com.atproto.label.defs.labelValue": {
+        "enum": [
+          "!hide",
+          "!warn",
+          "!no-unauthenticated",
+          "porn",
+          "sexual",
+          "nudity",
+          "graphic-media",
+          "bot"
+        ],
+        "type": "string"
+      },
+      "com.atproto.label.defs.labelValueDefinition": {
+        "description": "Declares a label value and its expected interpretations and behaviors.",
+        "properties": {
+          "adultOnly": {
+            "description": "Does the user need to have adult content enabled in order to configure this label?",
+            "type": "boolean"
+          },
+          "blurs": {
+            "description": "What should this label hide in the UI, if applied? 'content' hides all of the target; 'media' hides the images/video/audio; 'none' hides nothing.",
+            "enum": [
+              "content",
+              "media",
+              "none"
+            ],
+            "type": "string"
+          },
+          "defaultSetting": {
+            "default": "warn",
+            "description": "The default setting for this label.",
+            "enum": [
+              "ignore",
+              "warn",
+              "hide"
+            ],
+            "type": "string"
+          },
+          "identifier": {
+            "description": "The value of the label being defined. Must only include lowercase ascii and the '-' character ([a-z-]+).",
+            "maxLength": 100,
+            "type": "string"
+          },
+          "locales": {
+            "items": {
+              "$ref": "#/components/schemas/com.atproto.label.defs.labelValueDefinitionStrings"
+            },
+            "type": "array"
+          },
+          "severity": {
+            "description": "How should a client visually convey this label? 'inform' means neutral and informational; 'alert' means negative and warning; 'none' means show nothing.",
+            "enum": [
+              "inform",
+              "alert",
+              "none"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "identifier",
+          "severity",
+          "blurs",
+          "locales"
+        ],
+        "type": "object"
+      },
+      "com.atproto.label.defs.labelValueDefinitionStrings": {
+        "description": "Strings which describe the label in the UI, localized into a specific language.",
+        "properties": {
+          "description": {
+            "description": "A longer description of what the label means and why it might be applied.",
+            "maxLength": 100000,
+            "type": "string"
+          },
+          "lang": {
+            "description": "The code of the language these strings are written in.",
+            "format": "language",
+            "type": "string"
+          },
+          "name": {
+            "description": "A short human-readable name for the label.",
+            "maxLength": 640,
+            "type": "string"
+          }
+        },
+        "required": [
+          "lang",
+          "name",
+          "description"
+        ],
+        "type": "object"
+      },
+      "com.atproto.label.defs.selfLabel": {
+        "description": "Metadata tag on an atproto record, published by the author within the record. Note that schemas should use #selfLabels, not #selfLabel.",
+        "properties": {
+          "val": {
+            "description": "The short string name of the value or type of this label.",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "val"
+        ],
+        "type": "object"
+      },
+      "com.atproto.label.defs.selfLabels": {
+        "description": "Metadata tags on an atproto record, published by the author within the record.",
+        "properties": {
+          "values": {
+            "items": {
+              "$ref": "#/components/schemas/com.atproto.label.defs.selfLabel"
+            },
+            "maxItems": 10,
+            "type": "array"
+          }
+        },
+        "required": [
+          "values"
+        ],
+        "type": "object"
+      },
       "com.atproto.repo.applyWrites.create": {
         "description": "Operation which creates a new record.",
         "properties": {
@@ -7288,6 +7467,7 @@
               "paperswithcode",
               "codeberg",
               "sourcehut",
+              "tangled",
               "software_heritage",
               "colab",
               "kaggle",
@@ -7297,6 +7477,11 @@
           },
           "platformUri": {
             "description": "AT-URI to platform node (subkind=platform-code)",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "recordUri": {
+            "description": "AT-URI of the repository record when the host is an ATProto application, such as sh.tangled.repo. Addresses the repository on the network rather than at one web host, so it survives the host moving or disappearing.",
             "format": "at-uri",
             "type": "string"
           },
@@ -13538,6 +13723,83 @@
         "description": "Strikethrough text formatting facet",
         "type": "object"
       },
+      "pub.chive.site.citationLink": {
+        "description": "A typed citation from the containing document to another work.",
+        "properties": {
+          "context": {
+            "description": "Where in the document the citation occurs, or a short quotation of the citing sentence.",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "relation": {
+            "description": "How the document relates to the cited work. Open by design: `knownValues` names the relations Chive emits, and a consumer meeting an unfamiliar one should treat it as a plain citation rather than discard the link.",
+            "enum": [
+              "cites",
+              "extends",
+              "disputes",
+              "replicates",
+              "usesDataFrom",
+              "usesMethodIn",
+              "reviews"
+            ],
+            "maxLength": 128,
+            "type": "string"
+          },
+          "target": {
+            "$ref": "#/components/schemas/pub.chive.site.citationLink.target"
+          }
+        },
+        "required": [
+          "relation",
+          "target"
+        ],
+        "type": "object"
+      },
+      "pub.chive.site.citationLink.target": {
+        "description": "Identification of a cited work. At least one identifier should be present; `title` alone identifies a work no machine can resolve, which is why it is not sufficient on its own.",
+        "properties": {
+          "authors": {
+            "items": {
+              "maxLength": 200,
+              "type": "string"
+            },
+            "maxItems": 50,
+            "type": "array"
+          },
+          "doi": {
+            "description": "DOI, without a resolver prefix.",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the cited work, when it lives on the network.",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "url": {
+            "format": "uri",
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "venue": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "year": {
+            "maximum": 3000,
+            "minimum": 1000,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "type": "object"
+      },
       "pub.chive.tag.getDetail.promotionTarget": {
         "description": "Target of tag promotion",
         "properties": {
@@ -13937,104 +14199,283 @@
       },
       "site.standard.document": {
         "properties": {
-          "content": {
-            "$ref": "#/components/schemas/site.standard.document.contentRef"
+          "bskyPostRef": {
+            "$ref": "#/components/schemas/com.atproto.repo.strongRef"
           },
-          "createdAt": {
-            "format": "date-time",
+          "content": {
+            "oneOf": []
+          },
+          "contributors": {
+            "items": {
+              "$ref": "#/components/schemas/site.standard.document.contributor"
+            },
+            "type": "array"
+          },
+          "coverImage": {
+            "description": "Image to used for thumbnail or cover image. Less than 1MB is size.",
+            "format": "binary",
+            "maxLength": 1000000,
             "type": "string"
           },
           "description": {
-            "description": "Brief description or abstract",
-            "maxLength": 2000,
+            "description": "A brief description or excerpt from the document.",
+            "maxLength": 30000,
             "type": "string"
           },
-          "title": {
-            "description": "Title of the document",
-            "maxLength": 500,
+          "labels": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/com.atproto.label.defs.selfLabels"
+              }
+            ]
+          },
+          "links": {
+            "oneOf": []
+          },
+          "path": {
+            "description": "Combine with site or publication url to construct a canonical URL to the document. Prepend with a leading slash.",
             "type": "string"
           },
-          "updatedAt": {
+          "publishedAt": {
+            "description": "Timestamp of the documents publish time.",
             "format": "date-time",
             "type": "string"
           },
-          "visibility": {
-            "default": "public",
-            "enum": [
-              "public",
-              "private",
-              "unlisted"
-            ],
+          "site": {
+            "description": "Points to a publication record (at://) or a publication url (https://) for loose documents. Avoid trailing slashes.",
+            "format": "uri",
+            "type": "string"
+          },
+          "tags": {
+            "items": {
+              "maxLength": 1280,
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "textContent": {
+            "description": "Plaintext representation of the documents contents. Should not contain markdown or other formatting.",
+            "type": "string"
+          },
+          "title": {
+            "description": "Title of the document.",
+            "maxLength": 5000,
+            "type": "string"
+          },
+          "updatedAt": {
+            "description": "Timestamp of the documents last edit.",
+            "format": "date-time",
             "type": "string"
           }
         },
         "required": [
+          "site",
           "title",
-          "createdAt"
+          "publishedAt"
         ],
         "type": "object"
       },
-      "site.standard.document.contentRef": {
+      "site.standard.document.contributor": {
         "properties": {
-          "cid": {
-            "description": "CID of the content record for verification",
-            "format": "cid",
+          "did": {
+            "format": "did",
             "type": "string"
           },
-          "uri": {
-            "description": "AT-URI of the platform-specific content record",
+          "displayName": {
+            "maxLength": 1000,
+            "type": "string"
+          },
+          "role": {
+            "maxLength": 1000,
+            "type": "string"
+          }
+        },
+        "required": [
+          "did"
+        ],
+        "type": "object"
+      },
+      "site.standard.graph.recommend": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "document": {
+            "description": "AT-URI reference to the document record being recommended (ex: at://did:plc:abc123/site.standard.document/xyz789).",
             "format": "at-uri",
             "type": "string"
           }
         },
         "required": [
-          "uri"
+          "document",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "site.standard.graph.subscription": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "publication": {
+            "description": "AT-URI reference to the publication record being subscribed to (ex: at://did:plc:abc123/site.standard.publication/xyz789).",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "publication"
         ],
         "type": "object"
       },
       "site.standard.publication": {
         "properties": {
-          "avatar": {
-            "description": "Square image identifying the publication (256x256 minimum)",
+          "basicTheme": {
+            "$ref": "#/components/schemas/site.standard.theme.basic"
+          },
+          "description": {
+            "description": "Brief description of the publication.",
+            "maxLength": 30000,
+            "type": "string"
+          },
+          "icon": {
+            "description": "Square image to identify the publication. Should be at least 256x256.",
             "format": "binary",
             "maxLength": 1000000,
             "type": "string"
           },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "description": {
-            "description": "Brief description of the publication",
-            "maxLength": 1000,
-            "type": "string"
+          "labels": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/com.atproto.label.defs.selfLabels"
+              }
+            ]
           },
           "name": {
-            "description": "Name of the publication",
-            "maxLength": 100,
+            "description": "Name of the publication.",
+            "maxLength": 5000,
             "type": "string"
           },
-          "theme": {
-            "$ref": "#/components/schemas/site.standard.publication.theme"
+          "preferences": {
+            "$ref": "#/components/schemas/site.standard.publication.preferences"
+          },
+          "url": {
+            "description": "Base publication url (ex: https://standard.site). The canonical document URL is formed by combining this value with the document path.",
+            "format": "uri",
+            "type": "string"
           }
         },
         "required": [
-          "name",
-          "createdAt"
+          "url",
+          "name"
         ],
         "type": "object"
       },
-      "site.standard.publication.theme": {
+      "site.standard.publication.preferences": {
         "properties": {
-          "accentColor": {
-            "description": "Accent color in hex format",
-            "type": "string"
-          },
-          "primaryColor": {
-            "description": "Primary brand color in hex format",
-            "type": "string"
+          "showInDiscover": {
+            "default": true,
+            "description": "Boolean which decides whether the publication should appear in discovery feeds.",
+            "type": "boolean"
           }
         },
+        "type": "object"
+      },
+      "site.standard.theme.basic": {
+        "properties": {
+          "accent": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/site.standard.theme.color.rgb"
+              }
+            ]
+          },
+          "accentForeground": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/site.standard.theme.color.rgb"
+              }
+            ]
+          },
+          "background": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/site.standard.theme.color.rgb"
+              }
+            ]
+          },
+          "foreground": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/site.standard.theme.color.rgb"
+              }
+            ]
+          }
+        },
+        "required": [
+          "background",
+          "foreground",
+          "accent",
+          "accentForeground"
+        ],
+        "type": "object"
+      },
+      "site.standard.theme.color.rgb": {
+        "properties": {
+          "b": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "g": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "r": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "r",
+          "g",
+          "b"
+        ],
+        "type": "object"
+      },
+      "site.standard.theme.color.rgba": {
+        "properties": {
+          "a": {
+            "maximum": 100,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "b": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "g": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          },
+          "r": {
+            "maximum": 255,
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "r",
+          "g",
+          "b",
+          "a"
+        ],
         "type": "object"
       }
     },

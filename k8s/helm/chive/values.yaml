@@ -10,7 +10,7 @@ global:
   environment: production
 
   # Image registry (leave empty for Docker Hub)
-  imageRegistry: ""
+  imageRegistry: ''
 
   # Image pull secrets (for private registries)
   imagePullSecrets: []
@@ -34,11 +34,11 @@ appview:
 
   resources:
     requests:
-      cpu: "200m"
-      memory: "256Mi"
+      cpu: '200m'
+      memory: '256Mi'
     limits:
-      cpu: "1000m"
-      memory: "1Gi"
+      cpu: '1000m'
+      memory: '1Gi'
 
   # Horizontal Pod Autoscaler
   autoscaling:
@@ -98,16 +98,16 @@ indexer:
 
   command:
     - node
-    - "--enable-source-maps"
+    - '--enable-source-maps'
     - dist/indexer.js
 
   resources:
     requests:
-      cpu: "250m"
-      memory: "512Mi"
+      cpu: '250m'
+      memory: '512Mi'
     limits:
-      cpu: "1000m"
-      memory: "1Gi"
+      cpu: '1000m'
+      memory: '1Gi'
 
   # PDB for indexer
   pdb:
@@ -133,11 +133,11 @@ frontend:
 
   resources:
     requests:
-      cpu: "100m"
-      memory: "128Mi"
+      cpu: '100m'
+      memory: '128Mi'
     limits:
-      cpu: "500m"
-      memory: "512Mi"
+      cpu: '500m'
+      memory: '512Mi'
 
   autoscaling:
     enabled: false
@@ -153,8 +153,8 @@ ingress:
   className: nginx
 
   annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-    nginx.ingress.kubernetes.io/proxy-body-size: "100m"
+    cert-manager.io/cluster-issuer: 'letsencrypt-prod'
+    nginx.ingress.kubernetes.io/proxy-body-size: '100m'
 
   hosts:
     - host: chive.example.com
@@ -193,11 +193,11 @@ postgresql:
       size: 10Gi
     resources:
       requests:
-        cpu: "250m"
-        memory: "512Mi"
+        cpu: '250m'
+        memory: '512Mi'
       limits:
-        cpu: "2000m"
-        memory: "1Gi"
+        cpu: '2000m'
+        memory: '1Gi'
 
 redis:
   enabled: true
@@ -208,24 +208,24 @@ redis:
       size: 5Gi
     resources:
       requests:
-        cpu: "100m"
-        memory: "128Mi"
+        cpu: '100m'
+        memory: '128Mi'
       limits:
-        cpu: "500m"
-        memory: "300Mi"
+        cpu: '500m'
+        memory: '300Mi'
 
 elasticsearch:
   enabled: true
   replicas: 1
   minimumMasterNodes: 1
-  esJavaOpts: "-Xmx512m -Xms512m"
+  esJavaOpts: '-Xmx512m -Xms512m'
   resources:
     requests:
-      cpu: "500m"
-      memory: "768Mi"
+      cpu: '500m'
+      memory: '768Mi'
     limits:
-      cpu: "2000m"
-      memory: "1Gi"
+      cpu: '2000m'
+      memory: '1Gi'
   volumeClaimTemplate:
     resources:
       requests:
@@ -237,11 +237,11 @@ neo4j:
     edition: community
     resources:
       requests:
-        cpu: "250m"
-        memory: "512Mi"
+        cpu: '250m'
+        memory: '512Mi'
       limits:
-        cpu: "1000m"
-        memory: "1Gi"
+        cpu: '1000m'
+        memory: '1Gi'
   volumes:
     data:
       mode: defaultStorageClass
@@ -255,39 +255,44 @@ neo4j:
 config:
   # ATProto configuration
   atproto:
-    relayUrl: "wss://bsky.network"
-    pdsUrl: "https://bsky.social"
-    graphPdsDid: "did:plc:chive-governance"
+    relayUrl: 'wss://bsky.network'
+    pdsUrl: 'https://bsky.social'
+    # The real governance repository. `did:plc:chive-governance` is not a PLC
+    # identifier — a PLC DID is 24 base32 characters — so it resolved to
+    # nothing and the governance sync imported an empty graph. Every other
+    # config was corrected in 0.10.0; this chart was missed, and a Helm
+    # deployment would still have carried the invalid value.
+    graphPdsDid: 'did:plc:5wzpn4a4nbqtz3q45hyud6hd'
 
   # Application
   logLevel: info
   rateLimitFailMode: closed
-  stalenessThresholdMs: "604800000"
+  stalenessThresholdMs: '604800000'
 
   # OpenTelemetry
   otel:
     enabled: true
-    endpoint: "http://otel-collector:4318"
+    endpoint: 'http://otel-collector:4318'
 
 # =============================================================================
 # Secrets
 # =============================================================================
 secrets:
   # If using existing secrets, set name here
-  existingSecret: ""
+  existingSecret: ''
 
   # Or provide values directly (not recommended for production)
   # These will be ignored if existingSecret is set
-  postgresPassword: ""
-  neo4jAuth: ""
-  jwtSecret: ""
-  sessionSecret: ""
+  postgresPassword: ''
+  neo4jAuth: ''
+  jwtSecret: ''
+  sessionSecret: ''
 
 # =============================================================================
 # Service Monitor (for Prometheus)
 # =============================================================================
 serviceMonitor:
   enabled: false
-  namespace: ""
+  namespace: ''
   interval: 30s
   scrapeTimeout: 10s

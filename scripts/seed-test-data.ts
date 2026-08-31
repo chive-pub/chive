@@ -183,11 +183,14 @@ const TEST_BACKLINKS = [
     indexedAt: '2024-03-10T09:15:00.000Z',
   },
   {
-    sourceUri: 'at://did:plc:leaflet001/xyz.leaflet.list/list001',
-    sourceType: 'leaflet.list',
+    // `xyz.leaflet.list` does not exist; Leaflet publishes documents and
+    // comments. Seeding the fictional NSID kept the invented shape alive in
+    // the one place that could still fail a build over it.
+    sourceUri: 'at://did:plc:leaflet001/pub.leaflet.document/doc001',
+    sourceType: 'leaflet.document',
     sourceDid: 'did:plc:leaflet001',
     targetUri: 'at://did:plc:scharlow789ghi/pub.chive.eprint.submission/4lu9n1bcdef03',
-    context: 'Scope and Continuations Papers',
+    context: 'Scope and continuations: a reading',
     indexedAt: '2024-04-05T16:45:00.000Z',
   },
 ];

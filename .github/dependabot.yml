@@ -7,10 +7,16 @@
 # batch of tooling bumps, and the two workspaces that hold their own manifests
 # are covered explicitly, since Dependabot does not follow pnpm workspaces from
 # the root.
+#
+# Every update targets `staging`, not `main`. Work reaches production through
+# staging in this repository, and a dependency bump is not an exception: a PR
+# opened against `main` cannot be merged by the normal flow, so the nine that
+# were open had simply accumulated there unmergeable.
 version: 2
 
 updates:
   - package-ecosystem: npm
+    target-branch: staging
     directory: /
     schedule:
       interval: weekly
@@ -27,6 +33,7 @@ updates:
     labels: [dependencies, security]
 
   - package-ecosystem: npm
+    target-branch: staging
     directory: /web
     schedule:
       interval: weekly
@@ -40,6 +47,7 @@ updates:
     labels: [dependencies, frontend]
 
   - package-ecosystem: npm
+    target-branch: staging
     directory: /docs
     schedule:
       interval: weekly
@@ -55,6 +63,7 @@ updates:
   # Workflow actions pin to tags that go stale and are a supply-chain surface in
   # their own right.
   - package-ecosystem: github-actions
+    target-branch: staging
     directory: /
     schedule:
       interval: weekly

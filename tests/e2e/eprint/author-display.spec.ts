@@ -120,13 +120,14 @@ test.describe('Author Display - Badges and Indicators', () => {
       .or(page.locator('[data-testid="corresponding-badge"]'))
       .or(page.getByRole('img', { name: /corresponding/i }));
 
-    // May or may not be present depending on data
-    const isVisible = await correspondingBadge.isVisible({ timeout: 3000 }).catch(() => false);
-    // Just verify page loaded, badge is optional
-    expect(true).toBe(true);
+    // scripts/seed-test-data.ts sets isCorrespondingAuthor on the sole author
+    // of every seeded eprint, so this indicator is not optional and the test
+    // can assert it. It used to compute the visibility and discard the answer,
+    // so it passed whether or not the badge rendered.
+    await expect(correspondingBadge.first()).toBeVisible();
   });
 
-  test('displays highlighted author indicator (co-first)', async ({ page }) => {
+  test('shows no highlighted-author indicator when no author is highlighted', async ({ page }) => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for highlighted author indicator
@@ -135,10 +136,11 @@ test.describe('Author Display - Badges and Indicators', () => {
       .or(page.locator('[data-testid="highlighted-badge"]'))
       .or(page.getByText(/\u2020/)); // Dagger symbol
 
-    // May or may not be present depending on data
-    const isVisible = await highlightedBadge.isVisible({ timeout: 3000 }).catch(() => false);
-    // Just verify page loaded, badge is optional
-    expect(true).toBe(true);
+    // The seed sets isHighlighted false on every author, so absence is what
+    // this page can assert — and it is worth asserting: a bug rendering the
+    // dagger unconditionally would mark every author co-first, which the
+    // previous form of this test could not have noticed.
+    await expect(highlightedBadge.first()).toBeHidden();
   });
 
   test('displays ORCID link when available', async ({ page }) => {
@@ -179,13 +181,13 @@ test.describe('Author Display - Contribution Types', () => {
 
       // Look for contribution types
       const contributions = page.getByText(/conceptualization|methodology|investigation|writing/i);
-      const isVisible = await contributions.isVisible({ timeout: 3000 }).catch(() => false);
-      // Just verify expansion works, contributions are optional
-      expect(true).toBe(true);
+      // The seeded authors carry an empty contributions array, so no CRediT
+      // role should appear. That catches an expansion rendering placeholders.
+      await expect(contributions.first()).toBeHidden();
     }
   });
 
-  test('displays contribution degree when available', async ({ page }) => {
+  test('shows no contribution degree when the author has no contributions', async ({ page }) => {
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 
     // Look for contribution degrees (lead/equal/supporting)
@@ -193,13 +195,9 @@ test.describe('Author Display - Contribution Types', () => {
       has: page.locator('[data-testid="contribution-degree"]').or(page.locator('.contribution')),
     });
 
-    // May or may not be visible depending on data structure
-    const isVisible = await degrees
-      .first()
-      .isVisible({ timeout: 3000 })
-      .catch(() => false);
-    // Just verify page loads, degrees are optional
-    expect(true).toBe(true);
+    // Same reasoning: with no contributions seeded, a degree chip appearing
+    // would be the page inventing data.
+    await expect(degrees.first()).toBeHidden();
   });
 });
 
@@ -212,10 +210,9 @@ test.describe('Author Display - External Authors', () => {
     // External authors (if any) should not have clickable links
     // This is tested implicitly - if no profile link, clicking does nothing
     const authorName = page.getByText(SEEDED_AUTHORS.white.displayName);
+    // The assertion above is the whole test: the seeded author renders by
+    // name. The trailing expect(true) added nothing.
     await expect(authorName).toBeVisible({ timeout: 10000 });
-
-    // Just verify page displays correctly
-    expect(true).toBe(true);
   });
 
   test('external authors can show ORCID even without DID', async ({ page }) => {
@@ -227,9 +224,9 @@ test.describe('Author Display - External Authors', () => {
       .getByRole('link', { name: /orcid/i })
       .or(page.locator('a[href*="orcid.org"]'));
 
-    // Optional - may or may not have external authors with ORCID
-    const isVisible = await orcidLink.isVisible({ timeout: 3000 }).catch(() => false);
-    expect(true).toBe(true);
+    // The seed gives this author an ORCID, so the link is not optional here.
+    await expect(orcidLink.first()).toBeVisible();
+    await expect(orcidLink.first()).toHaveAttribute('href', /orcid\.org/);
   });
 });
 

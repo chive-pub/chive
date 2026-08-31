@@ -11,6 +11,8 @@ import { useCallback } from 'react';
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 
 import { useAgent, useAuth } from '@/lib/auth';
+import { attachBlueskyPostToDocument } from '@/lib/atproto';
+import { createLogger } from '@/lib/observability/logger';
 import {
   createBlueskyPost,
   type CreateBlueskyPostInput,
@@ -77,6 +79,8 @@ interface UseShareToBlueskyResult {
  * }
  * ```
  */
+const shareLogger = createLogger({ context: { component: 'use-share-to-bluesky' } });
+
 export function useShareToBluesky(options?: UseShareToBlueskyOptions): UseShareToBlueskyResult {
   const agent = useAgent();
   const { isAuthenticated } = useAuth();
@@ -86,7 +90,28 @@ export function useShareToBluesky(options?: UseShareToBlueskyOptions): UseShareT
       if (!agent) {
         throw new Error('Not authenticated');
       }
-      return createBlueskyPost(agent, input);
+      const result = await createBlueskyPost(agent, input);
+
+      // Record the announcing post on the eprint's standard.site document, so
+      // its reply thread is discoverable as the paper's off-platform
+      // discussion. Deliberately after the post and deliberately swallowed: the
+      // share has already succeeded, and an eprint whose submitter turned
+      // cross-platform discovery off simply has no document to update.
+      if (input.eprintUri) {
+        try {
+          await attachBlueskyPostToDocument(agent, input.eprintUri, {
+            uri: result.uri,
+            cid: result.cid,
+          });
+        } catch (error) {
+          shareLogger.warn('Could not record the Bluesky post on the standard.site document', {
+            eprintUri: input.eprintUri,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      return result;
     },
     onSuccess: options?.onSuccess,
     onError: options?.onError,
@@ -100,6 +125,7 @@ export function useShareToBluesky(options?: UseShareToBlueskyOptions): UseShareT
     ): Promise<CreateBlueskyPostResult> => {
       const input: CreateBlueskyPostInput = {
         text,
+        ...(content.eprintUri ? { eprintUri: content.eprintUri } : {}),
         embed: {
           uri: content.url,
           title: content.title,

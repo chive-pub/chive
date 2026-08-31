@@ -373,6 +373,10 @@ export type CodePlatform =
   | 'codeberg'
   | 'sourcehut'
   | 'software_heritage'
+  // Tangled hosts repositories as ATProto records (`sh.tangled.repo`), so one
+  // is addressable by AT-URI as well as by web URL. See `recordUri` on
+  // `#codeRepository`.
+  | 'tangled'
   | 'other';
 
 /**

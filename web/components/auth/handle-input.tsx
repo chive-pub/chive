@@ -33,6 +33,21 @@ export interface HandleInputProps {
   disabled?: boolean;
   /** Additional CSS classes */
   className?: string;
+  /**
+   * Input id.
+   *
+   * @remarks
+   * Supplied by shadcn's `FormControl`, which clones its child to pass `id`,
+   * `aria-describedby` and `aria-invalid`. Without accepting and forwarding
+   * them the `<label for>` never matches the input, so the field has no
+   * accessible name at all — a screen reader announces an unlabelled text box,
+   * and `getByRole('textbox', { name })` cannot find it.
+   */
+  id?: string;
+  /** Ids of the elements describing this input, from `FormControl` */
+  'aria-describedby'?: string;
+  /** Whether the field is in an error state, from `FormControl` */
+  'aria-invalid'?: boolean;
 }
 
 /**
@@ -49,6 +64,9 @@ export function HandleInput({
   placeholder = 'yourhandle.example.com',
   disabled = false,
   className,
+  id,
+  'aria-describedby': ariaDescribedBy,
+  'aria-invalid': ariaInvalid,
 }: HandleInputProps) {
   const [suggestions, setSuggestions] = useState<ActorSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -156,6 +174,9 @@ export function HandleInput({
         <AtSign className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           ref={inputRef}
+          id={id}
+          aria-describedby={ariaDescribedBy}
+          aria-invalid={ariaInvalid}
           type="text"
           value={value}
           onChange={handleChange}

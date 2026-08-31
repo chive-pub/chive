@@ -76,3 +76,81 @@ export const INDEXED_COLLECTIONS: readonly string[] = [
 export function isIndexedCollection(collection: string): boolean {
   return INDEXED_COLLECTIONS.includes(collection);
 }
+
+/**
+ * Foreign collections Chive observes but does not index.
+ *
+ * @remarks
+ * These are other applications' lexicons. Chive never stores them as its own
+ * records: `createEventProcessor` forwards them to the plugin event bus as
+ * `firehose.<collection>`, and the backlink plugins turn the ones that
+ * reference an eprint into backlink rows. A backlink is derived data,
+ * rebuildable by replaying the firehose, so this stays inside the AppView
+ * rules — Chive is still authoritative for nothing but `pub.chive.*`.
+ *
+ * The plugins subscribing to these were dormant for a different reason than
+ * anyone assumed. They were constructed and listening, and the processor was
+ * already forwarding foreign records; `EventFilter` rejected every collection
+ * outside `pub.chive.*` before the processor ever saw one. Five registered
+ * plugins were therefore subscribed to events that could not fire.
+ *
+ * `app.bsky.feed.post` is deliberately absent. It is the entire Bluesky
+ * timeline — millions of records a day against Chive's thousands — and
+ * admitting it changes the indexer from something that reads a niche namespace
+ * into something that reads the whole network. That may well be worth doing for
+ * the timeline-card backlinks it would enable, but it is a capacity decision
+ * with a cost attached, not a filter entry. `OBSERVED_COLLECTIONS_HIGH_VOLUME`
+ * holds it, and `FIREHOSE_OBSERVE_HIGH_VOLUME=true` opts in.
+ *
+ * @public
+ */
+export const OBSERVED_COLLECTIONS: readonly string[] = [
+  // Cosmik — collection cards, connections, follows, and link removals.
+  'network.cosmik.card',
+  'network.cosmik.collectionLinkRemoval',
+  'network.cosmik.connection',
+  'network.cosmik.follow',
+  // Margin — annotations and replies on eprints.
+  'at.margin.note',
+  'at.margin.reply',
+  // WhiteWind — blog entries that may cite an eprint.
+  'com.whtwnd.blog.entry',
+  // Leaflet — long-form documents and the comments on them. Both carry
+  // references to eprints; see `leaflet-backlinks.ts` for the four routes.
+  'pub.leaflet.document',
+  'pub.leaflet.comment',
+  // standard.site — the ecosystem's shared "document on the web" record. Any
+  // publisher may write one describing a Chive eprint, and it is also the
+  // mapping that lets a reference addressed to a document resolve to the work.
+  'site.standard.document',
+  // Community calendar — a talk or presentation that names an eprint among its
+  // URIs is evidence the work was presented, and where.
+  'community.lexicon.calendar.event',
+] as const;
+
+/**
+ * Foreign collections whose volume makes observing them a capacity decision.
+ *
+ * @remarks
+ * Enabled by `FIREHOSE_OBSERVE_HIGH_VOLUME=true`. Off by default: a deployment
+ * should choose to read the whole Bluesky timeline rather than discover it did.
+ *
+ * @public
+ */
+export const OBSERVED_COLLECTIONS_HIGH_VOLUME: readonly string[] = ['app.bsky.feed.post'] as const;
+
+/**
+ * Reports whether a collection is one Chive observes for backlinks.
+ *
+ * @param collection - Collection NSID
+ * @param includeHighVolume - Whether the high-volume set is enabled
+ * @returns True when the collection should reach the plugin bus
+ *
+ * @public
+ */
+export function isObservedCollection(collection: string, includeHighVolume = false): boolean {
+  if (OBSERVED_COLLECTIONS.includes(collection)) {
+    return true;
+  }
+  return includeHighVolume && OBSERVED_COLLECTIONS_HIGH_VOLUME.includes(collection);
+}

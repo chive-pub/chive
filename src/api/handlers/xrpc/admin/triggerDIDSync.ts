@@ -46,7 +46,12 @@ export const triggerDIDSync: XRPCMethod<void, TriggerDIDSyncInput, unknown> = {
       throw new ServiceUnavailableError('PDS scanner is not configured');
     }
 
-    const { operation } = await backfillManager.startOperation('didSync', { did: input.did });
+    // `signal` was dropped here; see triggerGovernanceSync for the same fix.
+    // A DID scan walks every collection in a repository, so cancelling it is
+    // something an admin genuinely wants to be able to do.
+    const { operation, signal } = await backfillManager.startOperation('didSync', {
+      did: input.did,
+    });
 
     logger.info('DID sync triggered', { operationId: operation.id, did: input.did });
 
@@ -79,6 +84,14 @@ export const triggerDIDSync: XRPCMethod<void, TriggerDIDSyncInput, unknown> = {
         }
 
         const recordsIndexed = await pdsScanner.scanDID(pdsUrl, input.did as DID);
+
+        if (signal.aborted) {
+          logger.info('DID sync was cancelled; not marking it complete', {
+            operationId: operation.id,
+            did: input.did,
+          });
+          return;
+        }
 
         await backfillManager.completeOperation(operation.id, recordsIndexed);
       } catch (error) {

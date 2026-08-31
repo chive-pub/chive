@@ -33,6 +33,14 @@ export interface CreateBlueskyPostInput {
   text: string;
   /** External embed for link preview card */
   embed: ExternalEmbed;
+  /**
+   * AT-URI of the eprint being announced, when there is one.
+   *
+   * @remarks
+   * Not part of the Bluesky record. It tells the caller which eprint's
+   * standard.site document should record this post as its `bskyPostRef`.
+   */
+  eprintUri?: string;
 }
 
 /**
@@ -108,6 +116,15 @@ export interface ShareContent {
   description: string;
   /** URL to the OG image */
   ogImageUrl: string;
+  /**
+   * AT-URI of the eprint being shared, when the content is one.
+   *
+   * @remarks
+   * Supplied so the announcing post can be recorded on the eprint's
+   * standard.site document as `bskyPostRef`, which is what makes the post's
+   * reply thread findable as the discussion of that paper.
+   */
+  eprintUri?: string;
 }
 
 /**

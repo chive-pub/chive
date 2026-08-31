@@ -31,11 +31,13 @@ import { FieldLabelResolutionJob } from './jobs/field-label-resolution-job.js';
 import { FieldPromotionJob } from './jobs/field-promotion-job.js';
 import { PinoLogger } from './observability/logger.js';
 import { initTelemetry } from './observability/telemetry.js';
+import { CalendarEventsPlugin } from './plugins/builtin/calendar-events.js';
 import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
 import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
 import { MarginNotesPlugin, MarginRepliesPlugin } from './plugins/builtin/margin-annotations.js';
+import { StandardSiteBacklinksPlugin } from './plugins/builtin/standard-site-backlinks.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
@@ -62,6 +64,10 @@ import {
   type FirehoseHealthServer,
   startFirehoseHealthServer,
 } from './services/indexing/firehose-health-server.js';
+import {
+  OBSERVED_COLLECTIONS,
+  OBSERVED_COLLECTIONS_HIGH_VOLUME,
+} from './services/indexing/indexed-collections.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
@@ -544,6 +550,16 @@ async function main(): Promise<void> {
       logger.error('Failed to load Cosmik plugins', err instanceof Error ? err : undefined);
     }
 
+    // standard.site — the cross-ecosystem document record. Also the mapping a
+    // recommend or an embedded document block resolves through.
+    try {
+      await pluginManager.loadBuiltinPlugin(new StandardSiteBacklinksPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new CalendarEventsPlugin(), pluginContext);
+      logger.info('standard.site and calendar plugins loaded');
+    } catch (err) {
+      logger.error('Failed to load standard.site plugin', err instanceof Error ? err : undefined);
+    }
+
     // Margin (W3C Web Annotation) ecosystem plugins
     try {
       await pluginManager.loadBuiltinPlugin(new MarginNotesPlugin(), pluginContext);
@@ -583,8 +599,23 @@ async function main(): Promise<void> {
     });
 
     // Create indexing service
+    // Foreign collections the backlink plugins subscribe to. Without these the
+    // filter drops every non-`pub.chive.*` record before the processor runs, so
+    // the plugins are constructed, subscribed, and never called.
+    const observeHighVolume = process.env.FIREHOSE_OBSERVE_HIGH_VOLUME === 'true';
+    const observedCollections = [
+      ...OBSERVED_COLLECTIONS,
+      ...(observeHighVolume ? OBSERVED_COLLECTIONS_HIGH_VOLUME : []),
+    ];
+
+    logger.info('Observing foreign collections for backlinks', {
+      count: observedCollections.length,
+      highVolume: observeHighVolume,
+    });
+
     const indexingService = new IndexingService({
       relays: [config.relayUrl],
+      observedCollections,
       db: pgPool,
       redis,
       redisConnection: parseRedisUrl(config.redisUrl),

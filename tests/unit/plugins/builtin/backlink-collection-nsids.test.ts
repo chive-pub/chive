@@ -42,13 +42,26 @@ describe('WhiteWind backlink plugin', () => {
 describe('Leaflet backlink plugin', () => {
   const contents = source('leaflet-backlinks');
 
-  // Kept pointing at the fictional NSID on purpose; see the file header.
-  it('still tracks the fictional collection', () => {
-    expect(contents).toMatch(/trackedCollection = 'xyz\.leaflet\.list'/);
+  // This used to assert the plugin still pointed at `xyz.leaflet.list`, an
+  // NSID Leaflet does not publish, because pointing it at a real collection
+  // while its parser expected an invented shape would have produced wrong
+  // backlinks rather than none. The schemas are now vendored under
+  // `lexicons/pub/leaflet/`, taken from Leaflet's own lexicon repository, and
+  // the parser is written against them — so the reason for staying wrong is
+  // gone, and these assert the collections Leaflet actually publishes.
+  it('tracks pub.leaflet.document', () => {
+    expect(contents).toMatch(/trackedCollection = 'pub\.leaflet\.document'/);
   });
 
-  it('says plainly that the collection does not exist', () => {
-    expect(contents).toMatch(/does not exist/);
-    expect(contents).toMatch(/pub\.leaflet\.document/);
+  it('also subscribes to pub.leaflet.comment', () => {
+    // A comment names its subject directly, which is the most reliable
+    // reference of the four routes.
+    expect(contents).toMatch(/firehose\.pub\.leaflet\.comment/);
+  });
+
+  it('no longer mentions the fictional collection except as history', () => {
+    // One reference survives, in the header explaining what was wrong.
+    const occurrences = contents.match(/xyz\.leaflet\.list/g) ?? [];
+    expect(occurrences).toHaveLength(1);
   });
 });

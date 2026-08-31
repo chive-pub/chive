@@ -41,7 +41,7 @@
  */
 
 import * as React from 'react';
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef, useId } from 'react';
 import { Tags, Search, Loader2, X, ExternalLink, Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 
@@ -617,18 +617,95 @@ export function NodeAutocomplete({
     [onSelect]
   );
 
+  // The options as a keyboard user walks them: personal first, then global,
+  // matching the render order below. Both lists are sliced to `limit`, so the
+  // cursor must walk the sliced arrays rather than the full ones.
+  const visibleOptions = useMemo(
+    () => [...personalSuggestions.slice(0, limit), ...globalSuggestions.slice(0, limit)],
+    [personalSuggestions, globalSuggestions, limit]
+  );
+
+  // Virtual cursor for the combobox pattern. DOM focus stays in the input;
+  // this is what `aria-activedescendant` points at.
+  const [activeIndex, setActiveIndex] = useState(-1);
+
+  const generatedId = useId();
+  const listboxId = `${id ?? generatedId}-listbox`;
+  const optionDomId = (index: number) => `${listboxId}-option-${index}`;
+  const indexOfOption = (uri: string) => visibleOptions.findIndex((s) => s.uri === uri);
+
+  // A new result set invalidates the cursor.
+  useEffect(() => {
+    setActiveIndex(-1);
+  }, [visibleOptions]);
+
   const handleClear = useCallback(() => {
     setSelectedValue(null);
     setQuery('');
     onClear?.();
+    setActiveIndex(-1);
   }, [onClear]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Escape') {
-      setIsOpen(false);
-      setShowInlineCreate(false);
-    }
-  }, []);
+  /**
+   * Keyboard interaction for the combobox pattern.
+   *
+   * @remarks
+   * This handled Escape and nothing else, which meant a keyboard user could
+   * open a list of suggestions and had no way to reach one — the component
+   * offered choices only to a mouse. Arrow keys move the virtual cursor, Home
+   * and End jump to the ends, Enter commits the highlighted suggestion, and
+   * Escape closes without committing.
+   */
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+        setShowInlineCreate(false);
+        setActiveIndex(-1);
+        return;
+      }
+
+      if (!isOpen || visibleOptions.length === 0) {
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          setIsOpen(true);
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setActiveIndex((i) => (i + 1) % visibleOptions.length);
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setActiveIndex((i) => (i <= 0 ? visibleOptions.length - 1 : i - 1));
+          break;
+        case 'Home':
+          e.preventDefault();
+          setActiveIndex(0);
+          break;
+        case 'End':
+          e.preventDefault();
+          setActiveIndex(visibleOptions.length - 1);
+          break;
+        case 'Enter': {
+          const suggestion = visibleOptions[activeIndex];
+          if (suggestion !== undefined) {
+            // Only when a suggestion is highlighted; otherwise Enter belongs to
+            // the surrounding form.
+            e.preventDefault();
+            handleSelect(suggestion);
+          }
+          break;
+        }
+        default:
+          break;
+      }
+    },
+    [isOpen, visibleOptions, activeIndex, handleSelect]
+  );
 
   const handleFocus = useCallback(() => {
     setIsOpen(true);
@@ -747,6 +824,13 @@ export function NodeAutocomplete({
             disabled={disabled}
             className="pl-9"
             aria-label={`Search ${label}`}
+            role="combobox"
+            aria-expanded={isOpen}
+            aria-controls={listboxId}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              activeIndex >= 0 && isOpen ? optionDomId(activeIndex) : undefined
+            }
           />
           {isLoading && (
             <Loader2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
@@ -779,9 +863,16 @@ export function NodeAutocomplete({
                 {personalSuggestions.slice(0, limit).map((suggestion) => (
                   <CommandItem
                     key={suggestion.uri}
+                    id={optionDomId(indexOfOption(suggestion.uri))}
+                    role="option"
+                    aria-selected={indexOfOption(suggestion.uri) === activeIndex}
                     value={suggestion.uri}
                     onSelect={() => handleSelect(suggestion)}
-                    className="cursor-pointer"
+                    onMouseEnter={() => setActiveIndex(indexOfOption(suggestion.uri))}
+                    className={cn(
+                      'cursor-pointer',
+                      indexOfOption(suggestion.uri) === activeIndex && 'bg-accent'
+                    )}
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
                       <div className="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -821,9 +912,16 @@ export function NodeAutocomplete({
                   return (
                     <CommandItem
                       key={suggestion.id}
+                      id={optionDomId(indexOfOption(suggestion.uri))}
+                      role="option"
+                      aria-selected={indexOfOption(suggestion.uri) === activeIndex}
                       value={suggestion.id}
                       onSelect={() => handleSelect(suggestion)}
-                      className="cursor-pointer"
+                      onMouseEnter={() => setActiveIndex(indexOfOption(suggestion.uri))}
+                      className={cn(
+                        'cursor-pointer',
+                        indexOfOption(suggestion.uri) === activeIndex && 'bg-accent'
+                      )}
                     >
                       <div className="flex items-center justify-between gap-2 w-full">
                         <div className="flex flex-col gap-0.5 flex-1 min-w-0">

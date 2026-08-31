@@ -1,6 +1,6 @@
 {
   "name": "@chive/monorepo",
-  "version": "0.11.1",
+  "version": "0.12.0",
   "private": true,
   "type": "module",
   "description": "A decentralized eprint service built on AT Protocol",
@@ -54,14 +54,15 @@
     "docs:openapi": "tsx scripts/generate-openapi-spec.ts",
     "lexicons:generate": "./scripts/generate-lexicons.sh",
     "test:stack:start": "./scripts/start-test-stack.sh",
-    "test:stack:stop": "docker-compose -f docker/docker-compose.yml down",
+    "test:stack:stop": "docker compose -f docker/docker-compose.yml down",
     "seed:test": "./scripts/seed-test-data.sh",
     "cleanup:test": "./scripts/cleanup-test.sh",
     "db:init": "./scripts/db/init-all.sh",
     "db:migrate:up": "tsx scripts/db/migrate.ts up",
     "db:migrate:down": "tsx scripts/db/migrate.ts down",
     "db:migrate:create": "tsx scripts/db/migrate.ts create",
-    "db:seed:knowledge-graph": "tsx scripts/db/seed-knowledge-graph.ts"
+    "db:seed:knowledge-graph": "tsx scripts/db/seed-knowledge-graph.ts",
+    "mcp": "tsx src/mcp/index.ts"
   },
   "devDependencies": {
     "@atproto/lex-cli": "^0.9.8",
@@ -122,6 +123,7 @@
     "@ipld/car": "^5.4.2",
     "@ipld/dag-cbor": "^9.2.5",
     "@jamesgopsill/crossref-client": "^1.1.0",
+    "@modelcontextprotocol/sdk": "1.30.0",
     "@opentelemetry/api": "1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.67.2",
     "@opentelemetry/exporter-metrics-otlp-http": "^0.208.0",

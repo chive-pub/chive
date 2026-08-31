@@ -23,7 +23,9 @@ import {
   getAuthenticatedDid,
   buildAtUri,
   parseAtUri,
+  attachBlueskyPostToDocument,
   createStandardDocument,
+  describesEprint,
   createLayersDataLinks,
   updateStandardDocument,
   deleteStandardDocumentsForEprint,
@@ -928,90 +930,26 @@ describe('createStandardDocument', () => {
     );
   });
 
-  it('includes content reference with uri and cid', async () => {
+  // Five tests here asserted the invalid shape: `content: {uri, cid}`,
+  // `visibility`, `createdAt`, and a 2000-character description cap. None of
+  // those are properties of `site.standard.document`. They are replaced by the
+  // conformance block at the end of this file, which checks the record against
+  // the published lexicon instead.
+
+  it('truncates a description to the length the lexicon allows', async () => {
     const did = 'did:plc:test123';
     const agent = createMockAgent({ did });
-    const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
-    const eprintCid = 'bafyeprint123';
 
     await createStandardDocument(agent, {
       title: 'Test Paper',
-      eprintUri,
-      eprintCid,
-    });
-
-    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(createRecordCall.record.content).toEqual({
-      uri: eprintUri,
-      cid: eprintCid,
-    });
-  });
-
-  it('omits cid from content reference when not provided', async () => {
-    const did = 'did:plc:test123';
-    const agent = createMockAgent({ did });
-    const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
-
-    await createStandardDocument(agent, {
-      title: 'Test Paper',
-      eprintUri,
-    });
-
-    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(createRecordCall.record.content).toEqual({
-      uri: eprintUri,
-    });
-    expect(createRecordCall.record.content.cid).toBeUndefined();
-  });
-
-  it('truncates description to 2000 characters', async () => {
-    const did = 'did:plc:test123';
-    const agent = createMockAgent({ did });
-    const longDescription = 'x'.repeat(3000);
-
-    await createStandardDocument(agent, {
-      title: 'Test Paper',
-      description: longDescription,
+      description: 'x'.repeat(40000),
       eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
     });
 
     const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
       .calls[0][0];
-    expect(createRecordCall.record.description).toHaveLength(2000);
-  });
-
-  it('sets visibility to public', async () => {
-    const did = 'did:plc:test123';
-    const agent = createMockAgent({ did });
-
-    await createStandardDocument(agent, {
-      title: 'Test Paper',
-      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
-    });
-
-    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(createRecordCall.record.visibility).toBe('public');
-  });
-
-  it('includes createdAt timestamp', async () => {
-    const did = 'did:plc:test123';
-    const agent = createMockAgent({ did });
-
-    await createStandardDocument(agent, {
-      title: 'Test Paper',
-      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
-    });
-
-    const createRecordCall = (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(createRecordCall.record.createdAt).toBeDefined();
-    // Should be a valid ISO date string
-    expect(new Date(createRecordCall.record.createdAt).toISOString()).toBe(
-      createRecordCall.record.createdAt
-    );
+    // 30000, not 2000: the lexicon's maxLength.
+    expect(createRecordCall.record.description).toHaveLength(30000);
   });
 
   it('throws when not authenticated', async () => {
@@ -1102,12 +1040,16 @@ describe('updateStandardDocument', () => {
     expect(result.cid).toBeDefined();
   });
 
-  it('preserves original createdAt and visibility', async () => {
+  it('repairs a legacy document while updating it', async () => {
+    // This used to assert `createdAt` and `visibility` survived an update.
+    // Neither is a field of `site.standard.document`. A document written before
+    // the schema fix has that shape and is invalid, so updating one is the
+    // moment to make it valid: the required `site` and `publishedAt` are filled
+    // in, and the eprint link moves from `content.uri` to `path`.
     const did = 'did:plc:test123';
     const agent = createMockAgent({ did });
-    const originalCreatedAt = '2024-01-15T00:00:00.000Z';
+    const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
 
-    // Mock getRecord
     (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
       data: {
         uri: `at://${did}/site.standard.document/doc123`,
@@ -1115,11 +1057,9 @@ describe('updateStandardDocument', () => {
         value: {
           $type: 'site.standard.document',
           title: 'Original Title',
-          content: {
-            uri: `at://${did}/pub.chive.eprint.submission/abc123`,
-          },
+          content: { uri: eprintUri },
           visibility: 'public',
-          createdAt: originalCreatedAt,
+          createdAt: '2024-01-15T00:00:00.000Z',
         },
       },
     });
@@ -1129,10 +1069,13 @@ describe('updateStandardDocument', () => {
       title: 'Updated Title',
     });
 
-    const putRecordCall = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock
-      .calls[0][0];
-    expect(putRecordCall.record.createdAt).toBe(originalCreatedAt);
-    expect(putRecordCall.record.visibility).toBe('public');
+    const record = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record;
+    expect(record.site).toEqual(expect.any(String));
+    expect(record.publishedAt).toEqual(expect.any(String));
+    expect(record.path).toBe(`/eprints/${encodeURIComponent(eprintUri)}`);
+    expect(record).not.toHaveProperty('visibility');
+    expect(record).not.toHaveProperty('createdAt');
   });
 
   it('adds updatedAt timestamp', async () => {
@@ -1339,5 +1282,306 @@ describe('createLayersDataLinks', () => {
     await expect(
       createLayersDataLinks(agent, { eprintUri, dataLinks: [{ dataKind: 'corpus' }] })
     ).rejects.toThrow('not authenticated');
+  });
+});
+
+// =============================================================================
+// STANDARD.SITE SCHEMA CONFORMANCE
+// =============================================================================
+
+describe('createStandardDocument conforms to the published lexicon', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+
+  function writtenRecord(agent: ReturnType<typeof createMockAgent>) {
+    return (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record as Record<string, unknown>;
+  }
+
+  it('writes the three fields the lexicon requires', async () => {
+    // `site`, `title` and `publishedAt`. Two of the three were missing before,
+    // so every document Chive had written was invalid and no standard.site
+    // reader could accept one.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    const record = writtenRecord(agent);
+    expect(record.site).toEqual(expect.any(String));
+    expect(record.title).toBe('A paper');
+    expect(record.publishedAt).toEqual(expect.any(String));
+  });
+
+  it('no longer writes fields the lexicon does not define', async () => {
+    // `visibility` and `createdAt` are not properties of this record type, and
+    // `content` is an open union rather than a `{uri, cid}` object.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    const record = writtenRecord(agent);
+    expect(record).not.toHaveProperty('visibility');
+    expect(record).not.toHaveProperty('createdAt');
+    expect(record.content).toBeUndefined();
+  });
+
+  it('sets a path that resolves to the eprint page under the site origin', async () => {
+    // `site` + `path` is the canonical URL, and how a reader verifies that the
+    // document and the page describe the same work.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      siteUrl: 'https://staging.chive.pub',
+    });
+
+    const record = writtenRecord(agent);
+    expect(record.site).toBe('https://staging.chive.pub');
+    expect(record.path).toBe(`/eprints/${encodeURIComponent(eprintUri)}`);
+    expect(String(record.path).startsWith('/')).toBe(true);
+  });
+
+  it('carries contributors, tags and plaintext when given them', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      textContent: 'The abstract in plain text.',
+      tags: ['semantics', 'parsing'],
+      contributors: [
+        { did: 'did:plc:author1', displayName: 'A. Author', role: 'corresponding-author' },
+      ],
+    });
+
+    const record = writtenRecord(agent);
+    expect(record.textContent).toBe('The abstract in plain text.');
+    expect(record.tags).toEqual(['semantics', 'parsing']);
+    expect(record.contributors).toEqual([
+      { did: 'did:plc:author1', displayName: 'A. Author', role: 'corresponding-author' },
+    ]);
+  });
+
+  it('omits optional arrays rather than writing empty ones', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      contributors: [],
+      tags: [],
+    });
+
+    const record = writtenRecord(agent);
+    expect(record).not.toHaveProperty('contributors');
+    expect(record).not.toHaveProperty('tags');
+  });
+
+  it('defaults the site origin when none is supplied', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    expect(writtenRecord(agent).site).toBe('https://chive.pub');
+  });
+
+  it('does not put a trailing slash on the site origin', async () => {
+    // The lexicon says to avoid one, because site is concatenated with path.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    expect(String(writtenRecord(agent).site).endsWith('/')).toBe(false);
+  });
+});
+
+describe('describesEprint', () => {
+  const eprintUri = 'at://did:plc:a/pub.chive.eprint.submission/abc';
+
+  it('matches a document by its path', () => {
+    expect(describesEprint({ path: `/eprints/${encodeURIComponent(eprintUri)}` }, eprintUri)).toBe(
+      true
+    );
+  });
+
+  it('still matches a legacy document by content.uri', () => {
+    // Documents written before the schema fix carry `content.uri` and no
+    // `path`. They must stay findable, or deleting an eprint strands every
+    // document already in a user's repository.
+    expect(describesEprint({ content: { uri: eprintUri } }, eprintUri)).toBe(true);
+  });
+
+  it('does not match a different eprint', () => {
+    const other = 'at://did:plc:b/pub.chive.eprint.submission/xyz';
+    expect(describesEprint({ path: `/eprints/${encodeURIComponent(other)}` }, eprintUri)).toBe(
+      false
+    );
+  });
+
+  it('does not match a record with neither field', () => {
+    expect(describesEprint({ title: 'Unrelated' }, eprintUri)).toBe(false);
+  });
+
+  it('survives values that are not records', () => {
+    for (const value of [null, undefined, 'string', 7]) {
+      expect(describesEprint(value, eprintUri)).toBe(false);
+    }
+  });
+});
+
+describe('citation links in the standard.site links union', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+
+  function writtenRecord(agent: ReturnType<typeof createMockAgent>) {
+    return (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record as Record<string, unknown>;
+  }
+
+  it('writes nothing into links when no citations are given', async () => {
+    // Opt-in: an unratified extension should not appear in every document
+    // Chive writes into a user's repository.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    expect(writtenRecord(agent)).not.toHaveProperty('links');
+  });
+
+  it('writes typed citations into the reserved links union', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      citations: [
+        {
+          $type: 'pub.chive.site.citationLink',
+          relation: 'replicates',
+          target: { title: 'The 2019 result', doi: '10.1000/abc' },
+          context: 'Section 4',
+        },
+      ],
+    });
+
+    expect(writtenRecord(agent).links).toEqual([
+      {
+        $type: 'pub.chive.site.citationLink',
+        relation: 'replicates',
+        target: { title: 'The 2019 result', doi: '10.1000/abc' },
+        context: 'Section 4',
+      },
+    ]);
+  });
+
+  it('gives every link a $type, which the union requires', async () => {
+    // `links` is an open union: a member with no $type cannot be dispatched on
+    // by any consumer.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      citations: [
+        { $type: 'pub.chive.site.citationLink', relation: 'cites', target: { title: 'A work' } },
+      ],
+    });
+
+    const links = writtenRecord(agent).links as Array<{ $type?: string }>;
+    expect(links.every((l) => typeof l.$type === 'string')).toBe(true);
+  });
+
+  it('omits an empty citation list rather than writing an empty union', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri, citations: [] });
+
+    expect(writtenRecord(agent)).not.toHaveProperty('links');
+  });
+});
+
+describe('attachBlueskyPostToDocument', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+  const postRef = { uri: `at://${did}/app.bsky.feed.post/post1`, cid: 'bafypost' };
+
+  // The base mock agent has no listRecords; build one that answers with the
+  // given documents in a single page.
+  function agentListing(records: unknown[]) {
+    const agent = createMockAgent({ did });
+    const listRecords = vi.fn().mockResolvedValue({ data: { records, cursor: undefined } });
+    (agent.com.atproto.repo as unknown as { listRecords: typeof listRecords }).listRecords =
+      listRecords;
+    return agent;
+  }
+
+  it('records the post on the document describing that eprint', async () => {
+    const docUri = `at://${did}/site.standard.document/doc1`;
+    const agent = agentListing([
+      { uri: docUri, value: { path: `/eprints/${encodeURIComponent(eprintUri)}` } },
+    ]);
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: { uri: docUri, cid: 'bafydoc', value: { title: 'A paper', site: 'https://chive.pub' } },
+    });
+
+    const result = await attachBlueskyPostToDocument(agent, eprintUri, postRef);
+
+    expect(result).toBe(docUri);
+    const written = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record;
+    expect(written.bskyPostRef).toEqual(postRef);
+  });
+
+  it('finds a legacy document by its content.uri', async () => {
+    const docUri = `at://${did}/site.standard.document/legacy`;
+    const agent = agentListing([{ uri: docUri, value: { content: { uri: eprintUri } } }]);
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        uri: docUri,
+        cid: 'bafydoc',
+        value: { title: 'A paper', content: { uri: eprintUri } },
+      },
+    });
+
+    expect(await attachBlueskyPostToDocument(agent, eprintUri, postRef)).toBe(docUri);
+  });
+
+  it('returns null when the eprint has no document', async () => {
+    // Sharing an eprint whose submitter turned cross-platform discovery off is
+    // ordinary. The share has already succeeded; this must not throw.
+    const agent = agentListing([
+      { uri: 'at://x/site.standard.document/other', value: { path: '/other' } },
+    ]);
+
+    expect(await attachBlueskyPostToDocument(agent, eprintUri, postRef)).toBeNull();
+    expect(agent.com.atproto.repo.putRecord).not.toHaveBeenCalled();
+  });
+
+  it('refuses to write for an unauthenticated agent', async () => {
+    const agent = createMockAgent({ authenticated: false });
+
+    await expect(attachBlueskyPostToDocument(agent, eprintUri, postRef)).rejects.toThrow(
+      'not authenticated'
+    );
+  });
+
+  it('keeps an existing post ref when updating for other reasons', async () => {
+    const agent = createMockAgent({ did });
+    const docUri = `at://${did}/site.standard.document/doc1`;
+    (agent.com.atproto.repo.getRecord as ReturnType<typeof vi.fn>).mockResolvedValue({
+      data: {
+        uri: docUri,
+        cid: 'bafydoc',
+        value: { title: 'A paper', site: 'https://chive.pub', bskyPostRef: postRef },
+      },
+    });
+
+    await updateStandardDocument(agent, { uri: docUri, title: 'Renamed' });
+
+    const written = (agent.com.atproto.repo.putRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record;
+    // Renaming a document must not discard its discussion thread.
+    expect(written.bskyPostRef).toEqual(postRef);
   });
 });
