@@ -62,6 +62,10 @@ import {
   type FirehoseHealthServer,
   startFirehoseHealthServer,
 } from './services/indexing/firehose-health-server.js';
+import {
+  OBSERVED_COLLECTIONS,
+  OBSERVED_COLLECTIONS_HIGH_VOLUME,
+} from './services/indexing/indexed-collections.js';
 import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
@@ -583,8 +587,23 @@ async function main(): Promise<void> {
     });
 
     // Create indexing service
+    // Foreign collections the backlink plugins subscribe to. Without these the
+    // filter drops every non-`pub.chive.*` record before the processor runs, so
+    // the plugins are constructed, subscribed, and never called.
+    const observeHighVolume = process.env.FIREHOSE_OBSERVE_HIGH_VOLUME === 'true';
+    const observedCollections = [
+      ...OBSERVED_COLLECTIONS,
+      ...(observeHighVolume ? OBSERVED_COLLECTIONS_HIGH_VOLUME : []),
+    ];
+
+    logger.info('Observing foreign collections for backlinks', {
+      count: observedCollections.length,
+      highVolume: observeHighVolume,
+    });
+
     const indexingService = new IndexingService({
       relays: [config.relayUrl],
+      observedCollections,
       db: pgPool,
       redis,
       redisConnection: parseRedisUrl(config.redisUrl),
