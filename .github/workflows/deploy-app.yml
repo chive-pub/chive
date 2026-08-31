@@ -423,9 +423,25 @@ jobs:
           script: |
             set -e
 
-            echo "=== Reindexing Elasticsearch ==="
+            echo "=== Applying Elasticsearch mapping changes ==="
 
             cd /opt/chive
+
+            # Mappings are fixed once an index exists, so editing the template
+            # does not change a running deployment: `bootstrapIndex` returns
+            # early when the alias is already there, and the reindex below
+            # copies documents into whatever mapping the index already has. An
+            # analyzer change would therefore ship and do nothing.
+            #
+            # This builds the next index version from the current template and
+            # moves the alias atomically. It is safe to run every deploy: the
+            # live index records the template version it was built from, so it
+            # exits without touching anything unless that version has changed.
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/migrate-elasticsearch-index.js
+
+            echo "=== Reindexing Elasticsearch ==="
 
             # Run the reindex script inside the chive-api container.
             # chive-api already has DATABASE_URL, ELASTICSEARCH_URL, NEO4J_URI,

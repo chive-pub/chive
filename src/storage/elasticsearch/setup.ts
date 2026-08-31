@@ -246,6 +246,55 @@ export async function bootstrapIndex(client: Client): Promise<void> {
 }
 
 /**
+ * Whether the live index was built from an older version of the template.
+ *
+ * @param client - Elasticsearch client
+ * @returns The live and template versions, and whether they differ
+ *
+ * @remarks
+ * Mappings are fixed once an index exists, so a template edit reaches a
+ * deployment only through {@link migrateIndexToCurrentMapping}. Deciding
+ * whether that is needed by diffing the live mapping against the template does
+ * not work: Elasticsearch echoes back a normalised mapping with defaults
+ * filled in, so a comparison reports differences that are not changes and the
+ * deploy would rebuild the index every time.
+ *
+ * The template therefore carries `mappings._meta.templateVersion`, and an index
+ * built from it carries that value. Bumping the number in the template is what
+ * declares "this needs a new index"; anything else — a description, a comment —
+ * changes nothing. An index built before the marker existed reports no version,
+ * which counts as out of date.
+ *
+ * @public
+ */
+export async function checkIndexTemplateVersion(client: Client): Promise<{
+  readonly liveVersion: number | null;
+  readonly templateVersion: number;
+  readonly needsMigration: boolean;
+}> {
+  const template = JSON.parse(
+    readFileSync(join(__dirname, 'templates', 'eprints.json'), 'utf8')
+  ) as { template: { mappings: { _meta?: { templateVersion?: number } } } };
+  const templateVersion = template.template.mappings._meta?.templateVersion ?? 1;
+
+  const aliased = await client.indices.getAlias({ name: 'eprints' });
+  const [index] = Object.keys(aliased);
+  if (index === undefined) {
+    throw new DatabaseError('MIGRATE', 'Alias eprints resolves to no index');
+  }
+
+  const mapping = await client.indices.getMapping({ index });
+  const meta = mapping[index]?.mappings._meta as { templateVersion?: number } | undefined;
+  const liveVersion = meta?.templateVersion ?? null;
+
+  return {
+    liveVersion,
+    templateVersion,
+    needsMigration: liveVersion !== templateVersion,
+  };
+}
+
+/**
  * Result of an index mapping migration.
  *
  * @public

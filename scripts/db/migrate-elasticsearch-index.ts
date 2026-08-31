@@ -28,6 +28,7 @@ import {
   createElasticsearchClient,
   setupElasticsearch,
   migrateIndexToCurrentMapping,
+  checkIndexTemplateVersion,
 } from '../../src/storage/elasticsearch/setup.js';
 
 async function main(): Promise<void> {
@@ -39,6 +40,24 @@ async function main(): Promise<void> {
     // cluster's template says, not from the file, so a stale template would be
     // faithfully reapplied and the migration would change nothing.
     await setupElasticsearch(client);
+
+    // Safe to run on every deploy: the live index carries the template version
+    // it was built from, so an index already built from the current template is
+    // left alone rather than rebuilt.
+    const { liveVersion, templateVersion, needsMigration } =
+      await checkIndexTemplateVersion(client);
+
+    if (!needsMigration) {
+      console.log(
+        `Index is already at template version ${String(templateVersion)}; nothing to migrate`
+      );
+      return;
+    }
+
+    console.log(
+      `Index is at template version ${liveVersion === null ? 'unversioned' : String(liveVersion)}, ` +
+        `template is at ${String(templateVersion)}; migrating`
+    );
 
     const result = await migrateIndexToCurrentMapping(client, { deletePrevious });
 
