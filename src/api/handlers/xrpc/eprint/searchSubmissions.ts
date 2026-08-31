@@ -133,13 +133,14 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
     const hasTextQuery = userQuery !== undefined && userQuery !== '*';
 
     if (hasTextQuery && searchResults.hits.length > 0) {
-      const eprintPromises = searchResults.hits.map(async (hit) => {
-        const data = await eprint.getEprint(hit.uri);
-        if (data) {
-          eprintDataMap.set(hit.uri, data);
-        }
-      });
-      await Promise.all(eprintPromises);
+      // One query for the page, not one per hit. `getEprints` has always
+      // existed and issues a single `uri = ANY($1)`; this loop opened a
+      // connection and round-tripped per result, so a page of 25 cost 25
+      // queries and the search endpoint's latency grew with its page size.
+      const fetched = await eprint.getEprints(searchResults.hits.map((hit) => hit.uri));
+      for (const [uri, data] of fetched) {
+        eprintDataMap.set(uri, data);
+      }
 
       const impressionId = relevanceLogger.createImpressionId();
       const queryId = relevanceLogger.computeQueryId(userQuery);
@@ -209,14 +210,11 @@ export const searchSubmissions: XRPCMethod<QueryParams, void, OutputSchema> = {
           eprintDataForResponse.set(uri, data);
         }
       } else {
-        // Otherwise fetch eprint data for response
-        const eprintPromises = searchResults.hits.map(async (hit) => {
-          const data = await eprint.getEprint(hit.uri);
-          if (data) {
-            eprintDataForResponse.set(hit.uri, data);
-          }
-        });
-        await Promise.all(eprintPromises);
+        // Same batch fetch for the no-text-query path.
+        const fetched = await eprint.getEprints(searchResults.hits.map((hit) => hit.uri));
+        for (const [uri, data] of fetched) {
+          eprintDataForResponse.set(uri, data);
+        }
       }
     }
 
