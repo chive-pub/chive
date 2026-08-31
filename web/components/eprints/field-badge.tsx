@@ -32,10 +32,21 @@ export function FieldBadge({
   clickable = true,
   className,
 }: FieldBadgeProps) {
+  // `Badge` does not set `whitespace-nowrap`, so a long field label — and
+  // discipline labels are long — wrapped inside the pill on a narrow screen.
+  // The result was a two-line chip whose `py-0.5` padding was sized for one
+  // line, which is what made a row of field chips look broken on a phone. A
+  // chip is now always one line, truncating at the container's width, with the
+  // full label available to assistive technology and on hover.
   const badge = (
     <Badge
       variant={variant}
-      className={cn(clickable && 'cursor-pointer hover:bg-secondary/60', className)}
+      title={field.label}
+      className={cn(
+        'max-w-full truncate whitespace-nowrap py-1',
+        clickable && 'cursor-pointer hover:bg-secondary/60',
+        className
+      )}
     >
       {field.label}
     </Badge>
@@ -89,7 +100,9 @@ export function FieldBadgeList({
   const hiddenCount = expanded ? 0 : fields.length - max;
 
   return (
-    <div className={cn('flex flex-wrap gap-1', className)}>
+    // `gap-1` put 4px between tappable chips, which on a touch screen means
+    // neighbouring links are easy to hit by mistake.
+    <div className={cn('flex flex-wrap gap-1.5', className)}>
       {visibleFields.map((field) => (
         <FieldBadge
           key={field.uri ?? field.id}
@@ -99,8 +112,15 @@ export function FieldBadgeList({
         />
       ))}
       {hiddenCount > 0 && (
-        <button type="button" onClick={() => setExpanded(true)}>
-          <Badge variant="outline" className="cursor-pointer text-muted-foreground hover:bg-accent">
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-label={`Show ${String(hiddenCount)} more field${hiddenCount === 1 ? '' : 's'}`}
+        >
+          <Badge
+            variant="outline"
+            className="cursor-pointer whitespace-nowrap py-1 text-muted-foreground hover:bg-accent"
+          >
             +{hiddenCount} more
           </Badge>
         </button>
