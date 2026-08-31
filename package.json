@@ -54,7 +54,7 @@
     "docs:openapi": "tsx scripts/generate-openapi-spec.ts",
     "lexicons:generate": "./scripts/generate-lexicons.sh",
     "test:stack:start": "./scripts/start-test-stack.sh",
-    "test:stack:stop": "docker-compose -f docker/docker-compose.yml down",
+    "test:stack:stop": "docker compose -f docker/docker-compose.yml down",
     "seed:test": "./scripts/seed-test-data.sh",
     "cleanup:test": "./scripts/cleanup-test.sh",
     "db:init": "./scripts/db/init-all.sh",

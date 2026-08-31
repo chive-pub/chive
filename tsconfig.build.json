@@ -8,5 +8,17 @@
     "removeComments": true
   },
   "include": ["src/**/*", "scripts/**/*"],
-  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts", "tests/**/*", "node_modules"]
+  // Mirrors the base exclude and adds only what the build must additionally
+  // drop. Listing a wholly separate set is what let typecheck and build
+  // diverge: a path exempted in one and compiled in the other is a failure
+  // that only appears in the Docker build.
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".turbo",
+    "tests/e2e",
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts",
+    "tests/**/*"
+  ]
 }

@@ -29,30 +29,29 @@ describe('Pre-Deployment Job Verification', () => {
   // ===========================================================================
 
   describe('Job Module Imports', () => {
-    it('governance-sync-job module exports correctly', () => {
-      expect(GovernanceSyncJob).toBeDefined();
-      // Check for expected exports (adjust based on actual exports)
-      expect(typeof GovernanceSyncJob).toBe('object');
+    // `typeof <namespace import>` is 'object' for every module that loads at
+    // all, so the previous form of these could not fail — including when a job
+    // class was renamed or removed. Each case now names the export the caller
+    // in src/index.ts or src/indexer.ts actually constructs, and checks it is
+    // a constructor, which is the property that makes the module usable.
+    const jobExports: [string, string, Record<string, unknown>][] = [
+      ['governance-sync-job', 'GovernanceSyncJob', GovernanceSyncJob],
+      ['graph-algorithm-job', 'GraphAlgorithmJob', GraphAlgorithmJob],
+      ['freshness-scan-job', 'FreshnessScanJob', FreshnessScanJob],
+      ['pds-scan-scheduler-job', 'PDSScanSchedulerJob', PdsScanSchedulerJob],
+      ['tag-sync-job', 'TagSyncJob', TagSyncJob],
+    ];
+
+    it.each(jobExports)('%s exports the %s class', (_module, exportName, namespace) => {
+      expect(namespace[exportName], `${exportName} is not exported`).toBeDefined();
+      expect(typeof namespace[exportName]).toBe('function');
+      expect((namespace[exportName] as { prototype?: unknown }).prototype).toBeDefined();
     });
 
-    it('graph-algorithm-job module exports correctly', () => {
-      expect(GraphAlgorithmJob).toBeDefined();
-      expect(typeof GraphAlgorithmJob).toBe('object');
-    });
-
-    it('freshness-scan-job module exports correctly', () => {
-      expect(FreshnessScanJob).toBeDefined();
-      expect(typeof FreshnessScanJob).toBe('object');
-    });
-
-    it('pds-scan-scheduler-job module exports correctly', () => {
-      expect(PdsScanSchedulerJob).toBeDefined();
-      expect(typeof PdsScanSchedulerJob).toBe('object');
-    });
-
-    it('tag-sync-job module exports correctly', () => {
-      expect(TagSyncJob).toBeDefined();
-      expect(typeof TagSyncJob).toBe('object');
+    it('graph-algorithm-job exports the scheduler src/index.ts calls', () => {
+      // The job is only reachable through this factory; without it the
+      // community and trending caches have no producer.
+      expect(typeof GraphAlgorithmJob.createGraphAlgorithmJobScheduler).toBe('function');
     });
   });
 
@@ -61,14 +60,19 @@ describe('Pre-Deployment Job Verification', () => {
   // ===========================================================================
 
   describe('Worker Module Imports', () => {
-    it('index-retry-worker module exports correctly', () => {
-      expect(IndexRetryWorker).toBeDefined();
-      expect(typeof IndexRetryWorker).toBe('object');
+    const workerExports: [string, string, Record<string, unknown>][] = [
+      ['index-retry-worker', 'IndexRetryWorker', IndexRetryWorker],
+      ['freshness-worker', 'FreshnessWorker', FreshnessWorker],
+    ];
+
+    it.each(workerExports)('%s exports the %s class', (_module, exportName, namespace) => {
+      expect(namespace[exportName], `${exportName} is not exported`).toBeDefined();
+      expect(typeof namespace[exportName]).toBe('function');
+      expect((namespace[exportName] as { prototype?: unknown }).prototype).toBeDefined();
     });
 
-    it('freshness-worker module exports correctly', () => {
-      expect(FreshnessWorker).toBeDefined();
-      expect(typeof FreshnessWorker).toBe('object');
+    it('freshness-worker exports its queue factory', () => {
+      expect(typeof FreshnessWorker.createFreshnessQueue).toBe('function');
     });
   });
 

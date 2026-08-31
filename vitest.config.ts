@@ -12,6 +12,18 @@ export default defineConfig({
     environment: 'node',
     globalSetup: ['./tests/setup/global-setup.ts'],
     fileParallelism: false,
+    // This suite talks to PostgreSQL, Elasticsearch, Neo4j and Redis over the
+    // network. Vitest's 5s default is sized for pure functions, so a slow CI
+    // runner turned an ordinary test into a failed build: on the v0.11.0
+    // release run, `tracks PDS source for staleness detection` timed out at
+    // 5000ms with 5509 of 5513 passing, in a run where Elasticsearch and Neo4j
+    // both reported slow starts. The same file passes locally in 697ms.
+    //
+    // The unit config deliberately keeps the 5s default, so a genuine hang in
+    // code with no I/O still fails fast there.
+    testTimeout: 30_000,
+    // Setup migrates and seeds four datastores; container start dominates.
+    hookTimeout: 120_000,
     // Mock native modules that require compilation
     alias: {
       'isolated-vm': path.resolve(__dirname, './__mocks__/isolated-vm.ts'),
