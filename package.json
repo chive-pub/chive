@@ -62,6 +62,7 @@
     "db:migrate:down": "tsx scripts/db/migrate.ts down",
     "db:migrate:create": "tsx scripts/db/migrate.ts create",
     "db:seed:knowledge-graph": "tsx scripts/db/seed-knowledge-graph.ts",
+    "db:migrate:elasticsearch": "tsx scripts/db/migrate-elasticsearch-index.ts",
     "mcp": "tsx src/mcp/index.ts"
   },
   "devDependencies": {

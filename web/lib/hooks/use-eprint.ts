@@ -343,6 +343,11 @@ export function useEprintsByAuthor(params: UseEprintsByAuthorParams) {
         return {
           eprints: data.eprints,
           cursor: data.cursor,
+          // `total` is how many the author has, not how many this page holds.
+          // Dropping it here is what made the dashboard's Eprints stat cap at
+          // the page size: it counted `eprints.length`, so an author with more
+          // than a page of work saw the page size reported as their total.
+          total: data.total,
           hasMore: !!data.cursor,
         };
       } catch (error) {

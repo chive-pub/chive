@@ -28,7 +28,7 @@
           },
           "name_analyzer": {
             "type": "custom",
-            "tokenizer": "keyword",
+            "tokenizer": "standard",
             "filter": ["lowercase", "asciifolding"]
           },
           "ngram_analyzer": {

@@ -48,7 +48,10 @@ export default function DashboardPage() {
     useEndorsementNotifications({ limit: 20 });
   const { data: claims, isLoading: claimsLoading } = useUserClaims({});
 
-  const eprintCount = eprints?.eprints?.length ?? 0;
+  // Prefer the server's count, as the two stats beside this one already do.
+  // `eprints.length` is the page, not the total, so this read 20 for anyone
+  // with more than 20 eprints.
+  const eprintCount = eprints?.total ?? eprints?.eprints?.length ?? 0;
   const reviewCount = reviews?.total ?? reviews?.reviews?.length ?? 0;
   const endorsementCount = endorsements?.total ?? endorsements?.endorsements?.length ?? 0;
   const myProposals = proposals?.proposals?.filter((p) => p.proposedBy === did) ?? [];

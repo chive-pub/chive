@@ -4,11 +4,45 @@
  * @packageDocumentation
  */
 
+import type { estypes } from '@elastic/elasticsearch';
 import { describe, expect, it } from 'vitest';
 
 import type { DID } from '../../../types/atproto.js';
 import type { SearchQuery } from '../../../types/interfaces/search.interface.js';
 import { DEFAULT_FIELD_BOOSTS, SearchQueryBuilder } from '../search-query-builder.js';
+
+/**
+ * The text half of a built query.
+ *
+ * @remarks
+ * `buildTextQuery` returns a `bool.should` pair — a `multi_match` over the flat
+ * fields and a `nested` query over `authors` — because a nested field cannot be
+ * searched from a flat `multi_match`. These helpers reach into that shape so
+ * each assertion below names the clause it is about.
+ */
+function textClause(query: estypes.QueryDslQueryContainer): estypes.QueryDslBoolQuery | undefined {
+  const must = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
+  return must && 'bool' in must ? must.bool : undefined;
+}
+
+function shouldClauses(query: estypes.QueryDslQueryContainer): estypes.QueryDslQueryContainer[] {
+  const should = textClause(query)?.should;
+  return Array.isArray(should) ? should : should ? [should] : [];
+}
+
+function flatMultiMatch(
+  query: estypes.QueryDslQueryContainer
+): estypes.QueryDslMultiMatchQuery | undefined {
+  const clause = shouldClauses(query).find((c) => 'multi_match' in c);
+  return clause && 'multi_match' in clause ? clause.multi_match : undefined;
+}
+
+function authorNested(
+  query: estypes.QueryDslQueryContainer
+): estypes.QueryDslNestedQuery | undefined {
+  const clause = shouldClauses(query).find((c) => 'nested' in c);
+  return clause && 'nested' in clause ? clause.nested : undefined;
+}
 
 describe('SearchQueryBuilder', () => {
   describe('constructor', () => {
@@ -57,10 +91,7 @@ describe('SearchQueryBuilder', () => {
       expect(query.bool).toHaveProperty('must');
       expect(query.bool?.must).toHaveLength(1);
 
-      const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
-      expect(mustClause).toHaveProperty('multi_match');
-
-      const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
+      const multiMatch = flatMultiMatch(query);
       expect(multiMatch).toBeDefined();
       expect(multiMatch?.query).toBe('machine learning');
       expect(multiMatch?.type).toBe('bool_prefix');
@@ -70,19 +101,41 @@ describe('SearchQueryBuilder', () => {
       expect(multiMatch).not.toHaveProperty('prefix_length');
     });
 
+    it('should search author names through a nested query', () => {
+      // `authors` is mapped as `nested`, so an ordinary multi_match cannot
+      // reach `authors.name`. Listing it among the flat fields matched no
+      // documents at all, so searching an author's name found nothing.
+      const builder = new SearchQueryBuilder();
+      const query = builder.build({ q: 'white' });
+
+      const flat = flatMultiMatch(query);
+      const flatFields = Array.isArray(flat?.fields) ? flat.fields.join(' ') : '';
+      expect(flatFields).not.toContain('authors.name');
+
+      const nested = authorNested(query);
+      expect(nested).toBeDefined();
+      expect(nested?.path).toBe('authors');
+      expect(nested?.score_mode).toBe('max');
+
+      const nestedQuery = nested?.query;
+      const inner =
+        nestedQuery && 'multi_match' in nestedQuery ? nestedQuery.multi_match : undefined;
+      expect(inner?.query).toBe('white');
+      expect(inner?.fields).toContain('authors.name^2.5');
+      // The two clauses are alternatives: a title hit or an author hit suffices.
+      expect(textClause(query)?.minimum_should_match).toBe(1);
+    });
+
     it('should include boosted fields in multi_match query', () => {
       const builder = new SearchQueryBuilder();
       const query = builder.build({ q: 'test' });
 
-      const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
-      const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
-      const fields = multiMatch?.fields;
+      const fields = flatMultiMatch(query)?.fields;
 
       expect(fields).toBeDefined();
       expect(fields).toContain('title^5');
       expect(fields).toContain('abstract^1.5');
       expect(fields).toContain('full_text^0.5');
-      expect(fields).toContain('authors.name^2.5');
       expect(fields).toContain('keywords^2');
       expect(fields).toContain('tags^0.8');
 
@@ -246,8 +299,7 @@ describe('SearchQueryBuilder', () => {
       const builder = new SearchQueryBuilder({ multiMatchType: 'most_fields' });
       const query = builder.build({ q: 'test' });
 
-      const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
-      const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
+      const multiMatch = flatMultiMatch(query);
       expect(multiMatch?.type).toBe('most_fields');
     });
 
@@ -255,8 +307,7 @@ describe('SearchQueryBuilder', () => {
       const builder = new SearchQueryBuilder({ operator: 'and' });
       const query = builder.build({ q: 'test' });
 
-      const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
-      const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
+      const multiMatch = flatMultiMatch(query);
       expect(multiMatch?.operator).toBe('and');
     });
 
@@ -264,8 +315,7 @@ describe('SearchQueryBuilder', () => {
       const builder = new SearchQueryBuilder({ prefixLength: 3, multiMatchType: 'best_fields' });
       const query = builder.build({ q: 'test' });
 
-      const mustClause = Array.isArray(query.bool?.must) ? query.bool.must[0] : query.bool?.must;
-      const multiMatch = mustClause && 'multi_match' in mustClause ? mustClause.multi_match : null;
+      const multiMatch = flatMultiMatch(query);
       expect(multiMatch?.prefix_length).toBe(3);
     });
   });
