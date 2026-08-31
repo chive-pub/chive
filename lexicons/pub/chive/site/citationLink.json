@@ -1,0 +1,79 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.site.citationLink",
+  "revision": 1,
+  "description": "A typed link from a standard.site document to a work it cites. Written into the reserved `links` union of `site.standard.document`, which the standard.site lexicon leaves open for extensions like this one. The relation vocabulary follows CiTO (the Citation Typing Ontology), so a consumer that knows CiTO can read these without knowing anything about Chive.",
+  "defs": {
+    "main": {
+      "type": "object",
+      "description": "A typed citation from the containing document to another work.",
+      "required": ["relation", "target"],
+      "properties": {
+        "relation": {
+          "type": "string",
+          "description": "How the document relates to the cited work. Open by design: `knownValues` names the relations Chive emits, and a consumer meeting an unfamiliar one should treat it as a plain citation rather than discard the link.",
+          "knownValues": [
+            "cites",
+            "extends",
+            "disputes",
+            "replicates",
+            "usesDataFrom",
+            "usesMethodIn",
+            "reviews"
+          ],
+          "maxLength": 128
+        },
+        "target": {
+          "type": "ref",
+          "ref": "#target",
+          "description": "The work being cited."
+        },
+        "context": {
+          "type": "string",
+          "description": "Where in the document the citation occurs, or a short quotation of the citing sentence.",
+          "maxLength": 2000
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "description": "Identification of a cited work. At least one identifier should be present; `title` alone identifies a work no machine can resolve, which is why it is not sufficient on its own.",
+      "required": ["title"],
+      "properties": {
+        "title": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the cited work, when it lives on the network."
+        },
+        "doi": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "DOI, without a resolver prefix."
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 1000
+        },
+        "authors": {
+          "type": "array",
+          "items": { "type": "string", "maxLength": 200 },
+          "maxLength": 50
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 3000
+        },
+        "venue": {
+          "type": "string",
+          "maxLength": 500
+        }
+      }
+    }
+  }
+}

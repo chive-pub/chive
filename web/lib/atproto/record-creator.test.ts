@@ -1428,3 +1428,74 @@ describe('describesEprint', () => {
     }
   });
 });
+
+describe('citation links in the standard.site links union', () => {
+  const did = 'did:plc:test123';
+  const eprintUri = `at://${did}/pub.chive.eprint.submission/abc123`;
+
+  function writtenRecord(agent: ReturnType<typeof createMockAgent>) {
+    return (agent.com.atproto.repo.createRecord as ReturnType<typeof vi.fn>).mock.calls[0][0]
+      .record as Record<string, unknown>;
+  }
+
+  it('writes nothing into links when no citations are given', async () => {
+    // Opt-in: an unratified extension should not appear in every document
+    // Chive writes into a user's repository.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri });
+
+    expect(writtenRecord(agent)).not.toHaveProperty('links');
+  });
+
+  it('writes typed citations into the reserved links union', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      citations: [
+        {
+          $type: 'pub.chive.site.citationLink',
+          relation: 'replicates',
+          target: { title: 'The 2019 result', doi: '10.1000/abc' },
+          context: 'Section 4',
+        },
+      ],
+    });
+
+    expect(writtenRecord(agent).links).toEqual([
+      {
+        $type: 'pub.chive.site.citationLink',
+        relation: 'replicates',
+        target: { title: 'The 2019 result', doi: '10.1000/abc' },
+        context: 'Section 4',
+      },
+    ]);
+  });
+
+  it('gives every link a $type, which the union requires', async () => {
+    // `links` is an open union: a member with no $type cannot be dispatched on
+    // by any consumer.
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'A paper',
+      eprintUri,
+      citations: [
+        { $type: 'pub.chive.site.citationLink', relation: 'cites', target: { title: 'A work' } },
+      ],
+    });
+
+    const links = writtenRecord(agent).links as Array<{ $type?: string }>;
+    expect(links.every((l) => typeof l.$type === 'string')).toBe(true);
+  });
+
+  it('omits an empty citation list rather than writing an empty union', async () => {
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, { title: 'A paper', eprintUri, citations: [] });
+
+    expect(writtenRecord(agent)).not.toHaveProperty('links');
+  });
+});

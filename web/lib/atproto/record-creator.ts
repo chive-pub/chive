@@ -2140,8 +2140,51 @@ export interface StandardDocumentRecord {
   textContent?: string;
   /** Everyone credited on the document beyond the record's author */
   contributors?: StandardDocumentContributor[];
+  /** Typed citations, written into the lexicon's reserved `links` union */
+  links?: StandardCitationLink[];
   tags?: string[];
   updatedAt?: string;
+}
+
+/**
+ * A typed citation written into a standard.site document's `links` union.
+ *
+ * @remarks
+ * `site.standard.document.links` is declared as a union with no members —
+ * reserved, and left open for extensions. `pub.chive.site.citationLink` is
+ * Chive's proposal for what belongs there: a document-to-work link with a
+ * CiTO-style relation, so a consumer that knows the Citation Typing Ontology
+ * can read a Chive citation without knowing anything about Chive.
+ *
+ * Shipping it in Chive's emissions is the proposal. It is staged behind
+ * {@link CreateStandardDocumentInput.citations} rather than emitted for every
+ * document, because writing an unratified extension into other people's
+ * records by default would be presumptuous.
+ *
+ * @public
+ */
+export interface StandardCitationLink {
+  $type: 'pub.chive.site.citationLink';
+  /** CiTO-style relation; `cites` when nothing more specific is known */
+  relation: string;
+  target: StandardCitationTarget;
+  /** Where in the document the citation occurs, or the citing sentence */
+  context?: string;
+}
+
+/**
+ * The work a {@link StandardCitationLink} points at.
+ *
+ * @public
+ */
+export interface StandardCitationTarget {
+  title: string;
+  uri?: string;
+  doi?: string;
+  url?: string;
+  authors?: string[];
+  year?: number;
+  venue?: string;
 }
 
 /**
@@ -2184,6 +2227,14 @@ export interface CreateStandardDocumentInput {
   contributors?: StandardDocumentContributor[];
   /** Keywords */
   tags?: string[];
+  /**
+   * Typed citations to write into the document's `links` union.
+   *
+   * @remarks
+   * Omitted, no `links` are written. See {@link StandardCitationLink} for why
+   * this is opt-in rather than automatic.
+   */
+  citations?: StandardCitationLink[];
 }
 
 /**
@@ -2253,6 +2304,10 @@ export async function createStandardDocument(
 
   if (input.tags && input.tags.length > 0) {
     record.tags = input.tags;
+  }
+
+  if (input.citations && input.citations.length > 0) {
+    record.links = input.citations;
   }
 
   const response = await agent.com.atproto.repo.createRecord({

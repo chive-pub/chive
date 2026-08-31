@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 128 queries, and 49 procedures across 24 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 128 queries, and 49 procedures across 25 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
@@ -31,6 +31,7 @@ For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.c
 | `pub.chive.resolve.*`       | External identifier resolution (DOI, arXiv) to AT URIs     |
 | `pub.chive.review.*`        | Document-level reviews and entity links                    |
 | `pub.chive.richtext.*`      | Shared rich text definitions and facets                    |
+| `pub.chive.site.*`          | Extensions to standard.site's open unions                  |
 | `pub.chive.sync.*`          | PDS synchronization and staleness checking                 |
 | `pub.chive.tag.*`           | User-generated tags and tag search                         |
 

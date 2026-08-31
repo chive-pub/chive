@@ -24,6 +24,10 @@ if [ ! -d "$ATPROTO_LEXICONS_DIR" ]; then
   # Copy only the com/atproto/repo lexicons (needed for record CRUD operations)
   mkdir -p "$LEXICONS_DIR/com/atproto/repo"
   cp "$TEMP_DIR/atproto-main/lexicons/com/atproto/repo/"*.json "$LEXICONS_DIR/com/atproto/repo/"
+  # `com.atproto.label.defs` too: site.standard.document and .publication both
+  # reference `#selfLabels`, so codegen fails without it.
+  mkdir -p "$LEXICONS_DIR/com/atproto/label"
+  cp "$TEMP_DIR/atproto-main/lexicons/com/atproto/label/defs.json" "$LEXICONS_DIR/com/atproto/label/"
 
   rm -rf "$TEMP_DIR"
   echo "✅ Downloaded ATProto base lexicons"
