@@ -36,6 +36,8 @@ interface MockSearchService {
 
 interface MockEprintService {
   getEprint: ReturnType<typeof vi.fn>;
+  /** Batch getter: the handler fetches a page of hits in one query. */
+  getEprints: ReturnType<typeof vi.fn>;
 }
 
 interface MockRelevanceLogger {
@@ -54,6 +56,7 @@ const createMockSearchService = (): MockSearchService => ({
 
 const createMockEprintService = (): MockEprintService => ({
   getEprint: vi.fn().mockResolvedValue(null),
+  getEprints: vi.fn().mockResolvedValue(new Map()),
 });
 
 const createMockRelevanceLogger = (): MockRelevanceLogger => ({

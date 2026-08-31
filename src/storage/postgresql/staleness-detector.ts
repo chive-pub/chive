@@ -297,12 +297,21 @@ export class StalenessDetector {
   async checkBatch(uris: readonly AtUri[]): Promise<Map<AtUri, boolean>> {
     const result = new Map<AtUri, boolean>();
 
-    // Fetch all records in one query
-    const placeholders = uris.map((_, i) => `$${i + 1}`).join(', ');
+    if (uris.length === 0) {
+      return result;
+    }
+
+    // Fetch all records in one query.
+    //
+    // `= ANY($1)` rather than an expanded `IN ($1, $2, ...)`: the expanded form
+    // builds one parameter per URI, and PostgreSQL's protocol caps a statement
+    // at 65535 of them. A batch that large would not fail gracefully — the
+    // driver raises before the query runs. It also reparses and replans on
+    // every distinct batch size, where a single array parameter gives one plan.
     const query = `
       SELECT uri, cid, pds_url, indexed_at
       FROM eprints_index
-      WHERE uri IN (${placeholders})
+      WHERE uri = ANY($1)
     `;
 
     const rows = await this.pool.query<{
@@ -310,7 +319,7 @@ export class StalenessDetector {
       cid: string;
       pds_url: string;
       indexed_at: Date;
-    }>(query, [...uris]);
+    }>(query, [[...uris]]);
 
     // Check staleness for each record in parallel
     await Promise.all(
