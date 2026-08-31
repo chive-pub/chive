@@ -75,11 +75,12 @@ import {
 } from '@/lib/hooks/use-annotations';
 import { useIsAuthenticated } from '@/lib/auth';
 import type { BlobRef, UnifiedTextSpanTarget } from '@/lib/api/schema';
+import { PDF_WORKER_SRC } from '@/lib/pdf-worker';
 
 const logger = createLogger({ context: { component: 'pdf-viewer-annotated' } });
 
 // Configure PDF.js worker to match the pdfjs-dist version used by react-pdf-highlighter-extended
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
 
 // =============================================================================
 // TYPES
@@ -832,7 +833,7 @@ export function AnnotatedPDFViewer({
       >
         <PdfLoader
           document={pdfUrl}
-          workerSrc={`https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`}
+          workerSrc={PDF_WORKER_SRC}
           beforeLoad={() => <AnnotatedPDFViewerSkeleton />}
           errorMessage={(error) => (
             <AnnotatedPDFViewerError

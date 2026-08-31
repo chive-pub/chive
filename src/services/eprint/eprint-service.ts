@@ -714,8 +714,34 @@ export class EprintService {
     return views;
   }
 
+  /**
+   * Lists an author's eprints alongside how many they have in total.
+   *
+   * @param did - Author DID
+   * @param options - Paging and sort options
+   * @returns The requested page, and the author's total eprint count
+   *
+   * @remarks
+   * `total` counts every eprint the author has, not the page that was asked
+   * for. It previously returned `eprints.length`, which made `total` equal to
+   * the page size and broke everything downstream that depends on it: the
+   * XRPC handler derives its cursor as `offset + page.length < total`, so that
+   * comparison was never true, no cursor was ever emitted, and the profile's
+   * infinite scroll saw no next page however many eprints the author had. The
+   * dashboard reported the page size as the author's eprint count for the same
+   * reason.
+   *
+   * The count is a separate query rather than a window function because the two
+   * run concurrently, and `countByAuthor` matches `findByAuthor`'s predicate
+   * exactly — both are `authors @> $1 AND deleted_at IS NULL`.
+   *
+   * @public
+   */
   async getEprintsByAuthor(did: DID, options?: EprintQueryOptions): Promise<EprintList> {
-    const eprints = await this.storage.getEprintsByAuthor(did, options);
+    const [eprints, total] = await Promise.all([
+      this.storage.getEprintsByAuthor(did, options),
+      this.storage.countEprintsByAuthor(did),
+    ]);
 
     const enriched = eprints.map((p) => ({
       ...p,
@@ -725,7 +751,7 @@ export class EprintService {
 
     return {
       eprints: enriched,
-      total: eprints.length,
+      total,
     };
   }
 

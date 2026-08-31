@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { BlobRef } from '@/lib/api/schema';
+import { PDF_WORKER_SRC } from '@/lib/pdf-worker';
 
 /**
  * Props for the PDFViewer component.
@@ -82,7 +83,7 @@ export function PDFViewer({ blobRef, pdsEndpoint, did, className }: PDFViewerPro
   useEffect(() => {
     import('react-pdf').then((module) => {
       // Set up PDF.js worker
-      module.pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${module.pdfjs.version}/build/pdf.worker.min.mjs`;
+      module.pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
       setPdfModule(module);
     });
   }, []);
