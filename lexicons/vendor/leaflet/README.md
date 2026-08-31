@@ -33,8 +33,19 @@ Only the ones on the path from a Leaflet record to a Chive eprint:
 Not vendored: the remaining thirty-odd block, page and graph lexicons, which
 carry no path to an eprint. Add one here when a reader needs it.
 
-## Chive does not serve these
+## Why `lexicons/vendor/`, and not `lexicons/pub/leaflet/`
 
 Chive publishes `pub.chive.*` and nothing else. These are read-only reference
-copies for a plugin that parses records from other people's repositories, and
-they are deliberately outside `lexicons/pub/chive/`.
+copies, used by a plugin that parses records out of other people's
+repositories.
+
+They sit under `vendor/` because `scripts/generate-lexicons.sh` runs codegen
+over everything in `lexicons/`, and generating a client for another app's
+schemas is both pointless and broken here: only the seven on the eprint path
+are copied, and the generated types would import the thirty-odd that are not.
+The script excludes `*/vendor/*` for that reason, alongside the exclusions it
+already had for `auth/` and `permission-sets/`.
+
+`lexicons/site/standard/` is vendored _inside_ the codegen path by contrast,
+because Chive writes those records and wants the generated types. The rule is
+whether Chive emits the schema, not who owns it.
