@@ -759,6 +759,18 @@ export class EprintService {
     return this.storage.countEprintsByAuthor(did);
   }
 
+  /**
+   * Counts eprints for several authors in one query.
+   *
+   * @param dids - Author DIDs
+   * @returns A map from DID to eprint count, omitting authors with none
+   *
+   * @public
+   */
+  async countEprintsByAuthors(dids: readonly DID[]): Promise<Map<string, number>> {
+    return this.storage.countEprintsByAuthors(dids);
+  }
+
   async getVersionHistory(uri: AtUri): Promise<readonly EprintVersion[]> {
     const chain = await this.versionManager.getVersionChain(uri);
     return chain.versions;

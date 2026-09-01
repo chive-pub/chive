@@ -526,6 +526,24 @@ export interface IStorageBackend {
   countEprintsByAuthor(author: DID): Promise<number>;
 
   /**
+   * Counts eprints for several authors in one query.
+   *
+   * @param authors - Author DIDs
+   * @returns A map from DID to eprint count, omitting authors with none
+   *
+   * @remarks
+   * For paths that need a count per author across a page of authors, where a
+   * call per author would be a round trip per author.
+   *
+   * @example
+   * ```typescript
+   * const counts = await storage.countEprintsByAuthors([didA, didB]);
+   * console.log(counts.get(didA) ?? 0);
+   * ```
+   */
+  countEprintsByAuthors(authors: readonly DID[]): Promise<Map<string, number>>;
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit
