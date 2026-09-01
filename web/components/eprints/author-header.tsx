@@ -18,7 +18,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Button } from '@/components/ui/button';
 import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
-import { getAffiliationDisplay } from '@/lib/utils/affiliation';
 import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
 import type { SifaProfile } from '@/lib/api/generated/types/pub/chive/author/getProfile';
 import type { RichTextItem } from '@/lib/types/rich-text';
