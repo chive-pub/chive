@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The Chive bio is rich text**, using the same item union reviews and abstracts already use — links, mentions, tags, LaTeX and the rest — rendered by the same renderer. `bioRich` carries the marked-up form and `bio` keeps its plain text, so meta descriptions, OG images and search still get a string.
+
+### Changed
+
+- **A profile now states each institution once.** A researcher can record their affiliations twice, in their Chive profile and in their sifa.id profile, and the page rendered both — the same university under "Affiliations" and again in a separate professional-profile card. The two are merged on the institution, so each appears once carrying what each source knows: the departments and ROR identifier from Chive, the role and years from sifa. Matching is deliberately conservative — case, punctuation and a leading "the" are ignored, but "Univ. of Rochester" will not be merged into "University of Rochester", because one extra row is a cheaper mistake than attributing a department to the wrong employer.
+- **The bio falls back through sources rather than always using Bluesky's.** A Bluesky description is a personal one and often not professional. A bio written on Chive wins; failing that the sifa.id summary is used; the Bluesky description is the last resort. The settings field says so.
+- Departments sit on their own line beneath the institution in previous affiliations, rather than after a dash that read as though the department were part of the university's name, and the institutions are spaced apart so a list of several is scannable.
+
 ## [0.13.1] - 2026-09-01
 
 ### Fixed
