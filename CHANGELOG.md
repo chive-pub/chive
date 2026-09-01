@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.13.1] - 2026-09-01
+
+### Fixed
+
+- **Author search reported the wrong number of eprints beside each author.** The count was built by tallying how often an author appeared in the page of search hits, which is bounded by the page size and by the loop's own early break — so an author with 58 eprints was shown as having 1. It now reports how many eprints the author actually has, fetched for the whole page in one query, because author autocomplete runs this on every keystroke and a query per suggestion would be a round trip per suggestion per character.
+
 ## [0.13.0] - 2026-08-31
 
 ### Added
@@ -960,7 +966,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.13.1...HEAD
+[0.13.1]: https://github.com/chive-pub/chive/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/chive-pub/chive/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/chive-pub/chive/compare/v0.11.1...v0.12.0
 [0.11.1]: https://github.com/chive-pub/chive/compare/v0.11.0...v0.11.1
