@@ -10,6 +10,7 @@ import {
   BookOpen,
   Copy,
   Check,
+  UserCircle,
 } from 'lucide-react';
 
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
@@ -23,6 +24,7 @@ import type { SifaProfile } from '@/lib/api/generated/types/pub/chive/author/get
 import type { RichTextItem } from '@/lib/types/rich-text';
 import { RichTextRenderer } from '@/components/editor';
 import { mergeAffiliations } from '@/lib/profile/merge-affiliations';
+import { ExpandableProse } from '@/components/ui/expandable-prose';
 
 /**
  * Props for the AuthorHeader component.
@@ -184,23 +186,55 @@ export function AuthorHeader({ profile, sifa, className }: AuthorHeaderProps) {
             </div>
           )}
 
-          {/* Bio */}
+          {/* Bio.
+
+              Clamped to a few lines: a long bio otherwise pushed the
+              affiliations, identifiers and eprint list off the screen. The
+              control only appears when the text is genuinely clipped, which is
+              measured rather than guessed — a bio that fits on a wide window
+              clips on a narrow one.
+
+              A `div` rather than a `p`: rich text can contain block content,
+              and a heading or list inside a paragraph is invalid markup that
+              browsers silently restructure. */}
           {profile.bio && (
-            <p className="mt-4 max-w-2xl text-muted-foreground">
-              {/* The same renderer reviews and abstracts use. A bio written
+            <div className="mt-4">
+              <ExpandableProse lines={4} className="max-w-2xl text-muted-foreground">
+                {/* The same renderer reviews and abstracts use. A bio written
                   before rich text existed has no `bioRich`, and falls back to
                   its plain text. */}
-              {extendedProfile.bioRich && extendedProfile.bioRich.length > 0 ? (
-                <RichTextRenderer items={extendedProfile.bioRich} mode="block" />
-              ) : (
-                <RichTextRenderer text={profile.bio} mode="block" />
-              )}
-            </p>
+                {extendedProfile.bioRich && extendedProfile.bioRich.length > 0 ? (
+                  <RichTextRenderer items={extendedProfile.bioRich} mode="block" />
+                ) : (
+                  <RichTextRenderer text={profile.bio} mode="block" />
+                )}
+              </ExpandableProse>
+            </div>
           )}
 
           {/* Primary links row */}
           <div className="mt-4 flex flex-wrap items-center justify-center gap-4 sm:justify-start">
             {profile.orcid && <OrcidBadge orcid={profile.orcid} verified={profile.orcidVerified} />}
+
+            {/* sifa.id profile.
+
+                Linked only when they actually have one — `hasProfile` is set
+                from records read out of their repository, not assumed from the
+                DID, so this never points at an empty page. Addressed by DID
+                rather than handle: sifa resolves both, and a DID does not
+                change when someone moves domain. */}
+            {sifa?.hasProfile === true && (
+              <a
+                href={`https://sifa.id/profile/${encodeURIComponent(profile.did)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-sm text-primary hover:underline"
+              >
+                <UserCircle className="h-4 w-4" />
+                sifa.id
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
 
             {profile.website && (
               <a

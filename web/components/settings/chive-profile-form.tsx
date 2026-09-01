@@ -23,7 +23,6 @@ import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,6 +36,7 @@ import { OrcidAutocompleteInput } from './orcid-autocomplete-input';
 import { AuthorIdAutocompleteInput } from './author-id-autocomplete-input';
 import { FieldSearch, type FieldSelection } from '@/components/forms/field-search';
 import { useOrcidOAuth } from '@/lib/hooks/use-orcid-oauth';
+import { MarkdownEditor } from '@/components/editor';
 
 /**
  * Converts API affiliations (may be string[] or structured) to structured format.
@@ -418,11 +418,24 @@ export function ChiveProfileForm() {
 
             <div className="space-y-2">
               <Label htmlFor="bio">Bio</Label>
-              <Textarea
-                id="bio"
+              {/* The same editor the abstract uses, so a bio gets @ mention
+                  and # tag autocomplete, LaTeX and a preview — the facets
+                  detected on save are the ones written here. A plain textarea
+                  accepted the syntax but offered no way to discover it. */}
+              <MarkdownEditor
+                value={form.watch('bio') ?? ''}
+                onChange={(value) => {
+                  form.setValue('bio', value, { shouldDirty: true });
+                }}
                 placeholder="Brief academic bio"
-                rows={4}
-                {...form.register('bio')}
+                maxLength={2000}
+                minHeight="8rem"
+                enableMentions
+                enableTags
+                enableLatex
+                enablePreview
+                ariaLabel="Bio"
+                testId="bio-editor"
               />
               <p className="text-xs text-muted-foreground">
                 Shown on your Chive profile in place of your sifa.id summary or your Bluesky
