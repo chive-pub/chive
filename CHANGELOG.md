@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A cache hiccup could strand a deployment.** The staging deploy for 0.14.0 built the web image and pushed it to the registry, then failed on `error writing layer blob: failed to reserve cache` while exporting to the GitHub Actions cache. The image existed and the job was marked failed, so staging never pulled it and sat two releases behind with nothing in the failure pointing at the cause. The cache export is now marked `ignore-error=true` in both workflows that use it: a cache is an optimisation, and losing it should cost build time rather than a deployment.
+
 ## [0.14.0] - 2026-09-01
 
 ### Added

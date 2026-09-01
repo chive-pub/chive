@@ -149,7 +149,15 @@ jobs:
             NEXT_PUBLIC_CHIVE_SERVICE_DID=did:web:${{ vars.STAGING_DOMAIN }}
             NEXT_PUBLIC_USE_PERMISSION_SETS=true
           cache-from: type=gha,scope=web-staging
-          cache-to: type=gha,mode=max,scope=web-staging
+          # `ignore-error=true` because a cache export failure is not a build
+          # failure. The staging deploy for 0.14.0 built the web image and
+          # pushed it to ghcr successfully, then died on
+          # "error writing layer blob: failed to reserve cache" while exporting
+          # to the Actions cache — so the image existed but staging never
+          # pulled it, and the branch sat two releases behind with no obvious
+          # sign why. The cache is an optimisation; losing it should cost time,
+          # not a deployment.
+          cache-to: type=gha,mode=max,scope=web-staging,ignore-error=true
 
       - name: Setup Node.js and pnpm for docs build
         uses: ./.github/actions/setup-node-pnpm
