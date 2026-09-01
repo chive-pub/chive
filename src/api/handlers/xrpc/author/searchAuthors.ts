@@ -77,14 +77,16 @@ async function searchAuthorsInIndex(
             );
 
           if (matches) {
-            const existing = authorMap.get(author.did);
-            if (existing) {
-              existing.eprintCount += 1;
-            } else {
+            // Counting appearances here would count how often the author shows
+            // up in this page of search hits, which is what `eprintCount` used
+            // to report — bounded above by `limit * 3` and by the break below,
+            // so an author with 58 eprints could report 1. The real count is
+            // fetched for the whole page after this loop.
+            if (!authorMap.has(author.did)) {
               authorMap.set(author.did, {
                 did: author.did,
                 name: author.name,
-                eprintCount: 1,
+                eprintCount: 0,
               });
             }
           }
@@ -94,7 +96,20 @@ async function searchAuthorsInIndex(
       if (authorMap.size >= limit) break;
     }
 
-    return Array.from(authorMap.values()).slice(0, limit);
+    const authors = Array.from(authorMap.values()).slice(0, limit);
+
+    // One query for the page. This runs on every keystroke of author
+    // autocomplete, so a count per author would put a round trip per
+    // suggestion on that path — the same mistake the batched record fetch
+    // above exists to avoid.
+    const counts = await c
+      .get('services')
+      .eprint.countEprintsByAuthors(authors.map((a) => a.did as DID));
+
+    return authors.map((author) => ({
+      ...author,
+      eprintCount: counts.get(author.did) ?? 0,
+    }));
   } catch (error) {
     logger.error('Author search failed', error instanceof Error ? error : undefined, {
       query,

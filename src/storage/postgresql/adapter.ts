@@ -241,6 +241,22 @@ export class PostgreSQLAdapter implements IStorageBackend {
   }
 
   /**
+   * Counts eprints for several authors in one query.
+   *
+   * @param authors - Author DIDs
+   * @returns A map from DID to eprint count, omitting authors with none
+   *
+   * @remarks
+   * Author autocomplete needs a count per suggestion on every keystroke; one
+   * query for the page keeps that off the per-author path.
+   *
+   * @public
+   */
+  async countEprintsByAuthors(authors: readonly DID[]): Promise<Map<string, number>> {
+    return this.eprintsRepo.countByAuthors(authors);
+  }
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit

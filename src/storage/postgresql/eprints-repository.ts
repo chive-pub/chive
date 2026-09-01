@@ -565,6 +565,53 @@ export class EprintsRepository {
   }
 
   /**
+   * Counts eprints for several authors in one query.
+   *
+   * @param authors - Author DIDs
+   * @returns A map from DID to eprint count, omitting authors with none
+   *
+   * @remarks
+   * Author autocomplete needs a count per author on every keystroke, and
+   * calling {@link EprintsRepository.countByAuthor} per author would put a
+   * round trip per suggestion on that path. This unnests the `authors` array
+   * once and groups, so a page of suggestions costs one query.
+   *
+   * `COUNT(DISTINCT uri)` rather than `COUNT(*)`: an author listed twice in one
+   * eprint's author array — which happens with a corrected record — would
+   * otherwise count that eprint twice.
+   *
+   * The predicate matches {@link EprintsRepository.countByAuthor} and
+   * {@link EprintsRepository.findByAuthor}, so all three agree on what counts.
+   *
+   * @public
+   */
+  async countByAuthors(authors: readonly DID[]): Promise<Map<string, number>> {
+    if (authors.length === 0) {
+      return new Map();
+    }
+
+    try {
+      const query = `
+        SELECT author_did AS did, COUNT(DISTINCT uri)::int AS count
+        FROM eprints_index,
+             LATERAL jsonb_array_elements(authors) AS author(obj),
+             LATERAL (SELECT author.obj->>'did') AS a(author_did)
+        WHERE author_did = ANY($1)
+          AND deleted_at IS NULL
+        GROUP BY author_did
+      `;
+
+      const result = await this.pool.query<{ did: string; count: number }>(query, [[...authors]]);
+
+      return new Map(result.rows.map((row) => [row.did, row.count]));
+    } catch (error) {
+      throw error instanceof Error
+        ? error
+        : new Error(`Failed to count eprints by authors: ${String(error)}`);
+    }
+  }
+
+  /**
    * Lists all eprint URIs with pagination.
    *
    * @param options - Query options including limit
