@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-09-01
+
+### Added
+
+- **The Chive bio is rich text**, using the same item union reviews and abstracts already use — links, mentions, tags, LaTeX and the rest — rendered by the same renderer. `bioRich` carries the marked-up form and `bio` keeps its plain text, so meta descriptions, OG images and search still get a string.
+
+### Changed
+
+- **A profile now states each institution once.** A researcher can record their affiliations twice, in their Chive profile and in their sifa.id profile, and the page rendered both — the same university under "Affiliations" and again in a separate professional-profile card. The two are merged on the institution, so each appears once carrying what each source knows: the departments and ROR identifier from Chive, the role and years from sifa. Matching is deliberately conservative — case, punctuation and a leading "the" are ignored, but "Univ. of Rochester" will not be merged into "University of Rochester", because one extra row is a cheaper mistake than attributing a department to the wrong employer.
+- **The bio falls back through sources rather than always using Bluesky's.** A Bluesky description is a personal one and often not professional. A bio written on Chive wins; failing that the sifa.id summary is used; the Bluesky description is the last resort. The settings field says so.
+- Departments sit on their own line beneath the institution in previous affiliations, rather than after a dash that read as though the department were part of the university's name, and the institutions are spaced apart so a list of several is scannable.
+
+### Fixed
+
+- **Four admin pages answered with a 500.** The XRPC router validates every response against its lexicon, so a handler returning a field the lexicon does not name — or omitting one it requires — fails the request rather than merely mismatching. `getGraphStats` returned `totalNodes`/`totalEdges` where the lexicon required `nodeCount`/`edgeCount`, `getSearchAnalytics` returned `totalQueries` where it required `totalSearches`, and `listWarnings` and `listViolations` were required to return a `total` that nothing computed and no page read. In each case the handler and the page agreed with each other and the lexicon was the outlier, so the lexicons now describe what is actually returned. All 41 admin methods were mounted and authorizing correctly throughout; only the response shapes were wrong.
+
 ## [0.13.1] - 2026-09-01
 
 ### Fixed
@@ -966,7 +982,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.13.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.0...HEAD
+[0.14.0]: https://github.com/chive-pub/chive/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/chive-pub/chive/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/chive-pub/chive/compare/v0.12.0...v0.13.0
 [0.12.0]: https://github.com/chive-pub/chive/compare/v0.11.1...v0.12.0

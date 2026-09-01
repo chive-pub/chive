@@ -26,7 +26,6 @@ import { AddToCollectionButton } from '@/components/collection/add-to-collection
 import { MuteButton } from '@/components/authors/mute-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
-import { SifaPanel } from '@/components/eprints/sifa-panel';
 
 /**
  * Props for the AuthorPageContent component.
@@ -231,8 +230,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
       {/* Profile header with share button */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
-          <AuthorHeader profile={data.profile} />
-          {data.sifa && <SifaPanel sifa={data.sifa} className="mt-6" />}
+          <AuthorHeader profile={data.profile} sifa={data.sifa} />
         </div>
         <div className="flex items-center gap-2">
           {shareContent && (

@@ -50,6 +50,25 @@ interface CombinedProfileData {
   displayName?: string;
   avatar?: string;
   bio?: string;
+  /**
+   * Rich bio, the item union reviews and abstracts use.
+   *
+   * @remarks
+   * `bio` stays the plain text of the same content, so consumers that want a
+   * string — meta descriptions, OG images, search — keep working.
+   */
+  bioRich?: unknown[];
+  /**
+   * Which record supplied {@link CombinedProfileData.bio}.
+   *
+   * @remarks
+   * A researcher's Bluesky description is not necessarily a professional one,
+   * so it is the weakest source. Their sifa.id profile is written for a
+   * professional audience and sits above it, and a bio they wrote on Chive
+   * itself beats both. Knowing where the bio came from is what lets sifa slot
+   * between the two rather than being merged in blind.
+   */
+  bioSource?: 'bluesky' | 'chive';
   affiliation?: string;
   affiliations?: ProfileAffiliation[];
   orcid?: string;
@@ -115,6 +134,9 @@ async function fetchProfileFromPDS(
       if (bskyProfile) {
         result.displayName = bskyProfile.displayName;
         result.bio = bskyProfile.description;
+        if (bskyProfile.description) {
+          result.bioSource = 'bluesky';
+        }
 
         // Extract avatar URL if present
         if (bskyProfile.avatar?.ref?.$link) {
@@ -131,6 +153,7 @@ async function fetchProfileFromPDS(
         value?: {
           displayName?: string;
           bio?: string;
+          bioRich?: unknown[];
           avatar?: { ref?: { $link?: string } };
           orcid?: string;
           affiliations?: { name: string; rorId?: string }[];
@@ -153,7 +176,13 @@ async function fetchProfileFromPDS(
       if (chiveProfile) {
         // Chive profile overrides Bluesky profile for display name/bio if present
         if (chiveProfile.displayName) result.displayName = chiveProfile.displayName;
-        if (chiveProfile.bio) result.bio = chiveProfile.bio;
+        if (chiveProfile.bio) {
+          result.bio = chiveProfile.bio;
+          result.bioSource = 'chive';
+          // The rich form belongs to the bio it renders, so it travels only
+          // with a bio that came from the same record.
+          result.bioRich = chiveProfile.bioRich;
+        }
 
         // Chive-specific avatar (if set)
         if (chiveProfile.avatar?.ref?.$link && !result.avatar) {
@@ -418,7 +447,17 @@ export const getProfile: XRPCMethod<QueryParams, void, OutputSchema> = {
         handle: handle ?? profileData?.handle,
         displayName: profileData?.displayName,
         avatar: profileData?.avatar,
-        bio: profileData?.bio,
+        // Chive beats sifa beats Bluesky. A Bluesky description is a personal
+        // one and often not professional; sifa's is written for exactly this
+        // audience; a bio written on Chive is the researcher saying what they
+        // want said here.
+        bio:
+          profileData?.bioSource === 'chive'
+            ? profileData.bio
+            : (sifaRead?.about ?? sifaRead?.headline ?? profileData?.bio),
+        ...(profileData?.bioSource === 'chive' && profileData.bioRich
+          ? { bioRich: profileData.bioRich as OutputSchema['profile']['bioRich'] }
+          : {}),
         affiliation: profileData?.affiliation,
         affiliations: profileData?.affiliations,
         orcid: profileData?.orcid,

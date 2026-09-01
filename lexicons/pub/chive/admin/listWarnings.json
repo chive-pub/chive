@@ -27,7 +27,7 @@
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["warnings", "total"],
+          "required": ["warnings"],
           "properties": {
             "warnings": {
               "type": "array",
@@ -36,12 +36,9 @@
                 "ref": "#warning"
               },
               "description": "Warning records"
-            },
-            "total": {
-              "type": "integer",
-              "description": "Total warnings"
             }
-          }
+          },
+          "description": "Governance warnings. There is no `total`: the service returns only the rows, output validation requires every declared required field, and a `total` that nothing produces made this endpoint fail with a 500 rather than describe it. Nothing consumes a total either \u2014 the admin page renders the rows."
         }
       },
       "errors": [

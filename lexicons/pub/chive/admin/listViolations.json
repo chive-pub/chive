@@ -27,7 +27,7 @@
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["violations", "total"],
+          "required": ["violations"],
           "properties": {
             "violations": {
               "type": "array",
@@ -36,12 +36,9 @@
                 "ref": "#violation"
               },
               "description": "Violation records"
-            },
-            "total": {
-              "type": "integer",
-              "description": "Total violations"
             }
-          }
+          },
+          "description": "Governance violations. There is no `total`: the service returns only the rows, output validation requires every declared required field, and a `total` that nothing produces made this endpoint fail with a 500 rather than describe it. Nothing consumes a total either \u2014 the admin page renders the rows."
         }
       },
       "errors": [

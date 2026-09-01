@@ -14,22 +14,65 @@
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["totalSearches", "totalClicks", "timestamp"],
+          "required": [
+            "totalQueries",
+            "totalClicks",
+            "impressions",
+            "clicks",
+            "positionDistribution",
+            "topQueries",
+            "zeroResultCount",
+            "relevanceGradeDistribution",
+            "timestamp"
+          ],
           "properties": {
-            "totalSearches": {
+            "totalQueries": {
               "type": "integer",
-              "description": "Total number of search queries"
+              "description": "Distinct search queries recorded."
             },
             "totalClicks": {
               "type": "integer",
-              "description": "Total number of search result clicks"
+              "description": "Result clicks recorded."
+            },
+            "impressions": {
+              "type": "integer",
+              "description": "Results shown."
+            },
+            "clicks": {
+              "type": "integer",
+              "description": "Results clicked."
+            },
+            "positionDistribution": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#positionCount"
+              }
+            },
+            "topQueries": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#topQuery"
+              }
+            },
+            "zeroResultCount": {
+              "type": "integer",
+              "description": "Searches that returned nothing."
+            },
+            "relevanceGradeDistribution": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#relevanceGradeCount"
+              }
             },
             "timestamp": {
               "type": "string",
-              "format": "datetime",
-              "description": "Analytics snapshot timestamp"
+              "format": "datetime"
             }
-          }
+          },
+          "description": "Search analytics aggregates. The response also carries `ctr`, the click-through rate as a fraction of impressions, and `avgDwellTimeMs`, the mean dwell time or null when nothing has been measured. Neither is declared here: Lexicon has no float type, `unknown` means an object rather than any value, and a declared integer rejects both a fraction and null. Undeclared properties pass validation and reach the client unchanged, so declaring them as integers would break the endpoint rather than describe it."
         }
       },
       "errors": [
@@ -40,6 +83,48 @@
           "name": "AdminRequired"
         }
       ]
+    },
+    "positionCount": {
+      "type": "object",
+      "description": "Impressions at one result position.",
+      "required": ["position", "count"],
+      "properties": {
+        "position": {
+          "type": "integer"
+        },
+        "count": {
+          "type": "integer"
+        }
+      }
+    },
+    "topQuery": {
+      "type": "object",
+      "description": "A query with its impression and click counts.",
+      "required": ["query", "impressionCount", "clickCount"],
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "impressionCount": {
+          "type": "integer"
+        },
+        "clickCount": {
+          "type": "integer"
+        }
+      }
+    },
+    "relevanceGradeCount": {
+      "type": "object",
+      "description": "Judgements at one relevance grade.",
+      "required": ["relevanceGrade", "count"],
+      "properties": {
+        "relevanceGrade": {
+          "type": "integer"
+        },
+        "count": {
+          "type": "integer"
+        }
+      }
     }
   }
 }
