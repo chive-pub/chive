@@ -125,6 +125,10 @@ function createTrackedStorage(): IStorageBackend & {
       operations.push({ method: 'countEprintsByAuthor', args: [author] });
       return Promise.resolve(0);
     }),
+    countEprintsByAuthors: vi.fn().mockImplementation((authors: readonly DID[]) => {
+      operations.push({ method: 'countEprintsByAuthors', args: [authors] });
+      return Promise.resolve(new Map<string, number>());
+    }),
     listEprintUris: vi.fn().mockImplementation(() => {
       operations.push({ method: 'listEprintUris', args: [] });
       return Promise.resolve([]);

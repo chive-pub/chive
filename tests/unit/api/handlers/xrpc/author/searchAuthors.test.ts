@@ -29,6 +29,7 @@ interface MockSearch {
 interface MockEprint {
   getEprint: ReturnType<typeof vi.fn>;
   getEprints: ReturnType<typeof vi.fn>;
+  countEprintsByAuthors: ReturnType<typeof vi.fn>;
 }
 
 // =============================================================================
@@ -69,6 +70,13 @@ describe('searchAuthors', () => {
         }
         return found;
       }),
+      // `eprintCount` is the author's real total now, not how often they
+      // appeared in this page of hits. The default gives every author 7 so a
+      // test asserting the count is asserting something the search page could
+      // not have produced.
+      countEprintsByAuthors: vi.fn((dids: readonly string[]) =>
+        Promise.resolve(new Map(dids.map((did) => [did, 7])))
+      ),
     };
     mockRedis = {
       get: vi.fn().mockResolvedValue(null),
@@ -180,6 +188,97 @@ describe('searchAuthors', () => {
       });
 
       expect(result.body.authors).toHaveLength(1);
+    });
+
+    it("reports the author's eprint count, not their appearances in the page", async () => {
+      // This is the bug: the count was built by tallying how often an author
+      // showed up among the search hits, which is bounded by the page size and
+      // by the loop's own early break. An author with many eprints who matched
+      // two hits was shown as having 2.
+      mockSearch.search.mockResolvedValue({
+        hits: [
+          { uri: 'at://did:plc:test1/pub.chive.eprint.submission/123', score: 1 },
+          { uri: 'at://did:plc:test2/pub.chive.eprint.submission/456', score: 0.9 },
+        ],
+        total: 2,
+      });
+
+      mockEprint.getEprint
+        .mockResolvedValueOnce({
+          uri: 'at://did:plc:test1/pub.chive.eprint.submission/123',
+          authors: [{ did: 'did:plc:author1', name: 'John Doe' }],
+        })
+        .mockResolvedValueOnce({
+          uri: 'at://did:plc:test2/pub.chive.eprint.submission/456',
+          authors: [{ did: 'did:plc:author1', name: 'John Doe' }],
+        });
+
+      mockEprint.countEprintsByAuthors.mockResolvedValue(new Map([['did:plc:author1', 58]]));
+
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
+
+      expect(result.body.authors[0]?.eprintCount).toBe(58);
+    });
+
+    it('counts the whole page in one call', async () => {
+      mockSearch.search.mockResolvedValue({
+        hits: [
+          { uri: 'at://did:plc:test1/pub.chive.eprint.submission/123', score: 1 },
+          { uri: 'at://did:plc:test2/pub.chive.eprint.submission/456', score: 0.9 },
+        ],
+        total: 2,
+      });
+
+      mockEprint.getEprint
+        .mockResolvedValueOnce({
+          uri: 'at://did:plc:test1/pub.chive.eprint.submission/123',
+          authors: [{ did: 'did:plc:author1', name: 'John Doe' }],
+        })
+        .mockResolvedValueOnce({
+          uri: 'at://did:plc:test2/pub.chive.eprint.submission/456',
+          authors: [{ did: 'did:plc:author2', name: 'John Roe' }],
+        });
+
+      await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
+
+      // Author autocomplete runs this on every keystroke; a call per
+      // suggestion would be a round trip per suggestion per character.
+      expect(mockEprint.countEprintsByAuthors).toHaveBeenCalledTimes(1);
+      expect(mockEprint.countEprintsByAuthors).toHaveBeenCalledWith([
+        'did:plc:author1',
+        'did:plc:author2',
+      ]);
+    });
+
+    it('shows zero for an author the count query does not return', async () => {
+      mockSearch.search.mockResolvedValue({
+        hits: [{ uri: 'at://did:plc:test1/pub.chive.eprint.submission/123', score: 1 }],
+        total: 1,
+      });
+      mockEprint.getEprint.mockResolvedValueOnce({
+        uri: 'at://did:plc:test1/pub.chive.eprint.submission/123',
+        authors: [{ did: 'did:plc:author1', name: 'John Doe' }],
+      });
+      mockEprint.countEprintsByAuthors.mockResolvedValue(new Map());
+
+      const result = await searchAuthors.handler({
+        params: { q: 'john', limit: 10 },
+        input: undefined,
+        auth: null,
+        c: mockContext as unknown as Parameters<typeof searchAuthors.handler>[0]['c'],
+      });
+
+      expect(result.body.authors[0]?.eprintCount).toBe(0);
     });
 
     it('respects limit parameter', async () => {
