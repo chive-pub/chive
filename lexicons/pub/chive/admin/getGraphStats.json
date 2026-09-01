@@ -14,15 +14,38 @@
         "encoding": "application/json",
         "schema": {
           "type": "object",
-          "required": ["nodeCount", "edgeCount"],
+          "required": [
+            "totalNodes",
+            "totalEdges",
+            "fieldNodes",
+            "authorNodes",
+            "institutionNodes",
+            "pendingProposals"
+          ],
           "properties": {
-            "nodeCount": {
+            "totalNodes": {
               "type": "integer",
-              "description": "Total graph nodes"
+              "description": "Total knowledge graph nodes."
             },
-            "edgeCount": {
+            "totalEdges": {
               "type": "integer",
-              "description": "Total graph edges"
+              "description": "Total knowledge graph edges."
+            },
+            "fieldNodes": {
+              "type": "integer",
+              "description": "Nodes of subkind field."
+            },
+            "authorNodes": {
+              "type": "integer",
+              "description": "Nodes of subkind author."
+            },
+            "institutionNodes": {
+              "type": "integer",
+              "description": "Nodes of subkind institution."
+            },
+            "pendingProposals": {
+              "type": "integer",
+              "description": "Proposals awaiting review."
             }
           }
         }

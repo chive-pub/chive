@@ -1658,6 +1658,58 @@
         ],
         "type": "object"
       },
+      "pub.chive.admin.getSearchAnalytics.positionCount": {
+        "description": "Impressions at one result position.",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "position": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "position",
+          "count"
+        ],
+        "type": "object"
+      },
+      "pub.chive.admin.getSearchAnalytics.relevanceGradeCount": {
+        "description": "Judgements at one relevance grade.",
+        "properties": {
+          "count": {
+            "type": "integer"
+          },
+          "relevanceGrade": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "relevanceGrade",
+          "count"
+        ],
+        "type": "object"
+      },
+      "pub.chive.admin.getSearchAnalytics.topQuery": {
+        "description": "A query with its impression and click counts.",
+        "properties": {
+          "clickCount": {
+            "type": "integer"
+          },
+          "impressionCount": {
+            "type": "integer"
+          },
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query",
+          "impressionCount",
+          "clickCount"
+        ],
+        "type": "object"
+      },
       "pub.chive.admin.getSystemHealth.databaseHealth": {
         "description": "Health status of a single database connection",
         "properties": {
@@ -17486,18 +17538,38 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "edgeCount": {
-                      "description": "Total graph edges",
+                    "authorNodes": {
+                      "description": "Nodes of subkind author.",
                       "type": "integer"
                     },
-                    "nodeCount": {
-                      "description": "Total graph nodes",
+                    "fieldNodes": {
+                      "description": "Nodes of subkind field.",
+                      "type": "integer"
+                    },
+                    "institutionNodes": {
+                      "description": "Nodes of subkind institution.",
+                      "type": "integer"
+                    },
+                    "pendingProposals": {
+                      "description": "Proposals awaiting review.",
+                      "type": "integer"
+                    },
+                    "totalEdges": {
+                      "description": "Total knowledge graph edges.",
+                      "type": "integer"
+                    },
+                    "totalNodes": {
+                      "description": "Total knowledge graph nodes.",
                       "type": "integer"
                     }
                   },
                   "required": [
-                    "nodeCount",
-                    "edgeCount"
+                    "totalNodes",
+                    "totalEdges",
+                    "fieldNodes",
+                    "authorNodes",
+                    "institutionNodes",
+                    "pendingProposals"
                   ],
                   "type": "object"
                 }
@@ -17921,24 +17993,60 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "Search analytics aggregates. The response also carries `ctr`, the click-through rate as a fraction of impressions, and `avgDwellTimeMs`, the mean dwell time or null when nothing has been measured. Neither is declared here: Lexicon has no float type, `unknown` means an object rather than any value, and a declared integer rejects both a fraction and null. Undeclared properties pass validation and reach the client unchanged, so declaring them as integers would break the endpoint rather than describe it.",
                   "properties": {
+                    "clicks": {
+                      "description": "Results clicked.",
+                      "type": "integer"
+                    },
+                    "impressions": {
+                      "description": "Results shown.",
+                      "type": "integer"
+                    },
+                    "positionDistribution": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.admin.getSearchAnalytics.positionCount"
+                      },
+                      "type": "array"
+                    },
+                    "relevanceGradeDistribution": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.admin.getSearchAnalytics.relevanceGradeCount"
+                      },
+                      "type": "array"
+                    },
                     "timestamp": {
-                      "description": "Analytics snapshot timestamp",
                       "format": "date-time",
                       "type": "string"
                     },
+                    "topQueries": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.admin.getSearchAnalytics.topQuery"
+                      },
+                      "type": "array"
+                    },
                     "totalClicks": {
-                      "description": "Total number of search result clicks",
+                      "description": "Result clicks recorded.",
                       "type": "integer"
                     },
-                    "totalSearches": {
-                      "description": "Total number of search queries",
+                    "totalQueries": {
+                      "description": "Distinct search queries recorded.",
+                      "type": "integer"
+                    },
+                    "zeroResultCount": {
+                      "description": "Searches that returned nothing.",
                       "type": "integer"
                     }
                   },
                   "required": [
-                    "totalSearches",
+                    "totalQueries",
                     "totalClicks",
+                    "impressions",
+                    "clicks",
+                    "positionDistribution",
+                    "topQueries",
+                    "zeroResultCount",
+                    "relevanceGradeDistribution",
                     "timestamp"
                   ],
                   "type": "object"
@@ -19051,11 +19159,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "Governance violations. There is no `total`: the service returns only the rows, output validation requires every declared required field, and a `total` that nothing produces made this endpoint fail with a 500 rather than describe it. Nothing consumes a total either — the admin page renders the rows.",
                   "properties": {
-                    "total": {
-                      "description": "Total violations",
-                      "type": "integer"
-                    },
                     "violations": {
                       "items": {
                         "$ref": "#/components/schemas/pub.chive.admin.listViolations.violation"
@@ -19064,8 +19169,7 @@
                     }
                   },
                   "required": [
-                    "violations",
-                    "total"
+                    "violations"
                   ],
                   "type": "object"
                 }
@@ -19159,11 +19263,8 @@
             "content": {
               "application/json": {
                 "schema": {
+                  "description": "Governance warnings. There is no `total`: the service returns only the rows, output validation requires every declared required field, and a `total` that nothing produces made this endpoint fail with a 500 rather than describe it. Nothing consumes a total either — the admin page renders the rows.",
                   "properties": {
-                    "total": {
-                      "description": "Total warnings",
-                      "type": "integer"
-                    },
                     "warnings": {
                       "items": {
                         "$ref": "#/components/schemas/pub.chive.admin.listWarnings.warning"
@@ -19172,8 +19273,7 @@
                     }
                   },
                   "required": [
-                    "warnings",
-                    "total"
+                    "warnings"
                   ],
                   "type": "object"
                 }
