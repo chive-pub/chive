@@ -10,6 +10,7 @@
  * @packageDocumentation
  */
 
+import { RichText } from '@atproto/api';
 import type { Agent } from '@atproto/api';
 import type { BlobRef } from '@atproto/lexicon';
 import type {
@@ -1774,6 +1775,8 @@ export interface ChiveProfileRecord {
   $type: 'pub.chive.actor.profile';
   displayName?: string;
   bio?: string;
+  /** Rich bio, the item union reviews and abstracts use. */
+  bioRich?: unknown[];
   orcid?: string;
   affiliations?: ChiveProfileAffiliation[];
   fieldUris?: string[];
@@ -1851,7 +1854,40 @@ export async function updateChiveProfileRecord(
   };
 
   if (data.displayName) record.displayName = data.displayName;
-  if (data.bio) record.bio = data.bio;
+  if (data.bio) {
+    // `bio` keeps the plain text so consumers that want a string still work,
+    // and `bioRich` carries the same content as the item union reviews and
+    // abstracts use, which is what `RichTextRenderer` renders.
+    record.bio = data.bio;
+
+    const textItem: {
+      $type: string;
+      type: string;
+      content: string;
+      facets?: unknown[];
+    } = {
+      $type: 'pub.chive.richtext.defs#textItem',
+      type: 'text',
+      content: data.bio,
+    };
+
+    // Links, @mentions and #tags, detected by `@atproto/api`'s own detector:
+    // it resolves mention handles to DIDs and computes byte offsets against the
+    // UTF-8 encoding rather than the UTF-16 string. Getting that wrong shifts
+    // every facet after the first non-ASCII character, and academic bios are
+    // full of accented names.
+    try {
+      const rt = new RichText({ text: data.bio });
+      await rt.detectFacets(agent);
+      if (rt.facets && rt.facets.length > 0) {
+        textItem.facets = rt.facets;
+      }
+    } catch {
+      // A bio without facets is still a bio; never fail the save over this.
+    }
+
+    record.bioRich = [textItem];
+  }
   if (data.orcid) record.orcid = data.orcid;
   if (data.affiliations?.length) record.affiliations = data.affiliations;
   if (data.fields?.length) record.fieldUris = data.fields;

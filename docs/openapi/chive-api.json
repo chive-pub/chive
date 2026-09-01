@@ -983,6 +983,61 @@
             "maxLength": 2000,
             "type": "string"
           },
+          "bioRich": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.textItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.nodeRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.wikidataRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.fieldRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.facetRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.eprintRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.annotationRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.authorRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.mentionItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.linkItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.tagItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.latexItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.codeBlockItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.headingItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.listItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.blockquoteItem"
+                }
+              ]
+            },
+            "type": "array"
+          },
           "dblpId": {
             "description": "DBLP author identifier (e.g., homepages/s/JohnSmith)",
             "maxLength": 200,
@@ -3442,6 +3497,61 @@
           },
           "bio": {
             "type": "string"
+          },
+          "bioRich": {
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.textItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.nodeRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.wikidataRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.fieldRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.facetRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.eprintRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.annotationRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.authorRefItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.mentionItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.linkItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.tagItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.latexItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.codeBlockItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.headingItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.listItem"
+                },
+                {
+                  "$ref": "#/components/schemas/pub.chive.richtext.defs.blockquoteItem"
+                }
+              ]
+            },
+            "type": "array"
           },
           "dblpId": {
             "type": "string"

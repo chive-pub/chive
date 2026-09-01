@@ -421,9 +421,14 @@ export function ChiveProfileForm() {
               <Textarea
                 id="bio"
                 placeholder="Brief academic bio"
-                rows={3}
+                rows={4}
                 {...form.register('bio')}
               />
+              <p className="text-xs text-muted-foreground">
+                Shown on your Chive profile in place of your sifa.id summary or your Bluesky
+                description, which is often not a professional one. Leave it empty to fall back to
+                those. Links, @mentions and #tags are detected and rendered.
+              </p>
             </div>
           </div>
 

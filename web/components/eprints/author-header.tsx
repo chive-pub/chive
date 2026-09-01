@@ -20,6 +20,10 @@ import { OrcidBadge } from './orcid-badge';
 import { cn } from '@/lib/utils';
 import { getAffiliationDisplay } from '@/lib/utils/affiliation';
 import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
+import type { SifaProfile } from '@/lib/api/generated/types/pub/chive/author/getProfile';
+import type { RichTextItem } from '@/lib/types/rich-text';
+import { RichTextRenderer } from '@/components/editor';
+import { mergeAffiliations } from '@/lib/profile/merge-affiliations';
 
 /**
  * Props for the AuthorHeader component.
@@ -27,6 +31,15 @@ import type { AuthorProfile, Affiliation } from '@/lib/api/schema';
 export interface AuthorHeaderProps {
   /** Author profile data */
   profile: AuthorProfile;
+  /**
+   * The researcher's sifa.id profile, when they have one.
+   *
+   * @remarks
+   * Merged into the affiliations rather than rendered separately: sifa states
+   * the same institutions this profile does, and showing both put each
+   * university on the page twice.
+   */
+  sifa?: SifaProfile;
   /** Additional CSS classes */
   className?: string;
 }
@@ -46,12 +59,13 @@ export interface AuthorHeaderProps {
  * @param props - Component props
  * @returns React element displaying the author header
  */
-export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
+export function AuthorHeader({ profile, sifa, className }: AuthorHeaderProps) {
   const displayName = profile.displayName ?? profile.handle ?? profile.did;
   const initials = getInitials(displayName);
 
   // Type-safe access to extended profile fields
   const extendedProfile = profile as AuthorProfile & {
+    bioRich?: RichTextItem[];
     affiliations?: Affiliation[];
     previousAffiliations?: Affiliation[];
     researchKeywords?: Array<{ label: string; fastId?: string; wikidataId?: string }>;
@@ -65,9 +79,14 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
     scopusAuthorId?: string;
   };
 
-  const hasAffiliations = extendedProfile.affiliations && extendedProfile.affiliations.length > 0;
-  const hasPreviousAffiliations =
-    extendedProfile.previousAffiliations && extendedProfile.previousAffiliations.length > 0;
+  // Each institution once, whichever source names it. Without this a
+  // researcher who keeps both a Chive profile and a sifa.id profile saw the
+  // same university twice on the page.
+  const mergedCurrent = mergeAffiliations(extendedProfile.affiliations, sifa?.currentRoles, true);
+  const mergedPrevious = mergeAffiliations(
+    extendedProfile.previousAffiliations,
+    sifa?.previousRoles
+  );
   const hasResearchKeywords =
     extendedProfile.researchKeywords && extendedProfile.researchKeywords.length > 0;
   const hasNameVariants = extendedProfile.nameVariants && extendedProfile.nameVariants.length > 0;
@@ -115,45 +134,51 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
             </p>
           )}
 
-          {/* Affiliations, grouped by institution.
+          {/* Affiliations, merged across every source that names them.
 
-              Each affiliation is a tree, and this used to render one line per
-              leaf — so three departments at one university produced three long
-              lines that each repeated the university's name. Naming the
-              institution once and listing its units beneath keeps a profile
-              with several affiliations readable, and on a phone keeps a
-              department name from pushing a line to three rows. */}
-          {hasAffiliations && (
-            <ul className="mt-3 space-y-2">
-              {extendedProfile.affiliations!.map((aff, affIdx) => {
-                const { institution, units } = getAffiliationDisplay(aff);
-                return (
-                  <li
-                    key={affIdx}
-                    className="flex items-start justify-center gap-2 sm:justify-start"
-                  >
-                    <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0 text-center sm:text-left">
-                      <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:justify-start">
-                        <span className="font-medium">{institution}</span>
-                        {affIdx === 0 && (
-                          <Badge variant="outline" className="text-xs font-normal">
-                            Primary
-                          </Badge>
-                        )}
-                      </div>
-                      {units.length > 0 && (
-                        <p className="text-sm text-muted-foreground">{units.join(' · ')}</p>
+              A researcher can state their institutions twice: here, and in
+              their sifa.id profile. Rendering both put the same university on
+              the page twice, once as an affiliation and again in a separate
+              professional-profile card. `mergeAffiliations` joins them on the
+              institution, so each appears once carrying what each source knows
+              — the sub-units and ROR id from Chive, the role and years from
+              sifa. */}
+          {mergedCurrent.length > 0 && (
+            <ul className="mt-3 space-y-3">
+              {mergedCurrent.map((aff) => (
+                <li
+                  key={aff.institution}
+                  className="flex items-start justify-center gap-2 sm:justify-start"
+                >
+                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="min-w-0 text-center sm:text-left">
+                    <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:justify-start">
+                      <span className="font-medium">{aff.institution}</span>
+                      {aff.isPrimary && (
+                        <Badge variant="outline" className="text-xs font-normal">
+                          Primary
+                        </Badge>
                       )}
                     </div>
-                  </li>
-                );
-              })}
+                    {/* Departments on their own line rather than joined to the
+                        institution, so a long department name does not read as
+                        part of the university's. */}
+                    {aff.units.length > 0 && (
+                      <p className="text-sm text-muted-foreground">{aff.units.join(' · ')}</p>
+                    )}
+                    {(aff.title ?? aff.span) && (
+                      <p className="text-sm text-muted-foreground">
+                        {[aff.title, aff.span].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
             </ul>
           )}
 
           {/* Fallback to single affiliation if no affiliations array */}
-          {!hasAffiliations && profile.affiliation && (
+          {mergedCurrent.length === 0 && profile.affiliation && (
             <div className="mt-2 flex items-center justify-center gap-2 text-muted-foreground sm:justify-start">
               <Building2 className="h-4 w-4" />
               <span>{profile.affiliation}</span>
@@ -163,7 +188,14 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
           {/* Bio */}
           {profile.bio && (
             <p className="mt-4 max-w-2xl text-muted-foreground">
-              <Linkify text={profile.bio} />
+              {/* The same renderer reviews and abstracts use. A bio written
+                  before rich text existed has no `bioRich`, and falls back to
+                  its plain text. */}
+              {extendedProfile.bioRich && extendedProfile.bioRich.length > 0 ? (
+                <RichTextRenderer items={extendedProfile.bioRich} mode="block" />
+              ) : (
+                <RichTextRenderer text={profile.bio} mode="block" />
+              )}
             </p>
           )}
 
@@ -320,7 +352,7 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
       )}
 
       {/* Previous affiliations */}
-      {hasPreviousAffiliations && (
+      {mergedPrevious.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <GraduationCap className="h-4 w-4" />
@@ -328,19 +360,26 @@ export function AuthorHeader({ profile, className }: AuthorHeaderProps) {
           </div>
           {/* One entry per institution rather than one per leaf: a badge
               holding a full three-level path wraps to several lines on a phone
-              and reads as a paragraph rather than a label. */}
-          <ul className="space-y-1.5">
-            {extendedProfile.previousAffiliations!.map((aff, affIdx) => {
-              const { institution, units } = getAffiliationDisplay(aff);
-              return (
-                <li key={affIdx} className="text-sm">
-                  <span className="text-foreground">{institution}</span>
-                  {units.length > 0 && (
-                    <span className="text-muted-foreground"> — {units.join(' · ')}</span>
-                  )}
-                </li>
-              );
-            })}
+              and reads as a paragraph rather than a label.
+
+              Departments sit on their own line under the institution rather
+              than after a dash, which read as though the department were part
+              of the university's name, and the institutions are spaced apart
+              so a list of several is scannable. */}
+          <ul className="space-y-3">
+            {mergedPrevious.map((aff) => (
+              <li key={aff.institution} className="text-sm">
+                <div className="text-foreground">{aff.institution}</div>
+                {aff.units.length > 0 && (
+                  <div className="text-muted-foreground">{aff.units.join(' · ')}</div>
+                )}
+                {(aff.title ?? aff.span) && (
+                  <div className="text-muted-foreground">
+                    {[aff.title, aff.span].filter(Boolean).join(' · ')}
+                  </div>
+                )}
+              </li>
+            ))}
           </ul>
         </div>
       )}
@@ -423,34 +462,6 @@ function getInitials(name: string): string {
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
-}
-
-/**
- * Renders text with URLs converted to clickable links.
- */
-function Linkify({ text }: { text: string }) {
-  const urlRegex = /(https?:\/\/[^\s<]+)/g;
-  const parts = text.split(urlRegex);
-
-  return (
-    <>
-      {parts.map((part, i) =>
-        urlRegex.test(part) ? (
-          <a
-            key={i}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            {part}
-          </a>
-        ) : (
-          part
-        )
-      )}
-    </>
-  );
 }
 
 /**
