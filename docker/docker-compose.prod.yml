@@ -102,6 +102,17 @@ services:
       - 'traefik.http.routers.web.entrypoints=websecure'
       - 'traefik.http.routers.web.tls.certresolver=letsencrypt'
       - 'traefik.http.services.web.loadbalancer.server.port=3001'
+      # `/api/og` is a Next.js route, not a backend one. The `/api` prefix on
+      # this host otherwise goes to the API container, which strips the prefix
+      # and answers 404 for `/og` — so every OpenGraph image on the site, and
+      # therefore the preview card for every Chive link shared anywhere, came
+      # back as an error instead of an image. A higher priority than the
+      # `/api` router keeps this one path with the frontend.
+      - 'traefik.http.routers.og-image.rule=Host(`${DOMAIN}`) && PathPrefix(`/api/og`)'
+      - 'traefik.http.routers.og-image.entrypoints=websecure'
+      - 'traefik.http.routers.og-image.tls.certresolver=letsencrypt'
+      - 'traefik.http.routers.og-image.service=web'
+      - 'traefik.http.routers.og-image.priority=200'
 
   # ---------------------------------------------------------------------------
   # Governance PDS (Bluesky PDS for community governance records)

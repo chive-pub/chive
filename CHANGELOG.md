@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Every OpenGraph image on the site returned an error.** The main domain routes `/api` to the API container, which strips the prefix before handling, so `/api/og` — a Next.js route, and the only one under that prefix — arrived at the API as `/og` and answered 404. The preview card for a Chive link shared anywhere had a title and description but no image. A more specific Traefik router at higher priority keeps that one path with the frontend, the same carve-out the metrics endpoint already uses.
+
 - **Backlinks from every integration were rejected on insert.** The `backlinks.source_type` constraint listed names from before the plugins were rewritten against the lexicons their services publish, and the types added since were never added to it. A plugin writing a value the constraint does not list has its row rejected by PostgreSQL, which is indistinguishable from finding no reference at all. The constraint is now derived from `BacklinkSourceType`, with a test tying the two together, and the backlink list renders every source type rather than the three it used to know.
 
 - **One unreachable PDS failed the whole deploy, and the records were never retried.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on a single host were enough. Because the reindex is not the last deploy step, everything after it was skipped, including the citation re-matching meant to keep the graph current.
