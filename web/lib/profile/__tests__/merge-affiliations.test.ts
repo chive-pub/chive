@@ -148,3 +148,69 @@ describe('formatSpan', () => {
     expect(formatSpan({})).toBeUndefined();
   });
 });
+
+describe('ordering', () => {
+  it('puts previous affiliations most recently ended first', () => {
+    // The merge walks Chive first and appends sifa-only entries, which is an
+    // order nobody chose — a list showing years read as though unsorted.
+    const merged = mergeAffiliations(
+      [{ name: 'Listed first in the profile' }],
+      [
+        { institution: 'Ended 2018', endedAt: '2018-01-01', source: 'position' },
+        { institution: 'Ended 2024', endedAt: '2024-01-01', source: 'position' },
+        { institution: 'Ended 2021', endedAt: '2021-01-01', source: 'education' },
+      ]
+    );
+
+    expect(merged.map((m) => m.institution)).toEqual([
+      'Ended 2024',
+      'Ended 2021',
+      'Ended 2018',
+      // Undated, so last.
+      'Listed first in the profile',
+    ]);
+  });
+
+  it('orders current affiliations by when the role began', () => {
+    const merged = mergeAffiliations(undefined, [
+      { institution: 'Started 2016', startedAt: '2016-01-01', source: 'position' },
+      { institution: 'Started 2024', startedAt: '2024-01-01', source: 'position' },
+    ]);
+
+    expect(merged.map((m) => m.institution)).toEqual(['Started 2024', 'Started 2016']);
+  });
+
+  it('leads with the primary affiliation whatever its date', () => {
+    const merged = mergeAffiliations(undefined, [
+      { institution: 'Recent', startedAt: '2024-01-01', source: 'position' },
+      {
+        institution: 'Older but primary',
+        startedAt: '2016-01-01',
+        isPrimary: true,
+        source: 'position',
+      },
+    ]);
+
+    expect(merged[0]?.institution).toBe('Older but primary');
+  });
+
+  it('leaves a profile with no dates exactly as its owner arranged it', () => {
+    // A Chive affiliation carries no dates, so sorting must not reshuffle one.
+    const merged = mergeAffiliations(
+      [{ name: 'First' }, { name: 'Second' }, { name: 'Third' }],
+      undefined
+    );
+
+    expect(merged.map((m) => m.institution)).toEqual(['First', 'Second', 'Third']);
+  });
+
+  it('dates an institution the sources both mention by the sifa role', () => {
+    const merged = mergeAffiliations(
+      [{ name: 'Undated in Chive' }, { name: 'Rochester' }],
+      [{ institution: 'Rochester', endedAt: '2024-01-01', source: 'position' }]
+    );
+
+    // Rochester has a date now, so it leads the undated one.
+    expect(merged.map((m) => m.institution)).toEqual(['Rochester', 'Undated in Chive']);
+  });
+});
