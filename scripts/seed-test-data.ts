@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 /**
  * Seeds test data into PostgreSQL, Elasticsearch, and Neo4j.
  *
