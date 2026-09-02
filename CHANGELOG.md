@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- **WhiteWind support.** The service is dead and nothing ever wrote a backlink through it. The plugin, its collection subscription, its source type, its counts column and its rendering are gone.
+
 ### Fixed
+
+- **Backlinks from every integration were rejected on insert.** The `backlinks.source_type` constraint listed names from before the plugins were rewritten against the lexicons their services publish, and the types added since were never added to it. A plugin writing a value the constraint does not list has its row rejected by PostgreSQL, which is indistinguishable from finding no reference at all. The constraint is now derived from `BacklinkSourceType`, with a test tying the two together, and the backlink list renders every source type rather than the three it used to know.
 
 - **One unreachable PDS failed the whole deploy, and the records were never retried.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on a single host were enough. Because the reindex is not the last deploy step, everything after it was skipped, including the citation re-matching meant to keep the graph current.
 

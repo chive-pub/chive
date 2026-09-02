@@ -113,8 +113,6 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   // Margin — annotations and replies on eprints.
   'at.margin.note',
   'at.margin.reply',
-  // WhiteWind — blog entries that may cite an eprint.
-  'com.whtwnd.blog.entry',
   // Leaflet — long-form documents and the comments on them. Both carry
   // references to eprints; see `leaflet-backlinks.ts` for the four routes.
   'pub.leaflet.document',

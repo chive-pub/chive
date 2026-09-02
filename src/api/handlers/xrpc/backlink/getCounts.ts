@@ -32,7 +32,6 @@ export const getCounts: XRPCMethod<QueryParams, void, OutputSchema> = {
     const response: OutputSchema = {
       cosmikCollections: counts.cosmikCollections,
       leafletLists: counts.leafletLists,
-      whitewindBlogs: counts.whitewindBlogs,
       blueskyPosts: counts.blueskyPosts,
       blueskyEmbeds: counts.blueskyEmbeds,
       other: counts.other,

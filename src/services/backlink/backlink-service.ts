@@ -15,7 +15,6 @@
  * Backlink Sources:
  * - Cosmik collections (network.cosmik.collection)
  * - Leaflet reading lists (xyz.leaflet.list)
- * - WhiteWind blog posts (com.whtwnd.blog.entry)
  * - Bluesky posts/embeds (app.bsky.feed.post)
  * - Chive comments (pub.chive.review.comment)
  * - Chive endorsements (pub.chive.review.endorsement)
@@ -65,7 +64,6 @@ interface BacklinkCountsRow {
   target_uri: string;
   cosmik_count: number;
   leaflet_count: number;
-  whitewind_count: number;
   bluesky_post_count: number;
   bluesky_embed_count: number;
   comment_count: number;
@@ -271,7 +269,6 @@ export class BacklinkService implements IBacklinkService {
       return {
         cosmikCollections: 0,
         leafletLists: 0,
-        whitewindBlogs: 0,
         blueskyPosts: 0,
         blueskyEmbeds: 0,
         other: 0,
@@ -283,7 +280,6 @@ export class BacklinkService implements IBacklinkService {
     return {
       cosmikCollections: row.cosmik_count,
       leafletLists: row.leaflet_count,
-      whitewindBlogs: row.whitewind_count,
       blueskyPosts: row.bluesky_post_count,
       blueskyEmbeds: row.bluesky_embed_count,
       other: row.other_count,

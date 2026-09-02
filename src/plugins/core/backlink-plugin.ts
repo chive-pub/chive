@@ -3,7 +3,7 @@
  *
  * @remarks
  * This module provides an abstract base class for plugins that index
- * backlinks from other ATProto applications (Cosmik, Leaflet, WhiteWind,
+ * backlinks from other ATProto applications (Cosmik, Leaflet, standard.site,
  * Bluesky) that reference Chive eprints.
  *
  * All backlinks follow ATProto compliance:
@@ -387,7 +387,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    *
    * @remarks
    * Helper method for extracting AT-URIs from markdown content
-   * (e.g., WhiteWind blog posts).
+   * (e.g., Leaflet documents).
    */
   protected extractUrisFromText(text: string): string[] {
     // Match at:// URIs

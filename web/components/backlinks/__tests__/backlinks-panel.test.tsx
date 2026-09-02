@@ -44,8 +44,7 @@ const mockCounts = {
   cosmikCollections: 2,
   blueskyPosts: 3,
   blueskyEmbeds: 0,
-  whitewindBlogs: 1,
-  leafletLists: 0,
+  leafletLists: 1,
   other: 0,
   total: 6,
 };
@@ -111,7 +110,6 @@ describe('BacklinksPanel', () => {
         cosmikCollections: 0,
         blueskyPosts: 0,
         blueskyEmbeds: 0,
-        whitewindBlogs: 0,
         leafletLists: 0,
         other: 0,
         total: 0,
@@ -150,7 +148,7 @@ describe('BacklinksPanel', () => {
     // Should show source type sections
     expect(screen.getByText('Cosmik Collections')).toBeInTheDocument();
     expect(screen.getByText('Bluesky Posts')).toBeInTheDocument();
-    expect(screen.getByText('WhiteWind Blogs')).toBeInTheDocument();
+    expect(screen.getByText('Leaflet Documents')).toBeInTheDocument();
   });
 
   it('should expand section and load backlinks on click', async () => {

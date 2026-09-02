@@ -37,7 +37,6 @@ const HANDLED_BY: Record<string, string> = {
   'pub.leaflet.comment': 'leaflet-backlinks',
   'site.standard.document': 'standard-site-backlinks',
   'community.lexicon.calendar.event': 'calendar-events',
-  'com.whtwnd.blog.entry': 'whitewind-backlinks',
 };
 
 describe('observed collections', () => {

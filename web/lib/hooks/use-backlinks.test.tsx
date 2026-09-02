@@ -65,7 +65,6 @@ const mockCounts = {
   cosmikCollections: 3,
   blueskyPosts: 5,
   blueskyEmbeds: 2,
-  whitewindBlogs: 1,
   leafletLists: 0,
   other: 0,
   total: 11,

@@ -62,7 +62,6 @@ const SAMPLE_BACKLINK_ROW = {
 const SAMPLE_COUNTS_ROW = {
   cosmik_count: 5,
   leaflet_count: 3,
-  whitewind_count: 2,
   bluesky_post_count: 6,
   bluesky_embed_count: 4,
   comment_count: 0,
@@ -310,7 +309,6 @@ describe('BacklinkService', () => {
       expect(result).toMatchObject({
         cosmikCollections: 5,
         leafletLists: 3,
-        whitewindBlogs: 2,
         blueskyPosts: 6,
         blueskyEmbeds: 4,
         other: 0,
@@ -326,7 +324,6 @@ describe('BacklinkService', () => {
       expect(result).toMatchObject({
         cosmikCollections: 0,
         leafletLists: 0,
-        whitewindBlogs: 0,
         blueskyPosts: 0,
         blueskyEmbeds: 0,
         other: 0,

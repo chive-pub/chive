@@ -3777,7 +3777,6 @@
             "enum": [
               "cosmik.collection",
               "leaflet.list",
-              "whitewind.blog",
               "bluesky.post",
               "bluesky.embed",
               "other"
@@ -3831,7 +3830,6 @@
             "enum": [
               "cosmik.collection",
               "leaflet.list",
-              "whitewind.blog",
               "bluesky.post",
               "bluesky.embed",
               "other"
@@ -21424,7 +21422,6 @@
                     "enum": [
                       "cosmik.collection",
                       "leaflet.list",
-                      "whitewind.blog",
                       "bluesky.post",
                       "bluesky.embed",
                       "other"
@@ -21656,16 +21653,11 @@
                     "total": {
                       "description": "Total count of all backlinks",
                       "type": "integer"
-                    },
-                    "whitewindBlogs": {
-                      "description": "Count of Whitewind blog backlinks",
-                      "type": "integer"
                     }
                   },
                   "required": [
                     "cosmikCollections",
                     "leafletLists",
-                    "whitewindBlogs",
                     "blueskyPosts",
                     "blueskyEmbeds",
                     "other",
@@ -21736,7 +21728,6 @@
               "enum": [
                 "cosmik.collection",
                 "leaflet.list",
-                "whitewind.blog",
                 "bluesky.post",
                 "bluesky.embed",
                 "other"

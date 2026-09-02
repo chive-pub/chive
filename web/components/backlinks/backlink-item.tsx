@@ -1,6 +1,14 @@
 'use client';
 
-import { BookMarked, MessageCircle, List, PenLine, Link2 } from 'lucide-react';
+import {
+  BookMarked,
+  MessageCircle,
+  FileText,
+  CalendarDays,
+  Highlighter,
+  Users,
+  Link2,
+} from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 import type { Backlink, BacklinkSourceType } from '@/lib/hooks/use-backlinks';
@@ -12,10 +20,20 @@ function getSourceIcon(sourceType: BacklinkSourceType) {
   switch (sourceType) {
     case 'cosmik.collection':
       return BookMarked;
-    case 'leaflet.list':
-      return List;
-    case 'whitewind.blog':
-      return PenLine;
+    case 'cosmik.connection':
+    case 'cosmik.follow':
+      return Users;
+    case 'leaflet.document':
+    case 'standard.document':
+      return FileText;
+    case 'leaflet.comment':
+      return MessageCircle;
+    case 'calendar.event':
+      return CalendarDays;
+    case 'margin.annotation':
+    case 'margin.highlight':
+    case 'margin.bookmark':
+      return Highlighter;
     case 'bluesky.post':
     case 'bluesky.embed':
       return MessageCircle;
@@ -41,17 +59,19 @@ function buildSourceUrl(backlink: Backlink): string | null {
     case 'cosmik.collection':
       // Cosmik collections at cosmik.network/collection/{did}/{rkey}
       return `https://cosmik.network/collection/${did}/${rkey}`;
-    case 'leaflet.list':
-      // Leaflet lists at leaflet.pub/list/{did}/{rkey}
-      return `https://leaflet.pub/list/${did}/${rkey}`;
-    case 'whitewind.blog':
-      // WhiteWind blogs at whitewind.blog/{handle}/{slug}
-      return `https://whitewind.blog/profile/${did}/entry/${rkey}`;
+    case 'leaflet.document':
+    case 'leaflet.comment':
+      // Leaflet documents at leaflet.pub/{did}/{rkey}
+      return `https://leaflet.pub/${did}/${rkey}`;
     case 'bluesky.post':
     case 'bluesky.embed':
       // Bluesky posts at bsky.app/profile/{did}/post/{rkey}
       return `https://bsky.app/profile/${did}/post/${rkey}`;
     default:
+      // A standard.site document, a calendar event or a Margin annotation has
+      // no single web host: the record is the artefact and each publisher
+      // renders it at its own address. The AT-URI is shown instead of guessing
+      // a link that may not resolve.
       return null;
   }
 }
@@ -63,10 +83,24 @@ function getSourceLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
     case 'cosmik.collection':
       return 'Cosmik';
-    case 'leaflet.list':
+    case 'cosmik.connection':
+      return 'Cosmik connection';
+    case 'cosmik.follow':
+      return 'Cosmik follow';
+    case 'leaflet.document':
       return 'Leaflet';
-    case 'whitewind.blog':
-      return 'WhiteWind';
+    case 'leaflet.comment':
+      return 'Leaflet comment';
+    case 'standard.document':
+      return 'Document';
+    case 'calendar.event':
+      return 'Talk';
+    case 'margin.annotation':
+      return 'Margin annotation';
+    case 'margin.highlight':
+      return 'Margin highlight';
+    case 'margin.bookmark':
+      return 'Margin bookmark';
     case 'bluesky.post':
       return 'Bluesky';
     case 'bluesky.embed':

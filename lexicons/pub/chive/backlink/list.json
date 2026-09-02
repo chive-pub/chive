@@ -20,7 +20,6 @@
             "knownValues": [
               "cosmik.collection",
               "leaflet.list",
-              "whitewind.blog",
               "bluesky.post",
               "bluesky.embed",
               "other"
@@ -90,7 +89,6 @@
           "knownValues": [
             "cosmik.collection",
             "leaflet.list",
-            "whitewind.blog",
             "bluesky.post",
             "bluesky.embed",
             "other"

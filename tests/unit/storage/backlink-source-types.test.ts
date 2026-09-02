@@ -57,16 +57,16 @@ describe('backlink source types', () => {
     'standard.document',
     'calendar.event',
     'margin.annotation',
-    'whitewind.blog',
   ])('%s, which a plugin writes, is allowed', (type) => {
     expect(constraintValues()).toContain(type);
   });
 
-  it('no longer allows the names that never matched a real record type', () => {
-    // `leaflet.list` named an NSID Leaflet does not publish, and
-    // `semble.collection` predates the rename to Cosmik.
+  it('does not allow names with no corresponding record type', () => {
+    // `leaflet.list` names an NSID Leaflet does not publish, `semble.collection`
+    // predates the rename to Cosmik, and WhiteWind is no longer read.
     expect(constraintValues()).not.toContain('leaflet.list');
     expect(constraintValues()).not.toContain('semble.collection');
+    expect(constraintValues()).not.toContain('whitewind.blog');
   });
 
   it('rewrites rows carrying the old names rather than dropping them', () => {

@@ -32,7 +32,6 @@ const SOURCE_TYPES = [
   'cosmik.follow',
   'leaflet.document',
   'leaflet.comment',
-  'whitewind.blog',
   'bluesky.post',
   'bluesky.embed',
   'margin.annotation',
@@ -62,6 +61,11 @@ export function up(pgm: MigrationBuilder): void {
     pgm.sql(`UPDATE backlinks SET source_type = '${to}' WHERE source_type = '${from}'`);
   }
 
+  // WhiteWind support is gone, and its counts column with it. Nothing wrote to
+  // it, so there is nothing to preserve.
+  pgm.sql(`DELETE FROM backlinks WHERE source_type = 'whitewind.blog'`);
+  pgm.sql(`ALTER TABLE backlink_counts DROP COLUMN IF EXISTS whitewind_count`);
+
   // Anything else outside the new set becomes 'other' rather than blocking the
   // migration. A backlink with an unrecognised source is still a backlink.
   pgm.sql(`
@@ -87,7 +91,6 @@ export function up(pgm: MigrationBuilder): void {
         target_uri,
         semble_count,
         leaflet_count,
-        whitewind_count,
         bluesky_count,
         comment_count,
         endorsement_count,
@@ -98,7 +101,6 @@ export function up(pgm: MigrationBuilder): void {
         p_target_uri,
         COUNT(*) FILTER (WHERE source_type LIKE 'cosmik.%'),
         COUNT(*) FILTER (WHERE source_type LIKE 'leaflet.%'),
-        COUNT(*) FILTER (WHERE source_type = 'whitewind.blog'),
         COUNT(*) FILTER (WHERE source_type IN ('bluesky.post', 'bluesky.embed')),
         COUNT(*) FILTER (WHERE source_type = 'chive.comment'),
         COUNT(*) FILTER (WHERE source_type = 'chive.endorsement'),
@@ -109,7 +111,6 @@ export function up(pgm: MigrationBuilder): void {
       ON CONFLICT (target_uri) DO UPDATE SET
         semble_count = EXCLUDED.semble_count,
         leaflet_count = EXCLUDED.leaflet_count,
-        whitewind_count = EXCLUDED.whitewind_count,
         bluesky_count = EXCLUDED.bluesky_count,
         comment_count = EXCLUDED.comment_count,
         endorsement_count = EXCLUDED.endorsement_count,

@@ -127,8 +127,9 @@ function BacklinkSection({
  * Displays backlinks to an eprint from external sources.
  *
  * @remarks
- * Shows references to this eprint from Cosmik collections, Bluesky posts,
- * WhiteWind blogs, and Leaflet lists. Includes counts by source type.
+ * Shows references to this eprint from elsewhere on the network: Cosmik
+ * collections, Leaflet documents and comments, standard.site documents,
+ * calendar events, Margin annotations and Bluesky posts.
  *
  * @example
  * ```tsx
@@ -144,8 +145,10 @@ export function BacklinksPanel({ eprintUri, className }: BacklinksPanelProps) {
     if (counts.cosmikCollections > 0) sourcesWithBacklinks.push('cosmik.collection');
     if (counts.blueskyPosts > 0) sourcesWithBacklinks.push('bluesky.post');
     if (counts.blueskyEmbeds > 0) sourcesWithBacklinks.push('bluesky.embed');
-    if (counts.whitewindBlogs > 0) sourcesWithBacklinks.push('whitewind.blog');
-    if (counts.leafletLists > 0) sourcesWithBacklinks.push('leaflet.list');
+    if (counts.leafletLists > 0) sourcesWithBacklinks.push('leaflet.document');
+    // `other` covers the source types the counts are not bucketed by —
+    // standard.site documents, calendar events and Margin annotations all land
+    // here, so the filter must offer it whenever anything is there.
     if (counts.other > 0) sourcesWithBacklinks.push('other');
   }
 

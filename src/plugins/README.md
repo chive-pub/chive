@@ -50,7 +50,6 @@ plugins/
     ├── semantics-archive.ts     # Semantics Archive import
     ├── semble-backlinks.ts      # Semble backlinks
     ├── software-heritage.ts     # Software Heritage archiving
-    ├── whitewind-backlinks.ts   # WhiteWind backlinks
     ├── wikidata.ts              # Wikidata entity linking
     └── zenodo-integration.ts    # Zenodo deposit sync
 ```
@@ -73,7 +72,6 @@ Track mentions across platforms:
 
 - `bluesky-backlinks.ts` - Bluesky posts
 - `leaflet-backlinks.ts` - Leaflet.social
-- `whitewind-backlinks.ts` - WhiteWind blogs
 - `semble-backlinks.ts` - Semble discussions
 
 ### Enrichment Plugins
