@@ -774,10 +774,34 @@ async function main() {
 
   await cleanup(pgPool, esClient, neo4jDriver);
 
-  // Exit with error code if there were failures
-  if (stats.failed > 0) {
+  // A record Chive could not fetch is not a reason to fail the run.
+  //
+  // Chive is an AppView: the records live in user PDSes, any of which can be
+  // unreachable, rate-limiting, or slow at the moment the reindex happens to
+  // run. Treating that as a failure meant one unavailable host failed the whole
+  // deploy — and because the reindex is not the last step, everything after it
+  // was skipped too, including the citation re-matching that keeps the graph
+  // current. The index entry for an unfetched record is simply left as it was,
+  // and the next run picks it up.
+  //
+  // This is only about transient fetch failures. A record that is gone from its
+  // PDS is pruned earlier in the run, and unresolved field labels still fail
+  // below, because those mean the index is serving something wrong rather than
+  // something stale.
+  const transient = stats.failedRecords.filter((record) => isTransient(record.error));
+  const permanent = stats.failed - transient.length;
+
+  if (transient.length > 0) {
     console.log();
-    console.log('WARNING: Some records failed to reindex. Check logs above.');
+    console.log(
+      `${String(transient.length)} record(s) could not be fetched from their PDS and were left ` +
+        `as they are. The next reindex will retry them.`
+    );
+  }
+
+  if (permanent > 0) {
+    console.log();
+    console.log('WARNING: Some records failed to reindex for reasons other than PDS access.');
     process.exit(1);
   }
 
@@ -786,6 +810,36 @@ async function main() {
   if (unresolvedLabels) {
     process.exit(1);
   }
+}
+
+/**
+ * Whether a reindex failure is a transient inability to reach a PDS.
+ *
+ * @param error - The recorded failure message
+ * @returns True when the record could not be fetched, rather than being wrong
+ *
+ * @remarks
+ * A PDS that is down, rate-limiting, or slow is an ordinary condition for an
+ * AppView, and the record is still whatever it was — nothing about the index is
+ * now incorrect, only stale. A parse or validation failure is different: that
+ * record cannot be indexed correctly however many times it is retried.
+ */
+function isTransient(error: string | undefined): boolean {
+  const message = (error ?? '').toLowerCase();
+  return (
+    message.includes('fetch failed') ||
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('econnrefused') ||
+    message.includes('econnreset') ||
+    message.includes('enotfound') ||
+    message.includes('socket hang up') ||
+    message.includes('rate limit') ||
+    message.includes('429') ||
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504')
+  );
 }
 
 async function cleanup(pool: Pool, esClient: ElasticsearchClient, neo4jDriver: Driver) {

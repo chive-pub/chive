@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Fixed
+
+- **One unreachable PDS failed the whole deploy.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on one host were enough. Worse, the reindex is not the last deploy step, so everything after it was skipped, including the citation re-matching meant to keep the graph current. A record that could not be fetched now leaves its index entry as it was and is retried on the next run. Failures that mean the index would be _wrong_ rather than stale, including unresolved field labels, still fail the deploy.
+
 ## [0.15.0] - 2026-09-02
 
 ### Added
