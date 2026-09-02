@@ -779,18 +779,14 @@ async function main() {
 
   // A record Chive could not fetch is not a reason to fail the run.
   //
-  // Chive is an AppView: the records live in user PDSes, any of which can be
-  // unreachable, rate-limiting, or slow at the moment the reindex happens to
-  // run. Treating that as a failure meant one unavailable host failed the whole
-  // deploy — and because the reindex is not the last step, everything after it
-  // was skipped too, including the citation re-matching that keeps the graph
-  // current. The index entry for an unfetched record is simply left as it was,
-  // and the next run picks it up.
+  // The records live in user PDSes, any of which can be unreachable,
+  // rate-limiting or slow at the moment this happens to run. That leaves the
+  // index stale, not wrong, and this script is not the last step of a deploy —
+  // failing here skips everything after it.
   //
-  // This is only about transient fetch failures. A record that is gone from its
-  // PDS is pruned earlier in the run, and unresolved field labels still fail
-  // below, because those mean the index is serving something wrong rather than
-  // something stale.
+  // Failures that would leave the index serving something *wrong* are treated
+  // differently: a record gone from its PDS is pruned earlier in the run, and
+  // unresolved field labels still exit non-zero below.
   const transient = stats.failedRecords.filter((record) => isTransient(record.error));
   const permanent = stats.failed - transient.length;
 
@@ -853,18 +849,16 @@ function isTransient(error: string | undefined): boolean {
  * @returns How many were queued
  *
  * @remarks
- * A record that could not be fetched must not be dropped on the floor. The
- * running service already has an index retry worker — a BullMQ queue that
- * resolves the DID, re-fetches from the PDS and indexes, backing off
- * exponentially across ten attempts — so this reindex hands its failures to
- * that worker rather than reporting them and moving on.
+ * The running service has an index retry worker — a BullMQ queue that resolves
+ * the DID, re-fetches from the PDS and indexes, backing off exponentially
+ * across ten attempts — so failures go there rather than being reported and
+ * forgotten. The reindex finishes, the deploy proceeds, and the records are
+ * retried in the background.
  *
- * The effect is that the deploy no longer waits on a PDS being reachable at
- * one particular moment: the reindex finishes, the deploy proceeds, and the
- * records are retried in the background until they succeed. Should the queue
- * exhaust its attempts, the periodic freshness scan is the outer loop that
- * picks the record up later, so there is no state in which a record is stale
- * and nothing is ever going to try again.
+ * If the queue exhausts its attempts, the periodic freshness scan selects
+ * records by how long ago they were synced, so one that was never fetched sorts
+ * to the front of the next scan. Between the two there is no state in which a
+ * record is stale and nothing will try it again.
  *
  * Jobs are keyed by URI, so a record already queued is not queued twice.
  *

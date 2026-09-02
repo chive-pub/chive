@@ -2,14 +2,13 @@
  * A PDS being unreachable must not fail the deploy.
  *
  * @remarks
- * Chive is an AppView: the records live in user PDSes, any of which can be
- * down, rate-limiting or slow when the reindex happens to run. Treating that as
- * a failure meant one unavailable host failed the whole deploy — and since the
- * reindex is not the last step, everything after it was skipped, including the
- * citation re-matching that keeps the graph current.
+ * The records live in user PDSes, any of which can be down, rate-limiting or
+ * slow when the reindex runs. That leaves the index stale rather than wrong,
+ * and the reindex is not the last deploy step, so failing there skips
+ * everything after it.
  *
- * An unfetched record leaves the index stale, not wrong. A record that cannot
- * be indexed correctly is a different thing and still fails.
+ * A record that cannot be indexed *correctly* is a different case and still
+ * fails.
  *
  * @packageDocumentation
  */
