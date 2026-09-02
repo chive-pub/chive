@@ -75,6 +75,44 @@ describe('reindex exit conditions', () => {
   });
 });
 
+describe('unfetched records are retried, not dropped', () => {
+  it('hands them to the index retry worker', () => {
+    // The running service already has a BullMQ worker that resolves the DID,
+    // re-fetches from the PDS and indexes, backing off across ten attempts.
+    // The reindex enqueues onto it rather than reporting and moving on.
+    expect(script).toContain('INDEX_RETRY_QUEUE_NAME');
+    expect(script).toContain('async function enqueueForRetry(');
+  });
+
+  it('keys jobs by URI so a queued record is not queued twice', () => {
+    expect(script).toMatch(/jobId: makeJobId\('retry', record\.uri\)/);
+  });
+
+  it('does not fail the deploy when the queue itself is unreachable', () => {
+    // The reindex has already done its work by this point; Redis being down is
+    // not a reason to fail a deploy either.
+    const fn = script.slice(script.indexOf('async function enqueueForRetry('));
+    expect(fn.slice(0, 1800)).toContain('catch');
+  });
+
+  it('closes the queue connection it opened', () => {
+    const fn = script.slice(script.indexOf('async function enqueueForRetry('));
+    expect(fn.slice(0, 1800)).toContain('queue.close()');
+  });
+});
+
+describe('the periodic backstop', () => {
+  it('selects records by how long ago they were synced', () => {
+    // This is what makes the guarantee hold after the retry queue exhausts its
+    // attempts: a record that could not be fetched keeps its old
+    // `last_synced_at`, so it sorts to the front of the next scan. There is no
+    // state in which a record is stale and nothing will try it again.
+    const scan = readFileSync(join(process.cwd(), 'src/jobs/freshness-scan-job.ts'), 'utf8');
+    expect(scan).toContain('WHERE last_synced_at < $1');
+    expect(scan).toContain('ORDER BY last_synced_at ASC');
+  });
+});
+
 describe('deploy ordering', () => {
   it('runs citation re-matching after the reindex', () => {
     // Which is why a reindex that exits non-zero silently skipped it.

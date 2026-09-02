@@ -30,6 +30,7 @@ import { Pool } from 'pg';
 import { AtpAgent } from '@atproto/api';
 import { Client as ElasticsearchClient } from '@elastic/elasticsearch';
 import neo4j, { Driver } from 'neo4j-driver';
+import { Queue } from 'bullmq';
 
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { mapEprintToDocument } from '../src/storage/elasticsearch/document-mapper.js';
@@ -40,6 +41,8 @@ import {
   type NodeLookup,
 } from '../src/utils/field-label.js';
 import type { AtUri, CID } from '../src/types/atproto.js';
+import { INDEX_RETRY_QUEUE_NAME } from '../src/workers/index-retry-worker.js';
+import { makeJobId } from '../src/utils/at-uri.js';
 
 // =============================================================================
 // CONFIGURATION
@@ -793,9 +796,10 @@ async function main() {
 
   if (transient.length > 0) {
     console.log();
+    const queued = await enqueueForRetry(transient);
     console.log(
-      `${String(transient.length)} record(s) could not be fetched from their PDS and were left ` +
-        `as they are. The next reindex will retry them.`
+      `${String(transient.length)} record(s) could not be fetched from their PDS; ` +
+        `${String(queued)} queued for background retry.`
     );
   }
 
@@ -840,6 +844,76 @@ function isTransient(error: string | undefined): boolean {
     message.includes('503') ||
     message.includes('504')
   );
+}
+
+/**
+ * Hands unfetched records to the retry worker.
+ *
+ * @param records - Records the reindex could not fetch
+ * @returns How many were queued
+ *
+ * @remarks
+ * A record that could not be fetched must not be dropped on the floor. The
+ * running service already has an index retry worker — a BullMQ queue that
+ * resolves the DID, re-fetches from the PDS and indexes, backing off
+ * exponentially across ten attempts — so this reindex hands its failures to
+ * that worker rather than reporting them and moving on.
+ *
+ * The effect is that the deploy no longer waits on a PDS being reachable at
+ * one particular moment: the reindex finishes, the deploy proceeds, and the
+ * records are retried in the background until they succeed. Should the queue
+ * exhaust its attempts, the periodic freshness scan is the outer loop that
+ * picks the record up later, so there is no state in which a record is stale
+ * and nothing is ever going to try again.
+ *
+ * Jobs are keyed by URI, so a record already queued is not queued twice.
+ *
+ * Failing to enqueue is logged and otherwise ignored: the reindex has already
+ * done its work, and Redis being unavailable is not a reason to fail a deploy
+ * either.
+ */
+async function enqueueForRetry(records: readonly ReindexResult[]): Promise<number> {
+  if (records.length === 0) return 0;
+
+  const redisUrl = new URL(process.env.REDIS_URL ?? 'redis://localhost:6379');
+  const queue = new Queue(INDEX_RETRY_QUEUE_NAME, {
+    connection: {
+      host: redisUrl.hostname,
+      port: Number.parseInt(redisUrl.port || '6379', 10),
+    },
+  });
+
+  let queued = 0;
+
+  try {
+    for (const record of records) {
+      // at://did/collection/rkey
+      const [, , did, collection, rkey] = record.uri.split('/');
+      if (!did || !collection || !rkey) continue;
+
+      await queue.add(
+        'index-retry',
+        {
+          uri: record.uri,
+          did,
+          collection,
+          rkey,
+          originalError: record.error,
+          failedAt: new Date().toISOString(),
+        },
+        { jobId: makeJobId('retry', record.uri) }
+      );
+      queued += 1;
+    }
+  } catch (error) {
+    console.log(
+      `  Could not queue records for retry: ${error instanceof Error ? error.message : String(error)}`
+    );
+  } finally {
+    await queue.close();
+  }
+
+  return queued;
 }
 
 async function cleanup(pool: Pool, esClient: ElasticsearchClient, neo4jDriver: Driver) {
