@@ -461,6 +461,24 @@ jobs:
 
             echo "=== Elasticsearch reindex complete ==="
 
+            echo "=== Re-matching citations against the current corpus ==="
+
+            # Citations are matched to Chive eprints once, while a document is
+            # processed, against whatever was indexed at that moment. Nothing
+            # re-runs it, so a reference to a paper indexed later stays
+            # unresolved and the graph never gains that edge.
+            #
+            # This resolves citations that have no match yet and creates the
+            # missing edges. It reads Postgres and writes Neo4j — no PDF fetch,
+            # no GROBID — and skips anything already matched, so running it on
+            # every deploy costs little and keeps the graph current as the
+            # corpus grows.
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/rematch-citations.js
+
+            echo "=== Citation re-matching complete ==="
+
       - name: Verify deployment
         if: ${{ vars.DOMAIN != '' }}
         run: |

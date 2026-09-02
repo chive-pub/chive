@@ -26,6 +26,7 @@ import { AddToCollectionButton } from '@/components/collection/add-to-collection
 import { MuteButton } from '@/components/authors/mute-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
+import { AuthorProposals } from '@/components/authors/author-proposals';
 
 /**
  * Props for the AuthorPageContent component.
@@ -203,13 +204,7 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
       case 'endorsements':
         return <AuthorEndorsements did={did} />;
       case 'proposals':
-        return (
-          <div className="rounded-lg border bg-muted/50 p-8 text-center">
-            <p className="text-sm text-muted-foreground">
-              Graph proposals are not yet available on profile pages.
-            </p>
-          </div>
-        );
+        return <AuthorProposals did={did} />;
       default:
         return null;
     }

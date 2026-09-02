@@ -38,6 +38,11 @@ import { BacklinkTrackingPlugin } from '../core/backlink-plugin.js';
 const EPRINT_PATH_PREFIX = '/eprints/';
 
 /**
+ * The collection every eprint AT-URI contains.
+ */
+const EPRINT_COLLECTION = 'pub.chive.eprint.submission';
+
+/**
  * `site.standard.document`, in the parts this plugin reads.
  *
  * @internal
@@ -99,11 +104,20 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
    * @returns The eprint AT-URI, or an empty array
    *
    * @remarks
-   * A document describes at most one work, so this returns zero or one URI.
-   * Both shapes are read: `path`, which is where the link lives now, and the
-   * legacy `content.uri`, which is what documents written before the schema was
-   * corrected still carry. Dropping the legacy branch would make every
+   * Two different things can make a document about an eprint, and both count.
+   *
+   * A document Chive itself wrote *is* the eprint: `path` carries the eprint's
+   * AT-URI, and `content.uri` is where documents written before the schema was
+   * corrected put it. Dropping the legacy branch would make every
    * already-published Chive document invisible.
+   *
+   * A document anyone else wrote may *reference* an eprint somewhere in its
+   * body — a link in a paragraph, a website block, an embed. `content` is an
+   * open union: `site.standard` does not enumerate block types, and each
+   * publisher brings its own (pckt writes `blog.pckt.block.*`, others write
+   * their own). There is no shape to match against, so rather than special-case
+   * one publisher this walks the record and collects every eprint reference it
+   * finds, whether written as an AT-URI or as a link to the eprint's page.
    */
   extractEprintRefs(record: unknown): string[] {
     if (record === null || typeof record !== 'object') {
@@ -112,6 +126,8 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
 
     const document = record as StandardDocument;
 
+    // A document that *is* an eprint names exactly one, and that identity beats
+    // anything its body happens to link to.
     const fromPath = eprintUriFromPath(document.path);
     if (this.isEprintUri(fromPath)) {
       return [fromPath];
@@ -121,7 +137,7 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
       return [document.content.uri];
     }
 
-    return [];
+    return collectEprintRefs(record);
   }
 
   /**
@@ -143,6 +159,80 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
     return document.description
       ? `${document.title}: ${document.description.slice(0, 200)}`
       : document.title;
+  }
+}
+
+/**
+ * Collects every eprint reference in a document's body.
+ *
+ * @param value - Any part of a `site.standard.document`
+ * @returns Eprint AT-URIs, deduplicated and in the order found
+ *
+ * @remarks
+ * `site.standard.document.content` is an open union — the schema does not say
+ * what a block looks like, and every publisher on the format brings its own
+ * block types. Matching a fixed shape would support whichever publisher was
+ * read at the time and silently miss the rest, so this walks the structure
+ * instead and treats any string that names an eprint as a reference.
+ *
+ * Both forms count. A blogger writing prose links the eprint's page, so a
+ * `chive.pub/eprints/...` URL is normalised back to the AT-URI it encodes; a
+ * tool writing records links the AT-URI directly.
+ *
+ * The walk is depth-limited because the input comes from another repository
+ * and nothing guarantees it is shallow.
+ *
+ * @public
+ */
+export function collectEprintRefs(value: unknown, depth = 0): string[] {
+  if (depth > 12 || value === null || typeof value !== 'object') {
+    return [];
+  }
+
+  const found: string[] = [];
+
+  for (const entry of Array.isArray(value) ? value : Object.values(value)) {
+    if (typeof entry === 'string') {
+      const uri = eprintUriFrom(entry);
+      if (uri) found.push(uri);
+      continue;
+    }
+    found.push(...collectEprintRefs(entry, depth + 1));
+  }
+
+  return [...new Set(found)];
+}
+
+/**
+ * Reads an eprint AT-URI out of a string, however it was written.
+ *
+ * @param value - A candidate URI or URL
+ * @returns The eprint AT-URI, or undefined when the string names no eprint
+ *
+ * @remarks
+ * A link to `https://chive.pub/eprints/<percent-encoded at-uri>` and the AT-URI
+ * itself refer to the same work, and a backlink has to be keyed on the AT-URI
+ * either way — otherwise the same eprint accumulates references under two
+ * different identities.
+ */
+function eprintUriFrom(value: string): string | undefined {
+  if (!value.includes(EPRINT_COLLECTION)) {
+    return undefined;
+  }
+
+  if (value.startsWith('at://')) {
+    return value;
+  }
+
+  // A URL to the eprint page: take the last path segment and decode it.
+  const segment = value.split('?')[0]?.split('#')[0]?.split('/').pop();
+  if (!segment) return undefined;
+
+  try {
+    const decoded = decodeURIComponent(segment);
+    return decoded.startsWith('at://') && decoded.includes(EPRINT_COLLECTION) ? decoded : undefined;
+  } catch {
+    return undefined;
   }
 }
 

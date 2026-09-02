@@ -41,6 +41,7 @@ import { cn } from '@/lib/utils';
 // =============================================================================
 
 import type { SupplementaryCategory } from '@/lib/api/generated/types/pub/chive/defs';
+import { DatasetSnippet } from '@/components/eprints/dataset-snippet';
 export type { SupplementaryCategory };
 
 /**
@@ -84,6 +85,15 @@ export interface DataLinkItem {
   description?: string;
   /** Which part of the paper the data belongs to, such as 'Table 3' */
   paperSection?: string;
+  /**
+   * AT-URI of the Layers corpus the link points at.
+   *
+   * @remarks
+   * Optional in the lexicon: a link can record that data exists without
+   * naming the record that holds it. Only a link that names one can be
+   * turned into code that loads it.
+   */
+  corpusRef?: string;
 }
 
 /**
@@ -222,6 +232,7 @@ function DataLinkCard({ link }: { link: DataLinkItem }) {
         {link.description && (
           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{link.description}</p>
         )}
+        {link.corpusRef && <DatasetSnippet corpusRef={link.corpusRef} />}
       </div>
     </div>
   );
