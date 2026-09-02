@@ -44,6 +44,25 @@ describe('collectEprintRefs', () => {
     expect(collectEprintRefs(document)).toEqual([EPRINT]);
   });
 
+  it.each([
+    [
+      'encoded, as a tool writes it',
+      (at: string) => `https://chive.pub/eprints/${encodeURIComponent(at)}`,
+    ],
+    ['unencoded, as an address bar copies it', (at: string) => `https://chive.pub/eprints/${at}`],
+    ['with a trailing slash', (at: string) => `https://chive.pub/eprints/${at}/`],
+    [
+      'with a query string',
+      (at: string) => `https://chive.pub/eprints/${encodeURIComponent(at)}?utm_source=x`,
+    ],
+    ['with a fragment', (at: string) => `https://chive.pub/eprints/${at}#abstract`],
+  ])('normalises a link %s back to the AT-URI', (_label, build) => {
+    // The page answers on both the encoded and unencoded forms, so both are in
+    // circulation and a backlink keyed on the URL rather than the AT-URI would
+    // file one work under several identities.
+    expect(collectEprintRefs({ content: { items: [{ src: build(EPRINT) }] } })).toEqual([EPRINT]);
+  });
+
   it('finds an eprint linked as a web page, normalised to its AT-URI', () => {
     // A blogger links the page, not the AT-URI. Keying the backlink on the URL
     // would file the same eprint under two identities.
