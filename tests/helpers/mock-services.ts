@@ -215,7 +215,6 @@ export function createMockBacklinkService(): ServerConfig['backlinkService'] {
     getCounts: vi.fn().mockResolvedValue({
       cosmikCollections: 0,
       leafletLists: 0,
-      whitewindBlogs: 0,
       blueskyShares: 0,
       total: 0,
       updatedAt: new Date(),

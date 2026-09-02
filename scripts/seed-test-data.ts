@@ -175,17 +175,16 @@ const TEST_BACKLINKS = [
     indexedAt: '2024-02-20T14:30:00.000Z',
   },
   {
-    sourceUri: 'at://did:plc:whitewind001/com.whitewind.blog.entry/blog001',
-    sourceType: 'whitewind.blog',
-    sourceDid: 'did:plc:whitewind001',
+    // A standard.site document, which is how a post from any publisher on that
+    // format reaches an eprint.
+    sourceUri: 'at://did:plc:pcktuser001/site.standard.document/doc001',
+    sourceType: 'standard.document',
+    sourceDid: 'did:plc:pcktuser001',
     targetUri: 'at://did:plc:jgrove456def/pub.chive.eprint.submission/3kt8m0abcde02',
     context: 'A deep dive into algebraic effects in semantics',
     indexedAt: '2024-03-10T09:15:00.000Z',
   },
   {
-    // `xyz.leaflet.list` does not exist; Leaflet publishes documents and
-    // comments. Seeding the fictional NSID kept the invented shape alive in
-    // the one place that could still fail a build over it.
     sourceUri: 'at://did:plc:leaflet001/pub.leaflet.document/doc001',
     sourceType: 'leaflet.document',
     sourceDid: 'did:plc:leaflet001',
