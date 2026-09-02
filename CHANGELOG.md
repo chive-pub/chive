@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [Unreleased]
-
 ### Fixed
 
 - **One unreachable PDS failed the whole deploy, and the records were never retried.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on a single host were enough. Because the reindex is not the last deploy step, everything after it was skipped, including the citation re-matching meant to keep the graph current.
