@@ -174,7 +174,7 @@ export interface EprintDetailContentProps {
  */
 export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const { data: eprint, isLoading, error } = useEprint(uri);
-  const { dataLinks } = useDataLinks(uri);
+  const { dataLinks, source: dataLinksSource } = useDataLinks(uri);
   const [currentVersion, setCurrentVersion] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<string>('abstract');
   const [showReviewForm, setShowReviewForm] = useState(false);
@@ -1332,6 +1332,18 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           <TabsContent value="data" className="space-y-6">
             {dataCount > 0 && (
               <RepositoriesPanel repositories={eprint.repositories} only={['data']} title="Data" />
+            )}
+            {/* An empty list and an unanswered query look identical on the page,
+                and they mean different things: one says this paper has no linked
+                datasets, the other says we could not find out. Saying which
+                keeps a reader from concluding the data is missing when it is
+                the lookup that failed. The tab's visibility is unchanged --
+                Layers being down must not give every eprint a Data tab. */}
+            {dataLinksSource === 'unavailable' && (
+              <p className="text-sm text-muted-foreground">
+                Linked datasets could not be loaded from Layers just now. Any datasets linked to
+                this paper are unaffected and will appear here again once Layers responds.
+              </p>
             )}
             {/* Supplementary materials, including datasets linked on Layers */}
             {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
