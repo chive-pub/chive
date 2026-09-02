@@ -493,6 +493,19 @@ export class EprintsRepository {
       // Convert to uppercase for SQL
       const sortDirection = sortOrder.toUpperCase() as 'ASC' | 'DESC';
 
+      // The ORDER BY below breaks ties on `uri`. Without a unique tiebreaker
+      // the sort is a partial order, and PostgreSQL may return tied rows in a
+      // different arrangement for each query. Every page of a paginated list
+      // is a separate query, so a list could show one eprint twice, skip
+      // another entirely, and read as though it were not sorted by date.
+      //
+      // Ties are the norm here rather than an edge case: publication dates are
+      // routinely recorded as just a month or a year. On one author's profile
+      // 23 of 58 eprints share a timestamp with another.
+      //
+      // `uri` is the primary key, so including it makes the order total and
+      // therefore stable across queries.
+
       // Use JSONB containment query to find eprints where the author DID
       // appears anywhere in the authors array (not just submitted_by).
       // The @> operator checks if the authors array contains an object with the given DID.
@@ -507,7 +520,7 @@ export class EprintsRepository {
         FROM eprints_index
         WHERE authors @> $1::jsonb
           AND deleted_at IS NULL
-        ORDER BY ${sortColumn} ${sortDirection}
+        ORDER BY ${sortColumn} ${sortDirection}, uri ASC
         LIMIT $2 OFFSET $3
       `;
 
@@ -1044,7 +1057,7 @@ export class EprintsRepository {
       FROM eprints_index
       WHERE (${conditions.join(' OR ')})
         AND deleted_at IS NULL
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, uri ASC
       LIMIT $${fieldUris.length + 1}
     `;
 

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-09-02
+
+### Fixed
+
+- **Affiliations were listed in no particular order.** Merging the Chive profile with the sifa.id one walked the Chive record first and appended whatever sifa alone knew about — an order nobody chose, which on a list showing years read as unsorted. Previous affiliations now order by when the role ended and current ones by when it began, most recent first, with the primary affiliation leading whatever its date. A Chive affiliation carries no dates at all, so an institution both sources name takes its dates from the sifa role, undated entries sort last, and a profile with no dates anywhere is left exactly as its owner arranged it.
+- **A paginated eprint list could repeat, skip or misorder entries.** The queries ordered by date alone, which is a partial order: PostgreSQL gives no guarantee about how it arranges tied rows and may arrange them differently for each query, and every page is a separate query. Publication dates are routinely recorded as just a month or a year, so ties are the norm — 23 of one author's 58 eprints share a timestamp with another. Ordering by the record's URI after the date makes the order total, and identical across pages.
+
+### Added
+
+- **A profile links to the researcher's sifa.id page** when they have one. The link appears only for a researcher whose repository actually holds sifa records, so it never points at an empty page, and it addresses the profile by DID rather than handle, which does not change when someone moves domain.
+
+### Changed
+
+- **A long bio is clamped to a few lines, with a control to read the rest.** A long one used to push the affiliations, identifiers and eprint list off the screen. The control appears only when the text is genuinely clipped, measured rather than guessed from a character count, and re-measured when the element resizes: a bio that fits on a wide window clips on a narrow one.
+- **The bio field is a rich text editor**, the same one the abstract uses, so `@` mentions and `#` tags autocomplete and LaTeX and a preview are available. It was a plain textarea, which accepted the syntax the save path already detected but gave no way to discover it.
+
+### Fixed
+
+- **A cache hiccup could strand a deployment.** The staging deploy for 0.14.0 built the web image and pushed it to the registry, then failed on `error writing layer blob: failed to reserve cache` while exporting to the GitHub Actions cache. The image existed and the job was marked failed, so staging never pulled it and sat two releases behind with nothing in the failure pointing at the cause. The cache export is now marked `ignore-error=true` in both workflows that use it: a cache is an optimisation, and losing it should cost build time rather than a deployment.
+
 ## [0.14.0] - 2026-09-01
 
 ### Added
@@ -982,7 +1002,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/chive-pub/chive/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/chive-pub/chive/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/chive-pub/chive/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/chive-pub/chive/compare/v0.12.0...v0.13.0

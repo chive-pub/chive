@@ -47,6 +47,10 @@ export interface MergedAffiliation {
   readonly title?: string;
   /** Years the role covers, already formatted */
   readonly span?: string;
+  /** ISO date the role began, kept for ordering */
+  readonly startedAt?: string;
+  /** ISO date the role ended, kept for ordering */
+  readonly endedAt?: string;
   /** Whether this is the primary affiliation */
   readonly isPrimary: boolean;
   /** Which sources mentioned this institution */
@@ -132,6 +136,13 @@ export function mergeAffiliations(
               const span = formatSpan(role);
               return span ? { span } : {};
             })()),
+        // Chive affiliations carry no dates, so an institution both sources
+        // name is dated by the sifa role. Without this it stays undated and
+        // sorts to the bottom of a list ordered by recency.
+        ...(existing.startedAt === undefined && role.startedAt
+          ? { startedAt: role.startedAt }
+          : {}),
+        ...(existing.endedAt === undefined && role.endedAt ? { endedAt: role.endedAt } : {}),
         isPrimary: existing.isPrimary || role.isPrimary === true,
         sources: existing.sources.includes('sifa')
           ? existing.sources
@@ -147,13 +158,55 @@ export function mergeAffiliations(
       units: [],
       ...(role.title ? { title: role.title } : {}),
       ...(span ? { span } : {}),
+      ...(role.startedAt ? { startedAt: role.startedAt } : {}),
+      ...(role.endedAt ? { endedAt: role.endedAt } : {}),
       isPrimary: role.isPrimary === true,
       sources: ['sifa'],
     });
   }
 
-  return order.flatMap((key) => {
+  const merged = order.flatMap((key) => {
     const entry = byKey.get(key);
     return entry ? [entry] : [];
+  });
+
+  return sortByRecency(merged);
+}
+
+/**
+ * Orders affiliations most recent first.
+ *
+ * @param merged - Affiliations in the order the sources listed them
+ * @returns The same affiliations, ordered by date
+ *
+ * @remarks
+ * The merge walks the Chive profile and then appends anything sifa alone knew
+ * about, which is an order nobody chose — so a list showing years read as
+ * though it were unsorted. Previous affiliations order by when the role ended
+ * and current ones by when it began, both most recent first.
+ *
+ * A Chive affiliation carries no dates at all: the record is a tree of
+ * institution and sub-units with nothing temporal on it. Undated entries
+ * therefore sort after dated ones, and among themselves keep the order the
+ * profile lists them in — `Array.prototype.sort` is stable, so a profile with
+ * no dates anywhere is left exactly as its owner arranged it.
+ *
+ * The primary affiliation leads regardless of date, because that is what
+ * "primary" means.
+ */
+function sortByRecency(merged: readonly MergedAffiliation[]): MergedAffiliation[] {
+  return [...merged].sort((a, b) => {
+    if (a.isPrimary !== b.isPrimary) {
+      return a.isPrimary ? -1 : 1;
+    }
+
+    // A role that ended is dated by its ending; one still running by its start.
+    const aKey = a.endedAt ?? a.startedAt ?? '';
+    const bKey = b.endedAt ?? b.startedAt ?? '';
+
+    if (aKey === bKey) return 0;
+    if (!aKey) return 1;
+    if (!bKey) return -1;
+    return bKey.localeCompare(aKey);
   });
 }
