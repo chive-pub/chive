@@ -422,6 +422,14 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     (repositories?.protocols?.length ?? 0) +
     (repositories?.preregistration?.url ? 1 : 0);
 
+  // A Layers dataset and a supplementary file are data for this paper as much
+  // as a declared repository is, so they share the tab and its count. Counting
+  // only `repositories.data` would offer a "Data" tab that omits the datasets
+  // someone actually linked.
+  const supplementaryCount = eprint?.supplementaryMaterials?.length ?? 0;
+  const dataTabCount = dataCount + dataLinks.length + supplementaryCount;
+  const hasDataTab = dataTabCount > 0;
+
   /**
    * Build edit data object from eprint.
    * Extracts the rkey from the AT-URI for PDS operations.
@@ -799,10 +807,12 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">{codeCount}</span>
             </TabsTrigger>
           )}
-          {dataCount > 0 && (
+          {hasDataTab && (
             <TabsTrigger value="data" className="gap-1.5">
               Data
-              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">{dataCount}</span>
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {dataTabCount}
+              </span>
             </TabsTrigger>
           )}
           {materialsCount > 0 && (
@@ -1290,10 +1300,52 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           </TabsContent>
         )}
 
-        {/* Data tab */}
-        {dataCount > 0 && (
+        {/* Data tab.
+
+            Everything that is data for this paper, whatever form it takes: the
+            repositories declared on the record, the datasets linked on Layers,
+            and the supplementary files. These used to be split across the
+            metadata tab and nowhere, so a reader looking for the data had to
+            know which of them they were looking for. */}
+        {hasDataTab && (
           <TabsContent value="data" className="space-y-6">
-            <RepositoriesPanel repositories={eprint.repositories} only={['data']} title="Data" />
+            {dataCount > 0 && (
+              <RepositoriesPanel repositories={eprint.repositories} only={['data']} title="Data" />
+            )}
+            {/* Supplementary materials, including datasets linked on Layers */}
+            {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
+              <>
+                <Separator />
+                <SupplementaryPanel
+                  dataLinks={dataLinks.map((link) => ({
+                    uri: link.uri,
+                    dataKind: link.dataKind,
+                    description: link.description,
+                    paperSection: link.paperSection,
+                    corpusRef: link.corpusRef,
+                  }))}
+                  items={(eprint.supplementaryMaterials ?? []).map((item, index) => {
+                    const did = eprint.paperDid ?? eprint.submittedBy;
+                    const blobCid = item.blob?.ref?.toString();
+                    const downloadUrl =
+                      blobCid && eprint.pdsUrl
+                        ? `${eprint.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
+                        : undefined;
+                    const category = isValidSupplementaryCategory(item.categorySlug)
+                      ? item.categorySlug
+                      : 'other';
+                    return {
+                      id: blobCid ?? `supp-${index}`,
+                      label: item.label,
+                      description: item.description,
+                      category,
+                      format: item.detectedFormat,
+                      downloadUrl,
+                    };
+                  })}
+                />
+              </>
+            )}
           </TabsContent>
         )}
 
@@ -1360,40 +1412,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                     grantUrl: f.grantUrl,
                   }))}
                 variant="card"
-              />
-            </>
-          )}
-
-          {/* Supplementary materials, including datasets linked on Layers */}
-          {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
-            <>
-              <Separator />
-              <SupplementaryPanel
-                dataLinks={dataLinks.map((link) => ({
-                  uri: link.uri,
-                  dataKind: link.dataKind,
-                  description: link.description,
-                  paperSection: link.paperSection,
-                }))}
-                items={(eprint.supplementaryMaterials ?? []).map((item, index) => {
-                  const did = eprint.paperDid ?? eprint.submittedBy;
-                  const blobCid = item.blob?.ref?.toString();
-                  const downloadUrl =
-                    blobCid && eprint.pdsUrl
-                      ? `${eprint.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
-                      : undefined;
-                  const category = isValidSupplementaryCategory(item.categorySlug)
-                    ? item.categorySlug
-                    : 'other';
-                  return {
-                    id: blobCid ?? `supp-${index}`,
-                    label: item.label,
-                    description: item.description,
-                    category,
-                    format: item.detectedFormat,
-                    downloadUrl,
-                  };
-                })}
               />
             </>
           )}
