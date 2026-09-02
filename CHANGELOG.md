@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A profile links to the researcher's sifa.id page** when they have one. The link appears only for a researcher whose repository actually holds sifa records, so it never points at an empty page, and it addresses the profile by DID rather than handle, which does not change when someone moves domain.
+
+### Changed
+
+- **A long bio is clamped to a few lines, with a control to read the rest.** A long one used to push the affiliations, identifiers and eprint list off the screen. The control appears only when the text is genuinely clipped, measured rather than guessed from a character count, and re-measured when the element resizes: a bio that fits on a wide window clips on a narrow one.
+- **The bio field is a rich text editor**, the same one the abstract uses, so `@` mentions and `#` tags autocomplete and LaTeX and a preview are available. It was a plain textarea, which accepted the syntax the save path already detected but gave no way to discover it.
+
+### Fixed
+
+- **A cache hiccup could strand a deployment.** The staging deploy for 0.14.0 built the web image and pushed it to the registry, then failed on `error writing layer blob: failed to reserve cache` while exporting to the GitHub Actions cache. The image existed and the job was marked failed, so staging never pulled it and sat two releases behind with nothing in the failure pointing at the cause. The cache export is now marked `ignore-error=true` in both workflows that use it: a cache is an optimisation, and losing it should cost build time rather than a deployment.
+
 ## [0.14.0] - 2026-09-01
 
 ### Added

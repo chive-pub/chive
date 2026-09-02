@@ -391,7 +391,9 @@ jobs:
             ${{ steps.meta-api.outputs.tags }}
             chive:ci
           cache-from: type=gha,scope=backend
-          cache-to: type=gha,mode=max,scope=backend
+          # A cache export failure must not fail the build; see the note in
+          # deploy-staging.yml.
+          cache-to: type=gha,mode=max,scope=backend,ignore-error=true
 
       - name: Push backend image to GHCR
         if: github.event_name != 'pull_request'
