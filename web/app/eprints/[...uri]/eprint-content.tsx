@@ -411,6 +411,17 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     }
   }, [deleteEprint, uri, agent, eprint?.paperDid, eprint?.submittedBy]);
 
+  // How many resources of each kind the eprint has. These decide whether the
+  // Code, Data and Materials tabs exist at all, so an eprint without a
+  // repository is not given an empty tab to click.
+  const repositories = eprint?.repositories;
+  const codeCount = repositories?.code?.length ?? 0;
+  const dataCount = repositories?.data?.length ?? 0;
+  const materialsCount =
+    (repositories?.materials?.length ?? 0) +
+    (repositories?.protocols?.length ?? 0) +
+    (repositories?.preregistration?.url ? 1 : 0);
+
   /**
    * Build edit data object from eprint.
    * Extracts the rkey from the AT-URI for PDS operations.
@@ -777,6 +788,31 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </span>
             )}
           </TabsTrigger>
+          {/* Code and data get their own tabs rather than sitting at the
+              bottom of Metadata. For a paper with a repository, the code and
+              the data are among the first things a reader wants, and they were
+              the hardest things on the page to find. Each tab appears only
+              when the eprint actually has that kind of resource. */}
+          {codeCount > 0 && (
+            <TabsTrigger value="code" className="gap-1.5">
+              Code
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">{codeCount}</span>
+            </TabsTrigger>
+          )}
+          {dataCount > 0 && (
+            <TabsTrigger value="data" className="gap-1.5">
+              Data
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">{dataCount}</span>
+            </TabsTrigger>
+          )}
+          {materialsCount > 0 && (
+            <TabsTrigger value="materials" className="gap-1.5">
+              Materials
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {materialsCount}
+              </span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="related">Related</TabsTrigger>
           <TabsTrigger value="network">Network</TabsTrigger>
           <TabsTrigger value="citations">Citations</TabsTrigger>
@@ -1247,6 +1283,35 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         </TabsContent>
 
         {/* Related papers tab */}
+        {/* Code tab */}
+        {codeCount > 0 && (
+          <TabsContent value="code" className="space-y-6">
+            <RepositoriesPanel repositories={eprint.repositories} only={['code']} title="Code" />
+          </TabsContent>
+        )}
+
+        {/* Data tab */}
+        {dataCount > 0 && (
+          <TabsContent value="data" className="space-y-6">
+            <RepositoriesPanel repositories={eprint.repositories} only={['data']} title="Data" />
+          </TabsContent>
+        )}
+
+        {/* Materials tab.
+
+            Preregistrations, protocols and physical materials are all "how the
+            study was run" rather than an artefact to download, so they share a
+            tab instead of getting three sparse ones. */}
+        {materialsCount > 0 && (
+          <TabsContent value="materials" className="space-y-6">
+            <RepositoriesPanel
+              repositories={eprint.repositories}
+              only={['preregistration', 'protocols', 'materials']}
+              title="Materials & Protocols"
+            />
+          </TabsContent>
+        )}
+
         <TabsContent value="related" className="space-y-6 overflow-visible">
           <RelatedPapersPanel eprintUri={uri} limit={5} editable={isAuthenticated} />
         </TabsContent>
@@ -1333,13 +1398,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             </>
           )}
 
-          {/* Code, data, and model repositories */}
-          {eprint.repositories && (
-            <>
-              <Separator />
-              <RepositoriesPanel repositories={eprint.repositories} />
-            </>
-          )}
+          {/* Code, data and materials have their own tabs now, so Metadata
+              does not repeat them. */}
 
           {/* Related works */}
           {/* No separator: RelatedWorksPanel returns null when empty */}

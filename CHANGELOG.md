@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Code, data and materials have their own tabs on an eprint.** They were rendered at the bottom of the Metadata tab, behind tags, enrichment, conference and funding — the last place on the page anyone would look for a repository, so eprints that recorded one were effectively hiding it. Each tab appears only when the eprint has that kind of resource, so nothing gains an empty tab.
+- **A researcher's graph proposals appear on their profile.** The section existed and rendered "Graph proposals are not yet available on profile pages" — a placeholder that shipped. `pub.chive.governance.listProposals` already accepted `proposedBy`, so the data was there; the section now lists what was proposed, how the community voted, and where each proposal ended up.
+
+### Fixed
+
+- **The citation network was far emptier than the data supported.** Citations are matched to Chive eprints once, while a document is processed, against whatever was indexed at that moment — and nothing re-ran it, so a reference to a paper that arrived later stayed unresolved forever. The graph only ever held edges that were discoverable in extraction order, and grew more incomplete as the corpus filled in behind it. Every deploy now re-resolves citations that have no match yet and creates the missing edges. It reads Postgres and writes the graph — no PDF fetch, no GROBID — and skips anything already matched.
+- **Repositories recorded before the platform field was renamed showed a generic icon.** The lexicon calls it `platformSlug` and that is what the submission wizard writes, but older records carry `platform` and Chive does not rewrite user records. Both are read now, so an older eprint shows its GitHub or OSF icon.
+
 ## [0.14.1] - 2026-09-02
 
 ### Fixed

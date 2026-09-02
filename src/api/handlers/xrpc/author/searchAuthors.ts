@@ -80,8 +80,8 @@ async function searchAuthorsInIndex(
             // Counting appearances here would count how often the author shows
             // up in this page of search hits, which is what `eprintCount` used
             // to report — bounded above by `limit * 3` and by the break below,
-            // so an author with 58 eprints could report 1. The real count is
-            // fetched for the whole page after this loop.
+            // so a prolific author could be reported as having one. The real
+            // count is fetched for the whole page after this loop.
             if (!authorMap.has(author.did)) {
               authorMap.set(author.did, {
                 did: author.did,

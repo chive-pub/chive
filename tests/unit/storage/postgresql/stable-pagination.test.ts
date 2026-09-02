@@ -10,8 +10,8 @@
  * reads as unsorted.
  *
  * Ties are the norm rather than an edge case here: publication dates are
- * routinely recorded as a month or a year. On one production profile, 23 of 58
- * eprints share a timestamp with another.
+ * routinely recorded as a month or a year, so a large fraction of any corpus
+ * shares a timestamp with something else.
  *
  * `uri` is the primary key, so ordering by it after the sort column makes the
  * order total and identical across queries.

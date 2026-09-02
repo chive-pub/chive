@@ -5,8 +5,8 @@
  * The count used to be built by tallying how often an author appeared in the
  * page of search hits. That number is bounded twice over — the search runs with
  * `limit * 3` hits and the loop stops once `limit` distinct authors are found —
- * so an author with 58 eprints could be shown as having 1. It is a different
- * quantity from the one the label claims.
+ * so it can never exceed a fraction of a page however prolific the author. It
+ * is a different quantity from the one the field names.
  *
  * @packageDocumentation
  */

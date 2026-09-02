@@ -500,8 +500,8 @@ export class EprintsRepository {
       // another entirely, and read as though it were not sorted by date.
       //
       // Ties are the norm here rather than an edge case: publication dates are
-      // routinely recorded as just a month or a year. On one author's profile
-      // 23 of 58 eprints share a timestamp with another.
+      // routinely recorded as just a month or a year, so a large fraction of
+      // any corpus shares a timestamp with something else.
       //
       // `uri` is the primary key, so including it makes the order total and
       // therefore stable across queries.

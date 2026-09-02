@@ -21,8 +21,26 @@ import type { Repositories, Preregistration } from '@/lib/api/schema';
 // TYPES
 // =============================================================================
 
+/**
+ * A kind of attached resource.
+ *
+ * @public
+ */
+export type RepositoryKind = 'code' | 'data' | 'preregistration' | 'protocols' | 'materials';
+
 export interface RepositoriesPanelProps {
   repositories?: Repositories;
+  /**
+   * Render only these kinds.
+   *
+   * @remarks
+   * The eprint page gives code and data their own tabs, so each needs the
+   * panel to show one kind rather than all of them. Omitted, every kind
+   * renders, which is what the metadata view wants.
+   */
+  only?: readonly RepositoryKind[];
+  /** Heading for the card; defaults to naming every kind */
+  title?: string;
   className?: string;
 }
 
@@ -239,6 +257,23 @@ function normalizePlatformSlug(platformSlug?: string): string {
 /**
  * Single repository card.
  */
+/**
+ * Reads the platform slug from a repository entry.
+ *
+ * @param repo - A repository from the record
+ * @returns The slug, from whichever field the record uses
+ *
+ * @remarks
+ * The lexicon names this `platformSlug`, and that is what the submission
+ * wizard writes. Records created before the field was named that carry
+ * `platform` instead, and they are still in people's repositories — Chive does
+ * not rewrite user records. Reading both means an older eprint shows its
+ * GitHub or OSF icon rather than falling back to the generic one.
+ */
+function platformSlugOf(repo: { platformSlug?: string; platform?: string }): string | undefined {
+  return repo.platformSlug ?? repo.platform;
+}
+
 function RepositoryCard({
   url,
   label,
@@ -293,7 +328,7 @@ function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
   if (!prereg.url) return null;
 
   // Normalize platform slug for icon/color lookup
-  const normalizedSlug = normalizePlatformSlug(prereg.platformSlug);
+  const normalizedSlug = normalizePlatformSlug(platformSlugOf(prereg));
   const platformConfig = PREREG_PLATFORM_CONFIG[normalizedSlug] ?? PREREG_PLATFORM_CONFIG.other;
   const Icon = platformConfig.icon;
   // Use platform config label for display
@@ -333,16 +368,22 @@ function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
  * @param props - Component props
  * @returns Repositories panel element
  */
-export function RepositoriesPanel({ repositories, className }: RepositoriesPanelProps) {
+export function RepositoriesPanel({
+  repositories,
+  only,
+  title,
+  className,
+}: RepositoriesPanelProps) {
   if (!repositories) return null;
 
   const { code, data, preregistration, protocols, materials } = repositories;
+  const shows = (kind: RepositoryKind): boolean => !only || only.includes(kind);
 
-  const hasCode = code && code.length > 0;
-  const hasData = data && data.length > 0;
-  const hasPreregistration = preregistration?.url;
-  const hasProtocols = protocols && protocols.length > 0;
-  const hasMaterials = materials && materials.length > 0;
+  const hasCode = shows('code') && code && code.length > 0;
+  const hasData = shows('data') && data && data.length > 0;
+  const hasPreregistration = shows('preregistration') && preregistration?.url;
+  const hasProtocols = shows('protocols') && protocols && protocols.length > 0;
+  const hasMaterials = shows('materials') && materials && materials.length > 0;
 
   const hasAny = hasCode || hasData || hasPreregistration || hasProtocols || hasMaterials;
 
@@ -350,18 +391,18 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
 
   // Count total resources
   const totalCount =
-    (code?.length ?? 0) +
-    (data?.length ?? 0) +
-    (preregistration?.url ? 1 : 0) +
-    (protocols?.length ?? 0) +
-    (materials?.length ?? 0);
+    (hasCode ? (code?.length ?? 0) : 0) +
+    (hasData ? (data?.length ?? 0) : 0) +
+    (hasPreregistration ? 1 : 0) +
+    (hasProtocols ? (protocols?.length ?? 0) : 0) +
+    (hasMaterials ? (materials?.length ?? 0) : 0);
 
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Code className="h-4 w-4" />
-          Resources & Repositories
+          {title ?? 'Resources & Repositories'}
           <Badge variant="secondary" className="ml-1">
             {totalCount}
           </Badge>
@@ -381,7 +422,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`code-${index}`}
                   url={repo.url}
                   label={repo.label}
-                  platformSlug={repo.platformSlug}
+                  platformSlug={platformSlugOf(repo)}
                   config={CODE_PLATFORM_CONFIG}
                 />
               ))}
@@ -402,7 +443,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`data-${index}`}
                   url={repo.url}
                   label={repo.label}
-                  platformSlug={repo.platformSlug}
+                  platformSlug={platformSlugOf(repo)}
                   config={DATA_PLATFORM_CONFIG}
                   doi={repo.doi}
                 />
@@ -435,7 +476,7 @@ export function RepositoriesPanel({ repositories, className }: RepositoriesPanel
                   key={`protocol-${index}`}
                   url={protocol.url}
                   label="Protocol"
-                  platformSlug={protocol.platformSlug}
+                  platformSlug={platformSlugOf(protocol)}
                   config={{
                     protocols_io: {
                       label: 'protocols.io',
