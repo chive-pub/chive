@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Half the backlink integrations received no records at all.** The relay decides what a consumer is sent; the local event filter can only narrow that stream, never widen it. The indexer admitted every observed foreign collection locally but passed no filter to the relay, so the consumer fell back on a hardcoded namespace list of its own that named only Chive, cosmik and margin. Leaflet, standard.site, Bluesky and calendar records were dropped upstream and never entered the process — the plugins loaded, subscribed and were never called, and cosmik worked only because it happened to appear in that list. The subscription is now always built from the observed set, the fallback names no foreign namespace so it cannot diverge from that set again, and a test asserts every observed collection is requested from the relay.
+
+- **A backlink write abandoned the rest of the record.** `BacklinkTrackingPlugin` emits `backlink.created` and `backlink.deleted` after each write, and the plugin bus enforces emit permission against the plugin's own manifest. No backlink plugin declared those two hooks, so every write threw immediately after succeeding: the first reference on a record was stored, its remaining references were skipped, and the failure surfaced only as a warning. All seven plugins now declare what they emit, and a test holds each manifest to the hooks its base class raises.
+
 ## [0.16.0] - 2026-09-02
 
 ### Removed

@@ -95,7 +95,13 @@ export class MarginNotesPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.at.margin.note'],
+      hooks: [
+        'firehose.at.margin.note',
+        // Emitted by BacklinkTrackingPlugin after a write; the bus enforces
+        // emit permissions from this list, so an undeclared hook throws.
+        'backlink.created',
+        'backlink.deleted',
+      ],
       storage: {
         maxSize: 10 * 1024 * 1024,
       },
@@ -172,7 +178,13 @@ export class MarginRepliesPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.at.margin.reply'],
+      hooks: [
+        'firehose.at.margin.reply',
+        // Emitted by BacklinkTrackingPlugin after a write; the bus enforces
+        // emit permissions from this list, so an undeclared hook throws.
+        'backlink.created',
+        'backlink.deleted',
+      ],
       storage: {
         maxSize: 5 * 1024 * 1024,
       },
