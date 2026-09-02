@@ -20,12 +20,14 @@
  * Run it against staging before production. It writes to whichever repository
  * the credentials belong to and removes what it wrote, including on failure.
  *
- * Usage:
+ * `tsx` is a devDependency rather than a global, so run this through the
+ * package script rather than executing the file directly:
+ *
  *   PDS_URL=https://governance.chive.pub \
  *   PDS_IDENTIFIER=... PDS_PASSWORD=... \
  *   API_URL=https://api.staging.chive.pub \
  *   EPRINT_URI=at://did:plc:.../pub.chive.eprint.submission/... \
- *   npx tsx scripts/verify-backlink-pipeline.ts
+ *   pnpm verify:backlinks
  *
  * @packageDocumentation
  */
