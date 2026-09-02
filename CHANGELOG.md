@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.1] - 2026-09-02
+
 ### Added
 
 - **A profile links to the researcher's sifa.id page** when they have one. The link appears only for a researcher whose repository actually holds sifa records, so it never points at an empty page, and it addresses the profile by DID rather than handle, which does not change when someone moves domain.
@@ -995,7 +997,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/chive-pub/chive/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/chive-pub/chive/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/chive-pub/chive/compare/v0.13.0...v0.13.1
 [0.13.0]: https://github.com/chive-pub/chive/compare/v0.12.0...v0.13.0
