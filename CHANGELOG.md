@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **One unreachable PDS failed the whole deploy.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on one host were enough. Worse, the reindex is not the last deploy step, so everything after it was skipped, including the citation re-matching meant to keep the graph current. A record that could not be fetched now leaves its index entry as it was and is retried on the next run. Failures that mean the index would be _wrong_ rather than stale, including unresolved field labels, still fail the deploy.
+- **One unreachable PDS failed the whole deploy, and the records were never retried.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on a single host were enough. Because the reindex is not the last deploy step, everything after it was skipped, including the citation re-matching meant to keep the graph current.
+
+  A record that cannot be fetched is now handed to the index retry worker, which resolves the DID, re-fetches and indexes, backing off exponentially across ten attempts. The reindex finishes, the deploy proceeds, and the records are retried in the background. Should the queue exhaust its attempts, the periodic freshness scan selects records by how long ago they were synced, so one that was never fetched sorts to the front of the next scan — there is no state in which a record is stale and nothing will try it again. Failures that would leave the index _wrong_ rather than stale, including unresolved field labels, still fail the deploy.
 
 ## [0.15.0] - 2026-09-02
 
