@@ -64,7 +64,9 @@ export function up(pgm: MigrationBuilder): void {
   // WhiteWind support is gone, and its counts column with it. Nothing wrote to
   // it, so there is nothing to preserve.
   pgm.sql(`DELETE FROM backlinks WHERE source_type = 'whitewind.blog'`);
-  pgm.sql(`ALTER TABLE backlink_counts DROP COLUMN IF EXISTS whitewind_count`);
+  // `whitewind_count` is kept and pinned to zero rather than dropped: the
+  // column is NOT NULL and other definitions of this function reference it, so
+  // removing it turns a rollback into a broken function.
 
   // Anything else outside the new set becomes 'other' rather than blocking the
   // migration. A backlink with an unrecognised source is still a backlink.
@@ -81,41 +83,70 @@ export function up(pgm: MigrationBuilder): void {
     CHECK (source_type IN (${quoted}))
   `);
 
-  // Counts bucket by prefix, so a new `cosmik.*` or `leaflet.*` subtype is
-  // counted without another migration.
+  // The counts function is rebuilt against `backlink_counts` as it stands
+  // today, which has grown since the definition this replaces: `semble_count`
+  // became `cosmik_count`, `bluesky_count` split into post and embed, and
+  // `other_count`, `margin_count` and `cosmik_connection_count` were added.
+  // Every column is NOT NULL, so one omitted from the insert takes its default
+  // and silently stops being maintained.
+  //
+  // `other_count` is everything not bucketed by a column of its own, which is
+  // where standard.site documents and calendar events land.
   pgm.sql(`
     CREATE OR REPLACE FUNCTION refresh_backlink_counts(p_target_uri text)
     RETURNS void AS $$
     BEGIN
       INSERT INTO backlink_counts (
         target_uri,
-        semble_count,
+        cosmik_count,
+        cosmik_connection_count,
         leaflet_count,
-        bluesky_count,
+        whitewind_count,
+        margin_count,
+        bluesky_post_count,
+        bluesky_embed_count,
         comment_count,
         endorsement_count,
+        other_count,
         total_count,
-        updated_at
+        last_updated_at
       )
       SELECT
         p_target_uri,
-        COUNT(*) FILTER (WHERE source_type LIKE 'cosmik.%'),
+        COUNT(*) FILTER (WHERE source_type = 'cosmik.collection'),
+        COUNT(*) FILTER (WHERE source_type IN ('cosmik.connection', 'cosmik.follow')),
         COUNT(*) FILTER (WHERE source_type LIKE 'leaflet.%'),
-        COUNT(*) FILTER (WHERE source_type IN ('bluesky.post', 'bluesky.embed')),
+        0,
+        COUNT(*) FILTER (WHERE source_type LIKE 'margin.%'),
+        COUNT(*) FILTER (WHERE source_type = 'bluesky.post'),
+        COUNT(*) FILTER (WHERE source_type = 'bluesky.embed'),
         COUNT(*) FILTER (WHERE source_type = 'chive.comment'),
         COUNT(*) FILTER (WHERE source_type = 'chive.endorsement'),
+        COUNT(*) FILTER (
+          WHERE source_type NOT LIKE 'cosmik.%'
+            AND source_type NOT LIKE 'leaflet.%'
+            AND source_type NOT LIKE 'margin.%'
+            AND source_type NOT IN (
+              'bluesky.post', 'bluesky.embed', 'chive.comment', 'chive.endorsement'
+            )
+        ),
         COUNT(*),
         NOW()
       FROM backlinks
       WHERE target_uri = p_target_uri AND is_deleted = false
       ON CONFLICT (target_uri) DO UPDATE SET
-        semble_count = EXCLUDED.semble_count,
+        cosmik_count = EXCLUDED.cosmik_count,
+        cosmik_connection_count = EXCLUDED.cosmik_connection_count,
         leaflet_count = EXCLUDED.leaflet_count,
-        bluesky_count = EXCLUDED.bluesky_count,
+        whitewind_count = EXCLUDED.whitewind_count,
+        margin_count = EXCLUDED.margin_count,
+        bluesky_post_count = EXCLUDED.bluesky_post_count,
+        bluesky_embed_count = EXCLUDED.bluesky_embed_count,
         comment_count = EXCLUDED.comment_count,
         endorsement_count = EXCLUDED.endorsement_count,
+        other_count = EXCLUDED.other_count,
         total_count = EXCLUDED.total_count,
-        updated_at = EXCLUDED.updated_at;
+        last_updated_at = EXCLUDED.last_updated_at;
     END;
     $$ LANGUAGE plpgsql;
   `);

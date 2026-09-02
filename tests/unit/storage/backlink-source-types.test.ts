@@ -79,9 +79,42 @@ describe('backlink source types', () => {
     );
   });
 
-  it('counts Leaflet and Cosmik by prefix, so a new subtype still counts', () => {
+  it('counts Leaflet and Margin by prefix, so a new subtype still counts', () => {
     const migration = readFileSync(join(process.cwd(), MIGRATION), 'utf8');
-    expect(migration).toContain("source_type LIKE 'cosmik.%'");
     expect(migration).toContain("source_type LIKE 'leaflet.%'");
+    expect(migration).toContain("source_type LIKE 'margin.%'");
+  });
+
+  it('fills every NOT NULL column of backlink_counts', () => {
+    // The table has a column per bucket and all of them are NOT NULL, so one
+    // left out of the insert takes its default and stops being maintained.
+    const migration = readFileSync(join(process.cwd(), MIGRATION), 'utf8');
+    for (const column of [
+      'cosmik_count',
+      'cosmik_connection_count',
+      'leaflet_count',
+      'whitewind_count',
+      'margin_count',
+      'bluesky_post_count',
+      'bluesky_embed_count',
+      'comment_count',
+      'endorsement_count',
+      'other_count',
+      'total_count',
+      'last_updated_at',
+    ]) {
+      expect(migration).toContain(column);
+    }
+  });
+
+  it('does not reference columns that were renamed away', () => {
+    // `semble_count` and `bluesky_count` no longer exist; a function copied
+    // from an older migration reintroduces them and fails at seed time.
+    const sql = readFileSync(join(process.cwd(), MIGRATION), 'utf8')
+      .split('\n')
+      .filter((line) => !line.trimStart().startsWith('//'))
+      .join('\n');
+    expect(sql).not.toContain('semble_count');
+    expect(sql).not.toMatch(/\bbluesky_count\b/);
   });
 });
