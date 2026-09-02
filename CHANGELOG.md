@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Code, data and materials have their own tabs on an eprint.** They were rendered at the bottom of the Metadata tab, behind tags, enrichment, conference and funding — the last place on the page anyone would look for a repository, so eprints that recorded one were effectively hiding it. The Data tab gathers everything that counts as data for the paper: declared repositories, datasets linked on Layers, and supplementary files, which had been split across the metadata tab and each other. Each tab appears only when the eprint has that kind of resource, so nothing gains an empty tab.
+- **A linked dataset comes with the code that loads it.** A Layers dataset is addressed by an AT-URI, which tells a reader the data exists but not how to open it. Each linked corpus now carries a copyable `lairs` snippet with its own URI already in place, so the path from "this paper has a corpus" to "I have the corpus" is four lines.
+- **A researcher's graph proposals appear on their profile.** The section existed and rendered "Graph proposals are not yet available on profile pages" — a placeholder that shipped. `pub.chive.governance.listProposals` already accepted `proposedBy`, so the data was there; the section now lists what was proposed, how the community voted, and where each proposal ended up.
+
+### Fixed
+
+- **Leaflet documents were being read by nothing.** The plugin was rewritten against Leaflet's published lexicons, its schemas vendored and its collections added to the observed set — and it was never registered with the indexer. The records arrived, the event processor forwarded them to the plugin bus, and nothing was subscribed. The same was true of the WhiteWind plugin. Both are registered now, and a test fails if a collection is observed with no plugin behind it.
+- **Eprints linked from other publishers' standard.site documents produced no backlink.** The plugin read only the two fields Chive's own documents use, `path` and the legacy `content.uri`. But `content` is an open union — the format does not enumerate block types and each publisher brings its own, so pckt posts, which are `site.standard.document` records holding `blog.pckt.block.*` items, could link an eprint in their prose and go unnoticed. Any eprint reference in a document's body is now found, whether written as an AT-URI or as a link to the eprint's page, which is normalised back to the AT-URI so one work does not accumulate references under two identities.
+- **A shared eprint was never recorded on its standard.site document.** `bskyPostRef` exists so a paper's Bluesky thread is discoverable as its off-platform discussion, and the helper that writes it was reachable only through a hook no component used. Sharing an eprint now attaches it.
+
+- **The citation network was far emptier than the data supported.** Citations are matched to Chive eprints once, while a document is processed, against whatever was indexed at that moment — and nothing re-ran it, so a reference to a paper that arrived later stayed unresolved forever. The graph only ever held edges that were discoverable in extraction order, and grew more incomplete as the corpus filled in behind it. Every deploy now re-resolves citations that have no match yet and creates the missing edges. It reads Postgres and writes the graph — no PDF fetch, no GROBID — and skips anything already matched.
+- **Repositories recorded before the platform field was renamed showed a generic icon.** The lexicon calls it `platformSlug` and that is what the submission wizard writes, but older records carry `platform` and Chive does not rewrite user records. Both are read now, so an older eprint shows its GitHub or OSF icon.
+
 ## [0.14.1] - 2026-09-02
 
 ### Fixed

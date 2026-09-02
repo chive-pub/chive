@@ -776,6 +776,104 @@ export class CitationExtractionService implements ICitationExtractionService {
     });
   }
 
+  /**
+   * Re-resolves stored citations against the eprints now indexed.
+   *
+   * @param options - `eprintUri` limits the pass to one citing eprint; `limit`
+   *   caps how many unmatched citations are considered
+   * @returns How many were examined, newly matched, and turned into edges
+   *
+   * @remarks
+   * {@link CitationExtractionService.matchCitationsToChive} runs once, while a
+   * document is being processed, and resolves each reference against the
+   * eprints indexed *at that moment*. A reference to a work Chive indexes later
+   * therefore cannot match, and nothing revisits it — so the citation graph
+   * only ever contains edges that were discoverable in extraction order, and
+   * grows steadily more incomplete as the corpus fills in behind it.
+   *
+   * This closes that gap by re-running the same DOI-then-title matching over
+   * citations that have no match yet, and writing the edges the original pass
+   * could not have known about. It reads Postgres and writes graph edges — no
+   * PDF is fetched and GROBID is not involved — so it is cheap enough to run
+   * whenever the corpus has grown, which is what keeps the graph current.
+   *
+   * Only rows with `chive_match_uri IS NULL` are considered, so a match already
+   * recorded is never overwritten, and running it twice does nothing the second
+   * time.
+   *
+   * @public
+   */
+  async rematchStoredCitations(
+    options: { readonly eprintUri?: AtUri; readonly limit?: number } = {}
+  ): Promise<{ examined: number; matched: number; edgesCreated: number }> {
+    return withSpan('citationExtraction.rematch', async () => {
+      const limit = options.limit ?? 5000;
+
+      const rows = await this.db.query<{
+        id: string;
+        eprint_uri: string;
+        title: string | null;
+        doi: string | null;
+        source: string;
+      }>(
+        `SELECT id, eprint_uri, title, doi, source
+         FROM extracted_citations
+         WHERE chive_match_uri IS NULL
+           ${options.eprintUri ? 'AND eprint_uri = $2' : ''}
+         ORDER BY id
+         LIMIT $1`,
+        options.eprintUri ? [limit, options.eprintUri] : [limit]
+      );
+
+      const relationships: CitationRelationship[] = [];
+      let matched = 0;
+
+      for (const row of rows.rows) {
+        let matchUri: string | null = null;
+        let method: 'doi' | 'title' = 'doi';
+
+        if (row.doi) {
+          matchUri = await this.findEprintByDoi(row.doi);
+        }
+        if (!matchUri && row.title) {
+          matchUri = await this.findEprintByTitle(row.title);
+          if (matchUri) method = 'title';
+        }
+
+        // A paper citing itself is not a citation edge; it is the same node,
+        // and an extracted reference can name the citing work when a preprint
+        // lists its own published version.
+        if (!matchUri || matchUri === row.eprint_uri) continue;
+
+        await this.db.query(
+          `UPDATE extracted_citations
+           SET chive_match_uri = $1, match_confidence = $2, match_method = $3
+           WHERE id = $4`,
+          [matchUri, method === 'doi' ? 1.0 : 0.8, method, row.id]
+        );
+        matched += 1;
+
+        relationships.push({
+          citingUri: row.eprint_uri as AtUri,
+          citedUri: matchUri as AtUri,
+          source: row.source as CitationRelationship['source'],
+        });
+      }
+
+      if (relationships.length > 0) {
+        await this.citationGraph.upsertCitationsBatch(relationships);
+      }
+
+      this.logger.info('Citation re-matching complete', {
+        examined: rows.rows.length,
+        matched,
+        edgesCreated: relationships.length,
+      });
+
+      return { examined: rows.rows.length, matched, edgesCreated: relationships.length };
+    });
+  }
+
   // =============================================================================
   // PRIVATE: GROBID EXTRACTION
   // =============================================================================

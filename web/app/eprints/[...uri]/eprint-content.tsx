@@ -87,7 +87,10 @@ import {
   useDeleteEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
-import { deleteStandardDocumentsForEprint } from '@/lib/atproto/record-creator';
+import {
+  attachBlueskyPostToDocument,
+  deleteStandardDocumentsForEprint,
+} from '@/lib/atproto/record-creator';
 import { getPaperSession } from '@/lib/auth/paper-session';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
@@ -411,6 +414,25 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     }
   }, [deleteEprint, uri, agent, eprint?.paperDid, eprint?.submittedBy]);
 
+  // How many resources of each kind the eprint has. These decide whether the
+  // Code, Data and Materials tabs exist at all, so an eprint without a
+  // repository is not given an empty tab to click.
+  const repositories = eprint?.repositories;
+  const codeCount = repositories?.code?.length ?? 0;
+  const dataCount = repositories?.data?.length ?? 0;
+  const materialsCount =
+    (repositories?.materials?.length ?? 0) +
+    (repositories?.protocols?.length ?? 0) +
+    (repositories?.preregistration?.url ? 1 : 0);
+
+  // A Layers dataset and a supplementary file are data for this paper as much
+  // as a declared repository is, so they share the tab and its count. Counting
+  // only `repositories.data` would offer a "Data" tab that omits the datasets
+  // someone actually linked.
+  const supplementaryCount = eprint?.supplementaryMaterials?.length ?? 0;
+  const dataTabCount = dataCount + dataLinks.length + supplementaryCount;
+  const hasDataTab = dataTabCount > 0;
+
   /**
    * Build edit data object from eprint.
    * Extracts the rkey from the AT-URI for PDS operations.
@@ -503,6 +525,24 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           thumbBlob: ogImageBlob,
         },
       });
+
+      // Record the post on the eprint's standard.site document, so its reply
+      // thread is discoverable as the paper's off-platform discussion. That is
+      // what `bskyPostRef` is for, and without this it was never written by
+      // anything a reader could reach: the only caller of the attach helper was
+      // a hook no component used.
+      //
+      // Deliberately after the post and deliberately swallowed. The share has
+      // already succeeded by this point, and an eprint whose submitter turned
+      // cross-platform discovery off has no document to attach to.
+      try {
+        await attachBlueskyPostToDocument(agent, uri, { uri: result.uri, cid: result.cid });
+      } catch (attachError) {
+        eprintLogger.warn('Could not record the Bluesky post on the standard.site document', {
+          eprintUri: uri,
+          error: attachError instanceof Error ? attachError.message : String(attachError),
+        });
+      }
 
       return { rkey: result.rkey };
     },
@@ -777,6 +817,33 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
               </span>
             )}
           </TabsTrigger>
+          {/* Code and data get their own tabs rather than sitting at the
+              bottom of Metadata. For a paper with a repository, the code and
+              the data are among the first things a reader wants, and they were
+              the hardest things on the page to find. Each tab appears only
+              when the eprint actually has that kind of resource. */}
+          {codeCount > 0 && (
+            <TabsTrigger value="code" className="gap-1.5">
+              Code
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">{codeCount}</span>
+            </TabsTrigger>
+          )}
+          {hasDataTab && (
+            <TabsTrigger value="data" className="gap-1.5">
+              Data
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {dataTabCount}
+              </span>
+            </TabsTrigger>
+          )}
+          {materialsCount > 0 && (
+            <TabsTrigger value="materials" className="gap-1.5">
+              Materials
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {materialsCount}
+              </span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="related">Related</TabsTrigger>
           <TabsTrigger value="network">Network</TabsTrigger>
           <TabsTrigger value="citations">Citations</TabsTrigger>
@@ -1247,6 +1314,77 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         </TabsContent>
 
         {/* Related papers tab */}
+        {/* Code tab */}
+        {codeCount > 0 && (
+          <TabsContent value="code" className="space-y-6">
+            <RepositoriesPanel repositories={eprint.repositories} only={['code']} title="Code" />
+          </TabsContent>
+        )}
+
+        {/* Data tab.
+
+            Everything that is data for this paper, whatever form it takes: the
+            repositories declared on the record, the datasets linked on Layers,
+            and the supplementary files. These used to be split across the
+            metadata tab and nowhere, so a reader looking for the data had to
+            know which of them they were looking for. */}
+        {hasDataTab && (
+          <TabsContent value="data" className="space-y-6">
+            {dataCount > 0 && (
+              <RepositoriesPanel repositories={eprint.repositories} only={['data']} title="Data" />
+            )}
+            {/* Supplementary materials, including datasets linked on Layers */}
+            {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
+              <>
+                <Separator />
+                <SupplementaryPanel
+                  dataLinks={dataLinks.map((link) => ({
+                    uri: link.uri,
+                    dataKind: link.dataKind,
+                    description: link.description,
+                    paperSection: link.paperSection,
+                    corpusRef: link.corpusRef,
+                  }))}
+                  items={(eprint.supplementaryMaterials ?? []).map((item, index) => {
+                    const did = eprint.paperDid ?? eprint.submittedBy;
+                    const blobCid = item.blob?.ref?.toString();
+                    const downloadUrl =
+                      blobCid && eprint.pdsUrl
+                        ? `${eprint.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
+                        : undefined;
+                    const category = isValidSupplementaryCategory(item.categorySlug)
+                      ? item.categorySlug
+                      : 'other';
+                    return {
+                      id: blobCid ?? `supp-${index}`,
+                      label: item.label,
+                      description: item.description,
+                      category,
+                      format: item.detectedFormat,
+                      downloadUrl,
+                    };
+                  })}
+                />
+              </>
+            )}
+          </TabsContent>
+        )}
+
+        {/* Materials tab.
+
+            Preregistrations, protocols and physical materials are all "how the
+            study was run" rather than an artefact to download, so they share a
+            tab instead of getting three sparse ones. */}
+        {materialsCount > 0 && (
+          <TabsContent value="materials" className="space-y-6">
+            <RepositoriesPanel
+              repositories={eprint.repositories}
+              only={['preregistration', 'protocols', 'materials']}
+              title="Materials & Protocols"
+            />
+          </TabsContent>
+        )}
+
         <TabsContent value="related" className="space-y-6 overflow-visible">
           <RelatedPapersPanel eprintUri={uri} limit={5} editable={isAuthenticated} />
         </TabsContent>
@@ -1299,47 +1437,8 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
             </>
           )}
 
-          {/* Supplementary materials, including datasets linked on Layers */}
-          {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
-            <>
-              <Separator />
-              <SupplementaryPanel
-                dataLinks={dataLinks.map((link) => ({
-                  uri: link.uri,
-                  dataKind: link.dataKind,
-                  description: link.description,
-                  paperSection: link.paperSection,
-                }))}
-                items={(eprint.supplementaryMaterials ?? []).map((item, index) => {
-                  const did = eprint.paperDid ?? eprint.submittedBy;
-                  const blobCid = item.blob?.ref?.toString();
-                  const downloadUrl =
-                    blobCid && eprint.pdsUrl
-                      ? `${eprint.pdsUrl}/xrpc/com.atproto.sync.getBlob?did=${encodeURIComponent(did)}&cid=${encodeURIComponent(blobCid)}`
-                      : undefined;
-                  const category = isValidSupplementaryCategory(item.categorySlug)
-                    ? item.categorySlug
-                    : 'other';
-                  return {
-                    id: blobCid ?? `supp-${index}`,
-                    label: item.label,
-                    description: item.description,
-                    category,
-                    format: item.detectedFormat,
-                    downloadUrl,
-                  };
-                })}
-              />
-            </>
-          )}
-
-          {/* Code, data, and model repositories */}
-          {eprint.repositories && (
-            <>
-              <Separator />
-              <RepositoriesPanel repositories={eprint.repositories} />
-            </>
-          )}
+          {/* Code, data and materials have their own tabs now, so Metadata
+              does not repeat them. */}
 
           {/* Related works */}
           {/* No separator: RelatedWorksPanel returns null when empty */}
