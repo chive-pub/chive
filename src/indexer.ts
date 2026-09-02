@@ -36,8 +36,10 @@ import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
 import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
+import { LeafletBacklinksPlugin } from './plugins/builtin/leaflet-backlinks.js';
 import { MarginNotesPlugin, MarginRepliesPlugin } from './plugins/builtin/margin-annotations.js';
 import { StandardSiteBacklinksPlugin } from './plugins/builtin/standard-site-backlinks.js';
+import { WhiteWindBacklinksPlugin } from './plugins/builtin/whitewind-backlinks.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
@@ -558,6 +560,26 @@ async function main(): Promise<void> {
       logger.info('standard.site and calendar plugins loaded');
     } catch (err) {
       logger.error('Failed to load standard.site plugin', err instanceof Error ? err : undefined);
+    }
+
+    // WhiteWind — blog entries that may cite an eprint.
+    try {
+      await pluginManager.loadBuiltinPlugin(new WhiteWindBacklinksPlugin(), pluginContext);
+      logger.info('WhiteWind plugin loaded');
+    } catch (err) {
+      logger.error('Failed to load WhiteWind plugin', err instanceof Error ? err : undefined);
+    }
+
+    // Leaflet — long-form documents and comments that reference an eprint.
+    //
+    // `pub.leaflet.document` and `pub.leaflet.comment` are in the observed
+    // collections and the event processor forwards them to the plugin bus, so
+    // without this the records arrived and nothing was subscribed to them.
+    try {
+      await pluginManager.loadBuiltinPlugin(new LeafletBacklinksPlugin(), pluginContext);
+      logger.info('Leaflet plugin loaded');
+    } catch (err) {
+      logger.error('Failed to load Leaflet plugin', err instanceof Error ? err : undefined);
     }
 
     // Margin (W3C Web Annotation) ecosystem plugins

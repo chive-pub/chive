@@ -87,7 +87,10 @@ import {
   useDeleteEndorsement,
 } from '@/lib/hooks/use-endorsement';
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
-import { deleteStandardDocumentsForEprint } from '@/lib/atproto/record-creator';
+import {
+  attachBlueskyPostToDocument,
+  deleteStandardDocumentsForEprint,
+} from '@/lib/atproto/record-creator';
 import { getPaperSession } from '@/lib/auth/paper-session';
 import { useEprintPermissions, useDeleteEprint } from '@/lib/hooks';
 import type { Review, Endorsement, ContributionType } from '@/lib/api/schema';
@@ -522,6 +525,24 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           thumbBlob: ogImageBlob,
         },
       });
+
+      // Record the post on the eprint's standard.site document, so its reply
+      // thread is discoverable as the paper's off-platform discussion. That is
+      // what `bskyPostRef` is for, and without this it was never written by
+      // anything a reader could reach: the only caller of the attach helper was
+      // a hook no component used.
+      //
+      // Deliberately after the post and deliberately swallowed. The share has
+      // already succeeded by this point, and an eprint whose submitter turned
+      // cross-platform discovery off has no document to attach to.
+      try {
+        await attachBlueskyPostToDocument(agent, uri, { uri: result.uri, cid: result.cid });
+      } catch (attachError) {
+        eprintLogger.warn('Could not record the Bluesky post on the standard.site document', {
+          eprintUri: uri,
+          error: attachError instanceof Error ? attachError.message : String(attachError),
+        });
+      }
 
       return { rkey: result.rkey };
     },
