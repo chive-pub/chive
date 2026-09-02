@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-09-02
+
 ### Added
 
 - **Code, data and materials have their own tabs on an eprint.** They were rendered at the bottom of the Metadata tab, behind tags, enrichment, conference and funding — the last place on the page anyone would look for a repository, so eprints that recorded one were effectively hiding it. The Data tab gathers everything that counts as data for the paper: declared repositories, datasets linked on Layers, and supplementary files, which had been split across the metadata tab and each other. Each tab appears only when the eprint has that kind of resource, so nothing gains an empty tab.
@@ -1017,7 +1019,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.14.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.15.0...HEAD
+[0.15.0]: https://github.com/chive-pub/chive/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/chive-pub/chive/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/chive-pub/chive/compare/v0.13.1...v0.14.0
 [0.13.1]: https://github.com/chive-pub/chive/compare/v0.13.0...v0.13.1
