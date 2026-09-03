@@ -42,6 +42,7 @@ import type { RankingService } from '../../services/search/ranking-service.js';
 import type { IRelevanceLogger } from '../../services/search/relevance-logger.js';
 import type { SearchService } from '../../services/search/search-service.js';
 import type { SifaProfileService } from '../../services/sifa/sifa-profile-service.js';
+import type { SubscriptionService } from '../../services/subscription/subscription-service.js';
 import type { EdgeRepository } from '../../storage/neo4j/edge-repository.js';
 import type { FacetManager } from '../../storage/neo4j/facet-manager.js';
 import type { GraphAlgorithmCache } from '../../storage/neo4j/graph-algorithm-cache.js';
@@ -73,6 +74,15 @@ export interface ChiveServices {
   readonly nodeService: NodeService;
   readonly edgeService: EdgeService;
   readonly backlink: BacklinkService;
+
+  /**
+   * The standard.site social graph, as observed on the firehose.
+   *
+   * @remarks
+   * Optional: an API instance may run without it, and a profile has to render
+   * whether or not the graph is being indexed.
+   */
+  readonly subscription?: SubscriptionService;
   readonly claiming: ClaimingService;
   readonly import: ImportService;
   readonly pdsSync: PDSSyncService;

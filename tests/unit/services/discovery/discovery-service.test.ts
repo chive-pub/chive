@@ -480,6 +480,28 @@ describe('DiscoveryService', () => {
     // from it carries nothing a reader could recognise -- which is why the
     // network rendered as boxes labelled "Citing paper 1", "Citing paper 2".
 
+    it('derives the year from how publishedAt is actually stored', async () => {
+      // Every row in production stores `publishedAt` as epoch milliseconds in a
+      // text field, never as an ISO date. The first version of this query read
+      // the first four characters of that string, which yields 1572 or 1509 --
+      // close enough to a year to pass review and to render on a node. The
+      // mocked row hid it, because the mock supplied `year` already extracted.
+      //
+      // So this asserts the SQL, which is the part that was wrong.
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getEprintRefs(['at://did:plc:a/pub.chive.eprint.submission/one']);
+
+      const sql = db.query.mock.calls[0]?.[0] as string;
+      expect(sql).toContain('TO_TIMESTAMP');
+      expect(sql).toContain('::bigint / 1000');
+      expect(sql).toContain('EXTRACT(YEAR FROM');
+      // The truncation that produced 1572 must not survive as the sole path.
+      expect(sql).not.toMatch(
+        /NULLIF\(LEFT\(published_version->>'publishedAt', 4\), ''\)::int AS year/
+      );
+    });
+
     it('names a paper by title, authors and year', async () => {
       db.query.mockResolvedValueOnce({
         rows: [
