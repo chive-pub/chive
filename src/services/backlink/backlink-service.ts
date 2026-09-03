@@ -40,7 +40,16 @@ import type {
  * @internal
  */
 interface BacklinkRow {
-  id: number;
+  /**
+   * The row id.
+   *
+   * @remarks
+   * `backlinks.id` is a `bigint`, and node-postgres returns bigints as strings
+   * rather than risk silently truncating a value past 2^53. So this arrives as
+   * a string at runtime however it is declared, and must be converted before it
+   * reaches a caller that promised a number.
+   */
+  id: number | string;
   source_uri: string;
   source_type: string;
   source_did: string;
@@ -406,7 +415,11 @@ export class BacklinkService implements IBacklinkService {
    */
   private rowToBacklink(row: BacklinkRow): Backlink {
     return {
-      id: row.id,
+      // Converted here, the one point every read passes through. Left as the
+      // string node-postgres returns, it fails output validation against a
+      // lexicon that declares an integer -- so any eprint that had a backlink
+      // answered 500, and only those that had none appeared to work.
+      id: Number(row.id),
       sourceUri: row.source_uri,
       sourceType: row.source_type as BacklinkSourceType,
       targetUri: row.target_uri,

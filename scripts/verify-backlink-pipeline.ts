@@ -95,12 +95,31 @@ function required(name: string, value: string | undefined): string {
   return value;
 }
 
+/**
+ * Counts the backlinks the API reports for an eprint.
+ *
+ * @param eprintUri - The eprint to count against
+ * @returns The number reported
+ * @throws When the API does not answer with a list
+ *
+ * @remarks
+ * A failed request is not zero backlinks, and treating it as zero is how this
+ * check once reported a working pipeline as broken: the list endpoint answered
+ * 500 for precisely the eprints that had backlinks, and every poll printed 0.
+ * The failure a check is built to notice must not be the failure it swallows.
+ */
 async function backlinkCount(eprintUri: string): Promise<number> {
   const url = `${API_URL}/xrpc/pub.chive.backlink.list?targetUri=${encodeURIComponent(eprintUri)}&limit=50`;
   const response = await fetch(url);
-  if (!response.ok) return 0;
+  if (!response.ok) {
+    const detail = await response.text().catch(() => '');
+    throw new Error(`backlink.list answered ${String(response.status)}: ${detail.slice(0, 300)}`);
+  }
   const body = (await response.json()) as { backlinks?: unknown[] };
-  return body.backlinks?.length ?? 0;
+  if (!Array.isArray(body.backlinks)) {
+    throw new Error('backlink.list answered without a backlinks array');
+  }
+  return body.backlinks.length;
 }
 
 /**

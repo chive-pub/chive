@@ -387,7 +387,11 @@ export class ImportService implements IImportService {
       : undefined;
 
     return {
-      id: row.id,
+      // `bigint` in Postgres, and node-postgres returns bigints as strings to
+      // avoid truncating past 2^53. Left as a string it fails output validation
+      // against a lexicon declaring an integer, so the endpoint answers 500 for
+      // exactly the rows it is meant to return.
+      id: Number(row.id),
       source: row.source,
       externalId: row.external_id,
       url: row.external_url,

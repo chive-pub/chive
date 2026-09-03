@@ -472,4 +472,39 @@ describe('BacklinkService', () => {
       });
     });
   });
+
+  describe('bigint identifiers', () => {
+    // `backlinks.id` is a bigint, and node-postgres returns bigints as strings
+    // rather than risk truncating past 2^53. Every fixture here used to carry a
+    // JavaScript number, so the conversion was never exercised and the string
+    // reached output validation, which rejected it against a lexicon declaring
+    // an integer: the list endpoint answered 500 for exactly those eprints that
+    // had backlinks, and looked healthy for every eprint that had none.
+    // Large enough to be past an int4 and to have come back as a string, while
+    // still exactly representable as a JavaScript number.
+    const BIG_ID = '9007199254740991';
+    const rowWithStringId = { ...SAMPLE_BACKLINK_ROW, id: BIG_ID };
+
+    it('returns a number from getBacklinks, as the lexicon declares', async () => {
+      db.query.mockResolvedValueOnce({ rows: [rowWithStringId] });
+
+      const result = await service.getBacklinks(SAMPLE_TARGET_URI);
+
+      expect(result.backlinks[0]?.id).toBeTypeOf('number');
+      expect(result.backlinks[0]?.id).toBe(Number.MAX_SAFE_INTEGER);
+    });
+
+    it('returns a number from createBacklink too', async () => {
+      db.query.mockResolvedValueOnce({ rows: [{ ...rowWithStringId, id: '12' }] });
+
+      const result = await service.createBacklink({
+        sourceUri: SAMPLE_SOURCE_URI,
+        sourceType: 'cosmik.collection',
+        targetUri: SAMPLE_TARGET_URI,
+      });
+
+      expect(result.id).toBeTypeOf('number');
+      expect(result.id).toBe(12);
+    });
+  });
 });

@@ -438,4 +438,20 @@ describe('ImportService', () => {
       expect(logger.info).toHaveBeenCalledWith('Import marked as claimed', expect.any(Object));
     });
   });
+
+  describe('bigint identifiers', () => {
+    // `imported_eprints.id` is a bigint and node-postgres returns bigints as
+    // strings, to avoid truncating past 2^53. Every fixture above carries a
+    // JavaScript number, so the conversion went unexercised: in production the
+    // string reached output validation, which rejected it against a lexicon
+    // declaring an integer, and `pub.chive.import.search` answered 500 for
+    // every query that matched anything.
+    it('returns a number, as the lexicon declares', async () => {
+      db.query.mockResolvedValueOnce({ rows: [{ ...SAMPLE_IMPORT_ROW, id: '9007199254740991' }] });
+
+      const result = await service.getById(1);
+
+      expect(result?.id).toBeTypeOf('number');
+    });
+  });
 });
