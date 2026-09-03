@@ -1390,7 +1390,11 @@ export class CitationExtractionService implements ICitationExtractionService {
         // them.
         .replace(/^\s*(?:\d{4}[a-z]?\.\s*)+/, '')
         .replace(/^\s*(?:in\s+)?press\.\s*/, '')
-        .replace(/^\s*(?:to\s+appear|forthcoming|submitted)\.\s*/, '')
+        // "under review", "under reviewa." — the trailing letter is the key a
+        // citation is disambiguated by, carried over from the year label.
+        .replace(/^\s*under\s+(?:review|revision)[a-z]?\.\s*/, '')
+        .replace(/^\s*(?:to\s+appear|forthcoming|submitted|in\s+prep(?:aration)?)[a-z]?\.\s*/, '')
+        .replace(/^\s*(?:ms|manuscript)\.\s*/, '')
         .replace(/[^a-z0-9\s]/g, '')
         .replace(/\s+/g, ' ')
         .trim()

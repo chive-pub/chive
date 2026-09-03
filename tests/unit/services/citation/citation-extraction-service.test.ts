@@ -810,6 +810,30 @@ describe('CitationExtractionService', () => {
       expect(seen[0]).toBe('a unified view of evaluation metrics for structured prediction');
     });
 
+    it('strips an "under review" label, disambiguating letter and all', async () => {
+      // Seen in the corpus as `under reviewa. Main clause syntax and the
+      // labeling problem` — the trailing letter is the key the citation is
+      // disambiguated by, carried over from the year label.
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'under reviewa. Main clause syntax and the labeling problem',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('main clause syntax and the labeling problem');
+    });
+
     it('strips a leading publication status from a title', async () => {
       const seen: unknown[] = [];
       db.query.mockImplementation((text: string, params: unknown[]) => {
