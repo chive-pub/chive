@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.0] - 2026-09-03
+
 ### Added
 
 - **A citation graph with nodes in it.** Every eprint reached PostgreSQL and Elasticsearch, while the graph gained a node for one only if a reader happened to interact with it — so there were no eprint nodes, and no `CITES` edges could exist. Citation edges match their endpoints rather than creating them, deliberately: an edge must never assert a paper Chive does not hold. But nothing was supplying the nodes that guard depends on, and a `MATCH` that matches nothing writes nothing and raises nothing, so every edge was dropped in silence while the matches accumulated in PostgreSQL. Callers holding the eprint index now supply the nodes, re-checking each URI against that index rather than trusting it, and a script labels the label-less nodes two other writers had already left in the graph.
@@ -1079,7 +1081,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/chive-pub/chive/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/chive-pub/chive/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/chive-pub/chive/compare/v0.15.0...v0.16.0
