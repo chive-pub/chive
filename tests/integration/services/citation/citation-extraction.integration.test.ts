@@ -99,6 +99,7 @@ function createMockCitationGraph(): ICitationGraph & {
   return {
     upsertedCitations,
     upsertedRelatedWorks,
+    ensureEprintNodes: vi.fn().mockResolvedValue(undefined),
     upsertCitationsBatch: vi.fn().mockImplementation((citations: CitationRelationship[]) => {
       upsertedCitations.push(...citations);
       return Promise.resolve();

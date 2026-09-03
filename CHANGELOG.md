@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **A quarter of the corpus had a PDF and no references at all.** Citation extraction runs once, when an eprint is indexed, and degrades gracefully when GROBID cannot be reached — correctly, since one unreachable service must not fail an indexing run. But the degradation left no trace, and nothing retried: an eprint whose extraction failed was indistinguishable from one whose references had been read and found to be none, because both have no rows. On production this was 18 of 66 eprints, including papers with 141 references apiece, and the only symptom was a citation network smaller than it should be.
+
+  Every attempt is now recorded, so a failure is visible as a failure. The deploy retries the eprints never successfully processed, selecting on that record rather than on the absence of citations — a paper genuinely without matchable references is not put through GROBID again on every deploy. Backfilling production took extracted citations from 2,468 to 3,816 and cross-citation matches from 131 to 173.
+
+### Fixed
+
+- **A matched citation whose edge was never written stayed invisible forever.** The re-match considers only citations with no match yet, which is right for matching and wrong for edges: every citation matched while the graph had no eprint nodes to attach to was left settled, matched, and unconnected, and nothing revisited it. On production that was all 131 of them. The deploy now writes the edges implied by matched citations before re-matching the rest; both the node and edge writes are merges, so it costs a no-op once the graph is current.
+
+- **Staging never ran the citation steps.** They existed only in the production deploy, so staging's graph stayed empty whatever the code did and the first place to find that out was production. Staging now runs the same labelling and re-match.
+
+## [0.18.0] - 2026-09-03
+
+### Added
+
+- **A citation graph with nodes in it.** Every eprint reached PostgreSQL and Elasticsearch, while the graph gained a node for one only if a reader happened to interact with it — so there were no eprint nodes, and no `CITES` edges could exist. Citation edges match their endpoints rather than creating them, deliberately: an edge must never assert a paper Chive does not hold. But nothing was supplying the nodes that guard depends on, and a `MATCH` that matches nothing writes nothing and raises nothing, so every edge was dropped in silence while the matches accumulated in PostgreSQL. Callers holding the eprint index now supply the nodes, re-checking each URI against that index rather than trusting it, and a script labels the label-less nodes two other writers had already left in the graph.
+
+### Fixed
+
+- **Citation matching used two of the fields GROBID gives it and ignored the rest.** A reference was resolved by DOI and then by exact title, and nothing else — while the authors, year, venue, volume and pages extracted alongside them sat unread in the table, and the arXiv id was never extracted at all, so its column had been null for every citation ever stored. The matcher now works strongest identifier first: DOI, arXiv id, exact title, then a near title accepted only when an author surname or the year corroborates it. A near match with nothing to corroborate it is left unmatched, because a wrong edge in a citation graph is worse than a missing one.
+
+  Three things were quietly defeating the exact comparison. Titles arrive with the citation's own furniture attached — `2023a.`, `press.` — which is now stripped. DOIs arrive as URLs, with a sentence's punctuation attached, or as the tail `.org/10.…` of a URL whose front was lost, which is now normalised. And the SQL normalisation collapsed no whitespace where the TypeScript collapsed it, so the two disagreed about what "exact" meant; they are now written once and shared. On the production corpus the stripping alone takes exact title matches from 26 to 28 before the near-title pass runs at all.
+
+  The re-match carried its own copy of the old DOI-then-title logic, so none of this would have reached the pass that actually runs on deploy. It delegates now, and a test holds it to that.
+
+- **No eprint could publish a standard.site document.** The write asked the author's PDS to validate a foreign lexicon, and a PDS that cannot resolve one rejects the record outright: `Unknown lexicon type: site.standard.document`. Every attempt failed, which is why no eprint had one. The record was never at fault -- `site.standard.document` is published, and the shape Chive writes satisfies it -- so validation is now left to this codebase and its tests, here and for the two sifa writers, which had the same latent fault.
+
+- **A preview of an eprint looked like a placeholder.** The card was given a title and one author name and drew them on an otherwise empty 1200x630 field, while the record's abstract, full author list, venue and keywords went unused. A preview reads as a paper when it carries the paper's own substance, so all of it is passed and laid out: the abstract fills the card the way a document's text fills Leaflet's, unreadable at thumbnail size and not meant to be read there. A record with none of it centres its title rather than stranding it against the top edge.
+
+## [0.17.1] - 2026-09-03
+
+### Fixed
+
+- **The deploy's citation re-matching never ran.** `rematch-citations.ts` is executed by the deploy as its own `node dist/...` process, outside the server entry points that install the reflect polyfill, and tsyringe throws at module load without it. So the step failed on every deploy — after the reindex, which meant the reindex's work stood but the citation graph was never refreshed. The polyfill is now installed by every script the deploy runs directly, and a test reads the workflow itself so the list cannot drift from what is actually executed.
+
 ## [0.17.0] - 2026-09-02
 
 ### Added
@@ -1057,7 +1093,9 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.0...HEAD
+[0.18.0]: https://github.com/chive-pub/chive/compare/v0.17.1...v0.18.0
+[0.17.1]: https://github.com/chive-pub/chive/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/chive-pub/chive/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/chive-pub/chive/compare/v0.14.1...v0.15.0

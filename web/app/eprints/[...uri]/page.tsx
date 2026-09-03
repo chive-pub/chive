@@ -50,13 +50,36 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
         .join(' ');
     }
 
-    // Build OG image URL with query params for the eprint template
+    // Build OG image URL with query params for the eprint template.
+    //
+    // The card used to receive only the title and the first author, and drew
+    // them centred on an otherwise empty 1200x630 field. What makes a preview
+    // read as a paper rather than as a placeholder is the paper's own
+    // substance, so the abstract, the full author list, the venue and the
+    // keywords are all passed. The abstract is capped well short of any URL
+    // limit; the card truncates again for its own layout.
+    const venue = value.publishedVersion?.journal ?? '';
+    const year = value.createdAt ? new Date(value.createdAt).getUTCFullYear().toString() : '';
     const ogImageParams = new URLSearchParams({
       type: 'eprint',
       uri: fullUri,
       title: value.title.slice(0, 200),
       author: authorName,
     });
+    const allAuthors = value.authors
+      .map((a) => a.name)
+      .filter(Boolean)
+      .join('|');
+    if (allAuthors) ogImageParams.set('authors', allAuthors.slice(0, 400));
+    if (abstractText) ogImageParams.set('abstract', abstractText.slice(0, 400));
+    if (venue) ogImageParams.set('venue', venue.slice(0, 120));
+    if (year) ogImageParams.set('year', year);
+    if (value.keywords && value.keywords.length > 0) {
+      ogImageParams.set('fields', value.keywords.slice(0, 3).join(','));
+    }
+    if (value.publicationStatusSlug) {
+      ogImageParams.set('status', value.publicationStatusSlug);
+    }
     const ogImageUrl = `/api/og?${ogImageParams.toString()}`;
 
     return {

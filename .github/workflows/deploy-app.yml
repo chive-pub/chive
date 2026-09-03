@@ -473,6 +473,31 @@ jobs:
             # no GROBID — and skips anything already matched, so running it on
             # every deploy costs little and keeps the graph current as the
             # corpus grows.
+            # Extraction runs once, at index time, and nothing retries it: an
+            # eprint whose GROBID call failed keeps a PDF and no references,
+            # indistinguishable from one that genuinely cites nothing indexed.
+            # This retries only those never successfully processed, so a paper
+            # already read and found to have nothing is not put through GROBID
+            # again on every deploy.
+            echo "=== Extracting references never successfully extracted ==="
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/extract-citations.js --missing || {
+                echo "::warning::Reference backfill did not complete; it retries next deploy"
+              }
+
+            # Labels first, and always before the re-match.
+            #
+            # Citation edges are merged onto `:Node:Object:Eprint` nodes. Two
+            # writers created record nodes carrying a uri and no labels at all,
+            # and merging a labelled node against one of those produces a second
+            # node for the same uri rather than reusing it. Labelling them first
+            # keeps one node per record. Idempotent, and a no-op once no
+            # unlabelled nodes remain.
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/label-unlabelled-record-nodes.js
+
             docker exec \
               chive-api \
               node --enable-source-maps dist/scripts/db/rematch-citations.js

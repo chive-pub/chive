@@ -139,13 +139,62 @@ export class CitationGraph implements ICitationGraph {
    * ]);
    * ```
    */
+  /**
+   * Ensures eprint nodes exist for URIs the caller has verified.
+   *
+   * @param uris - AT-URIs of works known to be indexed as Chive eprints
+   *
+   * @remarks
+   * {@link CitationGraph.upsertCitationsBatch} matches its endpoints rather
+   * than creating them, so that no edge can assert a paper Chive does not
+   * hold. That guard only works if something else creates the nodes, and for a
+   * long time nothing did: eprints were indexed into PostgreSQL and
+   * Elasticsearch while the graph gained a node only when someone interacted
+   * with one. The result was a graph with no eprint nodes and, necessarily, no
+   * citation edges.
+   *
+   * The judgement about whether a URI is really a Chive eprint belongs with the
+   * caller, which has the eprint index to check against; this only records the
+   * answer. Passing a URI that is not an indexed eprint puts a node in the
+   * graph for a paper that does not exist.
+   */
+  async ensureEprintNodes(uris: readonly string[]): Promise<void> {
+    if (uris.length === 0) {
+      return;
+    }
+
+    const query = `
+      UNWIND $uris AS uri
+      MERGE (e:Node:Object:Eprint {uri: uri})
+      ON CREATE SET e.subkind = 'eprint', e.createdAt = datetime()
+      SET e.subkind = 'eprint'
+    `;
+
+    try {
+      await this.connection.executeQuery(query, { uris: [...uris] });
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      throw new DatabaseError('QUERY', `Failed to ensure eprint nodes: ${error.message}`, error);
+    }
+  }
+
   async upsertCitationsBatch(citations: readonly CitationRelationship[]): Promise<void> {
     if (citations.length === 0) {
       return;
     }
 
-    // Use UNWIND for efficient batch processing
-    // Only create edge if BOTH eprints exist in Chive
+    // The endpoints are MATCHed, not created.
+    //
+    // An edge is only meaningful between two works Chive actually holds, and
+    // creating a node here would mint one for any URI a caller passed --
+    // including a cited work Chive has never indexed, which would leave the
+    // graph asserting the existence of papers it does not have.
+    //
+    // The cost is that a missing node makes the write a silent no-op: a MATCH
+    // that matches nothing is not an error. Nothing created eprint nodes at
+    // index time, so for a long while there were none and every citation edge
+    // was dropped in silence. `ensureEprintNodes` is how a caller that has
+    // verified its URIs against the eprint index says so.
     const query = `
       UNWIND $citations AS citation
       MATCH (citing:Node:Object:Eprint {uri: citation.citingUri})

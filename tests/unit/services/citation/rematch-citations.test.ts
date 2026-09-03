@@ -35,16 +35,20 @@ describe('rematchStoredCitations', () => {
   });
 
   it('reuses the same DOI-then-title matching as extraction', () => {
+    // Delegation, not duplication. The re-match used to carry its own copy of
+    // the DOI-then-title logic, so every later strategy -- arXiv ids, the
+    // stripping of GROBID's leading year labels, corroborated near-titles --
+    // reached extraction and not the pass that actually runs on deploy.
     const body = service.slice(service.indexOf('async rematchStoredCitations('));
-    expect(body.slice(0, 2500)).toContain('findEprintByDoi');
-    expect(body.slice(0, 2500)).toContain('findEprintByTitle');
+    expect(body.slice(0, 2500)).toContain('this.findMatch(');
+    expect(body.slice(0, 2500)).not.toContain('findEprintByDoi');
   });
 
   it('refuses to link a paper to itself', () => {
     // An extracted reference can name the citing work, when a preprint lists
     // its own published version. That is not a citation edge.
     const body = service.slice(service.indexOf('async rematchStoredCitations('));
-    expect(body.slice(0, 2500)).toContain('matchUri === row.eprint_uri');
+    expect(body.slice(0, 2500)).toContain('match.uri === row.eprint_uri');
   });
 
   it('creates the graph edges the original pass could not know about', () => {

@@ -69,6 +69,7 @@ const createMockDatabasePool = (): MockDatabasePool => ({
 
 interface MockCitationGraph {
   upsertCitationsBatch: ReturnType<typeof vi.fn>;
+  ensureEprintNodes: ReturnType<typeof vi.fn>;
   getCitingPapers: ReturnType<typeof vi.fn>;
   getReferences: ReturnType<typeof vi.fn>;
   findCoCitedPapers: ReturnType<typeof vi.fn>;
@@ -80,6 +81,7 @@ interface MockCitationGraph {
 
 const createMockCitationGraph = (): MockCitationGraph => ({
   upsertCitationsBatch: vi.fn().mockResolvedValue(undefined),
+  ensureEprintNodes: vi.fn().mockResolvedValue(undefined),
   getCitingPapers: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
   getReferences: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
   findCoCitedPapers: vi.fn().mockResolvedValue([]),
@@ -681,7 +683,342 @@ describe('CitationExtractionService', () => {
   // matchCitationsToChive
   // ==========================================================================
 
+  describe('extraction attempts', () => {
+    it('records the attempt when extraction fails', async () => {
+      // Degrading gracefully is right -- one unreachable GROBID must not fail
+      // an indexing run -- but the degradation has to leave a trace. Without
+      // one, an eprint whose extraction failed is indistinguishable from one
+      // whose references were read and found to be none, and nothing retries
+      // it. That is how 18 of 66 production eprints came to hold a PDF and no
+      // references at all, unnoticed.
+      grobidClient.extractReferences.mockRejectedValue(new Error('GROBID unreachable'));
+
+      const recorded: unknown[][] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('citation_extraction_attempts')) {
+          recorded.push(params);
+        }
+        return { rows: [] };
+      });
+
+      await service.extractCitations(TEST_EPRINT_URI, {
+        documentFormat: 'pdf',
+        // The GROBID branch is gated on an author DID and a document CID: with
+        // either missing it is skipped rather than attempted, and there would
+        // be no failure to record.
+        authorDid: 'did:plc:author' as never,
+        documentCid: 'bafypdf' as never,
+      });
+
+      // Extraction degrades rather than throwing, so it also records a
+      // completion afterwards. What matters is that the failure itself left a
+      // row naming the reason, because that row is what a backfill selects on.
+      const failure = recorded.find((params) => params[1] === false);
+
+      expect(failure).toBeDefined();
+      expect(failure?.[0]).toBe(TEST_EPRINT_URI);
+      expect(String(failure?.[3])).toContain('GROBID unreachable');
+    });
+  });
+
+  describe('rebuildMatchedCitationEdges', () => {
+    it('writes edges for citations already matched', async () => {
+      // The re-match only looks at rows with no match yet, so a citation that
+      // was matched while the graph had no nodes to attach to is never
+      // revisited and its match stays invisible. This is the pass that closes
+      // that, and it has to be safe to run on every deploy.
+      const citing = 'at://did:plc:a/pub.chive.eprint.submission/one' as AtUri;
+      const cited = 'at://did:plc:b/pub.chive.eprint.submission/two' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('chive_match_uri IS NOT NULL')) {
+          return {
+            rows: [{ eprint_uri: citing, chive_match_uri: cited, source: 'grobid' }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('WHERE uri = ANY(')) {
+          return { rows: [{ uri: citing }, { uri: cited }] };
+        }
+        return { rows: [] };
+      });
+
+      const result = await service.rebuildMatchedCitationEdges();
+
+      expect(result.edgesCreated).toBe(1);
+      expect(citationGraph.ensureEprintNodes).toHaveBeenCalledWith(
+        expect.arrayContaining([citing, cited])
+      );
+      expect(citationGraph.upsertCitationsBatch).toHaveBeenCalledWith([
+        expect.objectContaining({ citingUri: citing, citedUri: cited }),
+      ]);
+    });
+
+    it('does nothing when no citation is matched', async () => {
+      db.query.mockResolvedValue({ rows: [] });
+
+      const result = await service.rebuildMatchedCitationEdges();
+
+      expect(result.edgesCreated).toBe(0);
+      expect(citationGraph.upsertCitationsBatch).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('graph node creation', () => {
+    it('creates nodes only for URIs the eprint index confirms', async () => {
+      // The graph matches an edge's endpoints rather than creating them, so no
+      // edge can assert a paper Chive does not hold. Supplying the nodes is how
+      // that guard is satisfied, and it is the one place a wrong URI would put
+      // a non-existent paper into the graph -- so the URIs are re-checked
+      // against the index here rather than trusted.
+      const citing = TEST_EPRINT_URI;
+      const cited = 'at://did:plc:match/pub.chive.eprint.submission/real' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          return { rows: [{ uri: cited }] };
+        }
+        // Only the cited eprint is in the index; the citing one is not.
+        if (typeof text === 'string' && text.includes('WHERE uri = ANY(')) {
+          return { rows: [{ uri: cited }] };
+        }
+        return { rows: [] };
+      });
+
+      await service.rematchStoredCitations({ limit: 10 });
+
+      const calls = citationGraph.ensureEprintNodes.mock.calls;
+      for (const [uris] of calls) {
+        expect(uris).not.toContain(citing);
+      }
+    });
+  });
+
   describe('matchCitationsToChive', () => {
+    // The cases below are the failure patterns the production corpus actually
+    // shows: DOIs that arrive as URLs or with a sentence's punctuation still
+    // attached, references to preprints carrying an arXiv id and no DOI, and
+    // titles GROBID hands back with the citation's own furniture on the front.
+
+    it('matches a DOI written as a URL', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/url' as AtUri;
+      const seen: unknown[] = [];
+
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          seen.push(params[0]);
+          return { rows: [{ uri: matchedUri }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          doi: 'https://doi.org/10.3765/salt.v26i0.3819.',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('10.3765/salt.v26i0.3819');
+      expect(matched[0]?.matchMethod).toBe('doi');
+    });
+
+    it('matches a DOI whose URL prefix was lost in extraction', async () => {
+      // GROBID leaves this tail behind often enough to be worth handling: the
+      // corpus holds DOIs stored as `.org/10.1101/143750`.
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          seen.push(params[0]);
+          return { rows: [] };
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        { eprintUri: TEST_EPRINT_URI, rawText: 'r', doi: '.org/10.1101/143750', source: 'grobid' },
+      ]);
+
+      expect(seen[0]).toBe('10.1101/143750');
+    });
+
+    it('matches an arXiv identifier, prefix and version and all', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/arx' as AtUri;
+      const seen: unknown[] = [];
+
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'url'")) {
+          seen.push(params[0]);
+          return { rows: [{ uri: matchedUri }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          arxivId: 'arXiv:2401.01234v2',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('%2401.01234%');
+      expect(matched[0]?.matchMethod).toBe('arxiv');
+      expect(matched[0]?.matchConfidence).toBe(1.0);
+    });
+
+    it('strips a leading year label from a title before comparing', async () => {
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: '2023a. A unified view of evaluation metrics for structured prediction',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('a unified view of evaluation metrics for structured prediction');
+    });
+
+    it('strips an "under review" label, disambiguating letter and all', async () => {
+      // Seen in the corpus as `under reviewa. Main clause syntax and the
+      // labeling problem` — the trailing letter is the key the citation is
+      // disambiguated by, carried over from the year label.
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'under reviewa. Main clause syntax and the labeling problem',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('main clause syntax and the labeling problem');
+    });
+
+    it('strips a leading publication status from a title', async () => {
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'press. Frequency, acceptability, and selection',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('frequency acceptability and selection');
+    });
+
+    it('accepts a near title when the year corroborates it', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/fuzz' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: matchedUri, title: 'On believing and hoping whether', year: 2020 }],
+          };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Believing and hoping whether',
+          year: 2020,
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.matchMethod).toBe('fuzzy');
+      expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
+    });
+
+    it('accepts a near title when an author surname corroborates it', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/fz2' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: matchedUri, title: 'On believing and hoping whether', year: null }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('LOWER(authors::text)')) {
+          return { rows: [{ blob: '[{"name": "aaron steven white"}]' }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Believing and hoping whether',
+          authors: [{ lastName: 'White' }],
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.matchMethod).toBe('fuzzy');
+    });
+
+    it('refuses a near title that nothing corroborates', async () => {
+      // A wrong edge in a citation graph is worse than a missing one: nothing
+      // downstream can tell it was invented.
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: 'at://did:plc:other/x/y', title: 'Something close', year: 1999 }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('LOWER(authors::text)')) {
+          return { rows: [{ blob: '[{"name": "someone else"}]' }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Something closer',
+          year: 2020,
+          authors: [{ lastName: 'White' }],
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.chiveMatchUri).toBeUndefined();
+      expect(matched[0]?.matchConfidence).toBe(0);
+    });
+
     it('matches by DOI with confidence 1.0', async () => {
       const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/abc' as AtUri;
 
@@ -710,7 +1047,7 @@ describe('CitationExtractionService', () => {
       expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });
 
-    it('falls back to title match with confidence 0.8 when DOI is absent', async () => {
+    it('falls back to title match with confidence 0.9 when DOI is absent', async () => {
       const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/def' as AtUri;
 
       db.query.mockImplementation((text: string) => {
@@ -732,7 +1069,7 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(1);
-      expect(matched[0]?.matchConfidence).toBe(0.8);
+      expect(matched[0]?.matchConfidence).toBe(0.9);
       expect(matched[0]?.matchMethod).toBe('title');
       expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });

@@ -12,6 +12,7 @@
  * Usage:
  *   npx tsx scripts/extract-citations.ts [uri1] [uri2] ...
  *   npx tsx scripts/extract-citations.ts --all
+ *   npx tsx scripts/extract-citations.ts --missing
  *
  * Environment variables:
  * - DATABASE_URL: PostgreSQL connection string
@@ -143,11 +144,13 @@ async function main() {
     console.error('Usage:');
     console.error('  npx tsx scripts/extract-citations.ts [uri1] [uri2] ...');
     console.error('  npx tsx scripts/extract-citations.ts --all');
+    console.error('  npx tsx scripts/extract-citations.ts --missing');
     process.exit(1);
   }
 
   const extractAll = args.includes('--all');
-  const uris = extractAll ? [] : args;
+  const extractMissing = args.includes('--missing');
+  const uris = extractAll || extractMissing ? [] : args.filter((a) => !a.startsWith('--'));
 
   console.log('='.repeat(60));
   console.log('CITATION EXTRACTION SCRIPT');
@@ -297,7 +300,27 @@ async function main() {
 
   let targetUris: string[];
 
-  if (extractAll) {
+  if (extractMissing) {
+    console.log('Fetching eprints whose references were never successfully extracted...');
+
+    // Extraction runs once, at index time, and nothing retries it. An eprint
+    // whose extraction failed then looks exactly like one whose references were
+    // read and found to be none -- both have no rows in `extracted_citations`
+    // -- so the attempts table is what separates them. Without it this query
+    // would re-run GROBID over genuinely reference-less papers on every deploy.
+    const result = await pgPool.query(
+      `SELECT e.uri
+       FROM eprints_index e
+       LEFT JOIN citation_extraction_attempts a ON a.eprint_uri = e.uri
+       WHERE e.deleted_at IS NULL
+         AND e.document_blob_cid IS NOT NULL
+         AND (a.eprint_uri IS NULL OR a.succeeded = false)
+       ORDER BY e.created_at DESC`
+    );
+
+    targetUris = result.rows.map((row: { uri: string }) => row.uri);
+    console.log(`Found ${targetUris.length} eprints never successfully processed`);
+  } else if (extractAll) {
     console.log('Fetching eprints from PostgreSQL...');
 
     const result = await pgPool.query(

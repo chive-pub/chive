@@ -909,6 +909,26 @@ describe('updateChiveProfileRecord', () => {
 // =============================================================================
 
 describe('createStandardDocument', () => {
+  it('asks the PDS not to validate a foreign lexicon', async () => {
+    // A PDS validates by resolving the NSID to a published schema and rejects
+    // the write outright when it cannot -- `Unknown lexicon type`. That is a
+    // fact about the writer's PDS, not the record: writing this exact shape to
+    // a live repo succeeded only with validation disabled, and until then not
+    // one standard.site document had ever been created for an eprint.
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await createStandardDocument(agent, {
+      title: 'Test Paper',
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc123`,
+      eprintCid: 'bafyeprint123',
+    });
+
+    expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ validate: false })
+    );
+  });
+
   it('creates a standard.site document record', async () => {
     const did = 'did:plc:test123';
     const agent = createMockAgent({ did });

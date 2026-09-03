@@ -168,6 +168,9 @@ export async function createSifaPublication(
     repo: did,
     collection: SIFA_PUBLICATION_COLLECTION,
     record,
+    // A foreign lexicon: a PDS that cannot resolve this NSID rejects the write
+    // outright rather than storing it, so validation is left to this module.
+    validate: false,
   });
 
   return { uri: response.data.uri, cid: response.data.cid };
@@ -217,6 +220,9 @@ export async function createSifaTalk(
     repo: did,
     collection: SIFA_PRESENTATION_DELIVERY_COLLECTION,
     record,
+    // A foreign lexicon: a PDS that cannot resolve this NSID rejects the write
+    // outright rather than storing it, so validation is left to this module.
+    validate: false,
   });
 
   return { uri: response.data.uri, cid: response.data.cid };

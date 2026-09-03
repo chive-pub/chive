@@ -12,6 +12,14 @@
  * for the AppView's event processor.
  */
 
+// The deploy runs this as its own `node dist/...` process, outside the server
+// entry points that install the reflect polyfill. tsyringe throws at module
+// load without it, so any import that reaches the container would fail the
+// deploy. Installed unconditionally: it is idempotent, and deciding per script
+// whether some transitive import happens to use DI is a judgement that only
+// announces itself by breaking a deploy.
+import 'reflect-metadata';
+
 import { AtpAgent } from '@atproto/api';
 import neo4j from 'neo4j-driver';
 

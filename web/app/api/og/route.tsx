@@ -227,10 +227,26 @@ async function generateEprintImage(
 ): Promise<ImageResponse> {
   const title = params.get('title') || 'Untitled Eprint';
   const author = params.get('author') || 'Unknown Author';
-  const handle = params.get('handle') || '';
-  const affiliation = params.get('affiliation') || '';
+  const authors = params.get('authors')?.split('|').filter(Boolean) ?? [];
+  const abstract = params.get('abstract') || '';
+  const venue = params.get('venue') || '';
+  const year = params.get('year') || '';
+  const status = params.get('status') || '';
   const fields = params.get('fields')?.split(',').filter(Boolean) || [];
   const fonts = await loadFonts();
+
+  // A long title needs to shrink rather than be cut: the title is the one thing
+  // a reader must get from a card rendered 300px wide.
+  const titleSize = title.length > 110 ? 40 : title.length > 70 ? 48 : 56;
+
+  const byline = formatByline(authors.length > 0 ? authors : [author]);
+  const kicker = [status ? status.replace(/-/g, ' ') : '', year].filter(Boolean).join(' · ');
+
+  // With an abstract and a footer the card fills top to bottom. Without them
+  // the same layout strands the title against the top edge and leaves the lower
+  // two thirds empty, which is what made the old card read as a placeholder, so
+  // the title and byline are centred instead.
+  const hasBody = Boolean(abstract) || fields.length > 0 || Boolean(venue);
 
   return new ImageResponse(
     <div
@@ -238,90 +254,136 @@ async function generateEprintImage(
         width: '100%',
         height: '100%',
         display: 'flex',
-        flexDirection: 'column',
-        padding: '48px',
-        background: COLORS.background,
+        background: COLORS.white,
         fontFamily: 'Geist, Helvetica, Arial, sans-serif',
       }}
     >
-      {/* Header with logo */}
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '32px' }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={logoUrl} alt="Chive" width={40} height={40} style={{ marginRight: '12px' }} />
-        <span
-          style={{
-            fontSize: '24px',
-            fontWeight: 700,
-            color: COLORS.brand,
-            letterSpacing: '0.1em',
-          }}
-        >
-          CHIVE
-        </span>
-      </div>
+      {/* A full-height brand rule. It gives the card an edge to sit against and
+          survives the aggressive cropping some clients apply to the frame. */}
+      <div style={{ display: 'flex', width: '14px', height: '100%', background: COLORS.brand }} />
 
-      {/* Title container */}
       <div
         style={{
           display: 'flex',
           flexDirection: 'column',
           flex: 1,
-          justifyContent: 'center',
+          // 60px keeps every element inside the safe area that clients crop to.
+          padding: '52px 60px',
         }}
       >
-        {/* Title */}
+        {/* Header: wordmark on the left, publication status and year opposite. */}
         <div
           style={{
             display: 'flex',
-            fontSize: '48px',
-            fontWeight: 700,
-            color: COLORS.primary,
-            lineHeight: 1.2,
-            marginBottom: '24px',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            maxHeight: '120px',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '30px',
           }}
         >
-          {truncateText(title, 100)}
-        </div>
-
-        {/* Author info */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: '24px', color: COLORS.secondary }}>
-              {author}
-              {handle && <span style={{ color: COLORS.muted, marginLeft: '8px' }}>@{handle}</span>}
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={logoUrl} alt="Chive" width={34} height={34} style={{ marginRight: '12px' }} />
+            <span
+              style={{
+                fontSize: '22px',
+                fontWeight: 700,
+                color: COLORS.brand,
+                letterSpacing: '0.12em',
+              }}
+            >
+              CHIVE
             </span>
           </div>
-          {affiliation && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '20px', color: COLORS.muted }}>{affiliation}</span>
+          {kicker && (
+            <span
+              style={{
+                fontSize: '18px',
+                fontWeight: 600,
+                color: COLORS.muted,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+              }}
+            >
+              {kicker}
+            </span>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            fontSize: `${String(titleSize)}px`,
+            fontWeight: 700,
+            color: COLORS.primary,
+            lineHeight: 1.15,
+            marginTop: hasBody ? '0px' : 'auto',
+          }}
+        >
+          {truncateText(title, 150)}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            fontSize: '23px',
+            color: COLORS.secondary,
+            marginTop: '18px',
+            lineHeight: 1.3,
+            marginBottom: hasBody ? '0px' : 'auto',
+          }}
+        >
+          {byline}
+        </div>
+
+        {/* The abstract. Unreadable at thumbnail size and not meant to be read
+            there: it is what makes the card look like a paper instead of a
+            title on a blank field, and it is the paper's own words rather than
+            decoration. */}
+        {abstract && (
+          <div
+            style={{
+              display: 'flex',
+              flex: 1,
+              fontSize: '20px',
+              color: COLORS.muted,
+              lineHeight: 1.5,
+              marginTop: '22px',
+            }}
+          >
+            {truncateText(abstract, 320)}
+          </div>
+        )}
+
+        {/* Footer: keywords, then the venue it appeared in. */}
+        <div style={{ display: 'flex', flexDirection: 'column', marginTop: 'auto' }}>
+          {fields.length > 0 && (
+            <div style={{ display: 'flex', marginBottom: venue ? '16px' : '0' }}>
+              {fields.slice(0, 3).map((field, i) => (
+                <div
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    padding: '8px 18px',
+                    marginRight: '10px',
+                    borderRadius: '999px',
+                    background: '#eaf5e6',
+                    color: COLORS.brand,
+                    fontSize: '17px',
+                    fontWeight: 600,
+                  }}
+                >
+                  {truncateText(field, 32)}
+                </div>
+              ))}
+            </div>
+          )}
+          {venue && (
+            <div style={{ display: 'flex', fontSize: '18px', color: COLORS.secondary }}>
+              {truncateText(venue, 90)}
             </div>
           )}
         </div>
       </div>
-
-      {/* Field badges */}
-      {fields.length > 0 && (
-        <div style={{ display: 'flex', gap: '12px', marginTop: '24px', flexWrap: 'wrap' }}>
-          {fields.slice(0, 3).map((field, i) => (
-            <div
-              key={i}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '20px',
-                background: COLORS.brand + '20',
-                color: COLORS.brand,
-                fontSize: '16px',
-                fontWeight: 600,
-              }}
-            >
-              {field}
-            </div>
-          ))}
-        </div>
-      )}
     </div>,
     {
       width: WIDTH,
@@ -332,6 +394,23 @@ async function generateEprintImage(
       },
     }
   );
+}
+
+/**
+ * Renders an author list as a byline.
+ *
+ * @param names - Author names in record order
+ * @returns A byline naming at most three authors
+ *
+ * @remarks
+ * A paper with forty authors must not push the abstract off the card, and a
+ * reader scanning a preview wants to know whose paper it is, not the whole
+ * list. Three names and a count answers that in one line.
+ */
+function formatByline(names: readonly string[]): string {
+  const shown = names.slice(0, 3).join(', ');
+  const rest = names.length - 3;
+  return rest > 0 ? `${shown} + ${String(rest)} more` : shown;
 }
 
 /**

@@ -874,6 +874,21 @@ export interface ICitationGraph {
   upsertCitationsBatch(citations: readonly CitationRelationship[]): Promise<void>;
 
   /**
+   * Creates graph nodes for eprints the caller has verified are indexed.
+   *
+   * @param uris - AT-URIs of works known to be indexed as Chive eprints
+   *
+   * @remarks
+   * {@link ICitationGraph.upsertCitationsBatch} matches its endpoints rather
+   * than creating them, so an edge can never assert a paper Chive does not
+   * hold. That guard depends on something else creating the nodes, and nothing
+   * did: an eprint reached PostgreSQL and Elasticsearch while the graph gained
+   * a node for it only if someone interacted with it. This is how a caller
+   * holding the eprint index supplies them.
+   */
+  ensureEprintNodes(uris: readonly string[]): Promise<void>;
+
+  /**
    * Gets papers that cite a given eprint.
    *
    * @param paperUri - AT-URI of the cited eprint
