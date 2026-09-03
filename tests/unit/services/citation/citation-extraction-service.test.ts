@@ -69,6 +69,7 @@ const createMockDatabasePool = (): MockDatabasePool => ({
 
 interface MockCitationGraph {
   upsertCitationsBatch: ReturnType<typeof vi.fn>;
+  ensureEprintNodes: ReturnType<typeof vi.fn>;
   getCitingPapers: ReturnType<typeof vi.fn>;
   getReferences: ReturnType<typeof vi.fn>;
   findCoCitedPapers: ReturnType<typeof vi.fn>;
@@ -80,6 +81,7 @@ interface MockCitationGraph {
 
 const createMockCitationGraph = (): MockCitationGraph => ({
   upsertCitationsBatch: vi.fn().mockResolvedValue(undefined),
+  ensureEprintNodes: vi.fn().mockResolvedValue(undefined),
   getCitingPapers: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
   getReferences: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
   findCoCitedPapers: vi.fn().mockResolvedValue([]),
@@ -680,6 +682,36 @@ describe('CitationExtractionService', () => {
   // ==========================================================================
   // matchCitationsToChive
   // ==========================================================================
+
+  describe('graph node creation', () => {
+    it('creates nodes only for URIs the eprint index confirms', async () => {
+      // The graph matches an edge's endpoints rather than creating them, so no
+      // edge can assert a paper Chive does not hold. Supplying the nodes is how
+      // that guard is satisfied, and it is the one place a wrong URI would put
+      // a non-existent paper into the graph -- so the URIs are re-checked
+      // against the index here rather than trusted.
+      const citing = TEST_EPRINT_URI;
+      const cited = 'at://did:plc:match/pub.chive.eprint.submission/real' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          return { rows: [{ uri: cited }] };
+        }
+        // Only the cited eprint is in the index; the citing one is not.
+        if (typeof text === 'string' && text.includes('WHERE uri = ANY(')) {
+          return { rows: [{ uri: cited }] };
+        }
+        return { rows: [] };
+      });
+
+      await service.rematchStoredCitations({ limit: 10 });
+
+      const calls = citationGraph.ensureEprintNodes.mock.calls;
+      for (const [uris] of calls) {
+        expect(uris).not.toContain(citing);
+      }
+    });
+  });
 
   describe('matchCitationsToChive', () => {
     // The cases below are the failure patterns the production corpus actually

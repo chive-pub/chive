@@ -758,6 +758,7 @@ export class CitationExtractionService implements ICitationExtractionService {
           }));
 
         if (citationRelationships.length > 0) {
+          await this.ensureNodesFor(citationRelationships);
           await this.citationGraph.upsertCitationsBatch(citationRelationships);
 
           this.logger.info('Citation graph edges created', {
@@ -973,6 +974,7 @@ export class CitationExtractionService implements ICitationExtractionService {
       }
 
       if (relationships.length > 0) {
+        await this.ensureNodesFor(relationships);
         await this.citationGraph.upsertCitationsBatch(relationships);
       }
 
@@ -1198,6 +1200,32 @@ export class CitationExtractionService implements ICitationExtractionService {
    * are for, having been extracted and stored all along without ever being
    * consulted.
    */
+  /**
+   * Creates graph nodes for the eprints a set of edges will connect.
+   *
+   * @param relationships - The edges about to be written
+   *
+   * @remarks
+   * The graph matches an edge's endpoints rather than creating them, so that no
+   * edge can assert a paper Chive does not hold. Every URI here has already
+   * been resolved against `eprints_index` -- the citing eprint is one being
+   * indexed, and each cited URI came from a match against that table -- but it
+   * is re-checked rather than assumed, because this is the one place a wrong
+   * URI would put a paper in the graph that does not exist.
+   */
+  private async ensureNodesFor(relationships: readonly CitationRelationship[]): Promise<void> {
+    if (!this.citationGraph || relationships.length === 0) return;
+
+    const uris = [...new Set(relationships.flatMap((r) => [r.citingUri, r.citedUri]))];
+
+    const known = await this.db.query<{ uri: string }>(
+      `SELECT uri FROM eprints_index WHERE uri = ANY($1)`,
+      [uris]
+    );
+
+    await this.citationGraph.ensureEprintNodes(known.rows.map((row) => row.uri));
+  }
+
   private async findMatch(
     citation: ExtractedCitation
   ): Promise<{ uri: AtUri; confidence: number; method: MatchMethod } | null> {

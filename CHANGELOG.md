@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **A citation graph that can build itself.** `upsertCitationsBatch` located both endpoints of a citation with `MATCH (:Node:Object:Eprint {uri})`, leaving the edge conditional on an eprint node some other component had created first. Nothing creates those nodes outside a recommendation path, so there were none: the graph held 67 label-less `{uri}` nodes minted by the tag and facet managers, no `:Eprint` nodes, and no `CITES` edges at all. A `MATCH` that matches nothing writes nothing and raises nothing, so every citation edge was silently dropped while the matches accumulated in PostgreSQL, and every eprint's citation network read as "no citations" rather than as broken. The endpoints are now merged, and a script labels the nodes already in the graph, taking each label from the collection in its uri rather than assuming.
+- **A citation graph with nodes in it.** Every eprint reached PostgreSQL and Elasticsearch, while the graph gained a node for one only if a reader happened to interact with it — so there were no eprint nodes, and no `CITES` edges could exist. Citation edges match their endpoints rather than creating them, deliberately: an edge must never assert a paper Chive does not hold. But nothing was supplying the nodes that guard depends on, and a `MATCH` that matches nothing writes nothing and raises nothing, so every edge was dropped in silence while the matches accumulated in PostgreSQL. Callers holding the eprint index now supply the nodes, re-checking each URI against that index rather than trusting it, and a script labels the label-less nodes two other writers had already left in the graph.
 
 ### Fixed
 

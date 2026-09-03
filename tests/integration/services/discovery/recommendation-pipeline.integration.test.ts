@@ -99,6 +99,7 @@ function createMockRankingService(): IRankingService {
 function createMockCitationGraph(): ICitationGraph {
   return {
     upsertCitationsBatch: vi.fn().mockResolvedValue(undefined),
+    ensureEprintNodes: vi.fn().mockResolvedValue(undefined),
     getCitingPapers: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
     getReferences: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
     findCoCitedPapers: vi.fn().mockResolvedValue([]),
