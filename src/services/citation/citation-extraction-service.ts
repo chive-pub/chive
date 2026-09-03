@@ -904,6 +904,69 @@ export class CitationExtractionService implements ICitationExtractionService {
    *
    * @public
    */
+  /**
+   * Writes the graph edges implied by citations already matched.
+   *
+   * @param options - `limit` caps how many matched citations are considered
+   * @returns How many were examined and how many edges resulted
+   *
+   * @remarks
+   * {@link CitationExtractionService.rematchStoredCitations} only looks at
+   * citations with no match yet, because re-running the matcher over settled
+   * rows would be wasted work. That leaves a gap whenever a citation was
+   * matched but its edge was not written -- which was every one of them, for as
+   * long as the graph had no eprint nodes for the edges to attach to. Those
+   * rows are settled, so nothing revisits them, and the matches stay invisible.
+   *
+   * This walks the matched rows and writes their edges. Both the node and the
+   * edge writes are merges, so a citation whose edge already exists costs a
+   * no-op and the pass can run on every deploy.
+   */
+  async rebuildMatchedCitationEdges(
+    options: { readonly limit?: number } = {}
+  ): Promise<{ examined: number; edgesCreated: number }> {
+    return withSpan('citationExtraction.rebuildEdges', async () => {
+      if (!this.citationGraph) {
+        return { examined: 0, edgesCreated: 0 };
+      }
+
+      const limit = options.limit ?? 20000;
+
+      const rows = await this.db.query<{
+        eprint_uri: string;
+        chive_match_uri: string;
+        source: string;
+      }>(
+        `SELECT eprint_uri, chive_match_uri, source
+         FROM extracted_citations
+         WHERE chive_match_uri IS NOT NULL
+           AND chive_match_uri <> eprint_uri
+         LIMIT $1`,
+        [limit]
+      );
+
+      const relationships: CitationRelationship[] = rows.rows.map((row) => ({
+        citingUri: row.eprint_uri as AtUri,
+        citedUri: row.chive_match_uri as AtUri,
+        source: row.source as CitationRelationship['source'],
+      }));
+
+      if (relationships.length === 0) {
+        return { examined: 0, edgesCreated: 0 };
+      }
+
+      await this.ensureNodesFor(relationships);
+      await this.citationGraph.upsertCitationsBatch(relationships);
+
+      this.logger.info('Rebuilt citation edges from matched citations', {
+        examined: rows.rows.length,
+        edges: relationships.length,
+      });
+
+      return { examined: rows.rows.length, edgesCreated: relationships.length };
+    });
+  }
+
   async rematchStoredCitations(
     options: { readonly eprintUri?: AtUri; readonly limit?: number } = {}
   ): Promise<{ examined: number; matched: number; edgesCreated: number }> {

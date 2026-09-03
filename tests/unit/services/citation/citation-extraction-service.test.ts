@@ -683,6 +683,48 @@ describe('CitationExtractionService', () => {
   // matchCitationsToChive
   // ==========================================================================
 
+  describe('rebuildMatchedCitationEdges', () => {
+    it('writes edges for citations already matched', async () => {
+      // The re-match only looks at rows with no match yet, so a citation that
+      // was matched while the graph had no nodes to attach to is never
+      // revisited and its match stays invisible. This is the pass that closes
+      // that, and it has to be safe to run on every deploy.
+      const citing = 'at://did:plc:a/pub.chive.eprint.submission/one' as AtUri;
+      const cited = 'at://did:plc:b/pub.chive.eprint.submission/two' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('chive_match_uri IS NOT NULL')) {
+          return {
+            rows: [{ eprint_uri: citing, chive_match_uri: cited, source: 'grobid' }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('WHERE uri = ANY(')) {
+          return { rows: [{ uri: citing }, { uri: cited }] };
+        }
+        return { rows: [] };
+      });
+
+      const result = await service.rebuildMatchedCitationEdges();
+
+      expect(result.edgesCreated).toBe(1);
+      expect(citationGraph.ensureEprintNodes).toHaveBeenCalledWith(
+        expect.arrayContaining([citing, cited])
+      );
+      expect(citationGraph.upsertCitationsBatch).toHaveBeenCalledWith([
+        expect.objectContaining({ citingUri: citing, citedUri: cited }),
+      ]);
+    });
+
+    it('does nothing when no citation is matched', async () => {
+      db.query.mockResolvedValue({ rows: [] });
+
+      const result = await service.rebuildMatchedCitationEdges();
+
+      expect(result.edgesCreated).toBe(0);
+      expect(citationGraph.upsertCitationsBatch).not.toHaveBeenCalled();
+    });
+  });
+
   describe('graph node creation', () => {
     it('creates nodes only for URIs the eprint index confirms', async () => {
       // The graph matches an edge's endpoints rather than creating them, so no

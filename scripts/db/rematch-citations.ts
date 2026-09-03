@@ -77,6 +77,13 @@ async function main(): Promise<void> {
     const limitArg = arg('--limit');
     const eprintArg = arg('--eprint');
 
+    // Edges for citations already matched come first. A matched citation whose
+    // edge was never written is not revisited by the re-match, which looks only
+    // at rows with no match yet -- so without this pass those matches stay
+    // invisible no matter how often the re-match runs.
+    const rebuilt = await service.rebuildMatchedCitationEdges();
+    console.log(`Edges rebuilt from existing matches: ${String(rebuilt.edgesCreated)}`);
+
     const result = await service.rematchStoredCitations({
       ...(limitArg ? { limit: Number.parseInt(limitArg, 10) } : {}),
       ...(eprintArg ? { eprintUri: eprintArg as AtUri } : {}),
