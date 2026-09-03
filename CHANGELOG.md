@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-09-03
+
+### Fixed
+
+- **A citation network of anonymous boxes.** The graph stores only URIs on its nodes, so an edge read back from it carried nothing a reader could recognise, and every node rendered as "Citing paper 1", "Citing paper 2" — a network that is technically correct and tells a reader nothing. `pub.chive.discovery.getCitations` now returns the papers at both ends of the edges it reports, named the way a paper is cited: first author, year, title, and the venue when known. They come back as a lookup rather than as metadata repeated on each edge, since one paper commonly sits at the end of many of them, and they are resolved in a single query rather than one per edge.
+
 ### Fixed
 
 - **A quarter of the corpus had a PDF and no references at all.** Citation extraction runs once, when an eprint is indexed, and degrades gracefully when GROBID cannot be reached — correctly, since one unreachable service must not fail an indexing run. But the degradation left no trace, and nothing retried: an eprint whose extraction failed was indistinguishable from one whose references had been read and found to be none, because both have no rows. On production this was 18 of 66 eprints, including papers with 141 references apiece, and the only symptom was a citation network smaller than it should be.
@@ -1093,7 +1099,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.1...HEAD
+[0.18.1]: https://github.com/chive-pub/chive/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/chive-pub/chive/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/chive-pub/chive/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0

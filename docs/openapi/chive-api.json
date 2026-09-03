@@ -5649,13 +5649,30 @@
         "type": "object"
       },
       "pub.chive.discovery.getCitations.eprintRef": {
+        "description": "An eprint named well enough to identify it on sight. The citation graph stores only URIs on its nodes, so an edge read back from it carries nothing a reader could recognise.",
         "properties": {
+          "authors": {
+            "items": {
+              "maxLength": 256,
+              "type": "string"
+            },
+            "type": "array"
+          },
           "title": {
             "type": "string"
           },
           "uri": {
             "format": "at-uri",
             "type": "string"
+          },
+          "venue": {
+            "description": "Journal or proceedings the eprint appeared in, when known.",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "year": {
+            "description": "Publication year, when the eprint records a published version.",
+            "type": "integer"
           }
         },
         "required": [
@@ -25257,6 +25274,12 @@
                     "hasMore": {
                       "description": "Whether more results are available",
                       "type": "boolean"
+                    },
+                    "papers": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.discovery.getCitations.eprintRef"
+                      },
+                      "type": "array"
                     }
                   },
                   "required": [

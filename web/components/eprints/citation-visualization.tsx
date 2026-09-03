@@ -54,6 +54,35 @@ export interface CitationVisualizationProps {
 }
 
 /**
+ * A paper as it should appear on a node.
+ *
+ * @param paper - The paper, when the API named it
+ * @param fallback - What to call it when the API did not
+ * @returns A label a reader can recognise
+ *
+ * @remarks
+ * How a paper is referred to in prose: first author, year, then the title. A
+ * node labelled with the title alone still makes a reader work out whose paper
+ * it is, and one labelled "Citing paper 3" tells them nothing at all -- which
+ * is what these nodes said before the API returned anything to label them
+ * with.
+ */
+export function paperLabel(
+  paper: { title: string; authors?: string[]; year?: number } | undefined,
+  fallback: string
+): string {
+  if (!paper) return fallback;
+
+  const first = paper.authors?.[0];
+  // A surname alone is how a citation is spoken; the full name crowds the node.
+  const surname = first?.trim().split(/\s+/).pop();
+  const byline = [surname, paper.year ? String(paper.year) : undefined].filter(Boolean).join(' ');
+
+  const title = paper.title.length > 44 ? `${paper.title.slice(0, 44)}...` : paper.title;
+  return byline ? `${byline} — ${title}` : title;
+}
+
+/**
  * Citation node data.
  */
 interface CitationNodeData {
@@ -77,6 +106,13 @@ interface CitationData {
     referencesCount: number;
     influentialCitedByCount: number;
   };
+  papers?: Array<{
+    uri: string;
+    title: string;
+    authors?: string[];
+    year?: number;
+    venue?: string;
+  }>;
   citations: Array<{
     citingUri: string;
     citedUri: string;
@@ -146,10 +182,15 @@ const nodeTypes: NodeTypes = {
 function layoutCitationNodes(
   centerEprint: { uri: string; title: string },
   citations: CitationData['citations'],
-  _counts: CitationData['counts']
+  _counts: CitationData['counts'],
+  papers: CitationData['papers'] = []
 ): { nodes: Node<CitationNodeData>[]; edges: Edge[] } {
   const nodes: Node<CitationNodeData>[] = [];
   const edges: Edge[] = [];
+
+  // The API returns each paper once and the edges reference them by URI, so a
+  // paper at the end of many edges is sent once rather than repeated on each.
+  const byUri = new Map(papers.map((paper) => [paper.uri, paper]));
 
   const horizontalSpacing = 300;
   const verticalSpacing = 100;
@@ -185,7 +226,7 @@ function layoutCitationNodes(
       type: 'citation',
       position: { x: -horizontalSpacing, y },
       data: {
-        label: `Citing paper ${index + 1}`,
+        label: paperLabel(byUri.get(citation.citingUri), `Citing paper ${String(index + 1)}`),
         type: 'citing',
         isInfluential: citation.isInfluential,
         uri: citation.citingUri,
@@ -218,7 +259,7 @@ function layoutCitationNodes(
       type: 'citation',
       position: { x: horizontalSpacing, y },
       data: {
-        label: `Reference ${index + 1}`,
+        label: paperLabel(byUri.get(citation.citedUri), `Reference ${String(index + 1)}`),
         type: 'reference',
         isInfluential: citation.isInfluential,
         uri: citation.citedUri,
@@ -301,7 +342,12 @@ export function CitationVisualization({
   const { initialNodes, initialEdges } = useMemo(() => {
     if (!data) return { initialNodes: [], initialEdges: [] };
 
-    const { nodes, edges } = layoutCitationNodes(data.eprint, data.citations, data.counts);
+    const { nodes, edges } = layoutCitationNodes(
+      data.eprint,
+      data.citations,
+      data.counts,
+      data.papers
+    );
 
     return { initialNodes: nodes, initialEdges: edges };
   }, [data]);

@@ -67,6 +67,14 @@
             "hasMore": {
               "type": "boolean",
               "description": "Whether more results are available"
+            },
+            "papers": {
+              "type": "array",
+              "description": "Every eprint appearing at either end of the returned citations, once each. A lookup rather than metadata repeated on each edge: a densely connected paper would otherwise carry the same author list dozens of times in one response.",
+              "items": {
+                "type": "ref",
+                "ref": "#eprintRef"
+              }
             }
           }
         }
@@ -90,8 +98,26 @@
         },
         "title": {
           "type": "string"
+        },
+        "authors": {
+          "type": "array",
+          "description": "Author names in record order. A citation is identified by who wrote it as much as by its title.",
+          "items": {
+            "type": "string",
+            "maxLength": 256
+          }
+        },
+        "year": {
+          "type": "integer",
+          "description": "Publication year, when the eprint records a published version."
+        },
+        "venue": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "Journal or proceedings the eprint appeared in, when known."
         }
-      }
+      },
+      "description": "An eprint named well enough to identify it on sight. The citation graph stores only URIs on its nodes, so an edge read back from it carries nothing a reader could recognise."
     },
     "citationCounts": {
       "type": "object",
