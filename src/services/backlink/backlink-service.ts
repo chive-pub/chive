@@ -15,7 +15,6 @@
  * Backlink Sources:
  * - Cosmik collections (network.cosmik.collection)
  * - Leaflet reading lists (xyz.leaflet.list)
- * - WhiteWind blog posts (com.whtwnd.blog.entry)
  * - Bluesky posts/embeds (app.bsky.feed.post)
  * - Chive comments (pub.chive.review.comment)
  * - Chive endorsements (pub.chive.review.endorsement)
@@ -41,7 +40,16 @@ import type {
  * @internal
  */
 interface BacklinkRow {
-  id: number;
+  /**
+   * The row id.
+   *
+   * @remarks
+   * `backlinks.id` is a `bigint`, and node-postgres returns bigints as strings
+   * rather than risk silently truncating a value past 2^53. So this arrives as
+   * a string at runtime however it is declared, and must be converted before it
+   * reaches a caller that promised a number.
+   */
+  id: number | string;
   source_uri: string;
   source_type: string;
   source_did: string;
@@ -65,7 +73,6 @@ interface BacklinkCountsRow {
   target_uri: string;
   cosmik_count: number;
   leaflet_count: number;
-  whitewind_count: number;
   bluesky_post_count: number;
   bluesky_embed_count: number;
   comment_count: number;
@@ -271,7 +278,6 @@ export class BacklinkService implements IBacklinkService {
       return {
         cosmikCollections: 0,
         leafletLists: 0,
-        whitewindBlogs: 0,
         blueskyPosts: 0,
         blueskyEmbeds: 0,
         other: 0,
@@ -283,7 +289,6 @@ export class BacklinkService implements IBacklinkService {
     return {
       cosmikCollections: row.cosmik_count,
       leafletLists: row.leaflet_count,
-      whitewindBlogs: row.whitewind_count,
       blueskyPosts: row.bluesky_post_count,
       blueskyEmbeds: row.bluesky_embed_count,
       other: row.other_count,
@@ -410,7 +415,11 @@ export class BacklinkService implements IBacklinkService {
    */
   private rowToBacklink(row: BacklinkRow): Backlink {
     return {
-      id: row.id,
+      // Converted here, the one point every read passes through. Left as the
+      // string node-postgres returns, it fails output validation against a
+      // lexicon that declares an integer -- so any eprint that had a backlink
+      // answered 500, and only those that had none appeared to work.
+      id: Number(row.id),
       sourceUri: row.source_uri,
       sourceType: row.source_type as BacklinkSourceType,
       targetUri: row.target_uri,

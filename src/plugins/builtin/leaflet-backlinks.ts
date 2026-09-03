@@ -163,7 +163,14 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.pub.leaflet.document', 'firehose.pub.leaflet.comment'],
+      hooks: [
+        'firehose.pub.leaflet.document',
+        'firehose.pub.leaflet.comment',
+        // Emitted by BacklinkTrackingPlugin after a write; the bus enforces
+        // emit permissions from this list, so an undeclared hook throws.
+        'backlink.created',
+        'backlink.deleted',
+      ],
       storage: {
         maxSize: 10 * 1024 * 1024, // 10MB
       },

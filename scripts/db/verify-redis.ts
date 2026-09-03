@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Redis connection verification script.

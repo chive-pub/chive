@@ -64,6 +64,18 @@ import { type ConnectionState, FirehoseConsumer } from './firehose-consumer.js';
 import { ReconnectionManager } from './reconnection-manager.js';
 
 /**
+ * Wildcard requested from the relay when no explicit Chive collection list is
+ * configured.
+ *
+ * @remarks
+ * Jetstream accepts a trailing-wildcard NSID in `wantedCollections`, which is
+ * how the whole Chive namespace is requested in one term.
+ *
+ * @internal
+ */
+const CHIVE_NAMESPACE_PATTERN = 'pub.chive.*';
+
+/**
  * Indexing service configuration.
  *
  * @public
@@ -651,15 +663,25 @@ export class IndexingService {
       this.logger.info('Starting from latest events', { relay: relayName });
     }
 
-    // Subscribe to firehose
+    // Subscribe to firehose.
+    //
+    // The relay-side filter must always be supplied. It is what the relay is
+    // asked to send; the local EventFilter can only narrow what arrives, never
+    // widen it. Omitting it leaves the consumer to fall back on its own default
+    // namespace list, which does not know about `observedCollections` -- so
+    // those records are dropped upstream and no plugin ever sees them.
+    //
+    // `collections` names the Chive collections to index and is optional; when
+    // it is absent the whole Chive namespace is requested by wildcard.
+    const relayCollections = [
+      ...(this.collections ?? [CHIVE_NAMESPACE_PATTERN]),
+      ...(this.observedCollections ?? []),
+    ] as NSID[];
+
     const events = state.consumer.subscribe({
       relay,
       cursor,
-      // The relay-side filter must cover the observed collections too, or they
-      // are dropped upstream and never reach the local EventFilter.
-      filter: this.collections
-        ? { collections: [...this.collections, ...(this.observedCollections ?? [])] as NSID[] }
-        : undefined,
+      filter: { collections: relayCollections },
     });
 
     state.connected = true;

@@ -571,12 +571,15 @@ export class FirehoseConsumer implements IEventStreamConsumer {
         url.searchParams.append('wantedCollections', collection);
       }
     } else {
-      // Default: subscribe to Chive records plus cosmik/margin ecosystems we
-      // interoperate with. Jetstream supports multiple wantedCollections;
-      // trailing-wildcard filters match all records in that namespace.
+      // No filter supplied: request the Chive namespace and nothing else.
+      //
+      // This fallback deliberately names no foreign namespace. Which foreign
+      // collections Chive observes is decided by the caller (see
+      // OBSERVED_COLLECTIONS), and a second list here would silently diverge
+      // from it -- a collection added there but not here is dropped by the
+      // relay, so the plugin subscribed to it is never called and nothing logs
+      // an error. Callers that need foreign records must pass them in `filter`.
       url.searchParams.append('wantedCollections', 'pub.chive.*');
-      url.searchParams.append('wantedCollections', 'network.cosmik.*');
-      url.searchParams.append('wantedCollections', 'at.margin.*');
     }
 
     // Create WebSocket

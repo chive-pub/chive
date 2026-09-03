@@ -805,7 +805,11 @@ export class ClaimingService implements IClaimingService {
    */
   private rowToCoauthorClaimRequest(row: CoauthorClaimRequestRow): CoauthorClaimRequest {
     return {
-      id: row.id,
+      // `bigint` in Postgres, and node-postgres returns bigints as strings to
+      // avoid truncating past 2^53. Left as a string it fails output validation
+      // against a lexicon declaring an integer, so the endpoint answers 500 for
+      // exactly the rows it is meant to return.
+      id: Number(row.id),
       eprintUri: row.eprint_uri,
       eprintOwnerDid: row.eprint_owner_did,
       claimantDid: row.claimant_did,
@@ -1979,8 +1983,12 @@ export class ClaimingService implements IClaimingService {
    */
   private rowToClaimRequest(row: ClaimRequestRow): ClaimRequest {
     return {
-      id: row.id,
-      importId: row.import_id,
+      // `bigint` in Postgres, and node-postgres returns bigints as strings to
+      // avoid truncating past 2^53. Left as a string it fails output validation
+      // against a lexicon declaring an integer, so the endpoint answers 500 for
+      // exactly the rows it is meant to return.
+      id: Number(row.id),
+      importId: Number(row.import_id),
       claimantDid: row.claimant_did,
       status: row.status as ClaimStatus,
       canonicalUri: row.canonical_uri ?? undefined,

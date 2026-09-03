@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Elasticsearch setup script.

@@ -89,7 +89,13 @@ export class CosmikBacklinksPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.network.cosmik.card'],
+      hooks: [
+        'firehose.network.cosmik.card',
+        // Emitted by BacklinkTrackingPlugin after a write; the bus enforces
+        // emit permissions from this list, so an undeclared hook throws.
+        'backlink.created',
+        'backlink.deleted',
+      ],
       storage: {
         maxSize: 10 * 1024 * 1024, // 10MB
       },

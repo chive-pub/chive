@@ -185,7 +185,13 @@ export class BlueskyBacklinksPlugin extends BacklinkTrackingPlugin {
     author: 'Aaron Steven White',
     license: 'MIT',
     permissions: {
-      hooks: ['firehose.app.bsky.feed.post'],
+      hooks: [
+        'firehose.app.bsky.feed.post',
+        // Emitted by BacklinkTrackingPlugin after a write; the bus enforces
+        // emit permissions from this list, so an undeclared hook throws.
+        'backlink.created',
+        'backlink.deleted',
+      ],
       storage: {
         maxSize: 50 * 1024 * 1024, // 50MB (high volume)
       },

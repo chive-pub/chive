@@ -2,7 +2,7 @@
  * E2E tests for enrichment and backlinks panels on eprint pages.
  *
  * Tests external data display (Semantic Scholar, OpenAlex) and
- * backlinks from ATProto ecosystem apps (Cosmik, Bluesky, WhiteWind, Leaflet).
+ * backlinks from ATProto ecosystem apps (Cosmik, Bluesky, Leaflet, standard.site).
  *
  * @remarks
  * These tests use seeded test data from global.setup.ts. The first test eprint
@@ -222,7 +222,7 @@ test.describe('Backlinks Panel', () => {
     // At least one section MUST be visible (we have Cosmik and Bluesky backlinks for first eprint)
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|Leaflet|Document)/i });
 
     await expect(sectionButtons.first()).toBeVisible();
 
@@ -241,7 +241,7 @@ test.describe('Backlinks Panel', () => {
     // Find and click first section button
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|Leaflet|Document)/i });
 
     await expect(sectionButtons.first()).toBeVisible();
 
@@ -267,7 +267,7 @@ test.describe('Backlinks Panel', () => {
     // Expand a section to show backlinks
     const sectionButtons = page
       .locator('button')
-      .filter({ hasText: /(Cosmik|Bluesky|WhiteWind|Leaflet)/i });
+      .filter({ hasText: /(Cosmik|Bluesky|Leaflet|Document)/i });
 
     if ((await sectionButtons.count()) > 0) {
       await sectionButtons.first().click();
@@ -276,7 +276,7 @@ test.describe('Backlinks Panel', () => {
     }
 
     // All external backlink links MUST have target="_blank" and rel="noopener"
-    const externalDomains = ['cosmik.network', 'bsky.app', 'whitewind.blog', 'leaflet.pub'];
+    const externalDomains = ['cosmik.network', 'bsky.app', 'leaflet.pub'];
 
     for (const domain of externalDomains) {
       const links = page.locator(`a[href*="${domain}"]`);

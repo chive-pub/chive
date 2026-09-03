@@ -1480,7 +1480,6 @@ export type BacklinkSourceType =
   // value.
   | 'leaflet.document'
   | 'leaflet.comment'
-  | 'whitewind.blog'
   | 'bluesky.post'
   | 'bluesky.embed'
   | 'margin.annotation'
@@ -1555,11 +1554,6 @@ export interface BacklinkCounts {
   readonly leafletLists: number;
 
   /**
-   * Number of WhiteWind blog mentions.
-   */
-  readonly whitewindBlogs: number;
-
-  /**
    * Number of Bluesky post references.
    */
   readonly blueskyPosts: number;
@@ -1590,7 +1584,7 @@ export interface BacklinkCounts {
  *
  * @remarks
  * Tracks backlinks from ATProto ecosystem apps (Cosmik, Leaflet,
- * WhiteWind, Bluesky) that reference Chive eprints.
+ * standard.site, Bluesky) that reference Chive eprints.
  * All data is rebuildable from firehose (ATProto compliant).
  *
  * @public

@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Cleanup script for legacy Type nodes in Neo4j.

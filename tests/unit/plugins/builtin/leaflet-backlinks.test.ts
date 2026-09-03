@@ -187,10 +187,12 @@ describe('LeafletBacklinksPlugin', () => {
     });
 
     it('declares hooks for both Leaflet collections', () => {
-      expect(plugin.manifest.permissions?.hooks).toEqual([
-        'firehose.pub.leaflet.document',
-        'firehose.pub.leaflet.comment',
-      ]);
+      // Subscribing to the document alone would miss comments, which reach an
+      // eprint by the same route. The list also carries the hooks the base
+      // class emits, asserted in backlink-plugins-declare-emitted-hooks.
+      expect(plugin.manifest.permissions?.hooks).toEqual(
+        expect.arrayContaining(['firehose.pub.leaflet.document', 'firehose.pub.leaflet.comment'])
+      );
     });
 
     it('reports a source type that names a real record type', () => {

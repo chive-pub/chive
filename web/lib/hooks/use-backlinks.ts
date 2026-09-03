@@ -49,7 +49,8 @@ interface UseBacklinksOptions {
  * @remarks
  * Uses TanStack Query's useInfiniteQuery for cursor-based pagination.
  * Backlinks track references to Chive eprints from external sources
- * like Cosmik collections, Bluesky posts, WhiteWind blogs, and Leaflet lists.
+ * like Cosmik collections, Leaflet documents, standard.site documents,
+ * calendar events, Margin annotations and Bluesky posts.
  *
  * @example
  * ```tsx
@@ -111,7 +112,8 @@ interface UseBacklinkCountsOptions {
  * Fetches aggregated backlink counts for an eprint.
  *
  * @remarks
- * Returns counts by source type (Cosmik, Bluesky, WhiteWind, Leaflet, etc.)
+ * Returns counts by source type (Cosmik, Leaflet, Bluesky, and everything
+ * else under `other`).
  * and a total count. Useful for displaying summary badges.
  *
  * @example
@@ -174,10 +176,24 @@ export function getSourceTypeLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
     case 'cosmik.collection':
       return 'Cosmik Collections';
-    case 'leaflet.list':
-      return 'Leaflet Lists';
-    case 'whitewind.blog':
-      return 'WhiteWind Blogs';
+    case 'cosmik.connection':
+      return 'Cosmik Connections';
+    case 'cosmik.follow':
+      return 'Cosmik Follows';
+    case 'leaflet.document':
+      return 'Leaflet Documents';
+    case 'leaflet.comment':
+      return 'Leaflet Comments';
+    case 'standard.document':
+      return 'Documents';
+    case 'calendar.event':
+      return 'Talks';
+    case 'margin.annotation':
+      return 'Margin Annotations';
+    case 'margin.highlight':
+      return 'Margin Highlights';
+    case 'margin.bookmark':
+      return 'Margin Bookmarks';
     case 'bluesky.post':
       return 'Bluesky Posts';
     case 'bluesky.embed':

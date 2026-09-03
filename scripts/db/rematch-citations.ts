@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 
 /**
  * Resolve stored citations against the eprints now indexed.

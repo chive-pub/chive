@@ -11,10 +11,17 @@
  * corpus" to "I have the corpus" is the four lines below with the right URI
  * already in them.
  *
- * The snippet is shown only for a link that names a corpus. A data link
- * without a `corpusRef` records that data exists somewhere without saying
- * which record holds it, and a snippet pointing at the link record rather than
- * the corpus would not run.
+ * A link names its data as a catalog collection, as a corpus, or not at all.
+ * `pub.layers.catalog.collection` is the dataset as a whole and is the general
+ * case -- a dataset built from expressions and judgments has no corpus record,
+ * so a snippet that could only load a corpus would have nothing to offer it.
+ * Each has its own loader in `lairs`, so the snippet follows whichever ref the
+ * link carries, preferring the collection when it has both: that is the
+ * artifact the reader means by "the dataset".
+ *
+ * A link with neither ref records that data exists somewhere without saying
+ * which record holds it. No snippet is shown then, because one pointing at the
+ * link record rather than at the data would not run.
  *
  * @packageDocumentation
  */
@@ -31,27 +38,49 @@ import { cn } from '@/lib/utils';
  * @public
  */
 export interface DatasetSnippetProps {
-  /** AT-URI of the Layers corpus */
-  corpusRef: string;
+  /** AT-URI of the `pub.layers.catalog.collection` for the dataset */
+  catalogRef?: string;
+  /** AT-URI of the `pub.layers.corpus.corpus`, when the dataset is a corpus */
+  corpusRef?: string;
   /** Additional class names */
   className?: string;
 }
 
 /**
  * The PDS `lairs` reads public Layers records from.
+ *
+ * @remarks
+ * Layers serves `repo.layers.pub`, `repo.decomp.io` and `repo.megaattitude.io`
+ * from one host, and every Layers repo records this endpoint in its DID
+ * document whichever domain its handle sits on. One endpoint therefore reaches
+ * a dataset's accounts even though a dataset is split across one account per
+ * record type.
  */
 const LAYERS_PDS = 'https://repo.layers.pub';
 
 /**
- * Builds the snippet for one corpus.
+ * Builds the snippet for whichever record the link names.
+ *
+ * @param ref - The AT-URI to load
+ * @param kind - Which loader the URI needs
+ * @returns Runnable Python
+ *
+ * @remarks
+ * Both loaders take the same keyword arguments and both need an injected
+ * `pds_client`: without one they raise `NotImplementedError` rather than
+ * resolving the endpoint themselves.
  */
-function snippetFor(corpusRef: string): string {
-  return `import lairs
+function snippetFor(ref: string, kind: 'collection' | 'corpus'): string {
+  const loader = kind === 'collection' ? 'load_collection' : 'load_corpus';
+  const modulePath = kind === 'collection' ? 'lairs.data.collection' : 'lairs.data.corpus';
+  const binding = kind === 'collection' ? 'dataset' : 'corpus';
+
+  return `from ${modulePath} import ${loader}
 from lairs.atproto import PdsClient
 
 with PdsClient("${LAYERS_PDS}") as client:
-    corpus = lairs.load_corpus(
-        "${corpusRef}",
+    ${binding} = ${loader}(
+        "${ref}",
         source="pds",
         pds_client=client,
     )`;
@@ -65,10 +94,17 @@ with PdsClient("${LAYERS_PDS}") as client:
  *
  * @public
  */
-export function DatasetSnippet({ corpusRef, className }: DatasetSnippetProps) {
+export function DatasetSnippet({ catalogRef, corpusRef, className }: DatasetSnippetProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
-  const code = snippetFor(corpusRef);
+
+  // The collection is the dataset a reader means; the corpus is one part of it.
+  const ref = catalogRef ?? corpusRef;
+  const code = ref ? snippetFor(ref, catalogRef ? 'collection' : 'corpus') : null;
+
+  if (!code) {
+    return null;
+  }
 
   const copy = () => {
     void navigator.clipboard.writeText(code).then(() => {

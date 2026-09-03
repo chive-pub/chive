@@ -4,13 +4,9 @@
  * @remarks
  * Reading a foreign collection takes three independent pieces: the collection
  * in the observed set, the event processor forwarding it to the plugin bus, and
- * a plugin loaded that subscribes to it. Miss the third and the records arrive,
- * are forwarded, and nothing listens — which is silent, because the only
- * symptom is an absence of backlinks nobody is waiting for.
- *
- * That is exactly what happened to Leaflet: its schemas were vendored, its
- * plugin rewritten against them, its collections observed, and the plugin never
- * registered in the indexer.
+ * a plugin loaded that subscribes to it. Miss the third and records arrive, are
+ * forwarded, and nothing listens — silently, since the only symptom is an
+ * absence of backlinks nobody is waiting for.
  *
  * @packageDocumentation
  */
@@ -41,7 +37,6 @@ const HANDLED_BY: Record<string, string> = {
   'pub.leaflet.comment': 'leaflet-backlinks',
   'site.standard.document': 'standard-site-backlinks',
   'community.lexicon.calendar.event': 'calendar-events',
-  'com.whtwnd.blog.entry': 'whitewind-backlinks',
 };
 
 describe('observed collections', () => {

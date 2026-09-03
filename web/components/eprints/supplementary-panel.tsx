@@ -93,6 +93,8 @@ export interface DataLinkItem {
    * naming the record that holds it. Only a link that names one can be
    * turned into code that loads it.
    */
+  /** The dataset as a whole (`pub.layers.catalog.collection`) */
+  catalogRef?: string;
   corpusRef?: string;
 }
 
@@ -232,7 +234,7 @@ function DataLinkCard({ link }: { link: DataLinkItem }) {
         {link.description && (
           <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{link.description}</p>
         )}
-        {link.corpusRef && <DatasetSnippet corpusRef={link.corpusRef} />}
+        <DatasetSnippet catalogRef={link.catalogRef} corpusRef={link.corpusRef} />
       </div>
     </div>
   );
@@ -258,6 +260,9 @@ function formatDataKind(kind: string): string {
     'evaluation-data': 'Evaluation data',
     supplementary: 'Supplementary data',
     replication: 'Replication data',
+    experiment: 'Experiment',
+    judgments: 'Judgments',
+    dataset: 'Dataset',
   };
   return known[kind] ?? kind;
 }

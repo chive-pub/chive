@@ -3777,7 +3777,6 @@
             "enum": [
               "cosmik.collection",
               "leaflet.list",
-              "whitewind.blog",
               "bluesky.post",
               "bluesky.embed",
               "other"
@@ -3831,7 +3830,6 @@
             "enum": [
               "cosmik.collection",
               "leaflet.list",
-              "whitewind.blog",
               "bluesky.post",
               "bluesky.embed",
               "other"
@@ -7101,7 +7099,13 @@
       },
       "pub.chive.eprint.listDataLinks.dataLinkView": {
         "properties": {
+          "catalogRef": {
+            "description": "The pub.layers.catalog.collection record for the dataset as a whole. A dataset need not have a corpus -- one made of judgments or expressions has none -- so this, not corpusRef, is what names the dataset a reader wants.",
+            "format": "at-uri",
+            "type": "string"
+          },
           "corpusRef": {
+            "description": "The pub.layers.corpus.corpus record, when the dataset is a corpus.",
             "format": "at-uri",
             "type": "string"
           },
@@ -7122,6 +7126,13 @@
           "description": {
             "maxLength": 10000,
             "type": "string"
+          },
+          "experimentRefs": {
+            "items": {
+              "format": "at-uri",
+              "type": "string"
+            },
+            "type": "array"
           },
           "paperSection": {
             "description": "Which part of the paper the data belongs to, such as 'Table 3'",
@@ -21424,7 +21435,6 @@
                     "enum": [
                       "cosmik.collection",
                       "leaflet.list",
-                      "whitewind.blog",
                       "bluesky.post",
                       "bluesky.embed",
                       "other"
@@ -21656,16 +21666,11 @@
                     "total": {
                       "description": "Total count of all backlinks",
                       "type": "integer"
-                    },
-                    "whitewindBlogs": {
-                      "description": "Count of Whitewind blog backlinks",
-                      "type": "integer"
                     }
                   },
                   "required": [
                     "cosmikCollections",
                     "leafletLists",
-                    "whitewindBlogs",
                     "blueskyPosts",
                     "blueskyEmbeds",
                     "other",
@@ -21736,7 +21741,6 @@
               "enum": [
                 "cosmik.collection",
                 "leaflet.list",
-                "whitewind.blog",
                 "bluesky.post",
                 "bluesky.embed",
                 "other"

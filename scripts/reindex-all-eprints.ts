@@ -30,6 +30,7 @@ import { Pool } from 'pg';
 import { AtpAgent } from '@atproto/api';
 import { Client as ElasticsearchClient } from '@elastic/elasticsearch';
 import neo4j, { Driver } from 'neo4j-driver';
+import { Queue } from 'bullmq';
 
 import { transformPDSRecord } from '../src/services/eprint/pds-record-transformer.js';
 import { mapEprintToDocument } from '../src/storage/elasticsearch/document-mapper.js';
@@ -40,6 +41,8 @@ import {
   type NodeLookup,
 } from '../src/utils/field-label.js';
 import type { AtUri, CID } from '../src/types/atproto.js';
+import { INDEX_RETRY_QUEUE_NAME } from '../src/workers/index-retry-worker.js';
+import { makeJobId } from '../src/utils/at-uri.js';
 
 // =============================================================================
 // CONFIGURATION
@@ -774,10 +777,31 @@ async function main() {
 
   await cleanup(pgPool, esClient, neo4jDriver);
 
-  // Exit with error code if there were failures
-  if (stats.failed > 0) {
+  // A record Chive could not fetch is not a reason to fail the run.
+  //
+  // The records live in user PDSes, any of which can be unreachable,
+  // rate-limiting or slow at the moment this happens to run. That leaves the
+  // index stale, not wrong, and this script is not the last step of a deploy —
+  // failing here skips everything after it.
+  //
+  // Failures that would leave the index serving something *wrong* are treated
+  // differently: a record gone from its PDS is pruned earlier in the run, and
+  // unresolved field labels still exit non-zero below.
+  const transient = stats.failedRecords.filter((record) => isTransient(record.error));
+  const permanent = stats.failed - transient.length;
+
+  if (transient.length > 0) {
     console.log();
-    console.log('WARNING: Some records failed to reindex. Check logs above.');
+    const queued = await enqueueForRetry(transient);
+    console.log(
+      `${String(transient.length)} record(s) could not be fetched from their PDS; ` +
+        `${String(queued)} queued for background retry.`
+    );
+  }
+
+  if (permanent > 0) {
+    console.log();
+    console.log('WARNING: Some records failed to reindex for reasons other than PDS access.');
     process.exit(1);
   }
 
@@ -786,6 +810,104 @@ async function main() {
   if (unresolvedLabels) {
     process.exit(1);
   }
+}
+
+/**
+ * Whether a reindex failure is a transient inability to reach a PDS.
+ *
+ * @param error - The recorded failure message
+ * @returns True when the record could not be fetched, rather than being wrong
+ *
+ * @remarks
+ * A PDS that is down, rate-limiting, or slow is an ordinary condition for an
+ * AppView, and the record is still whatever it was — nothing about the index is
+ * now incorrect, only stale. A parse or validation failure is different: that
+ * record cannot be indexed correctly however many times it is retried.
+ */
+function isTransient(error: string | undefined): boolean {
+  const message = (error ?? '').toLowerCase();
+  return (
+    message.includes('fetch failed') ||
+    message.includes('timeout') ||
+    message.includes('timed out') ||
+    message.includes('econnrefused') ||
+    message.includes('econnreset') ||
+    message.includes('enotfound') ||
+    message.includes('socket hang up') ||
+    message.includes('rate limit') ||
+    message.includes('429') ||
+    message.includes('502') ||
+    message.includes('503') ||
+    message.includes('504')
+  );
+}
+
+/**
+ * Hands unfetched records to the retry worker.
+ *
+ * @param records - Records the reindex could not fetch
+ * @returns How many were queued
+ *
+ * @remarks
+ * The running service has an index retry worker — a BullMQ queue that resolves
+ * the DID, re-fetches from the PDS and indexes, backing off exponentially
+ * across ten attempts — so failures go there rather than being reported and
+ * forgotten. The reindex finishes, the deploy proceeds, and the records are
+ * retried in the background.
+ *
+ * If the queue exhausts its attempts, the periodic freshness scan selects
+ * records by how long ago they were synced, so one that was never fetched sorts
+ * to the front of the next scan. Between the two there is no state in which a
+ * record is stale and nothing will try it again.
+ *
+ * Jobs are keyed by URI, so a record already queued is not queued twice.
+ *
+ * Failing to enqueue is logged and otherwise ignored: the reindex has already
+ * done its work, and Redis being unavailable is not a reason to fail a deploy
+ * either.
+ */
+async function enqueueForRetry(records: readonly ReindexResult[]): Promise<number> {
+  if (records.length === 0) return 0;
+
+  const redisUrl = new URL(process.env.REDIS_URL ?? 'redis://localhost:6379');
+  const queue = new Queue(INDEX_RETRY_QUEUE_NAME, {
+    connection: {
+      host: redisUrl.hostname,
+      port: Number.parseInt(redisUrl.port || '6379', 10),
+    },
+  });
+
+  let queued = 0;
+
+  try {
+    for (const record of records) {
+      // at://did/collection/rkey
+      const [, , did, collection, rkey] = record.uri.split('/');
+      if (!did || !collection || !rkey) continue;
+
+      await queue.add(
+        'index-retry',
+        {
+          uri: record.uri,
+          did,
+          collection,
+          rkey,
+          originalError: record.error,
+          failedAt: new Date().toISOString(),
+        },
+        { jobId: makeJobId('retry', record.uri) }
+      );
+      queued += 1;
+    }
+  } catch (error) {
+    console.log(
+      `  Could not queue records for retry: ${error instanceof Error ? error.message : String(error)}`
+    );
+  } finally {
+    await queue.close();
+  }
+
+  return queued;
 }
 
 async function cleanup(pool: Pool, esClient: ElasticsearchClient, neo4jDriver: Driver) {

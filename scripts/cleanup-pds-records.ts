@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env -S npx tsx
 /**
  * Script to list and delete records from a user's PDS.
  *

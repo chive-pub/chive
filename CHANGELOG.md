@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-02
+
+### Added
+
+- **A linked dataset can now be the dataset, not just one corpus inside it.** Layers 0.9.0 added `catalogRef` to `pub.layers.eprint.dataLink`, pointing at the `pub.layers.catalog.collection` that is a dataset's citable artifact. Chive read the earlier schema and passed through only `corpusRef`, which names a corpus — one record type within a dataset, and one that many datasets do not have at all. MegaAcceptability, for instance, is expressions and judgment sets with no corpus account, so no link to it could name anything Chive would render. Chive now carries `catalogRef` and `experimentRefs` alongside `corpusRef`, and the eprint page prefers the collection, because that is what a reader means by "the dataset".
+
+  The Python snippet follows the same distinction: a collection is loaded with `lairs.data.collection.load_collection` and a corpus with `load_corpus`. Emitting the corpus loader for a dataset that has no corpus would hand the reader a call with nothing to call it on. The three data kinds 0.9.0 added — `experiment`, `judgments`, `dataset` — are labelled rather than shown as raw slugs.
+
+### Fixed
+
+- **Half the backlink integrations received no records at all.** The relay decides what a consumer is sent; the local event filter can only narrow that stream, never widen it. The indexer admitted every observed foreign collection locally but passed no filter to the relay, so the consumer fell back on a hardcoded namespace list of its own that named only Chive, cosmik and margin. Leaflet, standard.site, Bluesky and calendar records were dropped upstream and never entered the process — the plugins loaded, subscribed and were never called, and cosmik worked only because it happened to appear in that list. The subscription is now always built from the observed set, the fallback names no foreign namespace so it cannot diverge from that set again, and a test asserts every observed collection is requested from the relay.
+
+- **A backlink write abandoned the rest of the record.** `BacklinkTrackingPlugin` emits `backlink.created` and `backlink.deleted` after each write, and the plugin bus enforces emit permission against the plugin's own manifest. No backlink plugin declared those two hooks, so every write threw immediately after succeeding: the first reference on a record was stored, its remaining references were skipped, and the failure surfaced only as a warning. All seven plugins now declare what they emit, and a test holds each manifest to the hooks its base class raises.
+
+- **Every endpoint that returned a row with a `bigint` id answered 500.** PostgreSQL `bigint` arrives from node-postgres as a string, because a value past 2^53 cannot survive a JavaScript number. Passed through unconverted it failed output validation against lexicons that declare an integer, so `pub.chive.backlink.list`, `pub.chive.import.search` and the claiming queries failed for exactly the rows they existed to return, and looked healthy whenever the result was empty. Every fixture in their tests carried a JavaScript number, so nothing exercised the conversion.
+
+  The ids are converted where each row is mapped, and the tests now use the string the driver really returns. This is why no backlink had ever been observed through the API even where the pipeline had written one: a backlink appeared 28 milliseconds after its record reached the firehose, and asking for it returned an error.
+
+- **A dataset linked by AT-URI rendered as a link that did nothing.** A dataset published on Layers has no web address to give: its web routing is not settled, and the record is the durable identifier. So the AT-URI is stored in `repositories.data[].url`, a field declared as a URI and rendered as an anchor — which produced a link a browser cannot follow, wearing an icon that promised it opened somewhere, badged "Other". Chive now tells an ATProto record reference from a web URL and renders it as what it is: the dataset's name, its URI, an attribution to Layers, and the `lairs` call that loads it. Ordinary web repositories are unchanged.
+
+- **An eprint page could not say why it showed no datasets.** `listDataLinks` reports whether an answer came from Layers or could not be obtained, so that "this paper has no linked data" and "we could not ask" are distinguishable. That signal reached the page and was discarded. The Data tab now says when the lookup failed. Tab visibility is unchanged: Layers being unreachable must not give every eprint a Data tab.
+
+## [0.16.0] - 2026-09-02
+
+### Removed
+
+- **WhiteWind support.** The service is dead and nothing ever wrote a backlink through it. The plugin, its collection subscription, its source type, its counts column and its rendering are gone.
+
+### Fixed
+
+- **Every OpenGraph image on the site returned an error.** The main domain routes `/api` to the API container, which strips the prefix before handling, so `/api/og` — a Next.js route, and the only one under that prefix — arrived at the API as `/og` and answered 404. The preview card for a Chive link shared anywhere had a title and description but no image. A more specific Traefik router at higher priority keeps that one path with the frontend, the same carve-out the metrics endpoint already uses.
+
+- **Backlinks from every integration were rejected on insert.** The `backlinks.source_type` constraint listed names from before the plugins were rewritten against the lexicons their services publish, and the types added since were never added to it. A plugin writing a value the constraint does not list has its row rejected by PostgreSQL, which is indistinguishable from finding no reference at all. The constraint is now derived from `BacklinkSourceType`, with a test tying the two together, and the backlink list renders every source type rather than the three it used to know.
+
+- **One unreachable PDS failed the whole deploy, and the records were never retried.** The reindex exits non-zero if any record fails, and a user's PDS being down, rate-limiting or slow is an ordinary condition for an AppView — three records on a single host were enough. Because the reindex is not the last deploy step, everything after it was skipped, including the citation re-matching meant to keep the graph current.
+
+  A record that cannot be fetched is now handed to the index retry worker, which resolves the DID, re-fetches and indexes, backing off exponentially across ten attempts. The reindex finishes, the deploy proceeds, and the records are retried in the background. Should the queue exhaust its attempts, the periodic freshness scan selects records by how long ago they were synced, so one that was never fetched sorts to the front of the next scan — there is no state in which a record is stale and nothing will try it again. Failures that would leave the index _wrong_ rather than stale, including unresolved field labels, still fail the deploy.
+
 ## [0.15.0] - 2026-09-02
 
 ### Added
@@ -1019,7 +1057,9 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0
+[0.16.0]: https://github.com/chive-pub/chive/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/chive-pub/chive/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/chive-pub/chive/compare/v0.14.0...v0.14.1
 [0.14.0]: https://github.com/chive-pub/chive/compare/v0.13.1...v0.14.0

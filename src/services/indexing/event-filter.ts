@@ -68,7 +68,7 @@ export interface EventFilterOptions {
    *
    * @example
    * ```typescript
-   * { observedCollections: ['at.margin.note', 'com.whtwnd.blog.entry'] }
+   * { observedCollections: ['at.margin.note', 'pub.leaflet.document'] }
    * ```
    */
   readonly observedCollections?: readonly string[];

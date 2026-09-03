@@ -24,7 +24,6 @@
           "required": [
             "cosmikCollections",
             "leafletLists",
-            "whitewindBlogs",
             "blueskyPosts",
             "blueskyEmbeds",
             "other",
@@ -38,10 +37,6 @@
             "leafletLists": {
               "type": "integer",
               "description": "Count of Leaflet list backlinks"
-            },
-            "whitewindBlogs": {
-              "type": "integer",
-              "description": "Count of Whitewind blog backlinks"
             },
             "blueskyPosts": {
               "type": "integer",
