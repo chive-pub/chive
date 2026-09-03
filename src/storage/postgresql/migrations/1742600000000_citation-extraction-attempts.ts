@@ -30,6 +30,24 @@ export async function up(pgm: MigrationBuilder): Promise<void> {
   });
 
   pgm.createIndex('citation_extraction_attempts', ['succeeded', 'attempted_at']);
+
+  // Seed from what the data already proves.
+  //
+  // The table starts empty, and the backfill selects eprints with no successful
+  // attempt recorded. Without this every eprint would look never-attempted on
+  // the first run and the whole corpus would go back through GROBID -- tens of
+  // minutes of work to rediscover references already stored. An eprint with
+  // rows in `extracted_citations` has demonstrably been processed, so its
+  // attempt is recorded as the success it was, timed to its most recent
+  // citation rather than to now.
+  pgm.sql(`
+    INSERT INTO citation_extraction_attempts (eprint_uri, attempted_at, succeeded, reference_count)
+    SELECT eprint_uri, NOW(), true, COUNT(*)
+    FROM extracted_citations
+    GROUP BY eprint_uri
+    ON CONFLICT (eprint_uri) DO NOTHING
+  `);
+
   await Promise.resolve();
 }
 
