@@ -39,7 +39,6 @@ import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals
 import { LeafletBacklinksPlugin } from './plugins/builtin/leaflet-backlinks.js';
 import { MarginNotesPlugin, MarginRepliesPlugin } from './plugins/builtin/margin-annotations.js';
 import { StandardSiteBacklinksPlugin } from './plugins/builtin/standard-site-backlinks.js';
-import { StandardSiteSubscriptionsPlugin } from './plugins/builtin/standard-site-subscriptions.js';
 import { registerPluginDependencies } from './plugins/core/plugin-di-helpers.js';
 import {
   getEventBus,
@@ -74,7 +73,6 @@ import { IndexingService } from './services/indexing/indexing-service.js';
 import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { ReviewService } from './services/review/review-service.js';
-import { SubscriptionService } from './services/subscription/subscription-service.js';
 import { ElasticsearchAdapter } from './storage/elasticsearch/adapter.js';
 import { ElasticsearchConnectionPool } from './storage/elasticsearch/connection.js';
 import { Neo4jAdapter } from './storage/neo4j/adapter.js';
@@ -536,16 +534,10 @@ async function main(): Promise<void> {
     const pluginManager = getPluginManager();
     const pluginEventBus = getEventBus();
 
-    // The standard.site social graph is indexed directly rather than through
-    // the backlink machinery: a subscription names a publication and a
-    // recommendation names a document, and neither is a reference to an eprint.
-    const subscriptionService = new SubscriptionService({ db: pgPool, logger });
-
     const pluginContext = {
       backlinkService,
       collectionService,
       nodeService,
-      subscriptionService,
     };
 
     // Cosmik (Semble) ecosystem plugins
@@ -563,7 +555,6 @@ async function main(): Promise<void> {
     // recommend or an embedded document block resolves through.
     try {
       await pluginManager.loadBuiltinPlugin(new StandardSiteBacklinksPlugin(), pluginContext);
-      await pluginManager.loadBuiltinPlugin(new StandardSiteSubscriptionsPlugin(), pluginContext);
       await pluginManager.loadBuiltinPlugin(new CalendarEventsPlugin(), pluginContext);
       logger.info('standard.site and calendar plugins loaded');
     } catch (err) {

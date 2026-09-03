@@ -9,10 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.18.2] - 2026-09-03
 
-### Added
-
-- **The standard.site social graph is indexed.** `site.standard.graph.subscription` and `site.standard.graph.recommend` are written by readers into their own repositories, so they are observed on the firehose like any other foreign record. Neither is a reference to an eprint, so neither goes through the backlink machinery. A publication belongs to the repository holding it, which means the DID in its AT-URI identifies the author subscribed to — no lookup and no AppView. This is the groundwork that lets a Subscribe control mean something; until it existed, one would have written a record nothing read.
-
 ### Fixed
 
 - **Citation nodes showed 1572 where they meant 2016.** `published_version.publishedAt` is stored as epoch milliseconds in a text field — every record that has it, and none as an ISO date — and the year was read as the first four characters of that string, giving the leading digits of the timestamp. Close enough to a year to pass review and render on a node. The unit test supplied a row with the year already extracted, so the query itself was never exercised; it now asserts the SQL.
