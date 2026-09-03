@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A dataset can be referenced by its record, not by a URL it does not have.** A dataset published on Layers has no web address — its `pub.layers.catalog.collection` record is the durable identifier — so its at-uri was going into `repositories.data[].url`, a field declared `format: uri` and described "Repository URL". It rendered correctly, but the field means something else, and the code-repository shape has had a `recordUri` for exactly this since it was written. The data shape now has one too. Both are read, the dedicated field first, so records written under the old placement keep working.
+
 ### Fixed
 
 - **Linking a Layers dataset never worked, in either direction.** The write asked the author's PDS to validate `pub.layers.eprint.dataLink`, and `_lexicon.layers.pub` publishes no TXT record at all, so the NSID cannot be resolved and the PDS rejected the record outright — the link was silently never made, which is why no repository holds one. The read asked a Layers AppView that is still in development and answers nothing, so the panel was empty regardless.

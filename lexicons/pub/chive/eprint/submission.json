@@ -609,6 +609,11 @@
           "format": "uri",
           "description": "Repository URL"
         },
+        "recordUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the dataset record when the data lives in an ATProto application, such as pub.layers.catalog.collection. Addresses the dataset on the network rather than at one web host, so it survives the host moving or disappearing. A dataset published this way commonly has no web address at all, which is why it cannot simply go in `url`: that field is a URL a browser can open, and an at-uri is not one."
+        },
         "doi": {
           "type": "string",
           "description": "Dataset DOI"

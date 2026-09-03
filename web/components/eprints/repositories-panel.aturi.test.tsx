@@ -79,6 +79,50 @@ describe('RepositoriesPanel with AT-URI datasets', () => {
     expect(code.textContent).toContain(NEGRAISING);
   });
 
+  it('reads a dataset from recordUri, the field that means a record', async () => {
+    // `url` is declared a URI and described "Repository URL"; an at:// is not
+    // an address a browser can open. `recordUri` is where a record reference
+    // belongs, and the code-repository shape has had one all along.
+    const user = userEvent.setup();
+    render(
+      <RepositoriesPanel
+        only={['data']}
+        repositories={{
+          data: [{ recordUri: NEGRAISING, label: 'MegaNegRaising', platformSlug: 'other' }],
+        }}
+      />
+    );
+
+    expect(screen.getByText('MegaNegRaising')).toBeInTheDocument();
+    expect(screen.getByText(NEGRAISING)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /load in python/i }));
+    expect(screen.getByText(/PdsClient/).textContent).toContain('load_collection');
+  });
+
+  it('prefers recordUri when a record carries both', () => {
+    // A dataset may have a web page as well as a record. The record is the
+    // durable identifier, so it is the one the card acts on.
+    render(
+      <RepositoriesPanel
+        only={['data']}
+        repositories={{
+          data: [
+            {
+              url: 'https://example.org/dataset',
+              recordUri: NEGRAISING,
+              label: 'MegaNegRaising',
+              platformSlug: 'other',
+            },
+          ],
+        }}
+      />
+    );
+
+    expect(screen.getByText(NEGRAISING)).toBeInTheDocument();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+
   it('still renders an ordinary web repository as a link', () => {
     render(
       <RepositoriesPanel
