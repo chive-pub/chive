@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, it, expect } from 'vitest';
 
 import { SupplementaryPanel } from './supplementary-panel';
@@ -69,5 +70,32 @@ describe('SupplementaryPanel data links', () => {
 
     expect(screen.getByText('Corpus')).toBeInTheDocument();
     expect(screen.getByText('Model output')).toBeInTheDocument();
+  });
+
+  it('offers a dataset link the collection loader, not the corpus loader', async () => {
+    // The panel and the snippet have to agree on which ref names the data. A
+    // dataset whose link carries only a catalogRef used to render as a label
+    // with no way to reach it, because the snippet looked for a corpusRef.
+    const user = userEvent.setup();
+    render(
+      <SupplementaryPanel
+        items={[]}
+        dataLinks={[
+          {
+            uri: 'at://did:plc:author/pub.layers.eprint.dataLink/3',
+            dataKind: 'dataset',
+            catalogRef: 'at://did:plc:mega/pub.layers.catalog.collection/acceptability',
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByText('Dataset')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /load in python/i }));
+
+    const code = screen.getByText(/PdsClient/);
+    expect(code.textContent).toContain('load_collection');
+    expect(code.textContent).toContain('pub.layers.catalog.collection/acceptability');
   });
 });
