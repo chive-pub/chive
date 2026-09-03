@@ -114,7 +114,7 @@ jobs:
       - name: Check Indexer Status
         id: indexer_health
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -177,7 +177,7 @@ jobs:
       - name: Check Database Connectivity
         id: db_health
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -236,7 +236,7 @@ jobs:
       - name: Check Job Queue Health
         id: queue_health
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -283,7 +283,7 @@ jobs:
       - name: Check Container Status
         id: container_health
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -323,7 +323,7 @@ jobs:
       - name: Check Disk Space
         id: disk_health
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -355,7 +355,7 @@ jobs:
       - name: Collect Metrics Summary
         id: metrics
         continue-on-error: true
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
@@ -489,7 +489,7 @@ jobs:
     steps:
       - name: Check for existing issue
         id: check_issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const issues = await github.rest.issues.listForRepo({
@@ -508,7 +508,7 @@ jobs:
             }
 
       - name: Create or update issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const failures = '${{ needs.health-check.outputs.failures }}'.split(',').filter(f => f);
@@ -569,7 +569,7 @@ jobs:
 
     steps:
       - name: Attempt indexer recovery
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.APP_HOST }}
           username: ${{ secrets.SSH_USER }}
