@@ -27,6 +27,12 @@
  * @packageDocumentation
  */
 
+// Must precede any import that reaches a tsyringe-decorated class: tsyringe
+// reads `Reflect.getMetadata` at module load and throws without the polyfill.
+// The compiled script is run directly by the deploy, outside the server entry
+// points that install it, so it has to install it itself.
+import 'reflect-metadata';
+
 import { Pool } from 'pg';
 
 import { CitationExtractionService } from '../../src/services/citation/citation-extraction-service.js';

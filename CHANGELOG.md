@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-09-03
+
+### Fixed
+
+- **The deploy's citation re-matching never ran.** `rematch-citations.ts` is executed by the deploy as its own `node dist/...` process, outside the server entry points that install the reflect polyfill, and tsyringe throws at module load without it. So the step failed on every deploy — after the reindex, which meant the reindex's work stood but the citation graph was never refreshed. The polyfill is now installed by every script the deploy runs directly, and a test reads the workflow itself so the list cannot drift from what is actually executed.
+
 ## [0.17.0] - 2026-09-02
 
 ### Added
@@ -1057,7 +1063,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.1...HEAD
+[0.17.1]: https://github.com/chive-pub/chive/compare/v0.17.0...v0.17.1
 [0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/chive-pub/chive/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/chive-pub/chive/compare/v0.14.1...v0.15.0
