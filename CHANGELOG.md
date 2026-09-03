@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Linking a Layers dataset never worked, in either direction.** The write asked the author's PDS to validate `pub.layers.eprint.dataLink`, and `_lexicon.layers.pub` publishes no TXT record at all, so the NSID cannot be resolved and the PDS rejected the record outright — the link was silently never made, which is why no repository holds one. The read asked a Layers AppView that is still in development and answers nothing, so the panel was empty regardless.
+
+  Neither was necessary. These records are written by the submitting author into that author's own repository: the eprint's AT-URI names the author, the DID document names their PDS, and the records are one `listRecords` away. Chive reads them from there, and asks no AppView. The cost is stated rather than hidden — only links the eprint's own author wrote are found, and a third party linking their dataset to someone else's paper stays invisible until Layers publishes an index that can be asked the reverse question.
+
 ## [0.18.1] - 2026-09-03
 
 ### Fixed

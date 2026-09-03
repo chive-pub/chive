@@ -1,35 +1,30 @@
 /**
- * Federated reads of Layers data links.
+ * Reads Layers data links from the repository that holds them.
  *
  * @remarks
  * `pub.layers.eprint.dataLink` records associate an eprint with the Layers
- * datasets it produced — a corpus, an annotation layer, an evaluation set, a
- * judgment study. They live in their authors' repositories and the Layers
- * AppView is authoritative for them.
+ * datasets it produced -- a corpus, an annotation layer, an evaluation set, a
+ * judgment study.
  *
- * A link names its data in one of three ways, and which one is present depends
- * on how the dataset is built rather than on the publisher's preference:
- * `catalogRef` for the dataset as a whole, `corpusRef` when it is a corpus, and
- * `experimentRefs` for judgment studies. A dataset made of expressions and
- * judgments has no corpus record, so `catalogRef` is the general case and
- * `corpusRef` the special one.
+ * They are written by the submitting author into that author's own repository,
+ * which is what makes them readable without an index: the eprint's AT-URI names
+ * the author, the author's DID document names their PDS, and the records are
+ * one `com.atproto.repo.listRecords` away. No AppView is involved, and none
+ * needs to be -- asking one was the reason this returned nothing for as long as
+ * it did, since the Layers AppView is still in development and does not answer.
  *
- * Chive asks Layers rather than indexing the collection itself. Each AppView
- * stays authoritative for its own records, Chive's view cannot drift from
- * Layers', and no change to the firehose filter is needed. The cost is that
- * these links are not searchable from Chive and the panel depends on Layers
- * being reachable — which is why every failure here degrades to an empty list
- * rather than an error.
- *
- * That degradation is the common case today, not a rare one: `api.layers.pub`
- * does not currently answer. An eprint page must render exactly as well when
- * Layers is absent as when it is present.
+ * Reading the author's repository rather than an index has a cost worth being
+ * explicit about: only links the *eprint's own author* wrote are found. A third
+ * party linking their dataset to someone else's paper is invisible here, and
+ * stays so until Layers publishes an index that can be asked the reverse
+ * question.
  *
  * @packageDocumentation
  */
 
 import type { Redis } from 'ioredis';
 
+import type { IIdentityResolver } from '../../types/interfaces/identity.interface.js';
 import type { ILogger } from '../../types/interfaces/logger.interface.js';
 
 /**
@@ -80,15 +75,14 @@ export interface DataLinkResult {
 export interface LayersDataLinkServiceOptions {
   readonly redis: Redis;
   readonly logger: ILogger;
-  /** Base URL of the Layers AppView. */
-  readonly appViewUrl?: string;
+  /** Resolves an author's DID to the PDS holding their repository. */
+  readonly identity: IIdentityResolver;
   /** How long an answer stays cached, in seconds. */
   readonly cacheTtlSeconds?: number;
-  /** How long to wait for Layers before giving up, in milliseconds. */
+  /** How long to wait for a PDS before giving up, in milliseconds. */
   readonly timeoutMs?: number;
 }
 
-const DEFAULT_APPVIEW_URL = 'https://api.layers.pub';
 const DEFAULT_CACHE_TTL_SECONDS = 300;
 
 /**
@@ -112,14 +106,14 @@ const CACHE_PREFIX = 'chive:layers:datalinks:';
 export class LayersDataLinkService {
   private readonly redis: Redis;
   private readonly logger: ILogger;
-  private readonly appViewUrl: string;
+  private readonly identity: IIdentityResolver;
   private readonly cacheTtlSeconds: number;
   private readonly timeoutMs: number;
 
   constructor(options: LayersDataLinkServiceOptions) {
     this.redis = options.redis;
     this.logger = options.logger.child({ service: 'LayersDataLinkService' });
-    this.appViewUrl = (options.appViewUrl ?? DEFAULT_APPVIEW_URL).replace(/\/+$/, '');
+    this.identity = options.identity;
     this.cacheTtlSeconds = options.cacheTtlSeconds ?? DEFAULT_CACHE_TTL_SECONDS;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   }
@@ -141,13 +135,15 @@ export class LayersDataLinkService {
     const cached = await this.readCache(key);
     if (cached) return { dataLinks: cached, source: 'cache' };
 
-    const fetched = await this.fetchFromLayers(eprintUri);
+    const fetched = await this.fetchFromAuthorRepo(eprintUri);
     if (!fetched) return { dataLinks: [], source: 'unavailable' };
+
+    const views = fetched.map((record) => toView(record)).filter((v): v is DataLinkView => !!v);
 
     // Cached even when empty: "this eprint has no linked data" is an answer
     // worth not asking for again on every page view.
-    await this.writeCache(key, fetched);
-    return { dataLinks: fetched, source: 'layers' };
+    await this.writeCache(key, views);
+    return { dataLinks: views, source: 'layers' };
   }
 
   private async readCache(key: string): Promise<DataLinkView[] | null> {
@@ -175,27 +171,51 @@ export class LayersDataLinkService {
   }
 
   /**
-   * Ask the Layers AppView.
+   * Read the data links out of the eprint author's repository.
    *
-   * @returns The records, or null when Layers could not be reached or answered
-   * with something unusable
+   * @param eprintUri - AT-URI of the eprint, which names its author
+   * @returns The records, or null when the repository could not be read
+   *
+   * @remarks
+   * The eprint's AT-URI carries the author's DID, the DID document carries
+   * their PDS, and the records sit in that repository under
+   * `pub.layers.eprint.dataLink`. Nothing else is required -- in particular no
+   * Layers AppView, which is still in development and answers nothing.
+   *
+   * The collection is read whole and filtered by `eprintUri` rather than
+   * queried: `listRecords` has no predicate, and an author's dataLink
+   * collection is proportional to the papers they have published, not to
+   * anything unbounded.
    */
-  private async fetchFromLayers(eprintUri: string): Promise<DataLinkView[] | null> {
-    const url =
-      `${this.appViewUrl}/xrpc/pub.layers.eprint.listDataLinks` +
-      `?eprintUri=${encodeURIComponent(eprintUri)}`;
+  private async fetchFromAuthorRepo(eprintUri: string): Promise<Record<string, unknown>[] | null> {
+    const did = didFromAtUri(eprintUri);
+    if (!did) return null;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
 
     try {
+      const pds = await this.identity.getPDSEndpoint(did as never);
+      if (!pds) {
+        this.logger.debug('No PDS for eprint author', { eprintUri });
+        return null;
+      }
+
+      const url =
+        `${pds.replace(/\/+$/, '')}/xrpc/com.atproto.repo.listRecords` +
+        `?repo=${encodeURIComponent(did)}` +
+        `&collection=${encodeURIComponent(DATA_LINK_COLLECTION)}` +
+        `&limit=100`;
+
       const response = await fetch(url, {
         signal: controller.signal,
         headers: { Accept: 'application/json' },
       });
 
       if (!response.ok) {
-        this.logger.debug('Layers AppView returned an error', {
+        // An author with no dataLink records at all answers 200 with an empty
+        // list, so a non-OK response is a real failure rather than an absence.
+        this.logger.debug('Author PDS returned an error', {
           status: response.status,
           eprintUri,
         });
@@ -204,27 +224,49 @@ export class LayersDataLinkService {
 
       const body = (await response.json()) as { records?: unknown };
       if (!Array.isArray(body.records)) {
-        this.logger.warn('Layers AppView returned an unexpected shape', { eprintUri });
+        this.logger.warn('Author PDS returned an unexpected shape', { eprintUri });
         return null;
       }
 
-      return body.records.map((record) => toView(record)).filter((v): v is DataLinkView => !!v);
+      // One repository holds an author's links for every paper they have
+      // written, so the ones for this eprint have to be picked out.
+      return body.records.filter((record): record is Record<string, unknown> => {
+        if (record === null || typeof record !== 'object') return false;
+        const value = (record as { value?: unknown }).value;
+        if (value === null || typeof value !== 'object') return false;
+        return (value as { eprintUri?: unknown }).eprintUri === eprintUri;
+      });
     } catch (error) {
-      // Includes the abort. Debug rather than warn: with Layers not yet
-      // deployed this is the ordinary case, and logging it loudly on every
-      // eprint view would bury real problems.
-      this.logger.debug('Layers AppView unreachable', {
+      // Includes the abort. A reader must get the page whether or not another
+      // service is reachable.
+      this.logger.debug('Could not read data links from the author repository', {
         error: error instanceof Error ? error.message : String(error),
         eprintUri,
       });
       return null;
     } finally {
-      // Without this a settled request leaves a live two-second timer behind,
-      // one per eprint view, each one holding the event loop and eventually
-      // aborting a controller nobody is listening to any more.
+      // Without this a settled request leaves a live timer behind, one per
+      // eprint view, each eventually aborting a controller nobody is listening
+      // to any more.
       clearTimeout(timer);
     }
   }
+}
+
+/**
+ * The collection an author's data links live in.
+ */
+const DATA_LINK_COLLECTION = 'pub.layers.eprint.dataLink';
+
+/**
+ * Extracts the repository DID from an AT-URI.
+ *
+ * @param uri - An AT-URI
+ * @returns The DID, or null when the URI does not carry one
+ */
+function didFromAtUri(uri: string): string | null {
+  const match = /^at:\/\/(did:[^/]+)\//.exec(uri);
+  return match?.[1] ?? null;
 }
 
 /**

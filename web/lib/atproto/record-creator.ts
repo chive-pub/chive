@@ -2517,6 +2517,12 @@ export async function createLayersDataLinks(
         repo: did,
         collection: 'pub.layers.eprint.dataLink',
         record,
+        // A foreign lexicon, and one whose NSID does not resolve: there is no
+        // `_lexicon.layers.pub` TXT record, so a PDS asked to validate this
+        // rejects the write outright with `Unknown lexicon type` and the link
+        // is silently never made. The shape is checked against Layers'
+        // published schema by this module's types and its tests.
+        validate: false,
       });
       created.push(response.data.uri);
     } catch (error) {

@@ -32,6 +32,18 @@ function createRedis(): {
 
 const EPRINT = 'at://did:plc:author/pub.chive.eprint.submission/abc';
 
+/**
+ * The author's PDS, resolved from the DID in the eprint's AT-URI.
+ *
+ * Data links live in the submitting author's own repository, so this is the
+ * only lookup the service needs -- there is no AppView in the path.
+ */
+function createIdentity(pds: string | null = 'https://pds.example'): {
+  getPDSEndpoint: ReturnType<typeof vi.fn>;
+} {
+  return { getPDSEndpoint: vi.fn().mockResolvedValue(pds) };
+}
+
 function build(
   redis: ReturnType<typeof createRedis>,
   overrides: Record<string, unknown> = {}
@@ -39,6 +51,7 @@ function build(
   return new LayersDataLinkService({
     redis: redis as never,
     logger: createLogger(),
+    identity: createIdentity() as never,
     ...overrides,
   });
 }
@@ -46,7 +59,7 @@ function build(
 function layersRecord(over: Record<string, unknown> = {}): Record<string, unknown> {
   return {
     uri: 'at://did:plc:someone/pub.layers.eprint.dataLink/1',
-    value: { dataKind: 'corpus', paperSection: 'Table 3', ...over },
+    value: { eprintUri: EPRINT, dataKind: 'corpus', paperSection: 'Table 3', ...over },
   };
 }
 
@@ -124,7 +137,7 @@ describe('LayersDataLinkService', () => {
 
   it('reports an unreachable Layers as unavailable, not as no links', async () => {
     // A reader should be able to tell "this eprint has no data" from "we could
-    // not ask". `api.layers.pub` does not currently answer, so this is the
+    // not ask". A PDS can be slow or unreachable, so this is the
     // ordinary path today rather than an edge case.
     global.fetch = vi.fn().mockRejectedValue(new Error('ECONNREFUSED')) as never;
 
@@ -276,19 +289,48 @@ describe('LayersDataLinkService', () => {
     expect([...redis.store.keys()][0]).toMatch(/^chive:layers:datalinks:/);
   });
 
-  it('asks the configured AppView, filtered by the eprint', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
+  it("reads the collection from the eprint author's own repository", async () => {
+    // No AppView is in the path. The eprint's AT-URI names the author, the DID
+    // document names their PDS, and the records are one listRecords away.
+    const identity = createIdentity('https://pds.example/');
+    global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       json: () => Promise.resolve({ records: [] }),
-    });
-    global.fetch = fetchMock as never;
+    }) as never;
 
-    await build(createRedis(), { appViewUrl: 'https://layers.example/' }).listForEprint(EPRINT);
+    await build(createRedis(), { identity: identity as never }).listForEprint(EPRINT);
 
-    const [url] = fetchMock.mock.calls[0] as [string];
-    // Trailing slash normalised, so the path does not double up.
-    expect(url).toContain('https://layers.example/xrpc/pub.layers.eprint.listDataLinks');
-    expect(url).toContain(encodeURIComponent(EPRINT));
+    expect(identity.getPDSEndpoint).toHaveBeenCalledWith('did:plc:author');
+    const url = (global.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0]?.[0] as string;
+    expect(url).toContain('https://pds.example/xrpc/com.atproto.repo.listRecords');
+    expect(url).toContain('repo=did%3Aplc%3Aauthor');
+    expect(url).toContain('collection=pub.layers.eprint.dataLink');
+  });
+
+  it('returns only the links belonging to this eprint', async () => {
+    // One repository holds an author's links for every paper they have written.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          records: [
+            layersRecord(),
+            layersRecord({ eprintUri: 'at://did:plc:author/pub.chive.eprint.submission/other' }),
+          ],
+        }),
+    }) as never;
+
+    const result = await build(createRedis()).listForEprint(EPRINT);
+
+    expect(result.dataLinks).toHaveLength(1);
+  });
+
+  it('reports an author with no resolvable PDS as unavailable', async () => {
+    const result = await build(createRedis(), {
+      identity: createIdentity(null) as never,
+    }).listForEprint(EPRINT);
+
+    expect(result.source).toBe('unavailable');
   });
 
   it('clears the abort timer once a request settles', async () => {

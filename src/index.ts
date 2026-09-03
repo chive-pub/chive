@@ -490,14 +490,14 @@ function createServices(
         'grantDelegation and revokeDelegation will answer 503.'
     );
   }
-  // Layers is a separate AppView and is authoritative for `pub.layers.*`
-  // records, so Chive asks it rather than indexing that collection. The service
-  // degrades to an empty list when Layers cannot be reached, which is currently
-  // the usual case — the public AppView is not yet answering.
+  // `pub.layers.eprint.dataLink` records are written by the submitting author
+  // into that author's own repository, so they are read from there: the eprint's
+  // AT-URI names the author, the DID document names their PDS. No AppView is
+  // involved — the Layers one is still in development — and none is needed.
   const layersDataLinks = new LayersDataLinkService({
     redis,
     logger,
-    ...(process.env.LAYERS_APPVIEW_URL ? { appViewUrl: process.env.LAYERS_APPVIEW_URL } : {}),
+    identity: identityResolver,
   });
 
   // sifa.id keeps its records in each user's own repository, so reading a
