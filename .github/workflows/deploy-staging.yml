@@ -395,6 +395,13 @@ jobs:
             # citation graph can be checked here before it reaches production;
             # without them staging's graph stayed empty whatever the code did,
             # and the only place to find that out was production.
+            echo "=== Extracting references never successfully extracted ==="
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/extract-citations.js --missing || {
+                echo "::warning::Reference backfill did not complete; it retries next deploy"
+              }
+
             echo "=== Labelling record nodes ==="
             # Always before the citation pass: citation edges attach to
             # labelled eprint nodes, and merging one against a label-less node

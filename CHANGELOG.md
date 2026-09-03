@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A quarter of the corpus had a PDF and no references at all.** Citation extraction runs once, when an eprint is indexed, and degrades gracefully when GROBID cannot be reached — correctly, since one unreachable service must not fail an indexing run. But the degradation left no trace, and nothing retried: an eprint whose extraction failed was indistinguishable from one whose references had been read and found to be none, because both have no rows. On production this was 18 of 66 eprints, including papers with 141 references apiece, and the only symptom was a citation network smaller than it should be.
+
+  Every attempt is now recorded, so a failure is visible as a failure. The deploy retries the eprints never successfully processed, selecting on that record rather than on the absence of citations — a paper genuinely without matchable references is not put through GROBID again on every deploy. Backfilling production took extracted citations from 2,468 to 3,816 and cross-citation matches from 131 to 173.
+
+### Fixed
+
 - **A matched citation whose edge was never written stayed invisible forever.** The re-match considers only citations with no match yet, which is right for matching and wrong for edges: every citation matched while the graph had no eprint nodes to attach to was left settled, matched, and unconnected, and nothing revisited it. On production that was all 131 of them. The deploy now writes the edges implied by matched citations before re-matching the rest; both the node and edge writes are merges, so it costs a no-op once the graph is current.
 
 - **Staging never ran the citation steps.** They existed only in the production deploy, so staging's graph stayed empty whatever the code did and the first place to find that out was production. Staging now runs the same labelling and re-match.

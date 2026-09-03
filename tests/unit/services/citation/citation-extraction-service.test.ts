@@ -683,6 +683,44 @@ describe('CitationExtractionService', () => {
   // matchCitationsToChive
   // ==========================================================================
 
+  describe('extraction attempts', () => {
+    it('records the attempt when extraction fails', async () => {
+      // Degrading gracefully is right -- one unreachable GROBID must not fail
+      // an indexing run -- but the degradation has to leave a trace. Without
+      // one, an eprint whose extraction failed is indistinguishable from one
+      // whose references were read and found to be none, and nothing retries
+      // it. That is how 18 of 66 production eprints came to hold a PDF and no
+      // references at all, unnoticed.
+      grobidClient.extractReferences.mockRejectedValue(new Error('GROBID unreachable'));
+
+      const recorded: unknown[][] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('citation_extraction_attempts')) {
+          recorded.push(params);
+        }
+        return { rows: [] };
+      });
+
+      await service.extractCitations(TEST_EPRINT_URI, {
+        documentFormat: 'pdf',
+        // The GROBID branch is gated on an author DID and a document CID: with
+        // either missing it is skipped rather than attempted, and there would
+        // be no failure to record.
+        authorDid: 'did:plc:author' as never,
+        documentCid: 'bafypdf' as never,
+      });
+
+      // Extraction degrades rather than throwing, so it also records a
+      // completion afterwards. What matters is that the failure itself left a
+      // row naming the reason, because that row is what a backfill selects on.
+      const failure = recorded.find((params) => params[1] === false);
+
+      expect(failure).toBeDefined();
+      expect(failure?.[0]).toBe(TEST_EPRINT_URI);
+      expect(String(failure?.[3])).toContain('GROBID unreachable');
+    });
+  });
+
   describe('rebuildMatchedCitationEdges', () => {
     it('writes edges for citations already matched', async () => {
       // The re-match only looks at rows with no match yet, so a citation that

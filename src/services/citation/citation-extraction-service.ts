@@ -653,6 +653,17 @@ export class CitationExtractionService implements ICitationExtractionService {
               format: options.documentFormat,
               error: error instanceof Error ? error.message : String(error),
             });
+
+            // Degrading gracefully is right -- one unreachable GROBID must not
+            // fail an indexing run -- but the degradation has to leave a trace,
+            // or the eprint is indistinguishable from one whose references were
+            // read and found to be none, and nothing will ever retry it.
+            await this.recordExtractionAttempt(
+              eprintUri,
+              false,
+              0,
+              error instanceof Error ? error.message : String(error)
+            );
           }
         }
 
@@ -787,6 +798,8 @@ export class CitationExtractionService implements ICitationExtractionService {
           matchedToChive,
           durationMs,
         });
+
+        await this.recordExtractionAttempt(eprintUri, true, allCitations.length);
 
         return {
           eprintUri,
@@ -1276,6 +1289,50 @@ export class CitationExtractionService implements ICitationExtractionService {
    * is re-checked rather than assumed, because this is the one place a wrong
    * URI would put a paper in the graph that does not exist.
    */
+  /**
+   * Records that extraction was attempted for an eprint.
+   *
+   * @param eprintUri - The eprint processed
+   * @param succeeded - Whether extraction completed
+   * @param referenceCount - References found, when it did
+   * @param error - Why it did not, when it failed
+   *
+   * @remarks
+   * Extraction runs once, at index time, and nothing retries it. Without a
+   * record of the attempt its failure is indistinguishable from a paper that
+   * genuinely cites nothing: both leave no rows. That is how 18 of 66 eprints
+   * came to have a PDF and no references without anything noticing.
+   *
+   * Recording never fails the extraction it describes. An eprint whose
+   * references were found but whose bookkeeping could not be written is in
+   * better shape than one that threw at the last step.
+   */
+  private async recordExtractionAttempt(
+    eprintUri: AtUri,
+    succeeded: boolean,
+    referenceCount: number,
+    error?: string
+  ): Promise<void> {
+    try {
+      await this.db.query(
+        `INSERT INTO citation_extraction_attempts
+           (eprint_uri, attempted_at, succeeded, reference_count, error)
+         VALUES ($1, NOW(), $2, $3, $4)
+         ON CONFLICT (eprint_uri) DO UPDATE SET
+           attempted_at = NOW(),
+           succeeded = EXCLUDED.succeeded,
+           reference_count = EXCLUDED.reference_count,
+           error = EXCLUDED.error`,
+        [eprintUri, succeeded, referenceCount, error ?? null]
+      );
+    } catch (err) {
+      this.logger.warn('Could not record citation extraction attempt', {
+        eprintUri,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
   private async ensureNodesFor(relationships: readonly CitationRelationship[]): Promise<void> {
     if (!this.citationGraph || relationships.length === 0) return;
 
