@@ -682,6 +682,207 @@ describe('CitationExtractionService', () => {
   // ==========================================================================
 
   describe('matchCitationsToChive', () => {
+    // The cases below are the failure patterns the production corpus actually
+    // shows: DOIs that arrive as URLs or with a sentence's punctuation still
+    // attached, references to preprints carrying an arXiv id and no DOI, and
+    // titles GROBID hands back with the citation's own furniture on the front.
+
+    it('matches a DOI written as a URL', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/url' as AtUri;
+      const seen: unknown[] = [];
+
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          seen.push(params[0]);
+          return { rows: [{ uri: matchedUri }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          doi: 'https://doi.org/10.3765/salt.v26i0.3819.',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('10.3765/salt.v26i0.3819');
+      expect(matched[0]?.matchMethod).toBe('doi');
+    });
+
+    it('matches a DOI whose URL prefix was lost in extraction', async () => {
+      // GROBID leaves this tail behind often enough to be worth handling: the
+      // corpus holds DOIs stored as `.org/10.1101/143750`.
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'doi'")) {
+          seen.push(params[0]);
+          return { rows: [] };
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        { eprintUri: TEST_EPRINT_URI, rawText: 'r', doi: '.org/10.1101/143750', source: 'grobid' },
+      ]);
+
+      expect(seen[0]).toBe('10.1101/143750');
+    });
+
+    it('matches an arXiv identifier, prefix and version and all', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/arx' as AtUri;
+      const seen: unknown[] = [];
+
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes("published_version->>'url'")) {
+          seen.push(params[0]);
+          return { rows: [{ uri: matchedUri }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          arxivId: 'arXiv:2401.01234v2',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('%2401.01234%');
+      expect(matched[0]?.matchMethod).toBe('arxiv');
+      expect(matched[0]?.matchConfidence).toBe(1.0);
+    });
+
+    it('strips a leading year label from a title before comparing', async () => {
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: '2023a. A unified view of evaluation metrics for structured prediction',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('a unified view of evaluation metrics for structured prediction');
+    });
+
+    it('strips a leading publication status from a title', async () => {
+      const seen: unknown[] = [];
+      db.query.mockImplementation((text: string, params: unknown[]) => {
+        if (typeof text === 'string' && text.includes('BTRIM')) {
+          seen.push(params[0]);
+        }
+        return { rows: [] };
+      });
+
+      await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'press. Frequency, acceptability, and selection',
+          source: 'grobid',
+        },
+      ]);
+
+      expect(seen[0]).toBe('frequency acceptability and selection');
+    });
+
+    it('accepts a near title when the year corroborates it', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/fuzz' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: matchedUri, title: 'On believing and hoping whether', year: 2020 }],
+          };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Believing and hoping whether',
+          year: 2020,
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.matchMethod).toBe('fuzzy');
+      expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
+    });
+
+    it('accepts a near title when an author surname corroborates it', async () => {
+      const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/fz2' as AtUri;
+
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: matchedUri, title: 'On believing and hoping whether', year: null }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('LOWER(authors::text)')) {
+          return { rows: [{ blob: '[{"name": "aaron steven white"}]' }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Believing and hoping whether',
+          authors: [{ lastName: 'White' }],
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.matchMethod).toBe('fuzzy');
+    });
+
+    it('refuses a near title that nothing corroborates', async () => {
+      // A wrong edge in a citation graph is worse than a missing one: nothing
+      // downstream can tell it was invented.
+      db.query.mockImplementation((text: string) => {
+        if (typeof text === 'string' && text.includes('similarity(')) {
+          return {
+            rows: [{ uri: 'at://did:plc:other/x/y', title: 'Something close', year: 1999 }],
+          };
+        }
+        if (typeof text === 'string' && text.includes('LOWER(authors::text)')) {
+          return { rows: [{ blob: '[{"name": "someone else"}]' }] };
+        }
+        return { rows: [] };
+      });
+
+      const matched = await service.matchCitationsToChive([
+        {
+          eprintUri: TEST_EPRINT_URI,
+          rawText: 'r',
+          title: 'Something closer',
+          year: 2020,
+          authors: [{ lastName: 'White' }],
+          source: 'grobid',
+        },
+      ]);
+
+      expect(matched[0]?.chiveMatchUri).toBeUndefined();
+      expect(matched[0]?.matchConfidence).toBe(0);
+    });
+
     it('matches by DOI with confidence 1.0', async () => {
       const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/abc' as AtUri;
 
@@ -710,7 +911,7 @@ describe('CitationExtractionService', () => {
       expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });
 
-    it('falls back to title match with confidence 0.8 when DOI is absent', async () => {
+    it('falls back to title match with confidence 0.9 when DOI is absent', async () => {
       const matchedUri = 'at://did:plc:match/pub.chive.eprint.submission/def' as AtUri;
 
       db.query.mockImplementation((text: string) => {
@@ -732,7 +933,7 @@ describe('CitationExtractionService', () => {
       const matched = await service.matchCitationsToChive(citations);
 
       expect(matched).toHaveLength(1);
-      expect(matched[0]?.matchConfidence).toBe(0.8);
+      expect(matched[0]?.matchConfidence).toBe(0.9);
       expect(matched[0]?.matchMethod).toBe('title');
       expect(matched[0]?.chiveMatchUri).toBe(matchedUri);
     });

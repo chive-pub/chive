@@ -176,6 +176,16 @@ export interface ExtractedCitation {
   readonly doi?: string;
 
   /**
+   * arXiv identifier of the cited work.
+   *
+   * @remarks
+   * A reference to a preprint often carries this and no DOI, so for a preprint
+   * server it is the identifier most likely to be present on exactly the works
+   * worth matching.
+   */
+  readonly arxivId?: string;
+
+  /**
    * Publication year.
    */
   readonly year?: number;
@@ -211,6 +221,116 @@ export interface ExtractedCitation {
  *
  * @public
  */
+/**
+ * How a citation was resolved to a Chive eprint.
+ *
+ * @remarks
+ * Ordered by how much the identifier alone establishes: `doi` and `arxiv` name
+ * a work outright, `title` is an exact match after normalisation, and `fuzzy`
+ * is a near-title match that had to be corroborated by an author or a year
+ * before it was accepted.
+ *
+ * @public
+ */
+export type MatchMethod = 'doi' | 'arxiv' | 'title' | 'fuzzy';
+
+/**
+ * Shortest normalized title worth matching on.
+ *
+ * @remarks
+ * Below this a title carries too little to distinguish papers, and GROBID
+ * fragments ("Act", "Argument Realization") would collide with real entries.
+ */
+const MIN_TITLE_LENGTH = 10;
+
+/**
+ * Trigram similarity a near-title match must clear before corroboration.
+ *
+ * @remarks
+ * Chosen against the corpus rather than picked: every correct pair observed
+ * below an exact match scored 0.89 or better, and the band beneath it held only
+ * truncated titles that corroboration would have had to rescue anyway.
+ */
+const FUZZY_TITLE_THRESHOLD = 0.9;
+
+/**
+ * Title normalisation, in SQL.
+ *
+ * @remarks
+ * This must agree with {@link CitationExtractionService.normalizeTitle}
+ * exactly. It did not: the SQL collapsed no whitespace and trimmed nothing,
+ * while the TypeScript did both, so any stored title with a double space or a
+ * newline could never be matched by a comparison that looked exact. Written
+ * once here so the two cannot drift again.
+ */
+const NORMALIZED_TITLE_SQL = `BTRIM(REGEXP_REPLACE(LOWER(REGEXP_REPLACE(title, '[^a-zA-Z0-9[:space:]]', '', 'g')), '\\s+', ' ', 'g'))`;
+
+/**
+ * Strips an arXiv identifier down to its bare form.
+ *
+ * @param value - Identifier as extracted
+ * @returns The bare identifier, or null when it does not look like one
+ */
+/**
+ * Reads the author list stored alongside a citation.
+ *
+ * @param value - The `authors` column, as jsonb
+ * @returns Authors with a surname, or undefined
+ *
+ * @remarks
+ * Stored by extraction and, until now, read by nothing. Only entries carrying a
+ * surname are returned, since the surname is what corroborates a near-title
+ * match.
+ */
+function parseStoredAuthors(
+  value: unknown
+): readonly { readonly firstName?: string; readonly lastName: string }[] | undefined {
+  const raw = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
+  if (!Array.isArray(raw)) return undefined;
+
+  const authors = raw
+    .filter((a): a is { firstName?: string; lastName: string } => {
+      if (a === null || typeof a !== 'object') return false;
+      const last = (a as { lastName?: unknown }).lastName;
+      return typeof last === 'string' && last.length > 0;
+    })
+    .map((a) => ({ firstName: a.firstName, lastName: a.lastName }));
+
+  return authors.length > 0 ? authors : undefined;
+}
+
+function normalizeArxivId(value: string): string | null {
+  const stripped = value
+    .trim()
+    .toLowerCase()
+    .replace(/^arxiv[:\s]*/, '')
+    .replace(/v\d+$/, '');
+  return /^\d{4}\.\d{4,5}$/.test(stripped) || /^[a-z-]+\/\d{7}$/.test(stripped) ? stripped : null;
+}
+
+/**
+ * Strips a DOI down to its bare form.
+ *
+ * @param value - DOI as extracted, possibly a URL or prefixed
+ * @returns The bare DOI, or null when nothing DOI-shaped remains
+ *
+ * @remarks
+ * A reference yields a DOI written any number of ways -- `https://doi.org/10.x`,
+ * `doi:10.x`, with a sentence's full stop still attached, or, as GROBID
+ * sometimes leaves it, the tail `.org/10.x` of a URL whose front was lost.
+ */
+function normalizeDoi(value: string): string | null {
+  const stripped = value
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^(dx\.)?doi\.org\//, '')
+    .replace(/^\.org\//, '')
+    .replace(/^doi:\s*/, '')
+    .replace(/[.,;)\]]+$/, '');
+  return stripped.startsWith('10.') ? stripped : null;
+}
+
 export interface MatchedCitation extends ExtractedCitation {
   /**
    * Confidence of the match (0-1).
@@ -220,7 +340,7 @@ export interface MatchedCitation extends ExtractedCitation {
   /**
    * Method used for matching.
    */
-  readonly matchMethod: 'doi' | 'title';
+  readonly matchMethod: MatchMethod;
 }
 
 /**
@@ -729,9 +849,8 @@ export class CitationExtractionService implements ICitationExtractionService {
    * @returns Citations with match information
    *
    * @remarks
-   * Matching strategy:
-   * 1. DOI exact match (confidence: 1.0)
-   * 2. Title similarity match (confidence: 0.8 for normalized exact match)
+   * Strategies are tried strongest identifier first; see
+   * {@link CitationExtractionService.findMatch}.
    */
   async matchCitationsToChive(
     citations: readonly ExtractedCitation[]
@@ -740,29 +859,10 @@ export class CitationExtractionService implements ICitationExtractionService {
       const results: MatchedCitation[] = [];
 
       for (const citation of citations) {
-        let matchUri: AtUri | undefined;
-        let matchConfidence = 0;
-        let matchMethod: 'doi' | 'title' = 'doi';
-
-        // 1. Try DOI exact match
-        if (citation.doi) {
-          const doiMatch = await this.findEprintByDoi(citation.doi);
-          if (doiMatch) {
-            matchUri = doiMatch as AtUri;
-            matchConfidence = 1.0;
-            matchMethod = 'doi';
-          }
-        }
-
-        // 2. Try title similarity match
-        if (!matchUri && citation.title) {
-          const titleMatch = await this.findEprintByTitle(citation.title);
-          if (titleMatch) {
-            matchUri = titleMatch as AtUri;
-            matchConfidence = 0.8;
-            matchMethod = 'title';
-          }
-        }
+        const match = await this.findMatch(citation);
+        const matchUri = match?.uri;
+        const matchConfidence = match?.confidence ?? 0;
+        const matchMethod = match?.method ?? 'doi';
 
         results.push({
           ...citation,
@@ -812,11 +912,20 @@ export class CitationExtractionService implements ICitationExtractionService {
       const rows = await this.db.query<{
         id: string;
         eprint_uri: string;
+        raw_text: string | null;
         title: string | null;
+        authors: unknown;
         doi: string | null;
+        arxiv_id: string | null;
+        year: number | null;
+        venue: string | null;
         source: string;
       }>(
-        `SELECT id, eprint_uri, title, doi, source
+        // The whole row, not just the title and DOI: the strategy chain
+        // corroborates a near-title match against the authors and the year, and
+        // a re-match that loaded neither would silently be a weaker matcher
+        // than the one that runs during extraction.
+        `SELECT id, eprint_uri, raw_text, title, authors, doi, arxiv_id, year, venue, source
          FROM extracted_citations
          WHERE chive_match_uri IS NULL
            ${options.eprintUri ? 'AND eprint_uri = $2' : ''}
@@ -829,33 +938,36 @@ export class CitationExtractionService implements ICitationExtractionService {
       let matched = 0;
 
       for (const row of rows.rows) {
-        let matchUri: string | null = null;
-        let method: 'doi' | 'title' = 'doi';
-
-        if (row.doi) {
-          matchUri = await this.findEprintByDoi(row.doi);
-        }
-        if (!matchUri && row.title) {
-          matchUri = await this.findEprintByTitle(row.title);
-          if (matchUri) method = 'title';
-        }
+        const match = await this.findMatch({
+          eprintUri: row.eprint_uri as AtUri,
+          rawText: row.raw_text ?? '',
+          title: row.title ?? undefined,
+          authors: parseStoredAuthors(row.authors),
+          doi: row.doi ?? undefined,
+          arxivId: row.arxiv_id ?? undefined,
+          year: row.year ?? undefined,
+          venue: row.venue ?? undefined,
+          source: row.source as ExtractedCitation['source'],
+        });
 
         // A paper citing itself is not a citation edge; it is the same node,
         // and an extracted reference can name the citing work when a preprint
         // lists its own published version.
-        if (!matchUri || matchUri === row.eprint_uri) continue;
+        if (!match || match.uri === row.eprint_uri) continue;
+
+        const matchUri = match.uri;
 
         await this.db.query(
           `UPDATE extracted_citations
            SET chive_match_uri = $1, match_confidence = $2, match_method = $3
            WHERE id = $4`,
-          [matchUri, method === 'doi' ? 1.0 : 0.8, method, row.id]
+          [matchUri, match.confidence, match.method, row.id]
         );
         matched += 1;
 
         relationships.push({
           citingUri: row.eprint_uri as AtUri,
-          citedUri: matchUri as AtUri,
+          citedUri: matchUri,
           source: row.source as CitationRelationship['source'],
         });
       }
@@ -937,6 +1049,7 @@ export class CitationExtractionService implements ICitationExtractionService {
       title: ref.title,
       authors: ref.authors,
       doi: ref.doi,
+      arxivId: ref.arxivId,
       year: ref.year,
       venue: ref.journal,
       volume: ref.volume,
@@ -1062,8 +1175,142 @@ export class CitationExtractionService implements ICitationExtractionService {
    * @param doi - DOI to search for
    * @returns AT-URI of the matching eprint, or null
    */
+  /**
+   * Resolves one citation to a Chive eprint.
+   *
+   * @param citation - The extracted citation
+   * @returns The match, or null when nothing is confident enough
+   *
+   * @remarks
+   * Strongest identifier first, stopping at the first hit:
+   *
+   * 1. **DOI** — names the work outright.
+   * 2. **arXiv id** — likewise, and often the only identifier a reference to a
+   *    preprint carries.
+   * 3. **Exact title**, after normalisation.
+   * 4. **Near title**, but only when an author surname or the year agrees.
+   *
+   * The last exists because references arrive with the citation's own furniture
+   * attached: GROBID hands back titles beginning `2023a.`, `press.` or missing
+   * a leading word, and an exact comparison rejects all of them. A near match
+   * on its own would be a guess, so it must be corroborated by something the
+   * reference states independently -- which is what the author list and year
+   * are for, having been extracted and stored all along without ever being
+   * consulted.
+   */
+  private async findMatch(
+    citation: ExtractedCitation
+  ): Promise<{ uri: AtUri; confidence: number; method: MatchMethod } | null> {
+    if (citation.doi) {
+      const uri = await this.findEprintByDoi(citation.doi);
+      if (uri) return { uri: uri as AtUri, confidence: 1.0, method: 'doi' };
+    }
+
+    if (citation.arxivId) {
+      const uri = await this.findEprintByArxivId(citation.arxivId);
+      if (uri) return { uri: uri as AtUri, confidence: 1.0, method: 'arxiv' };
+    }
+
+    if (citation.title) {
+      const exact = await this.findEprintByTitle(citation.title);
+      if (exact) return { uri: exact as AtUri, confidence: 0.9, method: 'title' };
+
+      const near = await this.findEprintByFuzzyTitle(citation);
+      if (near) return { uri: near as AtUri, confidence: 0.75, method: 'fuzzy' };
+    }
+
+    return null;
+  }
+
+  /**
+   * Finds an eprint whose title is close to a citation's, corroborated.
+   *
+   * @param citation - The citation, whose authors and year are the corroboration
+   * @returns The eprint's AT-URI, or null
+   *
+   * @remarks
+   * Similarity alone is not enough to assert a citation: two papers by one
+   * group often differ by a few words, and the corpus is full of near
+   * neighbours. So a candidate above the threshold is accepted only if the
+   * reference independently agrees on an author surname or on the year. A
+   * reference carrying neither is left unmatched rather than guessed at -- a
+   * wrong edge in a citation graph is worse than a missing one, because nothing
+   * downstream can tell it was invented.
+   */
+  private async findEprintByFuzzyTitle(citation: ExtractedCitation): Promise<string | null> {
+    const normalized = this.normalizeTitle(citation.title ?? '');
+    if (normalized.length < MIN_TITLE_LENGTH) return null;
+
+    const surnames = (citation.authors ?? [])
+      .map((a) => a.lastName.toLowerCase())
+      .filter((n) => n.length > 2);
+
+    const result = await this.db.query<{ uri: string; title: string; year: number | null }>(
+      `SELECT uri,
+              title,
+              NULLIF(LEFT(published_version->>'publishedAt', 4), '')::int AS year
+       FROM eprints_index
+       WHERE similarity(${NORMALIZED_TITLE_SQL}, $1) >= $2
+       ORDER BY similarity(${NORMALIZED_TITLE_SQL}, $1) DESC
+       LIMIT 5`,
+      [normalized, FUZZY_TITLE_THRESHOLD]
+    );
+
+    for (const row of result.rows) {
+      if (citation.year && row.year && Math.abs(citation.year - row.year) <= 1) {
+        return row.uri;
+      }
+      if (surnames.length > 0) {
+        const authorsBlob = await this.eprintAuthorsBlob(row.uri);
+        if (surnames.some((surname) => authorsBlob.includes(surname))) {
+          return row.uri;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * The lowercased author names of an eprint, as one string to search.
+   */
+  private async eprintAuthorsBlob(uri: string): Promise<string> {
+    const result = await this.db.query<{ blob: string | null }>(
+      `SELECT LOWER(authors::text) AS blob FROM eprints_index WHERE uri = $1`,
+      [uri]
+    );
+    return result.rows[0]?.blob ?? '';
+  }
+
+  /**
+   * Finds a Chive eprint by arXiv identifier.
+   *
+   * @param arxivId - Identifier as extracted, possibly with prefix or version
+   * @returns The eprint's AT-URI, or null
+   *
+   * @remarks
+   * An eprint records where it was published rather than an arXiv id of its
+   * own, so the id is looked for inside that URL. `arXiv:2401.01234v2`,
+   * `2401.01234v2` and `2401.01234` all have to reach the same paper, so the
+   * prefix and the version suffix come off first.
+   */
+  private async findEprintByArxivId(arxivId: string): Promise<string | null> {
+    const normalized = normalizeArxivId(arxivId);
+    if (!normalized) return null;
+
+    const result = await this.db.query<{ uri: string }>(
+      `SELECT uri FROM eprints_index
+       WHERE published_version->>'url' ILIKE $1
+       LIMIT 1`,
+      [`%${normalized}%`]
+    );
+
+    return result.rows[0]?.uri ?? null;
+  }
+
   private async findEprintByDoi(doi: string): Promise<string | null> {
-    const normalizedDoi = doi.trim().toLowerCase();
+    const normalizedDoi = normalizeDoi(doi);
+    if (!normalizedDoi) return null;
 
     const result = await this.db.query<EprintLookupRow>(
       `SELECT uri FROM eprints_index WHERE LOWER(published_version->>'doi') = $1 LIMIT 1`,
@@ -1086,11 +1333,11 @@ export class CitationExtractionService implements ICitationExtractionService {
    */
   private async findEprintByTitle(title: string): Promise<string | null> {
     const normalized = this.normalizeTitle(title);
-    if (normalized.length < 10) return null;
+    if (normalized.length < MIN_TITLE_LENGTH) return null;
 
     const result = await this.db.query<EprintLookupRow>(
       `SELECT uri, title FROM eprints_index
-       WHERE LOWER(REGEXP_REPLACE(title, '[^a-zA-Z0-9\\s]', '', 'g')) = $1
+       WHERE ${NORMALIZED_TITLE_SQL} = $1
        LIMIT 1`,
       [normalized]
     );
@@ -1105,11 +1352,21 @@ export class CitationExtractionService implements ICitationExtractionService {
    * @returns Normalized lowercase title with punctuation removed
    */
   private normalizeTitle(title: string): string {
-    return title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+    return (
+      title
+        .toLowerCase()
+        // A reference's own furniture, which GROBID hands back attached to the
+        // front of the title: the year label a citation is keyed by ("2023a."),
+        // and the status standing in for one ("in press.", "to appear."). Left
+        // on, they defeat an exact comparison against a title that never had
+        // them.
+        .replace(/^\s*(?:\d{4}[a-z]?\.\s*)+/, '')
+        .replace(/^\s*(?:in\s+)?press\.\s*/, '')
+        .replace(/^\s*(?:to\s+appear|forthcoming|submitted)\.\s*/, '')
+        .replace(/[^a-z0-9\s]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+    );
   }
 
   /**
@@ -1137,7 +1394,7 @@ export class CitationExtractionService implements ICitationExtractionService {
         const authorsJson = citation.authors ? JSON.stringify(citation.authors) : null;
 
         placeholders.push(
-          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12})`
+          `($${paramIndex}, $${paramIndex + 1}, $${paramIndex + 2}, $${paramIndex + 3}, $${paramIndex + 4}, $${paramIndex + 5}, $${paramIndex + 6}, $${paramIndex + 7}, $${paramIndex + 8}, $${paramIndex + 9}, $${paramIndex + 10}, $${paramIndex + 11}, $${paramIndex + 12}, $${paramIndex + 13})`
         );
 
         values.push(
@@ -1146,6 +1403,7 @@ export class CitationExtractionService implements ICitationExtractionService {
           citation.title ?? null,
           authorsJson,
           citation.doi ?? null,
+          citation.arxivId ?? null,
           citation.year ?? null,
           citation.venue ?? null,
           citation.volume ?? null,
@@ -1156,12 +1414,12 @@ export class CitationExtractionService implements ICitationExtractionService {
           citation.matchConfidence > 0 ? citation.matchMethod : null
         );
 
-        paramIndex += 13;
+        paramIndex += 14;
       }
 
       const query = `
         INSERT INTO extracted_citations (
-          eprint_uri, raw_text, title, authors, doi, year,
+          eprint_uri, raw_text, title, authors, doi, arxiv_id, year,
           venue, volume, pages, source, chive_match_uri,
           match_confidence, match_method
         ) VALUES ${placeholders.join(', ')}

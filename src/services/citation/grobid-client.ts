@@ -54,6 +54,17 @@ export interface GrobidReference {
   readonly doi?: string;
 
   /**
+   * arXiv identifier of the referenced work (if detected).
+   *
+   * @remarks
+   * GROBID emits this as `<idno type="arXiv">` beside the DOI. Only the DOI was
+   * ever read, so the column behind this field held nothing for every citation
+   * ever extracted -- which matters here more than elsewhere, since a reference
+   * to a preprint routinely carries an arXiv id and no DOI at all.
+   */
+  readonly arxivId?: string;
+
+  /**
    * Publication year.
    */
   readonly year?: number;
@@ -475,8 +486,11 @@ export class GrobidClient implements IGrobidClient {
     // Extract authors
     const authors = this.extractAuthors(xml);
 
-    // Extract DOI from <idno type="DOI">
+    // Extract DOI and arXiv id from their <idno> elements. GROBID writes the
+    // type attribute as "DOI" and "arXiv"; both are matched case-insensitively
+    // because the casing has varied across GROBID versions.
     const doi = this.extractTagContent(xml, 'idno', 'DOI');
+    const arxivId = this.extractTagContent(xml, 'idno', 'arXiv');
 
     // Extract year from <date>
     const year = this.extractYear(xml);
@@ -501,6 +515,7 @@ export class GrobidClient implements IGrobidClient {
       title: title ?? undefined,
       authors: authors.length > 0 ? authors : undefined,
       doi: doi ?? undefined,
+      arxivId: arxivId ?? undefined,
       year: year ?? undefined,
       journal: journal ?? undefined,
       volume: volume ?? undefined,
