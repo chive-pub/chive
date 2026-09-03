@@ -145,7 +145,8 @@ describe('MarginNotesPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith({
         sourceUri: 'at://did:plc:user/at.margin.note/abc',
         sourceType: 'margin.annotation',
-        targetUri: expect.stringContaining('chive.pub/eprints/'),
+        // The AT-URI the address resolves to, not the address itself.
+        targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         context: expect.stringContaining('commenting'),
       });
     });
@@ -184,7 +185,8 @@ describe('MarginNotesPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith(
         expect.objectContaining({
           sourceUri: 'at://did:plc:user/at.margin.note/hl1',
-          targetUri: expect.stringContaining('chive.pub/eprints/'),
+          // The AT-URI the address resolves to, not the address itself.
+          targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
           context: expect.stringContaining('highlighting'),
         })
       );

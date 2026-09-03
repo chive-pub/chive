@@ -113,14 +113,15 @@ export class CosmikBacklinksPlugin extends BacklinkTrackingPlugin {
     const card = record as CosmikCard;
     const refs: string[] = [];
 
-    // Check top-level url
-    if (card.url && this.isEprintUri(card.url)) {
-      refs.push(card.url);
-    }
-
-    // Check content.url (may differ from top-level url)
-    if (card.content?.url && this.isEprintUri(card.content.url) && card.content.url !== card.url) {
-      refs.push(card.content.url);
+    // A card is a link card: both fields hold a web address, so every
+    // reference here has to be normalised to the eprint's AT-URI. Pushed as
+    // written, the backlink is stored under a URL no eprint can be looked up
+    // by, and points at nothing.
+    for (const candidate of [card.url, card.content?.url]) {
+      const uri = this.toEprintUri(candidate);
+      if (uri && !refs.includes(uri)) {
+        refs.push(uri);
+      }
     }
 
     return refs;

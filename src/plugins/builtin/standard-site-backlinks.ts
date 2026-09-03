@@ -26,7 +26,7 @@
 
 import type { BacklinkSourceType } from '../../types/interfaces/plugin.interface.js';
 import type { IPluginManifest } from '../../types/interfaces/plugin.interface.js';
-import { BacklinkTrackingPlugin } from '../core/backlink-plugin.js';
+import { BacklinkTrackingPlugin, eprintUriFrom } from '../core/backlink-plugin.js';
 
 /**
  * The path prefix under which Chive serves eprint pages.
@@ -36,11 +36,6 @@ import { BacklinkTrackingPlugin } from '../core/backlink-plugin.js';
  * document whose `path` begins with this names an eprint in its remainder.
  */
 const EPRINT_PATH_PREFIX = '/eprints/';
-
-/**
- * The collection every eprint AT-URI contains.
- */
-const EPRINT_COLLECTION = 'pub.chive.eprint.submission';
 
 /**
  * `site.standard.document`, in the parts this plugin reads.
@@ -207,64 +202,6 @@ export function collectEprintRefs(value: unknown, depth = 0): string[] {
   }
 
   return [...new Set(found)];
-}
-
-/**
- * Reads an eprint AT-URI out of a string, however it was written.
- *
- * @param value - A candidate URI or URL
- * @returns The eprint AT-URI, or undefined when the string names no eprint
- *
- * @remarks
- * A backlink is keyed on the AT-URI, so a link to the eprint's page has to be
- * resolved back to one — otherwise the same work accumulates references under
- * two identities.
- *
- * The page is served at `/eprints/<at-uri>` and answers whether or not the
- * AT-URI is percent-encoded, so both forms are in circulation: a link built by
- * a tool is encoded, while one copied from a browser's address bar generally is
- * not. Anchoring on the `/eprints/` segment and decoding whatever follows
- * handles both, where taking the last path segment only ever handled the
- * encoded form. Query strings, fragments and a trailing slash are stripped.
- */
-function eprintUriFrom(value: string): string | undefined {
-  if (!value.includes(EPRINT_COLLECTION)) {
-    return undefined;
-  }
-
-  if (value.startsWith('at://')) {
-    return trimTrailing(value);
-  }
-
-  const marker = value.indexOf(EPRINT_PATH_PREFIX);
-  if (marker < 0) {
-    return undefined;
-  }
-
-  const tail = value.slice(marker + EPRINT_PATH_PREFIX.length).split(/[?#]/)[0];
-  if (!tail) {
-    return undefined;
-  }
-
-  // Decoding an already-decoded AT-URI is a no-op, so one pass covers both
-  // forms. A malformed encoding throws and means "not an eprint reference".
-  let decoded: string;
-  try {
-    decoded = decodeURIComponent(tail);
-  } catch {
-    return undefined;
-  }
-
-  return decoded.startsWith('at://') && decoded.includes(EPRINT_COLLECTION)
-    ? trimTrailing(decoded)
-    : undefined;
-}
-
-/**
- * Drops a trailing slash, which changes the URL but not the record it names.
- */
-function trimTrailing(uri: string): string {
-  return uri.endsWith('/') ? uri.slice(0, -1) : uri;
 }
 
 /**

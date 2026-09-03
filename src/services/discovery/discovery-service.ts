@@ -1433,7 +1433,18 @@ export class DiscoveryService implements IDiscoveryService {
          uri,
          title,
          authors,
-         NULLIF(LEFT(published_version->>'publishedAt', 4), '')::int AS year,
+         -- publishedAt is stored as epoch milliseconds, as text. Reading the
+         -- first four characters of that gives the leading digits of the
+         -- timestamp -- 1572, 1509 -- which look enough like years to pass
+         -- unnoticed. Both forms are handled because the field is a string and
+         -- nothing constrains it to one.
+         CASE
+           WHEN published_version->>'publishedAt' ~ '^[0-9]{10,}$'
+             THEN EXTRACT(YEAR FROM TO_TIMESTAMP((published_version->>'publishedAt')::bigint / 1000))::int
+           WHEN published_version->>'publishedAt' ~ '^[0-9]{4}-'
+             THEN LEFT(published_version->>'publishedAt', 4)::int
+           ELSE NULL
+         END AS year,
          published_version->>'journal' AS venue
        FROM eprints_index
        WHERE uri = ANY($1)`,

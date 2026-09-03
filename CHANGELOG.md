@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.2] - 2026-09-03
+
+### Fixed
+
+- **Citation nodes showed 1572 where they meant 2016.** `published_version.publishedAt` is stored as epoch milliseconds in a text field — every record that has it, and none as an ISO date — and the year was read as the first four characters of that string, giving the leading digits of the timestamp. Close enough to a year to pass review and render on a node. The unit test supplied a row with the year already extracted, so the query itself was never exercised; it now asserts the SQL.
+
+- **The share card for the site itself had no image.** The metadata named `/og`; the generator lives at `/api/og`. Nothing fails visibly when an unfurl asks for an image that is not there — the card simply renders without one — and eprint pages looked correct throughout, because they build their path from the generator rather than from that literal.
+
+### Fixed
+
+- **A backlink from a pasted link pointed at nothing.** A reference to a paper arrives written the way its source writes it: someone citing a paper in an essay pastes `https://chive.pub/eprints/...`, a Cosmik card is a link card, a Margin annotation targets a page. Only a machine writes the AT-URI. The test for "is this an eprint" was a substring check that a percent-encoded address also passes, so the address was accepted and then recorded verbatim — filing the backlink under a string no eprint can be looked up by. The row was written, nothing raised an error, and it rendered nowhere.
+
+  Every reference is now resolved to the eprint's AT-URI before it is recorded, in the Leaflet, Cosmik, Margin and calendar plugins. The resolver is one implementation shared by all of them rather than a copy each, since a copy per plugin is how one comes to accept a form the others reject. Two tests asserted the old behaviour outright and now assert the AT-URI.
+
+### Added
+
+- **A dataset can be referenced by its record, not by a URL it does not have.** A dataset published on Layers has no web address — its `pub.layers.catalog.collection` record is the durable identifier — so its at-uri was going into `repositories.data[].url`, a field declared `format: uri` and described "Repository URL". It rendered correctly, but the field means something else, and the code-repository shape has had a `recordUri` for exactly this since it was written. The data shape now has one too. Both are read, the dedicated field first, so records written under the old placement keep working.
+
+### Fixed
+
+- **Linking a Layers dataset never worked, in either direction.** The write asked the author's PDS to validate `pub.layers.eprint.dataLink`, and `_lexicon.layers.pub` publishes no TXT record at all, so the NSID cannot be resolved and the PDS rejected the record outright — the link was silently never made, which is why no repository holds one. The read asked a Layers AppView that is still in development and answers nothing, so the panel was empty regardless.
+
+  Neither was necessary. These records are written by the submitting author into that author's own repository: the eprint's AT-URI names the author, the DID document names their PDS, and the records are one `listRecords` away. Chive reads them from there, and asks no AppView. The cost is stated rather than hidden — only links the eprint's own author wrote are found, and a third party linking their dataset to someone else's paper stays invisible until Layers publishes an index that can be asked the reverse question.
+
 ## [0.18.1] - 2026-09-03
 
 ### Fixed
@@ -1099,7 +1123,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.2...HEAD
+[0.18.2]: https://github.com/chive-pub/chive/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/chive-pub/chive/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/chive-pub/chive/compare/v0.17.1...v0.18.0
 [0.17.1]: https://github.com/chive-pub/chive/compare/v0.17.0...v0.17.1

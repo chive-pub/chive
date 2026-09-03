@@ -51,7 +51,9 @@ describe('MarginNotesPlugin', () => {
       };
       const refs = plugin.extractEprintRefs(record);
       expect(refs).toHaveLength(1);
-      expect(refs[0]).toContain('chive.pub/eprints/');
+      // The AT-URI, not the page address it was written as. A backlink filed
+      // under the URL is filed under a string no eprint can be looked up by.
+      expect(refs[0]).toBe('at://did:plc:abc/pub.chive.eprint.submission/123');
     });
 
     it('extracts a Chive AT-URI from target.source for a highlight', () => {
@@ -71,13 +73,27 @@ describe('MarginNotesPlugin', () => {
         $type: 'at.margin.note',
         motivation: 'bookmarking',
         target: {
-          source: 'https://chive.pub/eprints/test',
+          source:
+            'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2F456',
           title: 'Interesting Paper',
         },
         createdAt: '2026-01-01T00:00:00Z',
       };
       const refs = plugin.extractEprintRefs(record);
-      expect(refs).toHaveLength(1);
+      expect(refs).toEqual(['at://did:plc:abc/pub.chive.eprint.submission/456']);
+    });
+
+    it('ignores a chive.pub path that names no eprint', () => {
+      // `/eprints/test` is not an eprint address. Accepting it recorded a
+      // backlink against the literal string, which resolved to nothing.
+      const record = {
+        $type: 'at.margin.note',
+        motivation: 'bookmarking',
+        target: { source: 'https://chive.pub/eprints/test' },
+        createdAt: '2026-01-01T00:00:00Z',
+      };
+
+      expect(plugin.extractEprintRefs(record)).toEqual([]);
     });
 
     it('returns empty for non-Chive URLs', () => {

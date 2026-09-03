@@ -121,8 +121,10 @@ export class CalendarEventsPlugin extends BacklinkTrackingPlugin {
     const refs = new Set<string>();
 
     for (const entry of event.uris ?? []) {
-      if (this.isEprintUri(entry?.uri)) {
-        refs.add(entry.uri);
+      // An event may list the paper by AT-URI or by its web address.
+      const uri = this.toEprintUri(entry?.uri);
+      if (uri) {
+        refs.add(uri);
       }
     }
 

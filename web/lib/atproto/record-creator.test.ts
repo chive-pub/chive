@@ -1182,6 +1182,24 @@ describe('createLayersDataLinks', () => {
     );
   });
 
+  it('asks the PDS not to validate the Layers lexicon', async () => {
+    // `_lexicon.layers.pub` publishes no TXT record, so a PDS cannot resolve
+    // this NSID and rejects the write outright with `Unknown lexicon type`.
+    // Without this the link is silently never made -- the same fault that left
+    // every eprint without a standard.site document.
+    const did = 'did:plc:test123';
+    const agent = createMockAgent({ did });
+
+    await createLayersDataLinks(agent, {
+      eprintUri: `at://${did}/pub.chive.eprint.submission/abc`,
+      dataLinks: [{ dataKind: 'corpus' }],
+    });
+
+    expect(agent.com.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ validate: false })
+    );
+  });
+
   it('carries the eprint URI, kind and timestamp the lexicon requires', async () => {
     const agent = createMockAgent({ did });
 

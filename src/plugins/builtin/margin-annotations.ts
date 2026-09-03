@@ -112,8 +112,12 @@ export class MarginNotesPlugin extends BacklinkTrackingPlugin {
   extractEprintRefs(record: unknown): string[] {
     const note = record as MarginNote;
     const refs: string[] = [];
-    if (note.target?.source && this.isChiveReference(note.target.source)) {
-      refs.push(note.target.source);
+    // An annotation targets a web page, so `source` is a URL. It has to be
+    // resolved to the eprint's AT-URI; stored as the page address, the backlink
+    // points at nothing.
+    const uri = this.toEprintUri(note.target?.source);
+    if (uri) {
+      refs.push(uri);
     }
     return refs;
   }

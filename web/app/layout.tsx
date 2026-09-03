@@ -14,6 +14,16 @@ import { DebugPanel } from '@/components/debug';
 import 'highlight.js/styles/github-dark.css';
 import '@/styles/globals.css';
 
+/**
+ * The card shown when the site itself is shared.
+ *
+ * @remarks
+ * The generator lives at `/api/og`; there has never been a route at `/og`.
+ * Named here so the two places that reference it cannot disagree, which is how
+ * one of them came to point at nothing.
+ */
+const DEFAULT_OG_PATH = '/api/og?type=default';
+
 export const metadata: Metadata = {
   // Absolute URLs come from NEXT_PUBLIC_SITE_URL rather than a literal, so a
   // staging deployment stops advertising production as its canonical home.
@@ -46,7 +56,11 @@ export const metadata: Metadata = {
     description: 'Decentralized eprints on ATProto.',
     images: [
       {
-        url: absoluteUrl('/og'),
+        // `/api/og`, not `/og`. There is no route at `/og`, so every unfurl of
+        // the site itself asked for a page that does not exist and fell back to
+        // no image at all -- while eprint pages, which build the path from the
+        // same generator, looked fine.
+        url: absoluteUrl(DEFAULT_OG_PATH),
         width: 1200,
         height: 630,
         alt: 'Chive | Decentralized Eprint Service',
@@ -57,7 +71,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Chive | Decentralized Eprint Service',
     description: 'Decentralized eprints on ATProto.',
-    images: [absoluteUrl('/og')],
+    images: [absoluteUrl(DEFAULT_OG_PATH)],
   },
   robots: {
     index: true,

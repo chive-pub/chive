@@ -316,21 +316,29 @@ function platformSlugOf(repo: { platformSlug?: string; platform?: string }): str
 
 function RepositoryCard({
   url,
+  recordUri,
   label,
   platformSlug,
   config,
   doi,
 }: {
   url?: string;
+  /** AT-URI of the record, when the resource lives in an ATProto application */
+  recordUri?: string;
   label?: string;
   /** Platform slug from lexicon (e.g., "github", "huggingface") */
   platformSlug?: string;
   config: Record<string, PlatformConfig>;
   doi?: string;
 }) {
-  if (!url) return null;
+  if (!url && !recordUri) return null;
 
-  const atKind = atUriKind(url);
+  // `recordUri` is where a record reference belongs; `url` is an address a
+  // browser can open. Records written before the data shape had `recordUri`
+  // put at-uris in `url`, so both are read -- the dedicated field first, the
+  // legacy placement after it.
+  const reference = recordUri ?? url ?? '';
+  const atKind = atUriKind(reference);
 
   // Normalize platform slug for icon/color lookup
   const normalizedSlug = atKind ? 'layers' : normalizePlatformSlug(platformSlug);
@@ -356,9 +364,9 @@ function RepositoryCard({
               {platformConfig.label}
             </Badge>
           </div>
-          <p className="text-xs text-muted-foreground break-all mt-0.5">{url}</p>
-          {atKind === 'collection' && <DatasetSnippet catalogRef={url} />}
-          {atKind === 'corpus' && <DatasetSnippet corpusRef={url} />}
+          <p className="text-xs text-muted-foreground break-all mt-0.5">{reference}</p>
+          {atKind === 'collection' && <DatasetSnippet catalogRef={reference} />}
+          {atKind === 'corpus' && <DatasetSnippet corpusRef={reference} />}
         </div>
       </div>
     );
@@ -488,6 +496,7 @@ export function RepositoriesPanel({
                 <RepositoryCard
                   key={`code-${index}`}
                   url={repo.url}
+                  recordUri={repo.recordUri}
                   label={repo.label}
                   platformSlug={platformSlugOf(repo)}
                   config={CODE_PLATFORM_CONFIG}
@@ -509,6 +518,7 @@ export function RepositoriesPanel({
                 <RepositoryCard
                   key={`data-${index}`}
                   url={repo.url}
+                  recordUri={repo.recordUri}
                   label={repo.label}
                   platformSlug={platformSlugOf(repo)}
                   config={DATA_PLATFORM_CONFIG}

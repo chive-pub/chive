@@ -29,7 +29,9 @@ describe('siteUrl', () => {
   it('strips a trailing slash so paths do not double up', () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'https://staging.chive.pub/';
     expect(siteUrl()).toBe('https://staging.chive.pub');
-    expect(absoluteUrl('/og')).toBe('https://staging.chive.pub/og');
+    expect(absoluteUrl('/api/og?type=default')).toBe(
+      'https://staging.chive.pub/api/og?type=default'
+    );
   });
 
   it('strips several trailing slashes', () => {
