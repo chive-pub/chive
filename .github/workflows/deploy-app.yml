@@ -473,6 +473,18 @@ jobs:
             # no GROBID — and skips anything already matched, so running it on
             # every deploy costs little and keeps the graph current as the
             # corpus grows.
+            # Labels first, and always before the re-match.
+            #
+            # Citation edges are merged onto `:Node:Object:Eprint` nodes. Two
+            # writers created record nodes carrying a uri and no labels at all,
+            # and merging a labelled node against one of those produces a second
+            # node for the same uri rather than reusing it. Labelling them first
+            # keeps one node per record. Idempotent, and a no-op once no
+            # unlabelled nodes remain.
+            docker exec \
+              chive-api \
+              node --enable-source-maps dist/scripts/db/label-unlabelled-record-nodes.js
+
             docker exec \
               chive-api \
               node --enable-source-maps dist/scripts/db/rematch-citations.js
