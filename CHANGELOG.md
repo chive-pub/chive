@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.18.2] - 2026-09-03
 
+### Fixed
+
+- **A backlink from a pasted link pointed at nothing.** A reference to a paper arrives written the way its source writes it: someone citing a paper in an essay pastes `https://chive.pub/eprints/...`, a Cosmik card is a link card, a Margin annotation targets a page. Only a machine writes the AT-URI. The test for "is this an eprint" was a substring check that a percent-encoded address also passes, so the address was accepted and then recorded verbatim — filing the backlink under a string no eprint can be looked up by. The row was written, nothing raised an error, and it rendered nowhere.
+
+  Every reference is now resolved to the eprint's AT-URI before it is recorded, in the Leaflet, Cosmik, Margin and calendar plugins. The resolver is one implementation shared by all of them rather than a copy each, since a copy per plugin is how one comes to accept a form the others reject. Two tests asserted the old behaviour outright and now assert the AT-URI.
+
 ### Added
 
 - **A dataset can be referenced by its record, not by a URL it does not have.** A dataset published on Layers has no web address — its `pub.layers.catalog.collection` record is the durable identifier — so its at-uri was going into `repositories.data[].url`, a field declared `format: uri` and described "Repository URL". It rendered correctly, but the field means something else, and the code-repository shape has had a `recordUri` for exactly this since it was written. The data shape now has one too. Both are read, the dedicated field first, so records written under the old placement keep working.

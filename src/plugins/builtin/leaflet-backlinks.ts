@@ -216,17 +216,25 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
     const refs = new Set<string>();
     const value = record as LeafletDocument & LeafletComment;
 
+    // Every reference is normalised to an AT-URI before it is recorded.
+    //
+    // A person citing a paper in an essay pastes its web address; only a
+    // machine writes the AT-URI. Recorded as pasted, the backlink is stored
+    // under a string no eprint can be looked up by, so it points at nothing and
+    // renders nowhere -- which is what a website block and a pasted inline link
+    // both used to produce.
+    const add = (value: string | undefined | null): void => {
+      const uri = this.toEprintUri(value);
+      if (uri) refs.add(uri);
+    };
+
     // A comment names its subject directly.
-    if (this.isEprintUri(value.subject)) {
-      refs.add(value.subject);
-    }
+    add(value.subject);
 
     // A comment may quote a document, and carries its own facets.
-    if (this.isEprintUri(value.attachment?.document)) {
-      refs.add(value.attachment.document);
-    }
+    add(value.attachment?.document);
     for (const uri of this.facetLinks(value.facets)) {
-      refs.add(uri);
+      add(uri);
     }
 
     // A document carries its references inside its pages' blocks.
@@ -235,19 +243,15 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
         const block = wrapper.block;
         if (!block) continue;
 
-        // `blocks.website` — a plain URL.
-        if (this.isEprintUri(block.src)) {
-          refs.add(block.src);
-        }
+        // `blocks.website` — a pasted web address.
+        add(block.src);
 
         // `blocks.standardSitePost` — an at-uri. Counted only when it points at
         // an eprint directly; see the remark above.
-        if (this.isEprintUri(block.uri)) {
-          refs.add(block.uri);
-        }
+        add(block.uri);
 
         for (const uri of this.facetLinks(block.facets)) {
-          refs.add(uri);
+          add(uri);
         }
       }
     }

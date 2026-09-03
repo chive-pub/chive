@@ -374,6 +374,26 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * @remarks
    * Helper method for filtering URIs in `extractEprintRefs()`.
    */
+  /**
+   * Normalises a reference to an eprint into its AT-URI.
+   *
+   * @param value - A candidate reference, as an AT-URI or a chive.pub link
+   * @returns The eprint's AT-URI, or undefined when the value names no eprint
+   *
+   * @remarks
+   * A reference to a paper arrives written the way a person writes it. Someone
+   * composing an essay pastes `https://chive.pub/eprints/...`; only a machine
+   * writes the AT-URI. Both name the same work, and a backlink has to record
+   * the AT-URI either way -- the URL is not something an eprint can be looked
+   * up by, so a backlink stored under it points at nothing and renders nowhere.
+   *
+   * @see {@link BacklinkTrackingPlugin.isEprintUri} for the cheaper test that
+   * only asks whether a string mentions an eprint at all.
+   */
+  protected toEprintUri(value: string | undefined | null): string | undefined {
+    return value ? eprintUriFrom(value) : undefined;
+  }
+
   protected isEprintUri(uri: string | undefined | null): uri is string {
     if (!uri) return false;
     return uri.includes('pub.chive.eprint.submission');
@@ -409,4 +429,67 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
   protected onInitialize(): Promise<void> {
     return Promise.resolve();
   }
+}
+
+/**
+ * The path an eprint is served under on the web.
+ */
+const EPRINT_PATH_PREFIX = '/eprints/';
+
+/**
+ * The collection every eprint AT-URI contains.
+ */
+const EPRINT_COLLECTION = 'pub.chive.eprint.submission';
+
+/**
+ * Normalises a reference to an eprint into its AT-URI.
+ *
+ * @param value - A candidate reference, as an AT-URI or a chive.pub link
+ * @returns The eprint's AT-URI, or undefined when the value names no eprint
+ *
+ * @remarks
+ * One implementation, shared. Each plugin reading foreign records needs this,
+ * and a copy per plugin is how one of them comes to accept a form the others
+ * reject.
+ *
+ * @public
+ */
+export function eprintUriFrom(value: string): string | undefined {
+  if (!value.includes(EPRINT_COLLECTION)) {
+    return undefined;
+  }
+
+  if (value.startsWith('at://')) {
+    return trimTrailing(value);
+  }
+
+  const marker = value.indexOf(EPRINT_PATH_PREFIX);
+  if (marker < 0) {
+    return undefined;
+  }
+
+  const tail = value.slice(marker + EPRINT_PATH_PREFIX.length).split(/[?#]/)[0];
+  if (!tail) {
+    return undefined;
+  }
+
+  // Decoding an already-decoded AT-URI is a no-op, so one pass covers both
+  // forms. A malformed encoding throws and means "not an eprint reference".
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(tail);
+  } catch {
+    return undefined;
+  }
+
+  return decoded.startsWith('at://') && decoded.includes(EPRINT_COLLECTION)
+    ? trimTrailing(decoded)
+    : undefined;
+}
+
+/**
+ * Drops a trailing slash, which a pasted link commonly carries.
+ */
+function trimTrailing(uri: string): string {
+  return uri.endsWith('/') ? uri.slice(0, -1) : uri;
 }
