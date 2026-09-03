@@ -144,14 +144,26 @@ export class CitationGraph implements ICitationGraph {
       return;
     }
 
-    // Use UNWIND for efficient batch processing
-    // Only create edge if BOTH eprints exist in Chive
+    // The endpoints are MERGEd rather than MATCHed.
+    //
+    // A citation reaches this method only once both sides have been resolved to
+    // Chive eprints, so the nodes are known to be eprints and creating one is
+    // correct. Matching instead made the edge conditional on a node some other
+    // component happened to have created first: with no such component running,
+    // `MATCH` found nothing, produced no rows, and wrote no edge -- for every
+    // citation, without an error, because a MATCH that matches nothing is not a
+    // failure. The graph stayed empty while the matches accumulated in
+    // PostgreSQL, and the citation network read as "no citations" rather than
+    // as broken.
+    //
+    // `subkind` is set alongside the labels because the read queries filter on
+    // it, so a node carrying one without the other is invisible to them.
     const query = `
       UNWIND $citations AS citation
-      MATCH (citing:Node:Object:Eprint {uri: citation.citingUri})
-      WHERE citing.subkind = 'eprint'
-      MATCH (cited:Node:Object:Eprint {uri: citation.citedUri})
-      WHERE cited.subkind = 'eprint'
+      MERGE (citing:Node:Object:Eprint {uri: citation.citingUri})
+        ON CREATE SET citing.subkind = 'eprint'
+      MERGE (cited:Node:Object:Eprint {uri: citation.citedUri})
+        ON CREATE SET cited.subkind = 'eprint'
       MERGE (citing)-[r:CITES]->(cited)
       SET r.isInfluential = citation.isInfluential,
           r.source = citation.source,

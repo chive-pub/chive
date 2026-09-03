@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A citation graph that can build itself.** `upsertCitationsBatch` located both endpoints of a citation with `MATCH (:Node:Object:Eprint {uri})`, leaving the edge conditional on an eprint node some other component had created first. Nothing creates those nodes outside a recommendation path, so there were none: the graph held 67 label-less `{uri}` nodes minted by the tag and facet managers, no `:Eprint` nodes, and no `CITES` edges at all. A `MATCH` that matches nothing writes nothing and raises nothing, so every citation edge was silently dropped while the matches accumulated in PostgreSQL, and every eprint's citation network read as "no citations" rather than as broken. The endpoints are now merged, and a script labels the nodes already in the graph, taking each label from the collection in its uri rather than assuming.
+
+### Fixed
+
+- **No eprint could publish a standard.site document.** The write asked the author's PDS to validate a foreign lexicon, and a PDS that cannot resolve one rejects the record outright: `Unknown lexicon type: site.standard.document`. Every attempt failed, which is why no eprint had one. The record was never at fault -- `site.standard.document` is published, and the shape Chive writes satisfies it -- so validation is now left to this codebase and its tests, here and for the two sifa writers, which had the same latent fault.
+
+- **A preview of an eprint looked like a placeholder.** The card was given a title and one author name and drew them on an otherwise empty 1200x630 field, while the record's abstract, full author list, venue and keywords went unused. A preview reads as a paper when it carries the paper's own substance, so all of it is passed and laid out: the abstract fills the card the way a document's text fills Leaflet's, unreadable at thumbnail size and not meant to be read there. A record with none of it centres its title rather than stranding it against the top edge.
+
 ## [0.17.1] - 2026-09-03
 
 ### Fixed

@@ -2374,6 +2374,16 @@ export async function createStandardDocument(
     repo: did,
     collection: 'site.standard.document',
     record,
+    // The PDS is asked not to validate.
+    //
+    // This is a foreign lexicon. A PDS validates a record by resolving its NSID
+    // to a published schema, and a PDS that cannot do so rejects the write
+    // outright with `Unknown lexicon type` -- which is what every attempt to
+    // write one of these got, so not one was ever created. Resolution failing
+    // is a fact about the writer's PDS, not about the record: the fields below
+    // are checked against the published schema by this module's own types and
+    // its tests.
+    validate: false,
   });
 
   return {
@@ -2756,6 +2766,9 @@ export async function updateStandardDocument(
     collection: 'site.standard.document',
     rkey: parsed.rkey,
     record,
+    // Same reason as the create path: a PDS that cannot resolve this NSID
+    // rejects the write rather than storing it.
+    validate: false,
   });
 
   return {
