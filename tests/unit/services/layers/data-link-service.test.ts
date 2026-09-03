@@ -94,7 +94,9 @@ describe('LayersDataLinkService', () => {
                 eprintDid: 'did:plc:someone',
                 dataKind: 'annotation-layer',
                 dataKindUri: 'at://did:plc:graph/pub.chive.graph.node/annotation-layer',
+                catalogRef: 'at://did:plc:layers/pub.layers.catalog.collection/ewt-eng-uds',
                 corpusRef: 'at://did:plc:layers/pub.layers.corpus.corpus/f2e9e06a',
+                experimentRefs: ['at://did:plc:layers/pub.layers.judgment.experimentDef/exp1'],
                 description: 'Veridicality judgments for every clause-embedding verb.',
                 paperSection: 'Table 3',
                 createdAt: '2026-09-01T12:00:00.000Z',
@@ -111,7 +113,9 @@ describe('LayersDataLinkService', () => {
       uri: 'at://did:plc:someone/pub.layers.eprint.dataLink/3l7abc',
       dataKind: 'annotation-layer',
       dataKindUri: 'at://did:plc:graph/pub.chive.graph.node/annotation-layer',
+      catalogRef: 'at://did:plc:layers/pub.layers.catalog.collection/ewt-eng-uds',
       corpusRef: 'at://did:plc:layers/pub.layers.corpus.corpus/f2e9e06a',
+      experimentRefs: ['at://did:plc:layers/pub.layers.judgment.experimentDef/exp1'],
       description: 'Veridicality judgments for every clause-embedding verb.',
       paperSection: 'Table 3',
       createdAt: '2026-09-01T12:00:00.000Z',
@@ -205,6 +209,43 @@ describe('LayersDataLinkService', () => {
 
     expect(result.source).toBe('unavailable');
     expect(Date.now() - started).toBeLessThan(1000);
+  });
+
+  it('carries a dataset that has no corpus record', async () => {
+    // MegaAcceptability is expressions and judgments with no corpus account, so
+    // `corpusRef` cannot name it and `catalogRef` is the only pointer to the
+    // dataset. Dropping it would leave the link naming nothing loadable.
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          records: [
+            layersRecord({
+              dataKind: 'judgments',
+              catalogRef: 'at://did:plc:mega/pub.layers.catalog.collection/acceptability-eng',
+            }),
+          ],
+        }),
+    }) as never;
+
+    const result = await build(createRedis()).listForEprint(EPRINT);
+
+    expect(result.dataLinks[0]?.catalogRef).toBe(
+      'at://did:plc:mega/pub.layers.catalog.collection/acceptability-eng'
+    );
+    expect(result.dataLinks[0]?.corpusRef).toBeUndefined();
+  });
+
+  it('ignores an experimentRefs value that is not a list of uris', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ records: [layersRecord({ experimentRefs: 'not-a-list' })] }),
+    }) as never;
+
+    const result = await build(createRedis()).listForEprint(EPRINT);
+
+    expect(result.dataLinks).toHaveLength(1);
+    expect(result.dataLinks[0]?.experimentRefs).toBeUndefined();
   });
 
   it('drops a record that identifies nothing', async () => {

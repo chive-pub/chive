@@ -3,9 +3,16 @@
  *
  * @remarks
  * `pub.layers.eprint.dataLink` records associate an eprint with the Layers
- * datasets it produced — a corpus, an annotation layer, an evaluation set. They
- * live in their authors' repositories and the Layers AppView is authoritative
- * for them.
+ * datasets it produced — a corpus, an annotation layer, an evaluation set, a
+ * judgment study. They live in their authors' repositories and the Layers
+ * AppView is authoritative for them.
+ *
+ * A link names its data in one of three ways, and which one is present depends
+ * on how the dataset is built rather than on the publisher's preference:
+ * `catalogRef` for the dataset as a whole, `corpusRef` when it is a corpus, and
+ * `experimentRefs` for judgment studies. A dataset made of expressions and
+ * judgments has no corpus record, so `catalogRef` is the general case and
+ * `corpusRef` the special one.
  *
  * Chive asks Layers rather than indexing the collection itself. Each AppView
  * stays authoritative for its own records, Chive's view cannot drift from
@@ -36,7 +43,19 @@ export interface DataLinkView {
   readonly dataKindUri?: string;
   readonly description?: string;
   readonly paperSection?: string;
+  /**
+   * The dataset as a whole.
+   *
+   * @remarks
+   * `pub.layers.catalog.collection` is Layers' citable artifact for a dataset.
+   * It is the general case: a dataset built from judgments or expressions has
+   * no corpus record at all, so {@link DataLinkView.corpusRef} cannot name it.
+   */
+  readonly catalogRef?: string;
+  /** The corpus, when the dataset is one. */
   readonly corpusRef?: string;
+  /** `pub.layers.judgment.experimentDef` records behind the eprint. */
+  readonly experimentRefs?: string[];
   readonly createdAt?: string;
 }
 
@@ -234,13 +253,22 @@ function toView(record: unknown): DataLinkView | null {
   const optional = (key: string): string | undefined =>
     typeof value[key] === 'string' ? value[key] : undefined;
 
+  const uriList = (key: string): string[] | undefined => {
+    const value_ = value[key];
+    if (!Array.isArray(value_)) return undefined;
+    const items = value_.filter((item): item is string => typeof item === 'string');
+    return items.length > 0 ? items : undefined;
+  };
+
   return {
     uri,
     dataKind,
     dataKindUri: optional('dataKindUri'),
     description: optional('description'),
     paperSection: optional('paperSection'),
+    catalogRef: optional('catalogRef'),
     corpusRef: optional('corpusRef'),
+    experimentRefs: uriList('experimentRefs'),
     createdAt: optional('createdAt'),
   };
 }

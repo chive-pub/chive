@@ -1355,6 +1355,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                     dataKind: link.dataKind,
                     description: link.description,
                     paperSection: link.paperSection,
+                    catalogRef: link.catalogRef,
                     corpusRef: link.corpusRef,
                   }))}
                   items={(eprint.supplementaryMaterials ?? []).map((item, index) => {

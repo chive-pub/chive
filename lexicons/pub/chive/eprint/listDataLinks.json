@@ -25,7 +25,10 @@
           "properties": {
             "dataLinks": {
               "type": "array",
-              "items": { "type": "ref", "ref": "#dataLinkView" }
+              "items": {
+                "type": "ref",
+                "ref": "#dataLinkView"
+              }
             },
             "source": {
               "type": "string",
@@ -55,14 +58,37 @@
           "format": "at-uri",
           "description": "Knowledge graph node for the data kind, when Layers resolved one"
         },
-        "description": { "type": "string", "maxLength": 10000 },
+        "description": {
+          "type": "string",
+          "maxLength": 10000
+        },
         "paperSection": {
           "type": "string",
           "description": "Which part of the paper the data belongs to, such as 'Table 3'",
           "maxLength": 256
         },
-        "corpusRef": { "type": "string", "format": "at-uri" },
-        "createdAt": { "type": "string", "format": "datetime" }
+        "corpusRef": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "The pub.layers.corpus.corpus record, when the dataset is a corpus."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "catalogRef": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "The pub.layers.catalog.collection record for the dataset as a whole. A dataset need not have a corpus -- one made of judgments or expressions has none -- so this, not corpusRef, is what names the dataset a reader wants."
+        },
+        "experimentRefs": {
+          "type": "array",
+          "description": "pub.layers.judgment.experimentDef records the eprint produced or describes.",
+          "items": {
+            "type": "string",
+            "format": "at-uri"
+          }
+        }
       }
     }
   }

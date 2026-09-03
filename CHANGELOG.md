@@ -7,11 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-09-02
+
+### Added
+
+- **A linked dataset can now be the dataset, not just one corpus inside it.** Layers 0.9.0 added `catalogRef` to `pub.layers.eprint.dataLink`, pointing at the `pub.layers.catalog.collection` that is a dataset's citable artifact. Chive read the earlier schema and passed through only `corpusRef`, which names a corpus — one record type within a dataset, and one that many datasets do not have at all. MegaAcceptability, for instance, is expressions and judgment sets with no corpus account, so no link to it could name anything Chive would render. Chive now carries `catalogRef` and `experimentRefs` alongside `corpusRef`, and the eprint page prefers the collection, because that is what a reader means by "the dataset".
+
+  The Python snippet follows the same distinction: a collection is loaded with `lairs.data.collection.load_collection` and a corpus with `load_corpus`. Emitting the corpus loader for a dataset that has no corpus would hand the reader a call with nothing to call it on. The three data kinds 0.9.0 added — `experiment`, `judgments`, `dataset` — are labelled rather than shown as raw slugs.
+
 ### Fixed
 
 - **Half the backlink integrations received no records at all.** The relay decides what a consumer is sent; the local event filter can only narrow that stream, never widen it. The indexer admitted every observed foreign collection locally but passed no filter to the relay, so the consumer fell back on a hardcoded namespace list of its own that named only Chive, cosmik and margin. Leaflet, standard.site, Bluesky and calendar records were dropped upstream and never entered the process — the plugins loaded, subscribed and were never called, and cosmik worked only because it happened to appear in that list. The subscription is now always built from the observed set, the fallback names no foreign namespace so it cannot diverge from that set again, and a test asserts every observed collection is requested from the relay.
 
 - **A backlink write abandoned the rest of the record.** `BacklinkTrackingPlugin` emits `backlink.created` and `backlink.deleted` after each write, and the plugin bus enforces emit permission against the plugin's own manifest. No backlink plugin declared those two hooks, so every write threw immediately after succeeding: the first reference on a record was stored, its remaining references were skipped, and the failure surfaced only as a warning. All seven plugins now declare what they emit, and a test holds each manifest to the hooks its base class raises.
+
+- **An eprint page could not say why it showed no datasets.** `listDataLinks` reports whether an answer came from Layers or could not be obtained, so that "this paper has no linked data" and "we could not ask" are distinguishable. That signal reached the page and was discarded. The Data tab now says when the lookup failed. Tab visibility is unchanged: Layers being unreachable must not give every eprint a Data tab.
 
 ## [0.16.0] - 2026-09-02
 
@@ -1041,7 +1051,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/chive-pub/chive/compare/v0.16.0...v0.17.0
 [0.16.0]: https://github.com/chive-pub/chive/compare/v0.15.0...v0.16.0
 [0.15.0]: https://github.com/chive-pub/chive/compare/v0.14.1...v0.15.0
 [0.14.1]: https://github.com/chive-pub/chive/compare/v0.14.0...v0.14.1
