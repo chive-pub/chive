@@ -72,10 +72,10 @@ const LAYERS_PDS = 'https://repo.layers.pub';
  */
 function snippetFor(ref: string, kind: 'collection' | 'corpus'): string {
   const loader = kind === 'collection' ? 'load_collection' : 'load_corpus';
-  const module = kind === 'collection' ? 'lairs.data.collection' : 'lairs.data.corpus';
+  const modulePath = kind === 'collection' ? 'lairs.data.collection' : 'lairs.data.corpus';
   const binding = kind === 'collection' ? 'dataset' : 'corpus';
 
-  return `from ${module} import ${loader}
+  return `from ${modulePath} import ${loader}
 from lairs.atproto import PdsClient
 
 with PdsClient("${LAYERS_PDS}") as client:
