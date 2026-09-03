@@ -475,6 +475,76 @@ describe('DiscoveryService', () => {
     vi.clearAllMocks();
   });
 
+  describe('getEprintRefs', () => {
+    // The citation graph stores only URIs on its nodes, so an edge read back
+    // from it carries nothing a reader could recognise -- which is why the
+    // network rendered as boxes labelled "Citing paper 1", "Citing paper 2".
+
+    it('names a paper by title, authors and year', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:a/pub.chive.eprint.submission/one',
+            title: 'Neural Models of Factuality',
+            authors: [{ name: 'Aaron Steven White' }, { name: 'Rachel Rudinger' }],
+            year: 2018,
+            venue: 'NAACL',
+          },
+        ],
+      });
+
+      const refs = await service.getEprintRefs(['at://did:plc:a/pub.chive.eprint.submission/one']);
+      const ref = refs.get('at://did:plc:a/pub.chive.eprint.submission/one');
+
+      expect(ref?.title).toBe('Neural Models of Factuality');
+      // Author order is meaningful: the first name is how the work is cited.
+      expect(ref?.authors).toEqual(['Aaron Steven White', 'Rachel Rudinger']);
+      expect(ref?.year).toBe(2018);
+      expect(ref?.venue).toBe('NAACL');
+    });
+
+    it('looks every URI up in one query, deduplicated', async () => {
+      db.query.mockResolvedValueOnce({ rows: [] });
+
+      await service.getEprintRefs(['at://a/c/1', 'at://a/c/2', 'at://a/c/1']);
+
+      // One paper commonly sits at the end of many edges; a lookup per edge
+      // would cost dozens of round trips to draw a single tab.
+      expect(db.query).toHaveBeenCalledTimes(1);
+      const params = db.query.mock.calls[0]?.[1] as unknown[][];
+      expect(params[0]).toEqual(['at://a/c/1', 'at://a/c/2']);
+    });
+
+    it('does not query for an empty set', async () => {
+      const refs = await service.getEprintRefs([]);
+
+      expect(refs.size).toBe(0);
+      expect(db.query).not.toHaveBeenCalled();
+    });
+
+    it('drops author entries with no name rather than rendering blanks', async () => {
+      db.query.mockResolvedValueOnce({
+        rows: [
+          {
+            uri: 'at://did:plc:a/pub.chive.eprint.submission/two',
+            title: 'A Paper',
+            authors: [{ name: 'Real Person' }, {}, { name: '' }],
+            year: null,
+            venue: null,
+          },
+        ],
+      });
+
+      const ref = (
+        await service.getEprintRefs(['at://did:plc:a/pub.chive.eprint.submission/two'])
+      ).get('at://did:plc:a/pub.chive.eprint.submission/two');
+
+      expect(ref?.authors).toEqual(['Real Person']);
+      expect(ref?.year).toBeUndefined();
+      expect(ref?.venue).toBeUndefined();
+    });
+  });
+
   // ==========================================================================
   // setPluginManager
   // ==========================================================================

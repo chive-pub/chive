@@ -99,6 +99,26 @@ export const getCitations: XRPCMethod<QueryParams, void, OutputSchema> = {
       }
     }
 
+    // Name both ends of every edge.
+    //
+    // The citation graph stores only URIs on its nodes, so an edge read back
+    // from it carries nothing a reader could recognise -- which is why the
+    // network rendered as boxes labelled "Citing paper 1", "Citing paper 2".
+    //
+    // These go in a lookup rather than on each edge: one paper is commonly at
+    // the end of many of them, and repeating its author list per edge would
+    // send the same names back a dozen times in one response. One query for the
+    // page, not one per edge.
+    const refs = await discovery.getEprintRefs(citations.flatMap((c) => [c.citingUri, c.citedUri]));
+
+    const papers: OutputSchema['papers'] = [...refs.values()].map((ref) => ({
+      uri: ref.uri,
+      title: ref.title,
+      authors: [...ref.authors],
+      ...(ref.year !== undefined ? { year: ref.year } : {}),
+      ...(ref.venue !== undefined ? { venue: ref.venue } : {}),
+    }));
+
     logger.info('Citations returned', {
       uri: params.uri,
       citedByCount: counts.citedByCount,
@@ -119,6 +139,7 @@ export const getCitations: XRPCMethod<QueryParams, void, OutputSchema> = {
           influentialCitedByCount: counts.influentialCitedByCount,
         },
         citations,
+        papers,
         cursor,
         hasMore,
       },

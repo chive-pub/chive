@@ -82,6 +82,43 @@ import { extractPlainText } from '../../utils/rich-text.js';
 import type { DiscoverySignalWeights } from '../search/ranking-service.js';
 
 /**
+ * An eprint named well enough to identify on sight.
+ *
+ * @public
+ */
+export interface EprintRef {
+  readonly uri: string;
+  readonly title: string;
+  readonly authors: readonly string[];
+  readonly year?: number;
+  readonly venue?: string;
+}
+
+/**
+ * Reads author names out of the stored author list.
+ *
+ * @param value - The `authors` column, as jsonb
+ * @returns Names in record order
+ *
+ * @remarks
+ * Author order is meaningful in a citation -- the first name is how the work is
+ * referred to -- so it is preserved rather than sorted. Entries without a name
+ * are dropped instead of appearing as blanks in a byline.
+ */
+function parseAuthorNames(value: unknown): string[] {
+  const raw = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .map((author) =>
+      author !== null && typeof author === 'object'
+        ? (author as { name?: unknown }).name
+        : undefined
+    )
+    .filter((name): name is string => typeof name === 'string' && name.length > 0);
+}
+
+/**
  * Database row for user interactions.
  */
 interface InteractionRow {
@@ -1364,6 +1401,59 @@ export class DiscoveryService implements IDiscoveryService {
    * @remarks
    * Delegates to the underlying citation graph service.
    */
+  /**
+   * Resolves eprints named well enough to identify on sight.
+   *
+   * @param uris - AT-URIs to look up
+   * @returns One entry per indexed eprint; a URI with no eprint is absent
+   *
+   * @remarks
+   * The citation graph stores only URIs on its nodes, so an edge read back from
+   * it carries nothing a reader could recognise -- which is why the network
+   * rendered as boxes labelled "Citing paper 1", "Citing paper 2". A paper is
+   * identified by who wrote it and when as much as by its title, so all three
+   * come back together.
+   *
+   * One query for the whole page rather than a lookup per edge: a well-cited
+   * paper would otherwise cost dozens of round trips to draw a single tab.
+   */
+  async getEprintRefs(uris: readonly string[]): Promise<Map<string, EprintRef>> {
+    if (uris.length === 0) {
+      return new Map();
+    }
+
+    const result = await this.db.query<{
+      uri: string;
+      title: string;
+      authors: unknown;
+      year: number | null;
+      venue: string | null;
+    }>(
+      `SELECT
+         uri,
+         title,
+         authors,
+         NULLIF(LEFT(published_version->>'publishedAt', 4), '')::int AS year,
+         published_version->>'journal' AS venue
+       FROM eprints_index
+       WHERE uri = ANY($1)`,
+      [[...new Set(uris)]]
+    );
+
+    return new Map(
+      result.rows.map((row) => [
+        row.uri,
+        {
+          uri: row.uri,
+          title: row.title,
+          authors: parseAuthorNames(row.authors),
+          ...(row.year !== null ? { year: row.year } : {}),
+          ...(row.venue ? { venue: row.venue } : {}),
+        },
+      ])
+    );
+  }
+
   async getCitationCounts(uri: AtUri): Promise<{
     readonly citedByCount: number;
     readonly referencesCount: number;
