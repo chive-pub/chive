@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A backlink write abandoned the rest of the record.** `BacklinkTrackingPlugin` emits `backlink.created` and `backlink.deleted` after each write, and the plugin bus enforces emit permission against the plugin's own manifest. No backlink plugin declared those two hooks, so every write threw immediately after succeeding: the first reference on a record was stored, its remaining references were skipped, and the failure surfaced only as a warning. All seven plugins now declare what they emit, and a test holds each manifest to the hooks its base class raises.
 
+- **A dataset linked by AT-URI rendered as a link that did nothing.** A dataset published on Layers has no web address to give: its web routing is not settled, and the record is the durable identifier. So the AT-URI is stored in `repositories.data[].url`, a field declared as a URI and rendered as an anchor — which produced a link a browser cannot follow, wearing an icon that promised it opened somewhere, badged "Other". Chive now tells an ATProto record reference from a web URL and renders it as what it is: the dataset's name, its URI, an attribution to Layers, and the `lairs` call that loads it. Ordinary web repositories are unchanged.
+
 - **An eprint page could not say why it showed no datasets.** `listDataLinks` reports whether an answer came from Layers or could not be obtained, so that "this paper has no linked data" and "we could not ask" are distinguishable. That signal reached the page and was discarded. The Data tab now says when the lookup failed. Tab visibility is unchanged: Layers being unreachable must not give every eprint a Data tab.
 
 ## [0.16.0] - 2026-09-02

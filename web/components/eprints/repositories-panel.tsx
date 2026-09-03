@@ -13,6 +13,7 @@
 import { ExternalLink, Github, Database, Code, Box, FlaskConical, FileText } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { DatasetSnippet } from '@/components/eprints/dataset-snippet';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Repositories, Preregistration } from '@/lib/api/schema';
@@ -137,6 +138,12 @@ const CODE_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
  * Platform configuration for data repositories.
  */
 const DATA_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
+  layers: {
+    label: 'Layers',
+    icon: Database,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50 dark:bg-violet-950',
+  },
   huggingface: {
     label: 'Hugging Face',
     icon: Box,
@@ -245,6 +252,39 @@ const PREREG_PLATFORM_CONFIG: Record<string, PlatformConfig> = {
  * @param platformSlug - Platform slug from lexicon (e.g., "github", "huggingface")
  * @returns Normalized slug matching config keys
  */
+/**
+ * The Layers record types a dataset reference can name.
+ *
+ * @remarks
+ * A dataset is addressed by AT-URI rather than by URL, and the two Layers
+ * record types worth loading have different loaders in `lairs`. A collection is
+ * the dataset as a whole; a corpus is one part of one.
+ */
+const LAYERS_COLLECTION = 'pub.layers.catalog.collection';
+const LAYERS_CORPUS = 'pub.layers.corpus.corpus';
+
+/**
+ * Classifies a repository reference.
+ *
+ * @param url - The value stored in the entry's `url` field
+ * @returns Which Layers record the reference names, `record` for any other
+ * AT-URI, or `null` when it is an ordinary web URL
+ *
+ * @remarks
+ * `repositories.data[].url` is declared as a URI and rendered as a link, but a
+ * dataset published on Layers has no web address to put there -- Layers' web
+ * routing is not settled and the record is the durable identifier. So an AT-URI
+ * turns up in a field whose contract is "a URL a browser can open", and
+ * rendering it as an anchor produces a link that cannot be followed. This tells
+ * the two apart so each is rendered as what it is.
+ */
+function atUriKind(url: string): 'collection' | 'corpus' | 'record' | null {
+  if (!url.startsWith('at://')) return null;
+  if (url.includes(`/${LAYERS_COLLECTION}/`)) return 'collection';
+  if (url.includes(`/${LAYERS_CORPUS}/`)) return 'corpus';
+  return 'record';
+}
+
 function normalizePlatformSlug(platformSlug?: string): string {
   if (!platformSlug) return 'other';
   return platformSlug;
@@ -290,12 +330,39 @@ function RepositoryCard({
 }) {
   if (!url) return null;
 
+  const atKind = atUriKind(url);
+
   // Normalize platform slug for icon/color lookup
-  const normalizedSlug = normalizePlatformSlug(platformSlug);
+  const normalizedSlug = atKind ? 'layers' : normalizePlatformSlug(platformSlug);
   const platformConfig = config[normalizedSlug] ?? config.other;
   const Icon = platformConfig.icon;
   // Use label if provided, otherwise platform config label
   const displayLabel = label || platformConfig.label;
+
+  // An AT-URI is not a browser address. Rendering it as an anchor gives a link
+  // that does nothing and an icon promising it opens somewhere, so the card
+  // drops both and offers the way in that does work: the URI itself, and the
+  // code that loads it.
+  if (atKind) {
+    return (
+      <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
+        <div className={cn('shrink-0 p-2 rounded-md', platformConfig.bgColor)}>
+          <Icon className={cn('h-5 w-5', platformConfig.color)} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-medium truncate">{displayLabel}</span>
+            <Badge variant="outline" className="text-xs shrink-0">
+              {platformConfig.label}
+            </Badge>
+          </div>
+          <p className="text-xs text-muted-foreground break-all mt-0.5">{url}</p>
+          {atKind === 'collection' && <DatasetSnippet catalogRef={url} />}
+          {atKind === 'corpus' && <DatasetSnippet corpusRef={url} />}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <a
