@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { AuthorPageContent } from './author-content';
 import { AuthorPageSkeleton } from './loading';
 import { createServerClient } from '@/lib/api/client';
+import { resolveChivePublication } from '@/lib/metadata/publication-link';
 
 /**
  * Author page route parameters.
@@ -91,8 +92,15 @@ export default async function AuthorPage({ params }: AuthorPageProps) {
     notFound();
   }
 
+  // This page is the url an author's Chive publication names, which makes it
+  // that publication's home page. Bluesky will not render an enhanced card for
+  // any article in a publication whose home page does not advertise it, so the
+  // link belongs here as much as on the eprint.
+  const publicationUri = await resolveChivePublication(decodedDid);
+
   return (
     <div className="container mx-auto max-w-4xl py-8">
+      {publicationUri && <link rel="site.standard.publication" href={publicationUri} />}
       <Suspense fallback={<AuthorPageSkeleton />}>
         <AuthorPageContent did={decodedDid} />
       </Suspense>

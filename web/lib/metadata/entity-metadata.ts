@@ -60,6 +60,17 @@ export interface EntityMetadataInput {
    * back to plain OpenGraph.
    */
   standardDocumentUri?: string;
+  /**
+   * AT-URI of the `site.standard.publication` the document belongs to.
+   *
+   * @remarks
+   * Bluesky's integration guidance requires *both* links on an article page:
+   * the document and the publication. The document alone renders no enhanced
+   * card, which is why naming only it produced no `associated_refs` and no
+   * subscribe control. The crawler does not run JavaScript, so both have to be
+   * in the server-rendered head.
+   */
+  publicationUri?: string;
   /** Chive canonical web URL of the entity. */
   canonicalUrl: string;
   /** Display title. */
@@ -201,6 +212,14 @@ export function buildEntityHeadTags(input: EntityMetadataInput): EntityHeadTag[]
       rel: 'site.standard.document',
       href: input.standardDocumentUri,
     });
+  }
+  if (input.publicationUri) {
+    tags.push({
+      kind: 'link',
+      rel: 'site.standard.publication',
+      href: input.publicationUri,
+    });
+    tags.push({ kind: 'meta', name: 'at:alternate', content: input.publicationUri });
   }
 
   // 2. `<link rel="alternate">` for each external identifier (DOI, ORCID, etc.)
