@@ -81,6 +81,17 @@
 
 /* LaTeX styling */
 @layer components {
+  /* The container's gutter is 1rem so a 320px phone keeps its width; from `sm`
+     up it returns to the 2rem the desktop layout was designed around. This
+     cannot live in tailwind.config.ts, whose container plugin only emits
+     per-breakpoint padding for the screens named in `container.screens`. */
+  @media (min-width: 640px) {
+    .container {
+      padding-left: 2rem;
+      padding-right: 2rem;
+    }
+  }
+
   .latex-inline {
     @apply inline;
   }

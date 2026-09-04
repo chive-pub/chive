@@ -14,11 +14,11 @@ const config: Config = {
       center: true,
       // 2rem on each side costs a 320px phone a fifth of its width, which is
       // what left titles, chips and toolbars fighting over what remained.
-      // Desktop keeps the wider gutter from `sm` up.
-      padding: {
-        DEFAULT: '1rem',
-        sm: '2rem',
-      },
+      // The wider gutter comes back at `sm`, in styles/globals.css: a
+      // breakpoint-keyed `padding` here would be dropped, because
+      // `container.screens` below narrows the container to a single breakpoint
+      // and Tailwind only emits container padding for the screens it lists.
+      padding: '1rem',
       screens: {
         '2xl': '1400px',
       },
