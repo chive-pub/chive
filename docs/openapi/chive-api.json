@@ -12042,6 +12042,63 @@
         ],
         "type": "object"
       },
+      "pub.chive.notification.listCollectionAdds.actorRef": {
+        "properties": {
+          "did": {
+            "format": "did",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "did"
+        ],
+        "type": "object"
+      },
+      "pub.chive.notification.listCollectionAdds.collectionAddNotification": {
+        "properties": {
+          "actor": {
+            "$ref": "#/components/schemas/pub.chive.notification.listCollectionAdds.actorRef"
+          },
+          "collectionLabel": {
+            "type": "string"
+          },
+          "collectionUri": {
+            "format": "at-uri",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "When the eprint was added to the collection",
+            "format": "date-time",
+            "type": "string"
+          },
+          "eprintTitle": {
+            "type": "string"
+          },
+          "eprintUri": {
+            "format": "at-uri",
+            "type": "string"
+          },
+          "uri": {
+            "description": "AT-URI of the edge that added the eprint to the collection",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "actor",
+          "collectionUri",
+          "eprintUri",
+          "createdAt"
+        ],
+        "type": "object"
+      },
       "pub.chive.notification.listEndorsementsOnMyPapers.authorRef": {
         "properties": {
           "avatar": {
@@ -12102,6 +12159,57 @@
           "eprintUri",
           "endorser",
           "contributions",
+          "createdAt"
+        ],
+        "type": "object"
+      },
+      "pub.chive.notification.listFollowers.actorRef": {
+        "properties": {
+          "did": {
+            "format": "did",
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "did"
+        ],
+        "type": "object"
+      },
+      "pub.chive.notification.listFollowers.followerNotification": {
+        "properties": {
+          "activityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "collectionLabel": {
+            "description": "Label of the follower's collection",
+            "type": "string"
+          },
+          "collectionUri": {
+            "description": "AT-URI of the follower's collection holding the subscription",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "createdAt": {
+            "description": "When the follower created the collection",
+            "format": "date-time",
+            "type": "string"
+          },
+          "follower": {
+            "$ref": "#/components/schemas/pub.chive.notification.listFollowers.actorRef"
+          }
+        },
+        "required": [
+          "collectionUri",
+          "follower",
           "createdAt"
         ],
         "type": "object"
@@ -24637,6 +24745,145 @@
         ]
       }
     },
+    "/xrpc/pub.chive.collection.getFollowedFeed": {
+      "get": {
+        "description": "Get one activity feed spanning every collection the authenticated reader follows, deduplicated so an author held in several collections is not repeated.",
+        "operationId": "pub_chive_collection_getFollowedFeed",
+        "parameters": [
+          {
+            "description": "Which collections to draw from. subscriptions: only those created by following an author. mine: every collection you own. followed: collections others own that you follow. all: both.",
+            "in": "query",
+            "name": "scope",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "Which collections to draw from. subscriptions: only those created by following an author. mine: every collection you own. followed: collections others own that you follow. all: both.",
+              "enum": [
+                "subscriptions",
+                "mine",
+                "followed",
+                "all"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "description": "Restrict the feed to these event types. Omit for all types.",
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            }
+          },
+          {
+            "description": "Maximum events to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "description": "Maximum events to return",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pagination cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Pagination cursor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cursor": {
+                      "description": "Pagination cursor for next page",
+                      "type": "string"
+                    },
+                    "events": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.collection.defs.feedEventView"
+                      },
+                      "type": "array"
+                    },
+                    "hasMore": {
+                      "description": "Whether more events exist",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "events",
+                    "hasMore"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "ExpiredToken",
+                        "InvalidToken"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "pub.chive.collection.getFollowedFeed",
+        "tags": [
+          "collection"
+        ]
+      }
+    },
     "/xrpc/pub.chive.collection.getFollowerCount": {
       "get": {
         "description": "Get the follower count for a collection (via network.cosmik.follow records)",
@@ -31473,6 +31720,110 @@
         ]
       }
     },
+    "/xrpc/pub.chive.notification.listCollectionAdds": {
+      "get": {
+        "description": "List the current user's eprints that other people added to their collections",
+        "operationId": "pub_chive_notification_listCollectionAdds",
+        "parameters": [
+          {
+            "description": "Maximum results to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "Maximum results to return",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pagination cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Pagination cursor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "notifications": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.notification.listCollectionAdds.collectionAddNotification"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "notifications"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "ExpiredToken",
+                        "InvalidToken",
+                        "AuthenticationRequired"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "pub.chive.notification.listCollectionAdds",
+        "tags": [
+          "notification"
+        ]
+      }
+    },
     "/xrpc/pub.chive.notification.listEndorsementsOnMyPapers": {
       "get": {
         "description": "List endorsements on papers authored by the current user",
@@ -31580,6 +31931,110 @@
           }
         ],
         "summary": "pub.chive.notification.listEndorsementsOnMyPapers",
+        "tags": [
+          "notification"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.notification.listFollowers": {
+      "get": {
+        "description": "List the people who follow the current user",
+        "operationId": "pub_chive_notification_listFollowers",
+        "parameters": [
+          {
+            "description": "Maximum results to return",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "description": "Maximum results to return",
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Pagination cursor",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "description": "Pagination cursor",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "cursor": {
+                      "type": "string"
+                    },
+                    "notifications": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.notification.listFollowers.followerNotification"
+                      },
+                      "type": "array"
+                    }
+                  },
+                  "required": [
+                    "notifications"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "ExpiredToken",
+                        "InvalidToken",
+                        "AuthenticationRequired"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "pub.chive.notification.listFollowers",
         "tags": [
           "notification"
         ]

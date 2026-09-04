@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-04
+
+### Added
+
+- **One feed for everything you follow.** Following an author creates a collection, so "everything I follow" and "every collection I hold" are the same question asked at different widths. `/feed` asks it, with a scope control for the width: only the collections created by following someone, every collection you own, collections other people own that you follow, or all of it. The activity checkboxes from a subscription apply here too, so a reader who wants new papers and nothing else can say so once.
+
+  Deduplication happens in the database rather than the browser. A reader who follows the same author from three collections gets three person nodes and so three copies of every event; the feed collapses them into one row that names all three collections. Merging pages in the client could not do that — it cannot collapse two rows that are the same event, and a cursor over merged pages is not a cursor over any one of them. The engine that does this is the collection feed itself, now given a set of collections instead of one, so there is no second implementation to drift.
+
+- **An author is told when someone follows them or collects one of their papers.** Two queries computed from the index rather than a stored notifications table, following the pattern the existing review and endorsement notifications already use, and shown on the notifications dashboard beside them. Neither takes a DID from its parameters: the answer is about whoever is signed in, so reading someone else's is not expressible.
+
+### Fixed
+
+- **Importing papers failed with a 500.** `getSuggestions` died on `s.toLowerCase is not a function` while scoring external results. The OpenReview plugin declared `content.authors.value` as `string[]`; the API does not honour that, and a search for a common name returns collaboration papers whose author list is thousands of `{fullname, username}` objects. Author entries are now normalised where they enter, the type no longer claims something untrue, and the scoring path guards the other external sources — one malformed author costs that paper its score rather than blanking the list. The ten seconds before the failure was the plugin search budget, not the cause.
+
+- **An author could not see they had followers.** The count was computed and rendered nowhere, so the follow control said nothing about who was on the other side.
+
+- **An eprint's link card carried no subscribe control.** A standard.site consumer finds the document by fetching the page and reading `at:canonical` from its head; Chive emitted only a `link rel="alternate"` naming the _eprint_ record, which is not a document and resolves to nothing. The page now names its `site.standard.document`, and since the document names the author's publication, that is all a consumer needs to reach both. Papers submitted without cross-platform discovery have no document, and the remaining head tags are emitted regardless.
+
+- **Three event types were invisible in the feed UI.** Reviews, endorsements, and annotations on a tracked author's papers arrived from the server but fell through every icon, label, and attribution switch to the generic "Activity". They now read as what they are, attributed as "On a paper by".
+
 ## [0.19.0] - 2026-09-04
 
 ### Added
