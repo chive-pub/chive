@@ -32,6 +32,16 @@ vi.mock('sonner', () => ({
 // Mock the auth context
 vi.mock('@/lib/auth/auth-context', () => ({
   useAgent: () => mockAgent,
+  // The dialog carries a standard.site control, which names the publication
+  // for the signed-in author.
+  useCurrentUser: () => ({ displayName: 'Test Author', handle: 'test.author' }),
+}));
+
+// That control reads the author's own repository to see whether a document
+// already exists; the dialog's tests are about the form, not about that.
+vi.mock('@/lib/atproto/record-creator', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  findStandardDocumentForEprint: () => Promise.resolve(undefined),
 }));
 
 // Mock the update mutation

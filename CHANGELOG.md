@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.19.0] - 2026-09-04
+
+### Added
+
+- **Readers can subscribe to an author, and it means something.** `site.standard.graph.subscription` records are written by readers into their own repositories and observed on the firehose, alongside the publications they name and the recommendations that accompany them. A subscribe control sits beside the collection control on an author's page; the record is written to the reader's own repository and stays theirs to withdraw.
+
+  The control is hidden rather than disabled when an author holds no publication: a disabled Subscribe asks a reader to work out what they did wrong when the answer is that there is nothing on the other end. Subscription state is read from the reader's repository rather than from Chive's index, because the index lags the firehose and a control that flips back to "Subscribe" a second after being pressed reads as a failure.
+
+- **A feed of the papers by authors a reader follows.** Matched on the author list as well as on who filed the paper, since a paper submitted by a co-author is still that author's work. Paged on a timestamp paired with a uri, so eprints sharing a timestamp cannot straddle a page boundary and be skipped.
+
+- **A publication, which is the thing a reader subscribes to.** It carries the name shown on link cards across the ecosystem and lives in the author's own repository, so Chive can neither create nor rename one on their behalf — hence a settings panel rather than a stored setting. Its url is not editable: it is what a publication is matched on and what existing subscriptions were written against, so changing it would orphan every subscriber.
+
+- **A way to publish an eprint's standard.site document after the fact.** The submission wizard offers to write one and an author may decline; every paper submitted before that offer existed has none. Both leave a paper readers outside Chive cannot find, with resubmission the only way back. Both eprint editors now carry the control, which also offers to re-point a document that names a bare url — the form the schema reserves for loose documents, and one no reader can subscribe to the author from.
+
+### Changed
+
+- **An eprint's standard.site document names its author's publication.** It named the site root, which the schema keeps for loose documents. An eprint is not loose: naming the publication is what puts a subscribe affordance on a link card anywhere in the ecosystem. The publication is keyed on the author's DID rather than on a handle or a display name, either of which they can change — and either of which would mint a second publication and split its subscribers.
+
 ## [0.18.3] - 2026-09-04
 
 ### Fixed
@@ -1133,7 +1151,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.3...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.19.0...HEAD
+[0.19.0]: https://github.com/chive-pub/chive/compare/v0.18.3...v0.19.0
 [0.18.3]: https://github.com/chive-pub/chive/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/chive-pub/chive/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/chive-pub/chive/compare/v0.18.0...v0.18.1

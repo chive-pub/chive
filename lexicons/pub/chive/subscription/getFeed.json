@@ -1,0 +1,68 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.subscription.getFeed",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Eprints published by the authors a reader subscribes to, newest first. Subscriptions are site.standard.graph.subscription records in readers' own repositories, observed on the firehose.",
+      "parameters": {
+        "type": "params",
+        "required": ["subscriberDid"],
+        "properties": {
+          "subscriberDid": {
+            "type": "string",
+            "format": "did"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Continues a previous page. Pairs a timestamp with a uri, so eprints sharing a timestamp cannot straddle a page boundary."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["eprints"],
+          "properties": {
+            "cursor": {
+              "type": "string"
+            },
+            "eprints": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#feedItem"
+              }
+            }
+          }
+        }
+      }
+    },
+    "feedItem": {
+      "type": "object",
+      "required": ["uri", "title"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    }
+  }
+}

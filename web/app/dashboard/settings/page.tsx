@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { ChiveProfileForm } from '@/components/settings/chive-profile-form';
+import { PublicationPanel } from '@/components/settings/publication-panel';
 import { DiscoverySettingsPanel } from '@/components/settings/discovery-settings-panel';
 
 /**
@@ -284,6 +285,9 @@ export default function SettingsPage() {
 
       {/* Chive Academic Profile */}
       <ChiveProfileForm />
+
+      {/* What readers subscribe to */}
+      <PublicationPanel />
 
       {/* Discovery Settings */}
       <DiscoverySettingsPanel />

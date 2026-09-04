@@ -117,6 +117,16 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   // references to eprints; see `leaflet-backlinks.ts` for the four routes.
   'pub.leaflet.document',
   'pub.leaflet.comment',
+  // standard.site — the social graph over publications and documents. A
+  // subscription is a reader's declaration that they follow a publication, and
+  // a recommendation names a document; both are written into the reader's own
+  // repository, so the firehose is the only way to see them.
+  // The publication a subscription names. Indexed so a reader can be shown what
+  // there is to subscribe to without a lookup against the author's PDS on every
+  // profile view.
+  'site.standard.publication',
+  'site.standard.graph.subscription',
+  'site.standard.graph.recommend',
   // standard.site — the ecosystem's shared "document on the web" record. Any
   // publisher may write one describing a Chive eprint, and it is also the
   // mapping that lets a reference addressed to a document resolve to the work.

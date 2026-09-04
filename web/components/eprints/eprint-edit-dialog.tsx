@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils';
 
 import { ChangelogForm, type ChangelogFormData } from './changelog-form';
 import { VersionSelector } from './version-selector';
+import { StandardDocumentControl } from '@/components/eprints/standard-document-control';
 
 const editLogger = logger.child({ component: 'eprint-edit-dialog' });
 
@@ -636,6 +637,20 @@ export function EprintEditDialog({ eprint, canEdit, onSuccess, children }: Eprin
                 </FormItem>
               )}
             />
+
+            {/* Discovery beyond Chive.
+                The wizard offers to write this at submission and an author may
+                decline; every paper submitted before that offer existed has
+                none. Both leave an eprint that readers outside Chive cannot
+                find, and resubmitting is not a reasonable way back. */}
+            <div className="rounded-md border p-3">
+              <StandardDocumentControl
+                eprintUri={eprint.uri}
+                title={form.watch('title')}
+                description={form.watch('abstract')}
+                layout="compact"
+              />
+            </div>
 
             <DialogFooter>
               <Button

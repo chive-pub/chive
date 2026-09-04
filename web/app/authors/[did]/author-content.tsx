@@ -23,6 +23,7 @@ import { useProfileConfig, type ProfileSection } from '@/lib/hooks/use-profile-c
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
+import { SubscribeButton } from '@/components/subscription/subscribe-button';
 import { MuteButton } from '@/components/authors/mute-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
@@ -243,6 +244,9 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
             />
           )}
           <MuteButton did={did} />
+          {/* Beside the collection control: both are things a reader does about
+              this author, and both write to the reader's own repository. */}
+          <SubscribeButton authorDid={did} variant="icon" />
           <AddToCollectionButton
             itemUri={did}
             itemType="author"

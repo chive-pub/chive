@@ -24,6 +24,7 @@ import {
   Database,
   DollarSign,
   Calendar,
+  Globe,
   Paperclip,
   Save,
   Loader2,
@@ -90,6 +91,7 @@ import {
 } from '@/lib/hooks/use-eprint-mutations';
 import { useContributionTypeNodes } from '@/lib/hooks/use-nodes';
 import type { Eprint } from '@/lib/api/schema';
+import { StandardDocumentControl } from '@/components/eprints/standard-document-control';
 
 const editLogger = logger.child({ component: 'eprint-edit-sections' });
 
@@ -229,6 +231,21 @@ interface SectionConfig {
   icon: React.ReactNode;
   description: string;
 }
+
+/**
+ * The standard.site section.
+ *
+ * @remarks
+ * Declared separately rather than appended to {@link SECTIONS}, which is
+ * indexed positionally throughout this file -- adding an entry to it would
+ * silently retitle every section after the insertion point.
+ */
+const DISCOVERY_SECTION: SectionConfig = {
+  id: 'discovery',
+  title: 'Discovery beyond Chive',
+  icon: <Globe className="h-5 w-5" />,
+  description: "Publish or refresh this paper's standard.site document",
+};
 
 const SECTIONS: SectionConfig[] = [
   {
@@ -2155,6 +2172,25 @@ export function EprintEditSections({
               </div>
 
               {/* Note: Backend API would need expansion to persist conference changes */}
+            </div>
+          </EditSection>
+
+          {/* Discovery beyond Chive */}
+          <EditSection
+            config={DISCOVERY_SECTION}
+            expanded={expandedSections.has('discovery')}
+            onToggle={() => toggleSection('discovery')}
+          >
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                A standard.site document is how readers outside Chive find this paper: link cards,
+                embeds and feeds across the ecosystem. It lives in your own repository.
+              </p>
+              <StandardDocumentControl
+                eprintUri={eprint.uri}
+                title={form.watch('title')}
+                description={form.watch('abstract')}
+              />
             </div>
           </EditSection>
 

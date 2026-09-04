@@ -36,6 +36,9 @@ const HANDLED_BY: Record<string, string> = {
   'pub.leaflet.document': 'leaflet-backlinks',
   'pub.leaflet.comment': 'leaflet-backlinks',
   'site.standard.document': 'standard-site-backlinks',
+  'site.standard.publication': 'standard-site-subscriptions',
+  'site.standard.graph.subscription': 'standard-site-subscriptions',
+  'site.standard.graph.recommend': 'standard-site-subscriptions',
   'community.lexicon.calendar.event': 'calendar-events',
 };
 
