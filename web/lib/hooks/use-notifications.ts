@@ -14,6 +14,10 @@ import type {
   EndorsementNotification,
   ReviewNotificationsResponse,
   EndorsementNotificationsResponse,
+  FollowerNotification,
+  CollectionAddNotification,
+  ListFollowersResponse,
+  ListCollectionAddsResponse,
 } from '@/lib/api/schema';
 
 /**
@@ -28,6 +32,12 @@ export const notificationKeys = {
   /** Key for endorsement notifications on user's papers */
   endorsementsOnMyPapers: (params?: { limit?: number; cursor?: string }) =>
     [...notificationKeys.all, 'endorsements', params] as const,
+  /** Key for the people following the user */
+  followers: (params?: { limit?: number; cursor?: string }) =>
+    [...notificationKeys.all, 'followers', params] as const,
+  /** Key for the user's eprints added to other people's collections */
+  collectionAdds: (params?: { limit?: number; cursor?: string }) =>
+    [...notificationKeys.all, 'collection-adds', params] as const,
 };
 
 // =============================================================================
@@ -150,5 +160,120 @@ export function useEndorsementNotifications(options: UseEndorsementNotifications
   });
 }
 
+interface UseFollowerNotificationsOptions {
+  /** Number of notifications to fetch */
+  limit?: number;
+  /** Pagination cursor */
+  cursor?: string;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Fetches the people who follow the authenticated user.
+ *
+ * @param options - Query options
+ * @returns Query result with follower notifications
+ *
+ * @example
+ * ```tsx
+ * function Followers() {
+ *   const { data, isLoading } = useFollowerNotifications({ limit: 20 });
+ *
+ *   if (isLoading) return <Spinner />;
+ *
+ *   return (
+ *     <ul>
+ *       {data?.notifications.map((n) => (
+ *         <li key={n.collectionUri}>{n.follower.did} follows you</li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ */
+export function useFollowerNotifications(options: UseFollowerNotificationsOptions = {}) {
+  const { limit = 50, cursor, enabled = true } = options;
+
+  return useQuery<ListFollowersResponse>({
+    queryKey: notificationKeys.followers({ limit, cursor }),
+    queryFn: async () => {
+      try {
+        const response = await authApi.pub.chive.notification.listFollowers({ limit, cursor });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch followers',
+          undefined,
+          'pub.chive.notification.listFollowers'
+        );
+      }
+    },
+    enabled,
+    staleTime: 30_000, // 30 seconds
+  });
+}
+
+interface UseCollectionAddNotificationsOptions {
+  /** Number of notifications to fetch */
+  limit?: number;
+  /** Pagination cursor */
+  cursor?: string;
+  /** Whether the query is enabled */
+  enabled?: boolean;
+}
+
+/**
+ * Fetches the user's eprints that other people added to their collections.
+ *
+ * @param options - Query options
+ * @returns Query result with collection-add notifications
+ *
+ * @example
+ * ```tsx
+ * function CollectionAdds() {
+ *   const { data, isLoading } = useCollectionAddNotifications({ limit: 20 });
+ *
+ *   if (isLoading) return <Spinner />;
+ *
+ *   return (
+ *     <ul>
+ *       {data?.notifications.map((n) => (
+ *         <li key={n.uri}>{n.actor.did} collected {n.eprintTitle}</li>
+ *       ))}
+ *     </ul>
+ *   );
+ * }
+ * ```
+ */
+export function useCollectionAddNotifications(options: UseCollectionAddNotificationsOptions = {}) {
+  const { limit = 50, cursor, enabled = true } = options;
+
+  return useQuery<ListCollectionAddsResponse>({
+    queryKey: notificationKeys.collectionAdds({ limit, cursor }),
+    queryFn: async () => {
+      try {
+        const response = await authApi.pub.chive.notification.listCollectionAdds({ limit, cursor });
+        return response.data;
+      } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError(
+          error instanceof Error ? error.message : 'Failed to fetch collection additions',
+          undefined,
+          'pub.chive.notification.listCollectionAdds'
+        );
+      }
+    },
+    enabled,
+    staleTime: 30_000, // 30 seconds
+  });
+}
+
 // Re-export types for convenience
-export type { ReviewNotification, EndorsementNotification };
+export type {
+  ReviewNotification,
+  EndorsementNotification,
+  FollowerNotification,
+  CollectionAddNotification,
+};

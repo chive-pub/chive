@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   MessageSquare,
   ThumbsUp,
+  Users,
+  FolderPlus,
 } from 'lucide-react';
 
 import {
@@ -21,6 +23,8 @@ import {
   useRejectCoauthor,
   useReviewNotifications,
   useEndorsementNotifications,
+  useFollowerNotifications,
+  useCollectionAddNotifications,
 } from '@/lib/hooks';
 import { getCurrentAgent } from '@/lib/auth';
 import { addCoauthorToEprint } from '@/lib/atproto/record-creator';
@@ -28,6 +32,8 @@ import type {
   CoauthorClaimRequest,
   ReviewNotification,
   EndorsementNotification,
+  FollowerNotification,
+  CollectionAddNotification,
 } from '@/lib/api/schema';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,6 +58,8 @@ import { Textarea } from '@/components/ui/textarea';
  * - Co-author requests on the user's eprints
  * - New reviews on the user's papers
  * - New endorsements on the user's papers
+ * - New followers
+ * - The user's papers added to other people's collections
  */
 export default function NotificationsPage() {
   return (
@@ -72,6 +80,12 @@ export default function NotificationsPage() {
 
       {/* Endorsements section */}
       <EndorsementsNotificationsSection />
+
+      {/* Followers section */}
+      <FollowersNotificationsSection />
+
+      {/* Collection additions section */}
+      <CollectionAddsNotificationsSection />
     </div>
   );
 }
@@ -648,6 +662,249 @@ function EndorsementsNotificationsSection() {
               </p>
               {notification.comment && (
                 <p className="text-sm mt-1 line-clamp-2">&quot;{notification.comment}&quot;</p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date(notification.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/eprints/${encodeURIComponent(notification.eprintUri)}`}>
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// FOLLOWERS NOTIFICATIONS SECTION
+// =============================================================================
+
+/**
+ * Section showing the people who follow the user.
+ */
+function FollowersNotificationsSection() {
+  const { data, isLoading, isError, error, refetch } = useFollowerNotifications({ limit: 20 });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            New Followers
+          </CardTitle>
+          <CardDescription>People following your work on Chive</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            New Followers
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive/50" />
+          <p className="text-destructive mt-4">Failed to load followers</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {error?.message ?? 'Please try again later'}
+          </p>
+          <Button variant="outline" onClick={() => refetch()} className="mt-4">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const notifications = data?.notifications ?? [];
+
+  if (notifications.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            New Followers
+          </CardTitle>
+          <CardDescription>People following your work on Chive</CardDescription>
+        </CardHeader>
+        <CardContent className="py-8 text-center">
+          <Users className="mx-auto h-12 w-12 text-muted-foreground/50" />
+          <p className="text-muted-foreground mt-4">No followers yet</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            When someone follows you, you will see it here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          New Followers
+          <Badge variant="secondary">{notifications.length}</Badge>
+        </CardTitle>
+        <CardDescription>People following your work on Chive</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {notifications.map((notification: FollowerNotification) => (
+          <div
+            key={notification.collectionUri}
+            className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <Users className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium truncate">
+                  {notification.follower.displayName ??
+                    notification.follower.handle ??
+                    notification.follower.did}
+                </span>
+                <span className="text-muted-foreground">followed you</span>
+              </div>
+              {notification.collectionLabel && (
+                <p className="text-sm text-muted-foreground truncate mt-0.5">
+                  In: {notification.collectionLabel}
+                </p>
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {new Date(notification.createdAt).toLocaleDateString()}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link href={`/authors/${encodeURIComponent(notification.follower.did)}`}>
+                <ExternalLink className="h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+// =============================================================================
+// COLLECTION ADDITIONS NOTIFICATIONS SECTION
+// =============================================================================
+
+/**
+ * Section showing the user's papers that other people added to a collection.
+ */
+function CollectionAddsNotificationsSection() {
+  const { data, isLoading, isError, error, refetch } = useCollectionAddNotifications({ limit: 20 });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FolderPlus className="h-5 w-5" />
+            Your Papers in Collections
+          </CardTitle>
+          <CardDescription>Papers of yours that other people have collected</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-16 w-full" />
+          <Skeleton className="h-16 w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FolderPlus className="h-5 w-5" />
+            Your Papers in Collections
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="py-8 text-center">
+          <AlertCircle className="mx-auto h-12 w-12 text-destructive/50" />
+          <p className="text-destructive mt-4">Failed to load collection additions</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            {error?.message ?? 'Please try again later'}
+          </p>
+          <Button variant="outline" onClick={() => refetch()} className="mt-4">
+            Retry
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const notifications = data?.notifications ?? [];
+
+  if (notifications.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FolderPlus className="h-5 w-5" />
+            Your Papers in Collections
+          </CardTitle>
+          <CardDescription>Papers of yours that other people have collected</CardDescription>
+        </CardHeader>
+        <CardContent className="py-8 text-center">
+          <FolderPlus className="mx-auto h-12 w-12 text-muted-foreground/50" />
+          <p className="text-muted-foreground mt-4">No collection additions</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            When someone adds one of your papers to a collection, you will see it here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FolderPlus className="h-5 w-5" />
+          Your Papers in Collections
+          <Badge variant="secondary">{notifications.length}</Badge>
+        </CardTitle>
+        <CardDescription>Papers of yours that other people have collected</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {notifications.map((notification: CollectionAddNotification) => (
+          <div
+            key={notification.uri}
+            className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+          >
+            <FolderPlus className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="font-medium truncate">
+                  {notification.actor.displayName ??
+                    notification.actor.handle ??
+                    notification.actor.did}
+                </span>
+                <span className="text-muted-foreground">collected</span>
+              </div>
+              <p className="text-sm text-muted-foreground truncate mt-0.5">
+                {notification.eprintTitle ?? notification.eprintUri}
+              </p>
+              {notification.collectionLabel && (
+                <p className="text-sm mt-1 truncate">In: {notification.collectionLabel}</p>
               )}
               <p className="text-xs text-muted-foreground mt-1">
                 {new Date(notification.createdAt).toLocaleDateString()}

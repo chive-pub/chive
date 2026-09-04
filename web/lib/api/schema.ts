@@ -989,6 +989,16 @@ export type {
 // Alias for backwards compatibility
 export type { OutputSchema as EndorsementNotificationsResponse } from './generated/types/pub/chive/notification/listEndorsementsOnMyPapers.js';
 
+export type {
+  OutputSchema as ListFollowersResponse,
+  FollowerNotification,
+} from './generated/types/pub/chive/notification/listFollowers.js';
+
+export type {
+  OutputSchema as ListCollectionAddsResponse,
+  CollectionAddNotification,
+} from './generated/types/pub/chive/notification/listCollectionAdds.js';
+
 // =============================================================================
 // ACTOR TYPES
 // =============================================================================
