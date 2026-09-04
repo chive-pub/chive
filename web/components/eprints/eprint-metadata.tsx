@@ -127,15 +127,21 @@ export function KeywordList({ keywords, max = 10, className }: KeywordListProps)
   const hiddenCount = keywords.length - max;
 
   return (
-    <div className={cn('flex flex-wrap gap-1', className)}>
+    // `gap-1.5` rather than `gap-1`: four pixels between adjacent tappable
+    // chips is not enough separation on a touch screen.
+    <div className={cn('flex min-w-0 flex-wrap gap-1.5', className)}>
       {visibleKeywords.map((keyword) => (
         <Link
           key={keyword}
           href={`/tags/${encodeURIComponent(normalizeTag(keyword))}`}
-          className="inline-block"
+          className="inline-block max-w-full"
         >
-          <Badge variant="outline" className="cursor-pointer hover:bg-accent">
-            <Tag className="mr-1 h-3 w-3" />
+          <Badge
+            variant="outline"
+            title={keyword}
+            className="truncate cursor-pointer hover:bg-accent"
+          >
+            <Tag className="mr-1 h-3 w-3 shrink-0" />
             {keyword}
           </Badge>
         </Link>
