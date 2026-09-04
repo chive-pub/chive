@@ -33,6 +33,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useRouter } from 'next/navigation';
 
+import { paperLabel } from '@/lib/citations/paper-label';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -51,35 +53,6 @@ export interface CitationVisualizationProps {
   height?: string;
   /** Additional CSS classes */
   className?: string;
-}
-
-/**
- * A paper as it should appear on a node.
- *
- * @param paper - The paper, when the API named it
- * @param fallback - What to call it when the API did not
- * @returns A label a reader can recognise
- *
- * @remarks
- * How a paper is referred to in prose: first author, year, then the title. A
- * node labelled with the title alone still makes a reader work out whose paper
- * it is, and one labelled "Citing paper 3" tells them nothing at all -- which
- * is what these nodes said before the API returned anything to label them
- * with.
- */
-export function paperLabel(
-  paper: { title: string; authors?: string[]; year?: number } | undefined,
-  fallback: string
-): string {
-  if (!paper) return fallback;
-
-  const first = paper.authors?.[0];
-  // A surname alone is how a citation is spoken; the full name crowds the node.
-  const surname = first?.trim().split(/\s+/).pop();
-  const byline = [surname, paper.year ? String(paper.year) : undefined].filter(Boolean).join(' ');
-
-  const title = paper.title.length > 44 ? `${paper.title.slice(0, 44)}...` : paper.title;
-  return byline ? `${byline} — ${title}` : title;
 }
 
 /**

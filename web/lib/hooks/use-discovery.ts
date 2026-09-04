@@ -248,19 +248,57 @@ interface UseCitationsOptions {
  * @returns Query result with citations data
  */
 export function useCitations(uri: string, options: UseCitationsOptions = {}) {
-  const { direction = 'both', limit = 20, onlyInfluential = false, enabled = true } = options;
+  const { direction = 'both', limit = 100, onlyInfluential = false, enabled = true } = options;
 
   return useQuery({
     queryKey: discoveryKeys.citations(uri, { direction, limit, onlyInfluential }),
     queryFn: async (): Promise<GetCitationsResponse> => {
       try {
-        const response = await api.pub.chive.discovery.getCitations({
+        // Every citation, not the first page of them.
+        //
+        // A citation network that shows five of eleven references is a network
+        // a reader cannot use: the missing six are exactly the ones they would
+        // have gone looking for. The API caps a page at 100, so the cursor is
+        // followed until it runs out.
+        const first = await api.pub.chive.discovery.getCitations({
           uri,
           direction,
           limit,
           onlyInfluential,
         });
-        return response.data;
+
+        const data = first.data;
+        const citations = [...data.citations];
+        const papers = [...(data.papers ?? [])];
+        const seenPapers = new Set(papers.map((paper) => paper.uri));
+        let cursor = data.cursor;
+
+        // Bounded so that a cursor that never advances cannot spin forever;
+        // 100 pages is 10,000 citations, past any paper's reference list.
+        for (let page = 0; cursor && page < 100; page += 1) {
+          const next = await api.pub.chive.discovery.getCitations({
+            uri,
+            direction,
+            limit,
+            onlyInfluential,
+            cursor,
+          });
+
+          citations.push(...next.data.citations);
+          for (const paper of next.data.papers ?? []) {
+            // One paper is commonly at the end of several edges and reappears
+            // on each page that holds one of them.
+            if (!seenPapers.has(paper.uri)) {
+              seenPapers.add(paper.uri);
+              papers.push(paper);
+            }
+          }
+
+          if (next.data.cursor === cursor) break;
+          cursor = next.data.cursor;
+        }
+
+        return { ...data, citations, papers, hasMore: false, cursor: undefined };
       } catch (error) {
         if (error instanceof APIError) throw error;
         throw new APIError(

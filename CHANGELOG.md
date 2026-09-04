@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.18.3] - 2026-09-04
+
+### Fixed
+
+- **The citation network listed papers by AT-URI.** Two surfaces draw citations — the network graph and the summary list on an eprint's Network tab — and each had its own rendering. The graph was taught to name papers; the list kept printing `at://did:plc:.../pub.chive.eprint.submission/...` at every row. The labeller is now one module both import, since a copy in each is how one comes to read correctly while the other does not.
+
+- **A paper announced two different reference counts.** The section headers counted the rows fetched under a page limit while the panel header counted the rows that exist, so the same paper read "11 references" and "References (5)" one line apart.
+
+- **Only the first page of citations was shown.** A network listing five of eleven references omits exactly the ones a reader went looking for. Every page is now collected — the API caps a page at 100, so the cursor is followed until it runs out, with a guard against a cursor that never advances — and all of them are rendered.
+
 ## [0.18.2] - 2026-09-03
 
 ### Fixed
@@ -1123,7 +1133,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.2...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.18.3...HEAD
+[0.18.3]: https://github.com/chive-pub/chive/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/chive-pub/chive/compare/v0.18.1...v0.18.2
 [0.18.1]: https://github.com/chive-pub/chive/compare/v0.18.0...v0.18.1
 [0.18.0]: https://github.com/chive-pub/chive/compare/v0.17.1...v0.18.0
