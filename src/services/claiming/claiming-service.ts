@@ -1609,7 +1609,7 @@ export class ClaimingService implements IClaimingService {
       let affiliationMatched = false;
       for (const author of paper.authors ?? []) {
         if (affiliationMatched) break;
-        if (author.affiliation) {
+        if (typeof author.affiliation === 'string' && author.affiliation) {
           for (const userAff of allAffiliations) {
             if (
               author.affiliation.toLowerCase().includes(userAff.toLowerCase()) ||
@@ -1630,6 +1630,7 @@ export class ClaimingService implements IClaimingService {
       let coauthorMatched = false;
       for (const author of paper.authors ?? []) {
         if (coauthorMatched) break;
+        if (typeof author.name !== 'string') continue;
         const authorNameLower = author.name.toLowerCase();
         for (const coauthor of userClaimedTopics.coauthorNames) {
           if (authorNameLower === coauthor || authorNameLower.includes(coauthor)) {
@@ -2125,6 +2126,10 @@ export class ClaimingService implements IClaimingService {
    * from partial string overlaps (e.g., "White" matching "Whitehead").
    * Tokens shorter than 2 characters are filtered out to ignore initials.
    *
+   * Author names arrive from third-party APIs whose payloads are not
+   * guaranteed to match their documented shape, so a name that is not a
+   * string scores zero rather than throwing.
+   *
    * @param userName - User's name to match
    * @param paperAuthorName - Author name from the paper
    * @returns Score (0-30) and match type classification
@@ -2135,6 +2140,10 @@ export class ClaimingService implements IClaimingService {
     userName: string,
     paperAuthorName: string
   ): { score: number; matchType: 'exact' | 'partial' | 'single' | 'none' } {
+    if (typeof userName !== 'string' || typeof paperAuthorName !== 'string') {
+      return { score: 0, matchType: 'none' };
+    }
+
     const normalize = (s: string): string => s.toLowerCase().trim();
     const userTokens = normalize(userName)
       .split(/\s+/)

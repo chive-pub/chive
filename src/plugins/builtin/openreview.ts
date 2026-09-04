@@ -45,6 +45,58 @@ interface OpenReviewNotesResponse {
 }
 
 /**
+ * Author entry as returned by the OpenReview API.
+ *
+ * @remarks
+ * Most notes list authors as plain strings, but large collaboration
+ * submissions (for instance ATLAS papers with thousands of authors) return
+ * objects carrying a full name and a username instead.
+ *
+ * @internal
+ */
+interface OpenReviewAuthorObject {
+  fullname?: string;
+  name?: string;
+  username?: string;
+}
+
+/**
+ * Coerces OpenReview author entries into plain name strings.
+ *
+ * @param entries - Raw `content.authors.value` or `content.authorids.value`
+ * @returns Author names as strings, with unusable entries dropped
+ *
+ * @remarks
+ * The OpenReview API is not consistent here: most notes carry an array of
+ * strings, while large collaboration submissions carry an array of objects.
+ * Leaving the objects in place propagates non-string author names into the
+ * claiming and suggestion pipelines, so they are flattened at this boundary.
+ *
+ * @internal
+ */
+function normalizeAuthorEntries(entries: unknown): string[] {
+  if (!Array.isArray(entries)) {
+    return [];
+  }
+
+  const names: string[] = [];
+  for (const entry of entries as readonly unknown[]) {
+    if (typeof entry === 'string') {
+      names.push(entry);
+      continue;
+    }
+    if (entry !== null && typeof entry === 'object') {
+      const author = entry as OpenReviewAuthorObject;
+      const name = author.fullname ?? author.name ?? author.username;
+      if (typeof name === 'string' && name.length > 0) {
+        names.push(name);
+      }
+    }
+  }
+  return names;
+}
+
+/**
  * OpenReview Note (submission) structure.
  *
  * @internal
@@ -59,8 +111,8 @@ interface OpenReviewNote {
   content: {
     title?: { value: string };
     abstract?: { value: string };
-    authors?: { value: string[] };
-    authorids?: { value: string[] };
+    authors?: { value: readonly (string | OpenReviewAuthorObject)[] };
+    authorids?: { value: readonly (string | OpenReviewAuthorObject)[] };
     keywords?: { value: string[] };
     venue?: { value: string };
     venueid?: { value: string };
@@ -453,8 +505,8 @@ export class OpenReviewPlugin extends ImportingPlugin implements SearchablePlugi
       id: note.id,
       forumId: note.forum,
       title: content.title.value,
-      authors: content.authors?.value ?? [],
-      authorIds: content.authorids?.value ?? [],
+      authors: normalizeAuthorEntries(content.authors?.value),
+      authorIds: normalizeAuthorEntries(content.authorids?.value),
       abstract: content.abstract?.value,
       url: this.buildEprintUrl(note.forum),
       createdAt: note.cdate,
