@@ -5236,6 +5236,13 @@
       "pub.chive.collection.defs.collectionView": {
         "description": "View of a user collection",
         "properties": {
+          "activityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
           "cid": {
             "description": "Content identifier",
             "type": "string"
@@ -5276,6 +5283,11 @@
           },
           "ownerHandle": {
             "description": "Resolved handle of the collection owner",
+            "type": "string"
+          },
+          "subscriptionDid": {
+            "description": "When this collection tracks one person, that person DID. Set when the collection was created by subscribing to an author.",
+            "format": "did",
             "type": "string"
           },
           "updatedAt": {
@@ -5414,7 +5426,10 @@
               "eprint_in_field",
               "eprint_by_institution",
               "eprint_at_event",
-              "eprint_referencing_person"
+              "eprint_referencing_person",
+              "review_on_authored_eprint",
+              "endorsement_on_authored_eprint",
+              "annotation_on_authored_eprint"
             ],
             "type": "string"
           }
@@ -11083,6 +11098,13 @@
       "pub.chive.graph.node.nodeMetadata": {
         "description": "Subkind-specific metadata fields",
         "properties": {
+          "activityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
           "city": {
             "description": "City name (for institutions)",
             "maxLength": 200,
@@ -11130,6 +11152,11 @@
           "spdxId": {
             "description": "SPDX license identifier (for licenses)",
             "maxLength": 100,
+            "type": "string"
+          },
+          "subscriptionDid": {
+            "description": "For a collection that tracks one person, the DID of that person. Set when the collection was created by subscribing to an author.",
+            "format": "did",
             "type": "string"
           },
           "symmetric": {
@@ -24475,6 +24502,19 @@
               "description": "Pagination cursor",
               "type": "string"
             }
+          },
+          {
+            "description": "Restrict the feed to these event types. Omit for all types.",
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            }
           }
         ],
         "responses": {
@@ -32156,99 +32196,6 @@
         "summary": "pub.chive.review.listForEprint",
         "tags": [
           "review"
-        ]
-      }
-    },
-    "/xrpc/pub.chive.subscription.getFeed": {
-      "get": {
-        "description": "Eprints published by the authors a reader subscribes to, newest first. Subscriptions are site.standard.graph.subscription records in readers' own repositories, observed on the firehose.",
-        "operationId": "pub_chive_subscription_getFeed",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "subscriberDid",
-            "required": true,
-            "schema": {
-              "format": "did",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 25,
-              "maximum": 100,
-              "minimum": 1,
-              "type": "integer"
-            }
-          },
-          {
-            "description": "Continues a previous page. Pairs a timestamp with a uri, so eprints sharing a timestamp cannot straddle a page boundary.",
-            "in": "query",
-            "name": "cursor",
-            "required": false,
-            "schema": {
-              "description": "Continues a previous page. Pairs a timestamp with a uri, so eprints sharing a timestamp cannot straddle a page boundary.",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "cursor": {
-                      "type": "string"
-                    },
-                    "eprints": {
-                      "items": {
-                        "$ref": "#/components/schemas/pub.chive.subscription.getFeed.feedItem"
-                      },
-                      "type": "array"
-                    }
-                  },
-                  "required": [
-                    "eprints"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "400": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "properties": {
-                    "error": {
-                      "enum": [
-                        "InvalidRequest"
-                      ],
-                      "type": "string"
-                    },
-                    "message": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "error",
-                    "message"
-                  ],
-                  "type": "object"
-                }
-              }
-            },
-            "description": "Bad Request"
-          }
-        },
-        "summary": "pub.chive.subscription.getFeed",
-        "tags": [
-          "subscription"
         ]
       }
     },

@@ -117,6 +117,13 @@ export interface IndexedCollection {
     string,
     { cardUri: string; cardCid: string; linkUri: string; linkCid: string }
   >;
+  /**
+   * When this collection tracks one person's activity, that person's DID.
+   * A subscription to an author is an ordinary collection holding just them.
+   */
+  readonly subscriptionDid?: string;
+  /** Feed event types this collection surfaces. Absent means all types. */
+  readonly activityTypes?: string[];
 }
 
 /**
@@ -258,17 +265,25 @@ export class CollectionService {
           ? record.metadata.tags
           : [];
 
+      // The whole node metadata object is carried across so that fields the
+      // index does not promote to their own column stay queryable. A
+      // subscription collection identifies its subject with
+      // metadata.subscriptionDid, and there is no way to find it again
+      // without this.
+      const nodeMetadata = record.metadata ?? {};
+
       await this.pool.query(
         `INSERT INTO collections_index (
-          uri, cid, owner_did, label, description, visibility, tags,
+          uri, cid, owner_did, label, description, visibility, tags, metadata,
           created_at, pds_url, indexed_at, last_synced_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, $9, $10, NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           label = EXCLUDED.label,
           description = EXCLUDED.description,
           visibility = EXCLUDED.visibility,
           tags = EXCLUDED.tags,
+          metadata = EXCLUDED.metadata,
           updated_at = NOW(),
           last_synced_at = NOW()`,
         [
@@ -279,6 +294,7 @@ export class CollectionService {
           record.description ?? null,
           visibility,
           JSON.stringify(tags),
+          JSON.stringify(nodeMetadata),
           record.createdAt ? new Date(record.createdAt) : metadata.indexedAt,
           metadata.pdsUrl,
         ]
@@ -639,7 +655,7 @@ export class CollectionService {
         cosmik_collection_cid: string | null;
         cosmik_items: Record<string, unknown> | null;
       }>(
-        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                 c.created_at, c.updated_at,
                 COUNT(e.uri)::text AS item_count,
                 parent_edge.target_uri AS parent_collection_uri,
@@ -828,7 +844,7 @@ export class CollectionService {
       );
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
-      let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+      let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                           c.created_at, c.updated_at,
                           COUNT(e.uri)::text AS item_count,
                           parent_edge.target_uri AS parent_collection_uri,
@@ -924,7 +940,7 @@ export class CollectionService {
       const countResult = await this.pool.query<{ count: string }>(countSql, countParams);
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
-      let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+      let query = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                           c.created_at, c.updated_at,
                           COUNT(e.uri)::text AS item_count,
                           parent_edge.target_uri AS parent_collection_uri,
@@ -1035,7 +1051,7 @@ export class CollectionService {
       const total = parseInt(countResult.rows[0]?.count ?? '0', 10);
 
       // Build main query
-      let sql = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+      let sql = `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                         c.created_at, c.updated_at,
                         COUNT(e.uri)::text AS item_count,
                         parent_edge.target_uri AS parent_collection_uri,
@@ -1140,7 +1156,7 @@ export class CollectionService {
         cosmik_collection_uri: string | null;
         cosmik_collection_cid: string | null;
       }>(
-        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                 c.created_at, c.updated_at,
                 COUNT(e2.uri)::text AS item_count,
                 parent_edge.target_uri AS parent_collection_uri,
@@ -1204,7 +1220,7 @@ export class CollectionService {
         cosmik_collection_cid: string | null;
         cosmik_items: Record<string, unknown> | null;
       }>(
-        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                 c.created_at, c.updated_at,
                 COUNT(e2.uri)::text AS item_count,
                 pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
@@ -1264,7 +1280,7 @@ export class CollectionService {
         cosmik_collection_cid: string | null;
         cosmik_items: Record<string, unknown> | null;
       }>(
-        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility,
+        `SELECT c.uri, c.cid, c.owner_did, c.label, c.description, c.visibility, c.metadata,
                 c.created_at, c.updated_at,
                 COUNT(e2.uri)::text AS item_count,
                 pgn.metadata->>'cosmikCollectionUri' AS cosmik_collection_uri,
@@ -1393,7 +1409,7 @@ export class CollectionService {
    */
   async getCollectionFeed(
     collectionUri: AtUri,
-    options: { limit?: number; cursor?: string } = {}
+    options: { limit?: number; cursor?: string; types?: string[] } = {}
   ): Promise<Result<CollectionFeedResult, DatabaseError>> {
     const limit = Math.min(options.limit ?? 30, 100);
     const innerLimit = Math.max(limit * 5, 200);
@@ -1658,10 +1674,122 @@ export class CollectionService {
         ORDER BY el.created_at DESC
         LIMIT ${innerLimit})`;
 
-      // Assemble UNION ALL
-      const unionBranches = [b2, b3, b4, b5, b6, b7, b8, b9, b10, b11].join(
-        '\n        UNION ALL\n'
-      );
+      // Branches 12-14: activity by *other people* on eprints authored by a
+      // tracked person. Branches 3-5 only fire for eprints explicitly held in
+      // the collection, so without these a collection tracking a person shows
+      // their output but nothing anyone says about it. The author's own
+      // activity is excluded here because it already surfaces as
+      // review_by_author / endorsement_by_author; including it would emit the
+      // same record under two type names, which the (type, event_uri) dedup
+      // would not collapse.
+      const b12 = `
+        (SELECT 'review_on_authored_eprint' AS type,
+               r.uri AS event_uri,
+               r.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'reviewerDid', r.reviewer_did,
+                 'eprintUri', e.uri,
+                 'eprintTitle', e.title,
+                 'snippet', LEFT((r.body->0->>'content'), 200)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON e.authors @> jsonb_build_array(jsonb_build_object('did', ci.metadata->>'did'))
+        JOIN reviews_index r ON r.eprint_uri = e.uri
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND e.deleted_at IS NULL
+          AND r.deleted_at IS NULL
+          AND r.parent_comment IS NULL
+          AND r.reviewer_did IS DISTINCT FROM ci.metadata->>'did'
+        ORDER BY r.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      const b13 = `
+        (SELECT 'endorsement_on_authored_eprint' AS type,
+               en.uri AS event_uri,
+               en.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'endorserDid', en.endorser_did,
+                 'eprintUri', e.uri,
+                 'eprintTitle', e.title,
+                 'contributions', to_jsonb(en.contributions)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON e.authors @> jsonb_build_array(jsonb_build_object('did', ci.metadata->>'did'))
+        JOIN endorsements_index en ON en.eprint_uri = e.uri
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND e.deleted_at IS NULL
+          AND en.deleted_at IS NULL
+          AND en.endorser_did IS DISTINCT FROM ci.metadata->>'did'
+        ORDER BY en.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      const b14 = `
+        (SELECT 'annotation_on_authored_eprint' AS type,
+               an.uri AS event_uri,
+               an.created_at AS event_at,
+               ci.item_uri AS collection_item_uri,
+               'person' AS collection_item_subkind,
+               ci.label AS collection_item_label,
+               jsonb_build_object(
+                 'annotatorDid', an.annotator_did,
+                 'eprintUri', e.uri,
+                 'eprintTitle', e.title,
+                 'snippet', LEFT((an.body->0->>'content'), 200)
+               ) AS payload
+        FROM collection_items ci
+        JOIN eprints_index e ON e.authors @> jsonb_build_array(jsonb_build_object('did', ci.metadata->>'did'))
+        JOIN annotations_index an ON an.eprint_uri = e.uri
+        WHERE ci.subkind = 'person'
+          AND ci.metadata->>'did' IS NOT NULL
+          AND e.deleted_at IS NULL
+          AND an.deleted_at IS NULL
+          AND an.parent_annotation IS NULL
+          AND an.annotator_did IS DISTINCT FROM ci.metadata->>'did'
+        ORDER BY an.created_at DESC
+        LIMIT ${innerLimit})`;
+
+      // Assemble UNION ALL. Callers may request a subset of event types via
+      // options.types; unrequested branches are never emitted, so each
+      // requested branch keeps its full innerLimit budget rather than spending
+      // it on rows an outer filter would discard.
+      const branchesByType: Record<string, string> = {
+        eprint_by_author: b2,
+        review_on_eprint: b3,
+        endorsement_on_eprint: b4,
+        annotation_on_eprint: b5,
+        review_by_author: b6,
+        endorsement_by_author: b7,
+        eprint_in_field: b8,
+        eprint_by_institution: b9,
+        eprint_at_event: b10,
+        eprint_referencing_person: b11,
+        review_on_authored_eprint: b12,
+        endorsement_on_authored_eprint: b13,
+        annotation_on_authored_eprint: b14,
+      };
+
+      const requestedTypes =
+        options.types && options.types.length > 0
+          ? options.types.filter((t) => t in branchesByType)
+          : Object.keys(branchesByType);
+
+      // Every requested type was unrecognized: return an empty page rather than
+      // emitting a UNION with no branches, which is a syntax error.
+      if (requestedTypes.length === 0) {
+        return Ok({ events: [], hasMore: false });
+      }
+
+      const unionBranches = requestedTypes
+        .map((t) => branchesByType[t])
+        .join('\n        UNION ALL\n');
 
       let outerWhere = '';
       if (cursorTs && cursorUri) {
@@ -2373,7 +2501,14 @@ export class CollectionService {
     cosmik_collection_uri?: string | null;
     cosmik_collection_cid?: string | null;
     cosmik_items?: Record<string, unknown> | null;
+    metadata?: Record<string, unknown> | null;
   }): IndexedCollection {
+    const nodeMetadata = row.metadata ?? {};
+    const subscriptionDid =
+      typeof nodeMetadata.subscriptionDid === 'string' ? nodeMetadata.subscriptionDid : undefined;
+    const activityTypes = Array.isArray(nodeMetadata.activityTypes)
+      ? (nodeMetadata.activityTypes as unknown[]).filter((t): t is string => typeof t === 'string')
+      : undefined;
     return {
       uri: row.uri as AtUri,
       cid: row.cid,
@@ -2389,6 +2524,8 @@ export class CollectionService {
       cosmikCollectionUri: row.cosmik_collection_uri ?? undefined,
       cosmikCollectionCid: row.cosmik_collection_cid ?? undefined,
       cosmikItems: row.cosmik_items as IndexedCollection['cosmikItems'],
+      ...(subscriptionDid !== undefined ? { subscriptionDid } : {}),
+      ...(activityTypes !== undefined ? { activityTypes } : {}),
     };
   }
 }

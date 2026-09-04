@@ -3047,6 +3047,17 @@ export interface CreateCollectionNodeInput {
   tags?: string[];
   /** Whether to mirror to Cosmik */
   enableCosmikMirror?: boolean;
+  /**
+   * When set, marks this collection as tracking one person's activity. A
+   * subscription to an author is an ordinary collection holding just that
+   * person, so the existing collection feed does the work and the user can
+   * open, rename, or extend it like any other collection.
+   */
+  subscriptionDid?: string;
+  /**
+   * Feed event types this collection surfaces. Omitted means every type.
+   */
+  activityTypes?: string[];
 }
 
 /**
@@ -3108,6 +3119,12 @@ export async function createCollectionNode(
   if (input.enableCosmikMirror !== undefined) {
     record.metadata.enableCosmikMirror = input.enableCosmikMirror;
   }
+  if (input.subscriptionDid) {
+    record.metadata.subscriptionDid = input.subscriptionDid;
+  }
+  if (input.activityTypes) {
+    record.metadata.activityTypes = input.activityTypes;
+  }
 
   recordLogger.info('Creating collection node', { name: input.name });
 
@@ -3138,6 +3155,8 @@ export interface UpdateCollectionNodeInput {
   visibility?: 'listed' | 'unlisted';
   /** Updated tags */
   tags?: string[];
+  /** Updated feed event types for a subscription collection */
+  activityTypes?: string[];
 }
 
 /**
@@ -3197,6 +3216,9 @@ export async function updateCollectionNode(
 
   if (input.description !== undefined) {
     record.description = input.description;
+  }
+  if (input.activityTypes !== undefined) {
+    record.metadata.activityTypes = input.activityTypes;
   }
   if (input.tags !== undefined) {
     record.metadata.tags = input.tags;
