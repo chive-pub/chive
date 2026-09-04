@@ -272,13 +272,22 @@ function CompactEprintCard({ eprint, className }: CompactEprintCardProps) {
             <RichTextRenderer text={eprint.title} mode="inline" disableLinks />
           </h4>
         </Link>
-        <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{authors[0]?.name ?? 'Unknown'}</span>
+        <div className="mt-1 flex min-w-0 items-center gap-2 text-xs text-muted-foreground">
+          <span className="truncate">{authors[0]?.name ?? 'Unknown'}</span>
           <span>·</span>
-          <span>{formatDate(displayDate, { relative: true })}</span>
+          <span className="shrink-0">{formatDate(displayDate, { relative: true })}</span>
         </div>
       </div>
-      {fields.length > 0 && <FieldBadgeList fields={fields} max={1} variant="outline" />}
+      {/* The field chip is capped rather than allowed to set the row's width;
+          discipline labels are long enough to squeeze out the title. */}
+      {fields.length > 0 && (
+        <FieldBadgeList
+          fields={fields}
+          max={1}
+          variant="outline"
+          className="max-w-[45%] shrink-0"
+        />
+      )}
     </div>
   );
 }

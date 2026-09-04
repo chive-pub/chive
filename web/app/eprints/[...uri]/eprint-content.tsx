@@ -962,7 +962,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                   : 'w-full overflow-hidden'
               }
             >
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                 <Button
                   variant="outline"
                   size="sm"
@@ -970,7 +970,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 >
                   {showAnnotationSidebar ? 'Hide annotations' : 'Show annotations'}
                 </Button>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {eprint.document && (
                     <PDFDownloadButton
                       blobRef={eprint.document}

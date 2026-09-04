@@ -102,8 +102,8 @@ function EprintSourceCard({ source, className }: EprintSourceProps) {
       </div>
 
       <div className="mt-3 space-y-2 text-sm">
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">PDS Endpoint</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="shrink-0 text-muted-foreground">PDS Endpoint</span>
           <a
             href={source.pdsEndpoint}
             target="_blank"
@@ -115,8 +115,8 @@ function EprintSourceCard({ source, className }: EprintSourceProps) {
           </a>
         </div>
 
-        <div className="flex items-center justify-between">
-          <span className="text-muted-foreground">Original Record</span>
+        <div className="flex items-center justify-between gap-3">
+          <span className="shrink-0 text-muted-foreground">Original Record</span>
           <a
             href={source.recordUrl}
             target="_blank"
@@ -129,8 +129,8 @@ function EprintSourceCard({ source, className }: EprintSourceProps) {
         </div>
 
         {source.lastVerifiedAt && (
-          <div className="flex items-center justify-between">
-            <span className="text-muted-foreground">Last Verified</span>
+          <div className="flex items-center justify-between gap-3">
+            <span className="shrink-0 text-muted-foreground">Last Verified</span>
             <span className="text-xs">{formatDate(source.lastVerifiedAt, { relative: true })}</span>
           </div>
         )}

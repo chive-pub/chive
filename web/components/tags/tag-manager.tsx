@@ -133,19 +133,24 @@ export function TagManager({
   return (
     <Card className={cn('', className)} data-testid="tag-manager">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base">
-              <Tags className="h-4 w-4" />
+              <Tags className="h-4 w-4 shrink-0" />
               Community Tags
             </CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               User-contributed labels for discovery
             </p>
           </div>
 
           {editable && !isAdding && (
-            <Button size="sm" variant="ghost" className="gap-1" onClick={() => setIsAdding(true)}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="shrink-0 gap-1"
+              onClick={() => setIsAdding(true)}
+            >
               <Plus className="h-4 w-4" />
               Add tag
             </Button>
