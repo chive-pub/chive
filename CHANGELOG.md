@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Fixed
+
+- **The governance admin dashboard was unreachable for every administrator.** `getEditorStatus` returned a 500, and the frontend reads the caller's role from it — a failed request leaves the role undefined, which renders as "Access Restricted". The cause was one column: `governance_roles` is LEFT JOINed, so `granted_by` comes back as `null` for anyone never granted a role, and the lexicon declares `roleGrantedBy` an optional _string_. Passing `null` through failed output validation. `displayName` beside it already had `?? undefined` and `roleGrantedAt` was reached through optional chaining; this one had neither. Since the default state for every user, platform administrators included, is to hold no stored role, it failed for everyone.
+
+- **Bluesky rendered no subscribe control on an eprint link card.** An enhanced card requires the page to name both its `site.standard.document` and the `site.standard.publication` that document belongs to, and requires the publication's own home page to name it too. Chive named only the document, and the author page — which is the url a Chive publication carries — named nothing at all.
+
+- **The feed filters were named after the query rather than the reader.** Seven checkboxes distinguishing reviews of an author's papers from reviews they write, where five suffice: Papers, Reviews, Endorsements, Annotations, Citations. Each group covers the event types it implies.
+
 ## [0.20.0] - 2026-09-04
 
 ### Added
