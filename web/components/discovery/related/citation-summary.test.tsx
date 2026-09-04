@@ -12,6 +12,11 @@
  * rows that exist, so a paper with eleven references announced "11 references"
  * in one line and "References (5)" in the next.
  *
+ * And the link out pointed at `/eprints/<uri>/citations`, a route that cannot
+ * exist: a Next.js catch-all has to be the last part of a route, so the path
+ * fell through to `/eprints/[...uri]` with `citations` as a trailing segment
+ * and the page asked the API for an AT-URI that was not one.
+ *
  * @packageDocumentation
  */
 
@@ -63,6 +68,16 @@ describe('CitationSummary', () => {
 
     const rows = screen.getAllByRole('listitem');
     expect(rows).toHaveLength(data.citations.length);
+  });
+
+  it('links to a citation network route that exists', () => {
+    // `/eprints/<uri>/citations` matched the eprint catch-all with `citations`
+    // as an extra segment, so the page asked for `at://.../xyz/citations` and
+    // the API answered "uri must be a valid at-uri".
+    render(<CitationSummary eprintUri={EPRINT} defaultOpen />);
+
+    const link = screen.getByRole('link', { name: /Open the citation network/ });
+    expect(link).toHaveAttribute('href', `/eprints/citations/${encodeURIComponent(EPRINT)}`);
   });
 
   it('counts the references that exist, not the ones it fetched', () => {

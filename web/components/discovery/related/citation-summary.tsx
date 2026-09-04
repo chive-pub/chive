@@ -80,9 +80,11 @@ export function CitationSummary({
           />
 
           {/* Every citation is listed above, so this is a route to the
-              dedicated view rather than to anything withheld here. */}
+              dedicated view rather than to anything withheld here. The URI is
+              one encoded segment after `/eprints/citations/`, because a Next.js
+              catch-all has to be the last part of a route. */}
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
+            <Link href={`/eprints/citations/${encodeURIComponent(eprintUri)}`}>
               Open the citation network
               <ExternalLink className="ml-2 h-3 w-3" />
             </Link>
