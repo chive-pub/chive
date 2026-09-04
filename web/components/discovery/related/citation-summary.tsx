@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useCitations } from '@/lib/hooks/use-discovery';
+import { paperLabel, papersByUri, type CitedPaper } from '@/lib/citations/paper-label';
 import type { CitationRelationship } from '@/lib/api/schema';
 
 /**
@@ -43,7 +44,6 @@ export function CitationSummary({
 }: CitationSummaryProps) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const { data, isLoading, isError } = useCitations(eprintUri, {
-    limit: 5,
     enabled: defaultOpen || isOpen, // Fetch immediately when defaultOpen
   });
 
@@ -62,6 +62,8 @@ export function CitationSummary({
             title="Cited by"
             icon={<BookMarked className="h-4 w-4" />}
             citations={data.citations.filter((c) => c.citedUri === eprintUri)}
+            total={data.counts.citedByCount}
+            papers={data.papers}
             eprintUri={eprintUri}
             direction="citing"
           />
@@ -71,18 +73,20 @@ export function CitationSummary({
             title="References"
             icon={<Quote className="h-4 w-4" />}
             citations={data.citations.filter((c) => c.citingUri === eprintUri)}
+            total={data.counts.referencesCount}
+            papers={data.papers}
             eprintUri={eprintUri}
             direction="cited"
           />
 
-          {data.hasMore && (
-            <Button variant="outline" size="sm" className="w-full" asChild>
-              <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
-                View full citation network
-                <ExternalLink className="ml-2 h-3 w-3" />
-              </Link>
-            </Button>
-          )}
+          {/* Every citation is listed above, so this is a route to the
+              dedicated view rather than to anything withheld here. */}
+          <Button variant="outline" size="sm" className="w-full" asChild>
+            <Link href={`/eprints/${encodeURIComponent(eprintUri)}/citations`}>
+              Open the citation network
+              <ExternalLink className="ml-2 h-3 w-3" />
+            </Link>
+          </Button>
         </>
       ) : (
         <p className="text-center text-sm text-muted-foreground py-4">
@@ -167,11 +171,23 @@ interface CitationSectionProps {
   title: string;
   icon: React.ReactNode;
   citations: CitationRelationship[];
+  /** How many exist, as opposed to how many were fetched for this list. */
+  total?: number;
+  /** The papers the response named, for labelling each row. */
+  papers?: readonly CitedPaper[];
   eprintUri: string;
   direction: 'citing' | 'cited';
 }
 
-function CitationSection({ title, icon, citations, direction }: CitationSectionProps) {
+function CitationSection({
+  title,
+  icon,
+  citations,
+  total,
+  papers,
+  direction,
+}: CitationSectionProps) {
+  const byUri = papersByUri(papers);
   if (citations.length === 0) {
     return null;
   }
@@ -180,10 +196,13 @@ function CitationSection({ title, icon, citations, direction }: CitationSectionP
     <div>
       <div className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
         {icon}
-        {title} ({citations.length})
+        {/* The true count, not how many were fetched. The list is capped at
+            five, so showing its length beside a header reading "11 references"
+            said two different things about the same paper. */}
+        {title} ({total ?? citations.length})
       </div>
       <ul className="space-y-2">
-        {citations.slice(0, 5).map((citation) => {
+        {citations.map((citation) => {
           const targetUri = direction === 'citing' ? citation.citingUri : citation.citedUri;
           return (
             <li key={`${citation.citingUri}-${citation.citedUri}`}>
@@ -192,7 +211,9 @@ function CitationSection({ title, icon, citations, direction }: CitationSectionP
                 className="group flex items-start gap-2 rounded-md p-2 text-sm hover:bg-muted/50"
               >
                 <div className="flex-1 truncate">
-                  <span className="group-hover:underline">{targetUri}</span>
+                  <span className="group-hover:underline">
+                    {paperLabel(byUri.get(targetUri), targetUri)}
+                  </span>
                   {citation.isInfluential && (
                     <Star className="ml-1 inline h-3 w-3 text-amber-500" />
                   )}

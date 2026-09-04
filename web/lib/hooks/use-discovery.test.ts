@@ -196,6 +196,8 @@ describe('useSimilarPapers', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
+    // The hook accumulates pages, so it returns the collected result rather
+    // than the first response verbatim.
     expect(result.current.data).toEqual(mockResponse);
     expect(mockGetSimilar).toHaveBeenCalledWith({
       uri: testUri,
@@ -251,13 +253,81 @@ describe('useCitations', () => {
       expect(result.current.isSuccess).toBe(true);
     });
 
-    expect(result.current.data).toEqual(mockResponse);
+    // The hook accumulates pages, so it returns the collected result rather
+    // than the first response verbatim.
+    expect(result.current.data).toMatchObject({
+      eprint: mockResponse.eprint,
+      counts: mockResponse.counts,
+      citations: mockResponse.citations,
+    });
     expect(mockGetCitations).toHaveBeenCalledWith({
       uri: testUri,
       direction: 'both',
-      limit: 20,
+      limit: 100,
       onlyInfluential: false,
     });
+  });
+
+  it('follows the cursor until every citation is collected', async () => {
+    // The API caps a page at 100. A network showing the first page of a
+    // well-cited paper omits exactly the references a reader came for.
+    mockGetCitations
+      .mockResolvedValueOnce({
+        data: {
+          eprint: { uri: 'at://a/c/1', title: 'A' },
+          counts: { citedByCount: 2, referencesCount: 0, influentialCitedByCount: 0 },
+          citations: [{ citingUri: 'at://a/c/2', citedUri: 'at://a/c/1' }],
+          papers: [{ uri: 'at://a/c/2', title: 'Two' }],
+          cursor: 'page2',
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          eprint: { uri: 'at://a/c/1', title: 'A' },
+          counts: { citedByCount: 2, referencesCount: 0, influentialCitedByCount: 0 },
+          citations: [{ citingUri: 'at://a/c/3', citedUri: 'at://a/c/1' }],
+          // Repeated across pages, since one paper sits at the end of several
+          // edges; it must not be listed twice.
+          papers: [
+            { uri: 'at://a/c/2', title: 'Two' },
+            { uri: 'at://a/c/3', title: 'Three' },
+          ],
+        },
+      });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useCitations('at://a/c/1'), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(result.current.data?.citations).toHaveLength(2);
+    expect(result.current.data?.papers).toHaveLength(2);
+    expect(mockGetCitations).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops when a cursor does not advance', async () => {
+    // A server returning the same cursor forever would otherwise spin.
+    const page = {
+      data: {
+        eprint: { uri: 'at://a/c/1', title: 'A' },
+        counts: { citedByCount: 1, referencesCount: 0, influentialCitedByCount: 0 },
+        citations: [{ citingUri: 'at://a/c/2', citedUri: 'at://a/c/1' }],
+        papers: [],
+        cursor: 'stuck',
+      },
+    };
+    mockGetCitations.mockResolvedValue(page);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useCitations('at://a/c/1'), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      expect(result.current.isSuccess).toBe(true);
+    });
+
+    expect(mockGetCitations.mock.calls.length).toBeLessThan(4);
   });
 
   it('respects direction option', async () => {
@@ -276,7 +346,7 @@ describe('useCitations', () => {
     expect(mockGetCitations).toHaveBeenCalledWith({
       uri: testUri,
       direction: 'citing',
-      limit: 20,
+      limit: 100,
       onlyInfluential: false,
     });
   });
@@ -297,7 +367,7 @@ describe('useCitations', () => {
     expect(mockGetCitations).toHaveBeenCalledWith({
       uri: testUri,
       direction: 'both',
-      limit: 20,
+      limit: 100,
       onlyInfluential: true,
     });
   });
