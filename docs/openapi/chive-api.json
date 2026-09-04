@@ -5236,6 +5236,13 @@
       "pub.chive.collection.defs.collectionView": {
         "description": "View of a user collection",
         "properties": {
+          "activityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
           "cid": {
             "description": "Content identifier",
             "type": "string"
@@ -5276,6 +5283,11 @@
           },
           "ownerHandle": {
             "description": "Resolved handle of the collection owner",
+            "type": "string"
+          },
+          "subscriptionDid": {
+            "description": "When this collection tracks one person, that person DID. Set when the collection was created by subscribing to an author.",
+            "format": "did",
             "type": "string"
           },
           "updatedAt": {
@@ -5414,7 +5426,10 @@
               "eprint_in_field",
               "eprint_by_institution",
               "eprint_at_event",
-              "eprint_referencing_person"
+              "eprint_referencing_person",
+              "review_on_authored_eprint",
+              "endorsement_on_authored_eprint",
+              "annotation_on_authored_eprint"
             ],
             "type": "string"
           }
@@ -11083,6 +11098,13 @@
       "pub.chive.graph.node.nodeMetadata": {
         "description": "Subkind-specific metadata fields",
         "properties": {
+          "activityTypes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
+          },
           "city": {
             "description": "City name (for institutions)",
             "maxLength": 200,
@@ -11130,6 +11152,11 @@
           "spdxId": {
             "description": "SPDX license identifier (for licenses)",
             "maxLength": 100,
+            "type": "string"
+          },
+          "subscriptionDid": {
+            "description": "For a collection that tracks one person, the DID of that person. Set when the collection was created by subscribing to an author.",
+            "format": "did",
             "type": "string"
           },
           "symmetric": {
@@ -14073,6 +14100,42 @@
         },
         "required": [
           "title"
+        ],
+        "type": "object"
+      },
+      "pub.chive.subscription.list.subscriptionView": {
+        "properties": {
+          "createdAt": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "displayName": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "handle": {
+            "maxLength": 512,
+            "type": "string"
+          },
+          "publicationDid": {
+            "description": "The author subscribed to.",
+            "format": "did",
+            "type": "string"
+          },
+          "publicationUri": {
+            "format": "at-uri",
+            "type": "string"
+          },
+          "uri": {
+            "description": "The subscription record, in the reader's repository. Needed to withdraw it.",
+            "format": "at-uri",
+            "type": "string"
+          }
+        },
+        "required": [
+          "uri",
+          "publicationUri",
+          "publicationDid"
         ],
         "type": "object"
       },
@@ -24418,6 +24481,19 @@
               "description": "Pagination cursor",
               "type": "string"
             }
+          },
+          {
+            "description": "Restrict the feed to these event types. Omit for all types.",
+            "in": "query",
+            "name": "types",
+            "required": false,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 20,
+              "type": "array"
+            }
           }
         ],
         "responses": {
@@ -32099,6 +32175,96 @@
         "summary": "pub.chive.review.listForEprint",
         "tags": [
           "review"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.subscription.getStatus": {
+      "get": {
+        "description": "Subscriber count for an author, and whether a given reader is among them. Subscriptions are site.standard.graph.subscription records written into readers' own repositories; Chive indexes them from the firehose and neither writes nor owns them.",
+        "operationId": "pub_chive_subscription_getStatus",
+        "parameters": [
+          {
+            "description": "DID of the author whose publications are subscribed to",
+            "in": "query",
+            "name": "did",
+            "required": true,
+            "schema": {
+              "description": "DID of the author whose publications are subscribed to",
+              "format": "did",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Reader to report a subscription status for; omitted when nobody is signed in",
+            "in": "query",
+            "name": "viewerDid",
+            "required": false,
+            "schema": {
+              "description": "Reader to report a subscription status for; omitted when nobody is signed in",
+              "format": "did",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "publicationUri": {
+                      "description": "The author's publication record, when they have one. A reader needs it to write a subscription of their own.",
+                      "format": "at-uri",
+                      "type": "string"
+                    },
+                    "subscribed": {
+                      "description": "Whether viewerDid subscribes. False when no viewer was given.",
+                      "type": "boolean"
+                    },
+                    "subscriberCount": {
+                      "description": "Distinct readers subscribed, not records: an author may hold several publications and a reader following two of them is one follower.",
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "subscriberCount",
+                    "subscribed"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "pub.chive.subscription.getStatus",
+        "tags": [
+          "subscription"
         ]
       }
     },

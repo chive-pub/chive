@@ -211,6 +211,19 @@
         "functional": {
           "type": "boolean",
           "description": "Whether this relation is functional (each source has at most one target)"
+        },
+        "subscriptionDid": {
+          "type": "string",
+          "format": "did",
+          "description": "For a collection that tracks one person, the DID of that person. Set when the collection was created by subscribing to an author."
+        },
+        "activityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxLength": 20,
+          "description": "Feed event types this collection surfaces. Absent means all types."
         }
       }
     }

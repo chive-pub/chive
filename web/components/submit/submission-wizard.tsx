@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 
 const submitLogger = logger.child({ component: 'submission-wizard' });
 import { cn } from '@/lib/utils';
-import { useAuth, useAgent } from '@/lib/auth/auth-context';
+import { useAuth, useAgent, useCurrentUser } from '@/lib/auth/auth-context';
 import {
   createEprintRecord,
   createStandardDocument,
@@ -37,6 +37,7 @@ import {
   type EprintRecord,
 } from '@/lib/atproto';
 import { createSifaPublication } from '@/lib/atproto/sifa-records';
+import { ensurePublication } from '@/lib/atproto/subscription-records';
 import { SUPPORTED_DOCUMENT_FORMATS } from '@/lib/schemas/eprint';
 import { authApi } from '@/lib/api/client';
 
@@ -660,6 +661,7 @@ export function SubmissionWizard({
 }: SubmissionWizardProps) {
   const { isAuthenticated, user } = useAuth();
   const agent = useAgent();
+  const currentUser = useCurrentUser();
 
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1013,12 +1015,23 @@ export function SubmissionWizard({
       if ((values.enableCrossPlatformDiscovery ?? true) && agent) {
         try {
           submitLogger.info('Creating standard.site document', { eprintUri: result.uri });
+
+          // The document names the author's publication rather than the site
+          // root. The schema keeps the bare-url form for loose documents, and
+          // an eprint is not loose: naming the publication is what lets a
+          // reader subscribe to this author from a link card anywhere in the
+          // ecosystem. Find-or-create, in the author's own repository.
+          const publicationUri = await ensurePublication(
+            agent,
+            currentUser?.displayName ?? currentUser?.handle ?? 'Chive'
+          );
+
           await createStandardDocument(agent, {
             title: values.title,
             description: values.abstract?.substring(0, 30000),
             eprintUri: result.uri,
             eprintCid: result.cid,
-            siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? 'https://chive.pub',
+            siteUrl: publicationUri,
             publishedAt: new Date().toISOString(),
             // The abstract is the document's plaintext; `textContent` is
             // specified as carrying no markdown or other formatting.

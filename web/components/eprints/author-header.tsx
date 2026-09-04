@@ -110,12 +110,12 @@ export function AuthorHeader({ profile, sifa, className }: AuthorHeaderProps) {
         </Avatar>
 
         {/* Info */}
-        <div className="flex-1 text-center sm:text-left">
-          <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+        <div className="min-w-0 flex-1 text-center sm:text-left">
+          <h1 className="break-words text-3xl font-bold tracking-tight">{displayName}</h1>
 
           {/* Handle */}
           {profile.handle && (
-            <p className="mt-1 text-lg text-muted-foreground">@{profile.handle}</p>
+            <p className="mt-1 break-all text-lg text-muted-foreground">@{profile.handle}</p>
           )}
 
           {/* DID */}
@@ -154,7 +154,7 @@ export function AuthorHeader({ profile, sifa, className }: AuthorHeaderProps) {
                   <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                   <div className="min-w-0 text-center sm:text-left">
                     <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 sm:justify-start">
-                      <span className="font-medium">{aff.institution}</span>
+                      <span className="break-words font-medium">{aff.institution}</span>
                       {aff.isPrimary && (
                         <Badge variant="outline" className="text-xs font-normal">
                           Primary
@@ -276,7 +276,11 @@ export function AuthorHeader({ profile, sifa, className }: AuthorHeaderProps) {
               {extendedProfile.researchKeywords!.map((keyword, idx) => (
                 <Tooltip key={idx}>
                   <TooltipTrigger asChild>
-                    <Badge variant="secondary" className="cursor-default">
+                    <Badge
+                      variant="secondary"
+                      title={keyword.label}
+                      className="cursor-default truncate"
+                    >
                       {keyword.label}
                     </Badge>
                   </TooltipTrigger>

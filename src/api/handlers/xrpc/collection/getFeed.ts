@@ -60,11 +60,13 @@ export const getFeed: XRPCMethod<QueryParams, void, OutputSchema> = {
       uri: params.uri,
       limit: params.limit,
       cursor: params.cursor,
+      types: params.types,
     });
 
     const feedResult = await collectionService.getCollectionFeed(params.uri as AtUri, {
       limit: params.limit,
       cursor: params.cursor,
+      types: params.types,
     });
 
     if (!feedResult.ok) {

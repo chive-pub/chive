@@ -135,8 +135,8 @@ export function EndorsementPanel({
   return (
     <Card className={cn('', className)} data-testid="endorsement-panel">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-lg">
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="flex min-w-0 items-center gap-2 text-lg">
             <ThumbsUp className="h-5 w-5" />
             Endorsements
           </CardTitle>
@@ -174,13 +174,13 @@ export function EndorsementPanel({
 
       <CardContent>
         {/* Filter dropdown */}
-        <div className="flex items-center gap-2 mb-4">
-          <Filter className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <Filter className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Select
             value={selectedType}
             onValueChange={(v) => setSelectedType(v as ContributionType | 'all')}
           >
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[200px] max-w-full">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
             <SelectContent>

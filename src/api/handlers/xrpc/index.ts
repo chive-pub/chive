@@ -30,6 +30,7 @@ export * from './backlink/index.js';
 export * from './claiming/index.js';
 export * from './collaboration/index.js';
 export { collectionMethods } from './collection/index.js';
+export { subscriptionMethods } from './subscription/index.js';
 export * from './discovery/index.js';
 export * from './endorsement/index.js';
 export * from './governance/index.js';
@@ -66,6 +67,7 @@ import { moderationMethods } from './moderation/index.js';
 import { notificationMethods } from './notification/index.js';
 import { resolveMethods } from './resolve/index.js';
 import { reviewMethods } from './review/index.js';
+import { subscriptionMethods } from './subscription/index.js';
 import { syncMethods } from './sync/index.js';
 import { tagMethods } from './tag/index.js';
 
@@ -83,6 +85,7 @@ export const allXRPCMethods = {
   ...claimingMethods,
   ...collaborationMethods,
   ...collectionMethods,
+  ...subscriptionMethods,
   ...discoveryMethods,
   ...endorsementMethods,
   ...eprintMethods,

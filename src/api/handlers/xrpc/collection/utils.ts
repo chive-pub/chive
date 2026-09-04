@@ -32,5 +32,7 @@ export function mapCollectionToView(collection: IndexedCollection): CollectionVi
     ...(collection.cosmikCollectionUri && { cosmikCollectionUri: collection.cosmikCollectionUri }),
     ...(collection.cosmikCollectionCid && { cosmikCollectionCid: collection.cosmikCollectionCid }),
     ...(collection.cosmikItems && { cosmikItems: collection.cosmikItems }),
+    ...(collection.subscriptionDid && { subscriptionDid: collection.subscriptionDid }),
+    ...(collection.activityTypes && { activityTypes: collection.activityTypes }),
   };
 }

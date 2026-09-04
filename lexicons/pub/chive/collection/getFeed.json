@@ -24,6 +24,14 @@
           "cursor": {
             "type": "string",
             "description": "Pagination cursor"
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxLength": 20,
+            "description": "Restrict the feed to these event types. Omit for all types."
           }
         }
       },

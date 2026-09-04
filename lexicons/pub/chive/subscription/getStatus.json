@@ -1,0 +1,49 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.subscription.getStatus",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Subscriber count for an author, and whether a given reader is among them. Subscriptions are site.standard.graph.subscription records written into readers' own repositories; Chive indexes them from the firehose and neither writes nor owns them.",
+      "parameters": {
+        "type": "params",
+        "required": ["did"],
+        "properties": {
+          "did": {
+            "type": "string",
+            "format": "did",
+            "description": "DID of the author whose publications are subscribed to"
+          },
+          "viewerDid": {
+            "type": "string",
+            "format": "did",
+            "description": "Reader to report a subscription status for; omitted when nobody is signed in"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["subscriberCount", "subscribed"],
+          "properties": {
+            "subscriberCount": {
+              "type": "integer",
+              "description": "Distinct readers subscribed, not records: an author may hold several publications and a reader following two of them is one follower."
+            },
+            "subscribed": {
+              "type": "boolean",
+              "description": "Whether viewerDid subscribes. False when no viewer was given."
+            },
+            "publicationUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "The author's publication record, when they have one. A reader needs it to write a subscription of their own."
+            }
+          }
+        }
+      }
+    }
+  }
+}

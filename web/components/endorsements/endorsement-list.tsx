@@ -215,7 +215,7 @@ export function EndorsementItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-6 w-6 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
               onClick={onShare}
               aria-label="Share endorsement"
             >
@@ -228,14 +228,14 @@ export function EndorsementItem({
             itemType="endorsement"
             itemLabel={`Endorsement by ${endorsement.endorser.displayName || endorsement.endorser.handle || 'Anonymous'}`}
             variant="icon"
-            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="h-6 w-6 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
           />
 
           {isOwner && onEdit && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-6 w-6 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
               onClick={onEdit}
               aria-label="Edit endorsement"
             >
@@ -247,7 +247,7 @@ export function EndorsementItem({
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
+              className="h-6 w-6 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive"
               onClick={onDelete}
               aria-label="Delete endorsement"
             >

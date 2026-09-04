@@ -113,9 +113,11 @@ export function CollectionHeader({
       {/* Title row */}
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-3xl font-bold tracking-tight">{collection.label}</h1>
+          <h1 className="break-words text-3xl font-bold tracking-tight">{collection.label}</h1>
           {collection.description && (
-            <p className="mt-2 text-lg text-muted-foreground">{collection.description}</p>
+            <p className="mt-2 break-words text-lg text-muted-foreground">
+              {collection.description}
+            </p>
           )}
         </div>
       </div>
@@ -125,10 +127,10 @@ export function CollectionHeader({
         {/* Owner */}
         <Link
           href={`/authors/${collection.ownerDid}`}
-          className="flex items-center gap-1.5 hover:text-foreground transition-colors"
+          className="flex min-w-0 items-center gap-1.5 transition-colors hover:text-foreground"
         >
-          <UserIcon className="h-4 w-4" />
-          <span>{collection.ownerHandle ?? collection.ownerDid}</span>
+          <UserIcon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{collection.ownerHandle ?? collection.ownerDid}</span>
         </Link>
 
         <Separator orientation="vertical" className="h-4" />
@@ -162,7 +164,7 @@ export function CollectionHeader({
       {collection.tags && collection.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {collection.tags.map((tag) => (
-            <Badge key={tag} variant="outline" className="text-xs font-normal">
+            <Badge key={tag} variant="outline" title={tag} className="truncate text-xs font-normal">
               {tag}
             </Badge>
           ))}

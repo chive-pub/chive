@@ -23,6 +23,7 @@ import { useProfileConfig, type ProfileSection } from '@/lib/hooks/use-profile-c
 import { useIsAuthenticated, useCurrentUser, useAgent } from '@/lib/auth';
 import { ShareMenu, ShareToBlueskyDialog } from '@/components/share';
 import { AddToCollectionButton } from '@/components/collection/add-to-collection-button';
+import { SubscribeButton } from '@/components/subscription/subscribe-button';
 import { MuteButton } from '@/components/authors/mute-button';
 import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { cn } from '@/lib/utils';
@@ -222,12 +223,16 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
         </div>
       )}
 
-      {/* Profile header with share button */}
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex-1">
+      {/* Profile header with share button.
+
+          The controls sit beside the header from `sm` up and below it on a
+          phone: four icon buttons in the same row left the name, handle and
+          affiliation about a hundred pixels of width on a 320px screen. */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
           <AuthorHeader profile={data.profile} sifa={data.sifa} />
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 sm:shrink-0">
           {shareContent && (
             <ShareMenu
               content={shareContent}
@@ -243,6 +248,13 @@ export function AuthorPageContent({ did }: AuthorPageContentProps) {
             />
           )}
           <MuteButton did={did} />
+          {/* Beside the collection control: both are things a reader does about
+              this author, and both write to the reader's own repository. */}
+          <SubscribeButton
+            authorDid={did}
+            authorName={data.profile.displayName ?? data.profile.handle ?? did}
+            variant="icon"
+          />
           <AddToCollectionButton
             itemUri={did}
             itemType="author"

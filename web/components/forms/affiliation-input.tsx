@@ -540,7 +540,7 @@ function SubUnitNode({ node, depth, onUpdate, onRemove, disabled }: SubUnitNodeP
           <button
             type="button"
             onClick={onRemove}
-            className="ml-auto p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
+            className="ml-auto p-0.5 rounded opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive transition-opacity"
             aria-label={`Remove ${node.name}`}
           >
             <X className="h-3 w-3" />

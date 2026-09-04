@@ -2274,9 +2274,18 @@ export interface CreateStandardDocumentInput {
    * Origin this deployment serves from, without a trailing slash.
    *
    * @remarks
-   * Becomes the record's `site`. Combined with `path` it is the canonical URL
-   * of the eprint, which is how a standard.site reader verifies that the
-   * document and the page describe the same thing.
+   * Becomes the record's `site`.
+   *
+   * The schema takes either a publication record's AT-URI or a bare url, and
+   * says the url form is "for loose documents". An eprint is not loose: it
+   * belongs to its author's body of work, and naming the publication is what
+   * lets a reader subscribe to that author from a link card. Callers should
+   * pass the publication's AT-URI and leave the url form to callers that have
+   * no publication to name.
+   *
+   * Combined with `path` it is the canonical URL of the eprint, which is how a
+   * standard.site reader verifies that the document and the page describe the
+   * same thing.
    */
   siteUrl?: string;
   /** When the eprint was published; defaults to now */
@@ -2658,6 +2667,8 @@ export async function deleteStandardDocumentsForEprint(
  * Input for updating a standard.site document.
  */
 export interface UpdateStandardDocumentInput {
+  /** Re-point the document at a publication, or at a url. */
+  siteUrl?: string;
   /** AT-URI of the existing document record */
   uri: string;
   /** Updated title */
@@ -2765,6 +2776,13 @@ export async function updateStandardDocument(
   const bskyPostRef = input.bskyPostRef ?? existing.bskyPostRef;
   if (bskyPostRef !== undefined) {
     record.bskyPostRef = bskyPostRef;
+  }
+
+  // A document written before publications existed names a bare url, which the
+  // schema reserves for loose documents. Re-pointing it at the publication is
+  // how such a record joins the author's body of work without being rewritten.
+  if (input.siteUrl !== undefined) {
+    record.site = input.siteUrl;
   }
 
   const response = await agent.com.atproto.repo.putRecord({
@@ -3029,6 +3047,17 @@ export interface CreateCollectionNodeInput {
   tags?: string[];
   /** Whether to mirror to Cosmik */
   enableCosmikMirror?: boolean;
+  /**
+   * When set, marks this collection as tracking one person's activity. A
+   * subscription to an author is an ordinary collection holding just that
+   * person, so the existing collection feed does the work and the user can
+   * open, rename, or extend it like any other collection.
+   */
+  subscriptionDid?: string;
+  /**
+   * Feed event types this collection surfaces. Omitted means every type.
+   */
+  activityTypes?: string[];
 }
 
 /**
@@ -3090,6 +3119,12 @@ export async function createCollectionNode(
   if (input.enableCosmikMirror !== undefined) {
     record.metadata.enableCosmikMirror = input.enableCosmikMirror;
   }
+  if (input.subscriptionDid) {
+    record.metadata.subscriptionDid = input.subscriptionDid;
+  }
+  if (input.activityTypes) {
+    record.metadata.activityTypes = input.activityTypes;
+  }
 
   recordLogger.info('Creating collection node', { name: input.name });
 
@@ -3120,6 +3155,8 @@ export interface UpdateCollectionNodeInput {
   visibility?: 'listed' | 'unlisted';
   /** Updated tags */
   tags?: string[];
+  /** Updated feed event types for a subscription collection */
+  activityTypes?: string[];
 }
 
 /**
@@ -3179,6 +3216,9 @@ export async function updateCollectionNode(
 
   if (input.description !== undefined) {
     record.description = input.description;
+  }
+  if (input.activityTypes !== undefined) {
+    record.metadata.activityTypes = input.activityTypes;
   }
   if (input.tags !== undefined) {
     record.metadata.tags = input.tags;
@@ -6569,4 +6609,58 @@ async function listPersonalEdgesForTarget(
   }
 
   return edges;
+}
+
+/**
+ * Finds the standard.site document describing an eprint, if one exists.
+ *
+ * @param agent - The author's authenticated agent
+ * @param eprintUri - The eprint to look for
+ * @returns The document's AT-URI and current values, or undefined
+ *
+ * @remarks
+ * Read from the author's own repository rather than from Chive's index, for the
+ * same reason the subscription state is: the index lags the firehose, and an
+ * editor that reports "no document" seconds after one was published invites the
+ * author to publish a second.
+ *
+ * Matching uses {@link describesEprint}, so a document written under the older
+ * `content.uri` shape is found as well as one written with `path`.
+ */
+export async function findStandardDocumentForEprint(
+  agent: Agent,
+  eprintUri: string
+): Promise<{ uri: string; title: string; description?: string; site?: string } | undefined> {
+  const did = getAgentDid(agent);
+  if (!did) return undefined;
+
+  let cursor: string | undefined;
+  do {
+    const response = await agent.com.atproto.repo.listRecords({
+      repo: did,
+      collection: 'site.standard.document',
+      limit: 100,
+      ...(cursor ? { cursor } : {}),
+    });
+
+    for (const record of response.data.records) {
+      if (describesEprint(record.value, eprintUri)) {
+        const value = record.value as {
+          title?: unknown;
+          description?: unknown;
+          site?: unknown;
+        };
+        return {
+          uri: record.uri,
+          title: typeof value.title === 'string' ? value.title : '',
+          ...(typeof value.description === 'string' ? { description: value.description } : {}),
+          ...(typeof value.site === 'string' ? { site: value.site } : {}),
+        };
+      }
+    }
+
+    cursor = response.data.cursor;
+  } while (cursor);
+
+  return undefined;
 }

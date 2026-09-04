@@ -69,7 +69,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="break-words text-3xl font-bold tracking-tight">
           Welcome back{user?.displayName ? `, ${user.displayName}` : ''}
         </h1>
         <p className="text-muted-foreground">Manage your eprints, reviews, and endorsements</p>
@@ -132,7 +132,9 @@ export default function DashboardPage() {
           <CardDescription>Common tasks and shortcuts</CardDescription>
         </CardHeader>
         <CardContent
-          className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap"
+          // One column below `sm`: two columns of a 320px screen give a button
+          // about 110px, and none of these labels fit in that.
+          className="grid grid-cols-1 gap-3 sm:flex sm:flex-wrap"
           role="group"
           aria-label="Quick actions"
         >

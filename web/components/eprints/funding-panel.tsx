@@ -124,8 +124,8 @@ export function FundingPanel({ funding, variant = 'card', className }: FundingPa
     return (
       <div className={cn('flex flex-wrap gap-2', className)}>
         {funding.map((source, index) => (
-          <Badge key={index} variant="outline" className="gap-1">
-            <DollarSign className="h-3 w-3" />
+          <Badge key={index} variant="outline" title={source.funderName} className="gap-1 truncate">
+            <DollarSign className="h-3 w-3 shrink-0" />
             {source.funderName}
             {source.grantNumber && (
               <span className="font-mono text-xs">({source.grantNumber})</span>

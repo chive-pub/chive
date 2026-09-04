@@ -64,6 +64,19 @@
         "cosmikItems": {
           "type": "unknown",
           "description": "Mapping of item URLs to Cosmik card/link record URIs and CIDs"
+        },
+        "subscriptionDid": {
+          "type": "string",
+          "format": "did",
+          "description": "When this collection tracks one person, that person DID. Set when the collection was created by subscribing to an author."
+        },
+        "activityTypes": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxLength": 20,
+          "description": "Feed event types this collection surfaces. Absent means all types."
         }
       }
     },
@@ -271,7 +284,10 @@
             "eprint_in_field",
             "eprint_by_institution",
             "eprint_at_event",
-            "eprint_referencing_person"
+            "eprint_referencing_person",
+            "review_on_authored_eprint",
+            "endorsement_on_authored_eprint",
+            "annotation_on_authored_eprint"
           ],
           "description": "Event type discriminant"
         },

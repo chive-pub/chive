@@ -61,8 +61,13 @@ export function FacetChip({
         className
       )}
     >
-      <span className="text-xs opacity-70">{facetLabel}:</span>
-      <span>{valueLabel ?? value}</span>
+      <span className="shrink-0 text-xs opacity-70">{facetLabel}:</span>
+      {/* The value truncates rather than the chip growing past the viewport:
+          facet values run to several words and the remove control has to stay
+          reachable. */}
+      <span className="truncate" title={valueLabel ?? value}>
+        {valueLabel ?? value}
+      </span>
       {removable && onRemove && (
         <button
           onClick={(e) => {
@@ -70,7 +75,7 @@ export function FacetChip({
             e.stopPropagation();
             onRemove();
           }}
-          className="ml-0.5 rounded-full p-0.5 hover:bg-current/10"
+          className="ml-0.5 shrink-0 rounded-full p-0.5 hover:bg-current/10"
           aria-label={`Remove ${valueLabel ?? value} filter`}
         >
           <X className="h-3 w-3" />

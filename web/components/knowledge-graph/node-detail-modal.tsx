@@ -861,7 +861,7 @@ function RelationshipsSection({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={() => handleRemoveEdge(item.edgeUri!)}
                           disabled={isMutating}
                           title="Remove relation"

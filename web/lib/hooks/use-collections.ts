@@ -101,6 +101,14 @@ export interface CollectionView {
   cosmikItems?: Record<string, CosmikItemMapping>;
   createdAt: string;
   updatedAt?: string;
+  /**
+   * When this collection tracks one person, that person's DID. Subscribing to
+   * an author creates an ordinary collection holding just them, so the feed
+   * machinery collections already have does the work.
+   */
+  subscriptionDid?: string;
+  /** Feed event types this collection surfaces. Absent means all types. */
+  activityTypes?: string[];
 }
 
 /**
@@ -463,16 +471,25 @@ export function useParentCollection(uri: string, options?: { enabled?: boolean }
  * const events = data?.pages.flatMap(p => p.events) ?? [];
  * ```
  */
-export function useCollectionFeed(uri: string, options?: { limit?: number; enabled?: boolean }) {
-  const { limit = 30, enabled = true } = options ?? {};
+export function useCollectionFeed(
+  uri: string,
+  options?: { limit?: number; enabled?: boolean; types?: string[] }
+) {
+  const { limit = 30, enabled = true, types } = options ?? {};
+
+  // The type filter belongs in the query key: two filters over the same
+  // collection are different results, and sharing one cache entry would show
+  // whichever was fetched first.
+  const typeKey = types && types.length > 0 ? [...types].sort().join(',') : 'all';
 
   return useInfiniteQuery({
-    queryKey: collectionKeys.feed(uri),
+    queryKey: [...collectionKeys.feed(uri), typeKey],
     queryFn: async ({ pageParam }): Promise<CollectionFeedResponse> => {
       const response = await authApi.pub.chive.collection.getFeed({
         uri,
         limit,
         cursor: pageParam as string | undefined,
+        ...(types && types.length > 0 ? { types } : {}),
       });
       return response.data as unknown as CollectionFeedResponse;
     },

@@ -1,0 +1,81 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.subscription.list",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "The authors a reader subscribes to.",
+      "parameters": {
+        "type": "params",
+        "required": ["subscriberDid"],
+        "properties": {
+          "subscriberDid": {
+            "type": "string",
+            "format": "did"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 50
+          },
+          "cursor": {
+            "type": "string"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["subscriptions"],
+          "properties": {
+            "cursor": {
+              "type": "string"
+            },
+            "subscriptions": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#subscriptionView"
+              }
+            }
+          }
+        }
+      }
+    },
+    "subscriptionView": {
+      "type": "object",
+      "required": ["uri", "publicationUri", "publicationDid"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "The subscription record, in the reader's repository. Needed to withdraw it."
+        },
+        "publicationUri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "publicationDid": {
+          "type": "string",
+          "format": "did",
+          "description": "The author subscribed to."
+        },
+        "displayName": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "handle": {
+          "type": "string",
+          "maxLength": 512
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
+    }
+  }
+}
