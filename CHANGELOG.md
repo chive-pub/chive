@@ -7,15 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [Unreleased]
+## [0.20.1] - 2026-09-04
 
 ### Fixed
 
-- **The governance admin dashboard was unreachable for every administrator.** `getEditorStatus` returned a 500, and the frontend reads the caller's role from it — a failed request leaves the role undefined, which renders as "Access Restricted". The cause was one column: `governance_roles` is LEFT JOINed, so `granted_by` comes back as `null` for anyone never granted a role, and the lexicon declares `roleGrantedBy` an optional _string_. Passing `null` through failed output validation. `displayName` beside it already had `?? undefined` and `roleGrantedAt` was reached through optional chaining; this one had neither. Since the default state for every user, platform administrators included, is to hold no stored role, it failed for everyone.
+- **A repository referenced by AT-URI was labelled "Layers" whatever it was.** Any `at://` reference on the Code tab took the Layers icon and name, so a Tangled repository — the one case the feature exists for — displayed as a Layers dataset. Layers datasets are now identified by the kind of record their URI names rather than by being an AT-URI at all, which also keeps the entries written before a platform was recorded rendering correctly: they carry `platform: "other"` and were relying on that same forcing.
 
-- **Bluesky rendered no subscribe control on an eprint link card.** An enhanced card requires the page to name both its `site.standard.document` and the `site.standard.publication` that document belongs to, and requires the publication's own home page to name it too. Chive named only the document, and the author page — which is the url a Chive publication carries — named nothing at all.
+- **The governance admin dashboard was unreachable for every administrator.** `getEditorStatus` returned a 500, and the frontend reads the caller's role from it — a failed request leaves the role undefined, which renders as "Access Restricted". The cause was one column: `governance_roles` is LEFT JOINed, so `granted_by` comes back as `null` for anyone never granted a role, and the lexicon declares `roleGrantedBy` an optional _string_. Passing `null` through failed output validation. `displayName` beside it already had `?? undefined` and `roleGrantedAt` was reached through optional chaining; this one had neither. Since holding no stored role is the default for every user, platform administrators included, it failed for everyone.
+
+- **New methods were callable by nobody.** The feed, the two notification queries, and starting a claim from an external source were absent from every OAuth permission set, so a PDS refused to mint a service-auth token for them and the browser saw a 401. Readers must re-authorise to pick the grants up. The external-claim method had been missing since before this release.
 
 - **The feed filters were named after the query rather than the reader.** Seven checkboxes distinguishing reviews of an author's papers from reviews they write, where five suffice: Papers, Reviews, Endorsements, Annotations, Citations. Each group covers the event types it implies.
+
+- **A two-line entry in the Discover menu pushed its row out of line with the rest.**
+
+### Changed
+
+- **An eprint page names the publication its document belongs to, and an author page names the publication it hosts.** Groundwork rather than a working feature: an enhanced Bluesky link card needs both of those links _and_ a `/.well-known/site.standard.publication` endpoint on the publication's domain, which Chive does not serve. Until it does, no subscribe control appears on a link card. The endpoint returns one AT-URI per domain, so a publication per author under a single `chive.pub` cannot be verified as it stands — that is a design decision still to be made, not an oversight in these tags.
 
 ## [0.20.0] - 2026-09-04
 
@@ -1199,7 +1207,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.20.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.20.1...HEAD
+[0.20.1]: https://github.com/chive-pub/chive/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/chive-pub/chive/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/chive-pub/chive/compare/v0.18.3...v0.19.0
 [0.18.3]: https://github.com/chive-pub/chive/compare/v0.18.2...v0.18.3

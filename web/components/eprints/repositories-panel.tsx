@@ -340,8 +340,13 @@ function RepositoryCard({
   const reference = recordUri ?? url ?? '';
   const atKind = atUriKind(reference);
 
-  // Normalize platform slug for icon/color lookup
-  const normalizedSlug = atKind ? 'layers' : normalizePlatformSlug(platformSlug);
+  // A Layers dataset is named by its collection or corpus record, and the
+  // entries written before the platform was recorded carry `platform: "other"`,
+  // so the kind of URI identifies it rather than the slug. Any other at-uri --
+  // an `sh.tangled.repo`, say -- is not a Layers dataset, and labelling it one
+  // put the Layers icon and name on a Tangled repository.
+  const isLayersDataset = atKind === 'collection' || atKind === 'corpus';
+  const normalizedSlug = isLayersDataset ? 'layers' : normalizePlatformSlug(platformSlug);
   const platformConfig = config[normalizedSlug] ?? config.other;
   const Icon = platformConfig.icon;
   // Use label if provided, otherwise platform config label
