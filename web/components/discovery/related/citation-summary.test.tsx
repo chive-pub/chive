@@ -37,8 +37,18 @@ const data = {
     { citingUri: EPRINT, citedUri: CITED, isInfluential: false, source: 'grobid' },
   ],
   papers: [
-    { uri: CITING, title: 'Neural Models of Factuality', authors: ['Rachel Rudinger'], year: 2018 },
-    { uri: CITED, title: 'Semantic Proto-Roles', authors: ['Drew Reisinger'], year: 2015 },
+    {
+      uri: CITING,
+      title: 'Neural Models of Factuality',
+      authors: ['Rachel Rudinger', 'Aaron Steven White'],
+      year: 2018,
+    },
+    {
+      uri: CITED,
+      title: 'Semantic Proto-Roles',
+      authors: ['Drew Reisinger', 'Rachel Rudinger', 'Francis Ferraro'],
+      year: 2015,
+    },
   ],
   hasMore: true,
 };
@@ -51,8 +61,24 @@ describe('CitationSummary', () => {
   it('names each paper rather than printing its AT-URI', () => {
     render(<CitationSummary eprintUri={EPRINT} defaultOpen />);
 
-    expect(screen.getByText(/Rudinger 2018 — Neural Models of Factuality/)).toBeInTheDocument();
-    expect(screen.getByText(/Reisinger 2015 — Semantic Proto-Roles/)).toBeInTheDocument();
+    expect(screen.getByText('Neural Models of Factuality')).toBeInTheDocument();
+    expect(screen.getByText('Semantic Proto-Roles')).toBeInTheDocument();
+  });
+
+  it('names both authors of a two-author paper and abbreviates past that', () => {
+    // Naming only the first author attributed a two-author paper to one of
+    // them; a five-author paper spelled out is a row nobody can read.
+    render(<CitationSummary eprintUri={EPRINT} defaultOpen />);
+
+    expect(screen.getByText(/Rudinger and White 2018\./)).toBeInTheDocument();
+    expect(screen.getByText(/Reisinger et al\. 2015\./)).toBeInTheDocument();
+  });
+
+  it('sets the title in italics and puts no em-dash before it', () => {
+    const { container } = render(<CitationSummary eprintUri={EPRINT} defaultOpen />);
+
+    expect(container.querySelector('em')?.textContent).toBe('Neural Models of Factuality');
+    expect(container.textContent).not.toContain('\u2014');
   });
 
   it('shows no bare AT-URI anywhere in the list', () => {

@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useCitations } from '@/lib/hooks/use-discovery';
-import { paperLabel, papersByUri, type CitedPaper } from '@/lib/citations/paper-label';
+import { paperLabelParts, papersByUri, type CitedPaper } from '@/lib/citations/paper-label';
 import type { CitationRelationship } from '@/lib/api/schema';
 
 /**
@@ -212,9 +212,9 @@ function CitationSection({
                 href={`/eprints/${encodeURIComponent(targetUri)}`}
                 className="group flex items-start gap-2 rounded-md p-2 text-sm hover:bg-muted/50"
               >
-                <div className="flex-1 truncate">
+                <div className="min-w-0 flex-1 truncate">
                   <span className="group-hover:underline">
-                    {paperLabel(byUri.get(targetUri), targetUri)}
+                    <PaperCitation paper={byUri.get(targetUri)} fallback={targetUri} />
                   </span>
                   {citation.isInfluential && (
                     <Star className="ml-1 inline h-3 w-3 text-amber-500" />
@@ -226,6 +226,33 @@ function CitationSection({
         })}
       </ul>
     </div>
+  );
+}
+
+/**
+ * Names a cited paper in a list row.
+ *
+ * @remarks
+ * The graph next door draws the same citation as a plain string, so the shared
+ * formatting lives in `paper-label`. What a list row can do that a graph node
+ * cannot is set the title apart from the byline, which is the whole reason this
+ * renders the two halves rather than calling `paperLabel`.
+ *
+ * A paper the response did not name falls back to its URI, which is not a title
+ * and so is not italicised.
+ */
+function PaperCitation({ paper, fallback }: { paper: CitedPaper | undefined; fallback: string }) {
+  if (!paper) {
+    return <>{fallback}</>;
+  }
+
+  const { byline, title } = paperLabelParts(paper);
+
+  return (
+    <>
+      {byline ? <>{byline}. </> : null}
+      <em>{title}</em>
+    </>
   );
 }
 
