@@ -16,6 +16,7 @@ import { get } from './get.js';
 import { getContaining } from './getContaining.js';
 import { getFeed } from './getFeed.js';
 import { getFollowStatus } from './getFollowStatus.js';
+import { getFollowedFeed } from './getFollowedFeed.js';
 import { getFollowerCount } from './getFollowerCount.js';
 import { getMarginAnnotations } from './getMarginAnnotations.js';
 import { getParent } from './getParent.js';
@@ -29,6 +30,7 @@ export { findContainsEdge } from './findContainsEdge.js';
 export { get } from './get.js';
 export { getContaining } from './getContaining.js';
 export { getFeed } from './getFeed.js';
+export { getFollowedFeed } from './getFollowedFeed.js';
 export { getFollowStatus } from './getFollowStatus.js';
 export { getFollowerCount } from './getFollowerCount.js';
 export { getMarginAnnotations } from './getMarginAnnotations.js';
@@ -66,6 +68,7 @@ export const collectionMethods: Record<string, XRPCMethod<any, any, any>> = {
   'pub.chive.collection.findContainsEdge': findContainsEdge,
   'pub.chive.collection.get': get,
   'pub.chive.collection.getFeed': getFeed,
+  'pub.chive.collection.getFollowedFeed': getFollowedFeed,
   'pub.chive.collection.listByOwner': listByOwner,
   'pub.chive.collection.listPublic': listPublic,
   'pub.chive.collection.search': search,

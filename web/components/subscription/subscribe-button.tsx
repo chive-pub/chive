@@ -69,6 +69,7 @@ export function SubscribeButton({
     subscribed,
     collection,
     activityTypes,
+    subscriberCount,
     isLoading,
     isPending,
     error,
@@ -148,6 +149,11 @@ export function SubscribeButton({
           <p className="text-sm font-medium">
             {subscribed ? `Following ${authorName}` : `Follow ${authorName}`}
           </p>
+          {subscriberCount > 0 && (
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {subscriberCount} {subscriberCount === 1 ? 'follower' : 'followers'}
+            </p>
+          )}
           <p className="mt-1 text-xs text-muted-foreground">
             {subscribed
               ? 'This is a collection in your library holding one person. Everything you can do to a collection, you can do to this.'

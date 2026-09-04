@@ -28,6 +28,7 @@ import {
   Library,
   Bell,
   Settings,
+  Rss,
 } from 'lucide-react';
 
 /**
@@ -82,6 +83,12 @@ export const mainNavItems: NavEntry[] = [
   {
     label: 'Discover',
     children: [
+      {
+        label: 'Your feed',
+        href: '/feed',
+        icon: Rss,
+        description: 'Activity from authors and collections you follow',
+      },
       {
         label: 'Eprints',
         href: '/eprints',

@@ -1408,9 +1408,22 @@ export class CollectionService {
    * @returns paginated feed events or DatabaseError
    */
   async getCollectionFeed(
-    collectionUri: AtUri,
+    collectionUri: AtUri | readonly AtUri[],
     options: { limit?: number; cursor?: string; types?: string[] } = {}
   ): Promise<Result<CollectionFeedResult, DatabaseError>> {
+    // One collection or many: the engine is the same. Feeding it a set is what
+    // an aggregate feed is, and it is also what makes deduplication correct.
+    // A person held in three collections yields three person nodes and so
+    // three copies of each of their events; the GROUP BY below collapses them
+    // to one row that names all three collections, which a per-collection
+    // query run three times and merged in the caller could not do.
+    const collectionUris = Array.isArray(collectionUri)
+      ? (collectionUri as readonly AtUri[])
+      : [collectionUri as AtUri];
+
+    if (collectionUris.length === 0) {
+      return Ok({ events: [], hasMore: false });
+    }
     const limit = Math.min(options.limit ?? 30, 100);
     const innerLimit = Math.max(limit * 5, 200);
 
@@ -1426,7 +1439,7 @@ export class CollectionService {
         }
       }
 
-      const params: unknown[] = [collectionUri];
+      const params: unknown[] = [collectionUris];
       let paramIdx = 1;
 
       const nextParam = (value: unknown): string => {
@@ -1447,7 +1460,7 @@ export class CollectionService {
             cei.created_at AS added_at
           FROM collection_edges_index cei
           JOIN personal_graph_nodes_index pgn ON cei.target_uri = pgn.uri
-          WHERE cei.source_uri = $1
+          WHERE cei.source_uri = ANY($1::text[])
             AND cei.relation_slug = 'contains'
         )`;
 
@@ -1858,7 +1871,84 @@ export class CollectionService {
         'FEED_QUERY',
         `Failed to get collection feed: ${error instanceof Error ? error.message : String(error)}`
       );
-      this.logger.error('Failed to get collection feed', dbError, { collectionUri });
+      this.logger.error('Failed to get collection feed', dbError, { collectionUris });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Returns one activity feed spanning every collection a reader follows.
+   *
+   * @param ownerDid - The reader
+   * @param options - scope, event-type filter, and pagination
+   * @returns paginated feed events or DatabaseError
+   *
+   * @remarks
+   * A reader who follows the same author from two different collections should
+   * see each of that author's papers once, not twice. That is why this resolves
+   * the collections and hands the whole set to {@link getCollectionFeed} rather
+   * than querying each collection and merging afterwards: merging in the caller
+   * cannot collapse two rows that are the same event, and would also break
+   * pagination, since a cursor over merged pages is not a cursor over any one
+   * of them.
+   *
+   * Scopes:
+   * - `subscriptions` — only the singleton collections created by following an
+   *   author, which is the narrow "people I follow" reading
+   * - `mine` — every collection the reader owns, including hand-built ones
+   * - `followed` — collections other people own that the reader follows
+   * - `all` — owned and followed together
+   *
+   * @public
+   */
+  async getFollowedFeed(
+    ownerDid: DID,
+    options: {
+      scope?: 'subscriptions' | 'mine' | 'followed' | 'all';
+      limit?: number;
+      cursor?: string;
+      types?: string[];
+    } = {}
+  ): Promise<Result<CollectionFeedResult, DatabaseError>> {
+    const scope = options.scope ?? 'all';
+
+    try {
+      const uris: AtUri[] = [];
+
+      if (scope === 'subscriptions' || scope === 'mine' || scope === 'all') {
+        const ownedSql =
+          scope === 'subscriptions'
+            ? `SELECT uri FROM collections_index
+               WHERE owner_did = $1 AND metadata->>'subscriptionDid' IS NOT NULL`
+            : `SELECT uri FROM collections_index WHERE owner_did = $1`;
+        const owned = await this.pool.query<{ uri: string }>(ownedSql, [ownerDid]);
+        uris.push(...owned.rows.map((r) => r.uri as AtUri));
+      }
+
+      if (scope === 'followed' || scope === 'all') {
+        // Joined against collections_index so a follow of something that is not
+        // a collection cannot leak into the set.
+        const followed = await this.pool.query<{ uri: string }>(
+          `SELECT c.uri
+             FROM cosmik_follows_index f
+             JOIN collections_index c ON c.uri = f.subject
+            WHERE f.follower_did = $1`,
+          [ownerDid]
+        );
+        uris.push(...followed.rows.map((r) => r.uri as AtUri));
+      }
+
+      // A collection can be both owned and followed; the feed engine would
+      // handle the duplicate, but sending it twice doubles the CTE for nothing.
+      const unique = [...new Set(uris)] as AtUri[];
+
+      return await this.getCollectionFeed(unique, options);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'FEED_QUERY',
+        `Failed to get followed feed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to get followed feed', dbError, { ownerDid, scope });
       return Err(dbError);
     }
   }

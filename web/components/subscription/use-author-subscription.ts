@@ -213,8 +213,12 @@ export function useAuthorSubscription(
         const created = await createCollection.mutateAsync({
           name: `Following ${authorName}`,
           description: `Activity from ${authorName}, followed from their profile.`,
-          // A subscription says who a reader reads. That is theirs to publish
-          // or not, so it is not listed by default.
+          // Unlisted keeps the collection out of Chive's public listings. It
+          // is not privacy: the node and its edge are ordinary records in the
+          // reader's repository, readable by anyone off the firehose, and
+          // ATProto has no private record to offer instead. The setting only
+          // says this is a working list rather than something the reader is
+          // publishing.
           visibility: 'unlisted',
           subscriptionDid: authorDid,
           activityTypes: [...types],
