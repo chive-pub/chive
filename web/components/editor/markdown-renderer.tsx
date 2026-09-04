@@ -237,6 +237,10 @@ export function MarkdownRenderer({
         'prose prose-sm dark:prose-invert max-w-none',
         'prose-headings:font-bold prose-headings:mt-4 prose-headings:mb-2',
         'prose-p:my-2 prose-ul:my-2 prose-ol:my-2',
+        // A GFM table is as wide as its columns need and nothing clips it, so
+        // one wide table in a review widened every page it appeared on. Scroll
+        // the table instead of the document.
+        'prose-pre:overflow-x-auto [&_table]:block [&_table]:overflow-x-auto',
         className
       )}
       style={{ minHeight }}

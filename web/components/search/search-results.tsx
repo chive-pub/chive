@@ -129,8 +129,8 @@ export interface SearchResultsHeaderProps {
  */
 export function SearchResultsHeader({ total, query, className }: SearchResultsHeaderProps) {
   return (
-    <div className={cn('flex items-center justify-between', className)}>
-      <p className="text-sm text-muted-foreground">
+    <div className={cn('flex min-w-0 items-center justify-between', className)}>
+      <p className="break-words text-sm text-muted-foreground">
         Found <span className="font-medium text-foreground">{formatCompactNumber(total)}</span>{' '}
         {total === 1 ? 'result' : 'results'} for &ldquo;{query}&rdquo;
       </p>
@@ -265,9 +265,9 @@ export function SearchResultsWithSort({
     <div className="space-y-4">
       {/* Sort controls */}
       {props.data && props.data.hits.length > 0 && (
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <SearchResultsHeader total={props.data.total ?? 0} query={props.query} />
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <span className="text-sm text-muted-foreground">Sort by:</span>
             <select
               value={sortBy}

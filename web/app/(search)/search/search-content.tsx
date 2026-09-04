@@ -140,8 +140,9 @@ export function SearchPageContent({
         />
       </aside>
 
-      {/* Main content */}
-      <div className="space-y-6">
+      {/* Main content. `min-w-0` so the 1fr track can shrink below the width of
+          a long title or identifier instead of widening the page. */}
+      <div className="min-w-0 space-y-6">
         {/* Search input */}
         <SearchInput
           defaultValue={query}

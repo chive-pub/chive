@@ -244,11 +244,13 @@ export default function SettingsPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center">
               <span className="text-sm font-medium text-muted-foreground">Handle</span>
-              <span className="col-span-2 text-sm">{user?.handle ?? 'Not available'}</span>
+              <span className="col-span-2 break-all text-sm">
+                {user?.handle ?? 'Not available'}
+              </span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 sm:items-center">
               <span className="text-sm font-medium text-muted-foreground">PDS</span>
-              <span className="col-span-2 text-sm font-mono">
+              <span className="col-span-2 break-all font-mono text-sm">
                 {user?.pdsEndpoint ?? 'Not available'}
               </span>
             </div>

@@ -485,7 +485,7 @@ export function CollectionDetailClient({ uri }: CollectionDetailClientProps) {
 
       {/* 4. Items */}
       <section>
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
             Items
             {items.length > 0 && (

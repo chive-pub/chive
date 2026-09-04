@@ -205,20 +205,22 @@ function FacetValueItem({ value, label, count, isSelected, onToggle }: FacetValu
   return (
     <label
       className={cn(
-        'flex cursor-pointer items-center justify-between rounded px-2 py-1.5 hover:bg-accent',
+        'flex min-h-[40px] cursor-pointer items-center justify-between gap-2 rounded px-2 py-1.5 hover:bg-accent sm:min-h-0',
         isSelected && 'bg-accent'
       )}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex min-w-0 items-center gap-2">
         <input
           type="checkbox"
           checked={isSelected}
           onChange={onToggle}
-          className="h-4 w-4 rounded border-input"
+          className="h-4 w-4 shrink-0 rounded border-input"
         />
-        <span className="text-sm">{label ?? value}</span>
+        <span className="truncate text-sm" title={label ?? value}>
+          {label ?? value}
+        </span>
       </div>
-      <span className="text-xs text-muted-foreground">{formatCompactNumber(count)}</span>
+      <span className="shrink-0 text-xs text-muted-foreground">{formatCompactNumber(count)}</span>
     </label>
   );
 }

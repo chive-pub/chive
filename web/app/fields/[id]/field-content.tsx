@@ -65,7 +65,7 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
     <div className="space-y-8">
       {/* Breadcrumb - show parent hierarchy */}
       {hasParents && (
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground">
+        <nav className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <Link href="/fields" className="hover:text-primary">
             Fields
           </Link>
@@ -88,13 +88,15 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
       {/* Header */}
       <header className="space-y-4">
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">{field.label}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words text-3xl font-bold tracking-tight">{field.label}</h1>
             {field.description && (
               <p className="mt-2 max-w-2xl text-lg text-muted-foreground">{field.description}</p>
             )}
           </div>
-          <FieldStatusBadge status={field.status} />
+          <div className="shrink-0">
+            <FieldStatusBadge status={field.status} />
+          </div>
         </div>
 
         {/* Quick stats */}
@@ -125,8 +127,9 @@ export function FieldDetailContent({ fieldId }: FieldDetailContentProps) {
       </header>
 
       <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
-        {/* Main content */}
-        <div className="space-y-8">
+        {/* Main content. `min-w-0` so the 1fr track can shrink below the width
+            of a long title rather than widening the page. */}
+        <div className="min-w-0 space-y-8">
           {/* Eprints section */}
           <section>
             <h2 className="mb-6 text-2xl font-semibold">Eprints in {field.label}</h2>
