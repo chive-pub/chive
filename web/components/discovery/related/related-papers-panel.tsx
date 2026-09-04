@@ -218,7 +218,7 @@ export function RelatedPapersPanel({
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-8 w-8 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-8 w-8 shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDelete(work.uri)}
                           disabled={deleteRelatedWork.isPending}
                         >

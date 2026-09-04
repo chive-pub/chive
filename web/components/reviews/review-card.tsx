@@ -243,7 +243,7 @@ export function ReviewCard({
     >
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Link href={`/authors/${encodeURIComponent(review.author.did)}`} className="shrink-0">
             <Avatar className={cn(isCompact ? 'h-6 w-6' : 'h-8 w-8')}>
               <AvatarImage src={review.author.avatar} alt={review.author.displayName} />
@@ -253,11 +253,14 @@ export function ReviewCard({
             </Avatar>
           </Link>
 
-          <div className="flex flex-col">
-            <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-col">
+            <div className="flex flex-wrap items-center gap-2">
               <Link
                 href={`/authors/${encodeURIComponent(review.author.did)}`}
-                className={cn('font-medium hover:underline', isCompact ? 'text-sm' : 'text-base')}
+                className={cn(
+                  'max-w-full truncate font-medium hover:underline',
+                  isCompact ? 'text-sm' : 'text-base'
+                )}
               >
                 {review.author.displayName || review.author.handle || 'Anonymous'}
               </Link>
@@ -289,7 +292,7 @@ export function ReviewCard({
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="h-8 w-8 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
               aria-label="Review actions"
             >
               <MoreVertical className="h-4 w-4" />

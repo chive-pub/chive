@@ -267,7 +267,7 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
                     </button>
                     <button
                       onClick={() => deleteSavedFilter(i)}
-                      className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity ml-2"
+                      className="text-muted-foreground hover:text-destructive opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity ml-2"
                     >
                       &times;
                     </button>
@@ -287,11 +287,12 @@ export function BrowsePageContent({ initialParams }: BrowsePageContentProps) {
         </div>
       </aside>
 
-      {/* Main content */}
-      <div className="space-y-6">
+      {/* Main content. `min-w-0` so the 1fr track can shrink below the width of
+          a long title or identifier instead of widening the page. */}
+      <div className="min-w-0 space-y-6">
         {/* Search input with actions */}
         <div className="flex items-center gap-2">
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <SearchInput
               defaultValue={query}
               onSearch={handleSearch}
