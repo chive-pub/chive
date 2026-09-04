@@ -180,8 +180,8 @@ export function PublicationBadge({
   // Badge variant - compact inline display
   if (variant === 'badge') {
     return (
-      <Badge variant={config.color} className={cn('gap-1', className)}>
-        <Icon className="h-3 w-3" />
+      <Badge variant={config.color} className={cn('gap-1 whitespace-nowrap', className)}>
+        <Icon className="h-3 w-3 shrink-0" />
         {config.label}
       </Badge>
     );
@@ -190,9 +190,9 @@ export function PublicationBadge({
   // Inline variant - badge with optional link
   if (variant === 'inline') {
     return (
-      <div className={cn('flex items-center gap-2', className)}>
-        <Badge variant={config.color} className="gap-1">
-          <Icon className="h-3 w-3" />
+      <div className={cn('flex flex-wrap items-center gap-2', className)}>
+        <Badge variant={config.color} className="gap-1 whitespace-nowrap">
+          <Icon className="h-3 w-3 shrink-0" />
           {config.label}
         </Badge>
         {hasPublishedVersion && (
@@ -204,27 +204,31 @@ export function PublicationBadge({
             }
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm text-primary hover:underline flex items-center gap-1"
+            className="flex items-center gap-1 text-sm text-primary hover:underline"
           >
             View published version
-            <ExternalLink className="h-3 w-3" />
+            <ExternalLink className="h-3 w-3 shrink-0" />
           </a>
         )}
       </div>
     );
   }
 
-  // Card variant - prominent display with full details
+  // Card variant - prominent display with full details.
+  //
+  // The row stacks below `sm`. Side by side, a phone left the journal line
+  // roughly fifty pixels of width beside a button whose label is three words,
+  // so both wrapped mid-word and the card lost its shape.
   return (
     <Card className={cn(config.bgColor, 'border-0', className)}>
       <CardContent className="py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-background">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="flex min-w-0 items-start gap-3 sm:items-center">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background">
               <Icon className="h-5 w-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">{config.label}</span>
                 {status === 'retracted' && (
                   <Badge variant="destructive" className="text-xs">
@@ -238,7 +242,7 @@ export function PublicationBadge({
                 )}
               </div>
               {hasPublishedVersion && publishedVersion.journal && (
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground break-words">
                   {publishedVersion.journal}
                   {publishedVersion.volume && ` ${publishedVersion.volume}`}
                   {publishedVersion.issue && `(${publishedVersion.issue})`}
@@ -249,7 +253,9 @@ export function PublicationBadge({
                 </p>
               )}
               {hasPublishedVersion && publishedVersion.publisher && (
-                <p className="text-xs text-muted-foreground">{publishedVersion.publisher}</p>
+                <p className="text-xs text-muted-foreground break-words">
+                  {publishedVersion.publisher}
+                </p>
               )}
               {hasPublishedVersion && publishedVersion.publishedAt && (
                 <p className="text-xs text-muted-foreground">
@@ -265,7 +271,7 @@ export function PublicationBadge({
           </div>
 
           {hasPublishedVersion && (
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="w-full sm:w-auto sm:shrink-0">
               <a
                 href={
                   publishedVersion.doi
@@ -275,7 +281,7 @@ export function PublicationBadge({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <ExternalLink className="mr-2 h-4 w-4" />
+                <ExternalLink className="mr-2 h-4 w-4 shrink-0" />
                 View Published Version
               </a>
             </Button>
@@ -283,7 +289,7 @@ export function PublicationBadge({
         </div>
 
         {publishedVersion?.doi && (
-          <p className="mt-3 text-xs text-muted-foreground font-mono">
+          <p className="mt-3 break-all font-mono text-xs text-muted-foreground">
             DOI: {publishedVersion.doi}
           </p>
         )}
