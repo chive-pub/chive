@@ -1,0 +1,102 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.notification.listCollectionAdds",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List the current user's eprints that other people added to their collections",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["notifications"],
+          "properties": {
+            "notifications": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#collectionAddNotification"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
+    },
+    "collectionAddNotification": {
+      "type": "object",
+      "required": ["uri", "actor", "collectionUri", "eprintUri", "createdAt"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the edge that added the eprint to the collection"
+        },
+        "actor": {
+          "type": "ref",
+          "ref": "#actorRef",
+          "description": "Person who added the eprint"
+        },
+        "collectionUri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "collectionLabel": {
+          "type": "string"
+        },
+        "eprintUri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "eprintTitle": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the eprint was added to the collection"
+        }
+      }
+    },
+    "actorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

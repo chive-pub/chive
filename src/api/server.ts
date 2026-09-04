@@ -46,6 +46,7 @@ import type { KnowledgeGraphService } from '../services/knowledge-graph/graph-se
 import type { LayersDataLinkService } from '../services/layers/data-link-service.js';
 import type { MetricsService } from '../services/metrics/metrics-service.js';
 import type { ContentReportService } from '../services/moderation/content-report-service.js';
+import type { NotificationService } from '../services/notification/notification-service.js';
 import type { IPDSRegistry } from '../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../services/pds-sync/sync-service.js';
@@ -301,6 +302,11 @@ export interface ServerConfig {
   readonly collectionService?: CollectionService;
 
   /**
+   * Notification service instance (optional).
+   */
+  readonly notificationService?: NotificationService;
+
+  /**
    * Collaboration service for indexing invites / acceptances and deriving
    * active collaborators (optional).
    */
@@ -448,6 +454,7 @@ export function createServer(config: ServerConfig): Hono<ChiveEnv> {
       indexRetryWorker: config.indexRetryWorker,
       personalGraph: config.personalGraphService,
       collection: config.collectionService,
+      notification: config.notificationService,
       collaborationService: config.collaborationService,
       admin: config.adminService,
       backfillManager: config.backfillManager,

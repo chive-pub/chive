@@ -33,6 +33,7 @@ import type { KnowledgeGraphService } from '../../services/knowledge-graph/graph
 import type { LayersDataLinkService } from '../../services/layers/data-link-service.js';
 import type { MetricsService } from '../../services/metrics/metrics-service.js';
 import type { ContentReportService } from '../../services/moderation/content-report-service.js';
+import type { NotificationService } from '../../services/notification/notification-service.js';
 import type { IPDSRegistry } from '../../services/pds-discovery/pds-registry.js';
 import type { PDSScanner } from '../../services/pds-discovery/pds-scanner.js';
 import type { PDSSyncService } from '../../services/pds-sync/sync-service.js';
@@ -113,6 +114,7 @@ export interface ChiveServices {
   readonly indexRetryWorker?: IndexRetryWorker;
   readonly personalGraph?: PersonalGraphService;
   readonly collection?: CollectionService;
+  readonly notification?: NotificationService;
   readonly collaborationService?: CollaborationService;
   readonly admin?: AdminService;
   readonly backfillManager?: BackfillManager;
