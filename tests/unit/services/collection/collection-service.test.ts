@@ -1652,4 +1652,113 @@ describe('CollectionService', () => {
       expect(logger.error).toHaveBeenCalled();
     });
   });
+
+  // ==========================================================================
+  // getCollectionFeed: activity type filtering
+  // ==========================================================================
+
+  describe('getCollectionFeed', () => {
+    /** The SQL the service handed to the pool for the feed query. */
+    const feedSql = (): string => {
+      const call = pool.query.mock.calls.at(-1);
+      return String(call?.[0] ?? '');
+    };
+
+    it('emits every branch when no filter is given', async () => {
+      await service.getCollectionFeed(SAMPLE_COLLECTION_URI);
+
+      const sql = feedSql();
+      for (const type of [
+        'eprint_by_author',
+        'review_on_eprint',
+        'endorsement_on_eprint',
+        'annotation_on_eprint',
+        'review_by_author',
+        'endorsement_by_author',
+        'eprint_in_field',
+        'eprint_by_institution',
+        'eprint_at_event',
+        'eprint_referencing_person',
+        'review_on_authored_eprint',
+        'endorsement_on_authored_eprint',
+        'annotation_on_authored_eprint',
+      ]) {
+        expect(sql).toContain(`'${type}' AS type`);
+      }
+    });
+
+    it('emits only the branches asked for', async () => {
+      await service.getCollectionFeed(SAMPLE_COLLECTION_URI, {
+        types: ['eprint_by_author', 'review_on_authored_eprint'],
+      });
+
+      const sql = feedSql();
+      expect(sql).toContain("'eprint_by_author' AS type");
+      expect(sql).toContain("'review_on_authored_eprint' AS type");
+      // Unrequested branches are not emitted at all rather than filtered
+      // afterwards, so each requested branch keeps its full row budget.
+      expect(sql).not.toContain("'endorsement_by_author' AS type");
+      expect(sql).not.toContain("'eprint_in_field' AS type");
+    });
+
+    it('returns an empty page when no requested type is recognised', async () => {
+      pool.query.mockClear();
+
+      const result = await service.getCollectionFeed(SAMPLE_COLLECTION_URI, {
+        types: ['not_a_real_event_type'],
+      });
+
+      // A UNION with no branches is a syntax error, so this must not reach
+      // the database at all.
+      expect(pool.query).not.toHaveBeenCalled();
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value.events).toEqual([]);
+        expect(result.value.hasMore).toBe(false);
+      }
+    });
+
+    it('excludes a tracked person from activity on their own papers', async () => {
+      await service.getCollectionFeed(SAMPLE_COLLECTION_URI, {
+        types: [
+          'review_on_authored_eprint',
+          'endorsement_on_authored_eprint',
+          'annotation_on_authored_eprint',
+        ],
+      });
+
+      const sql = feedSql();
+      // Their own review already arrives as review_by_author. Without this the
+      // same record would be emitted under two type names, and the
+      // (type, event_uri) dedup does not collapse across types.
+      expect(sql).toContain("r.reviewer_did IS DISTINCT FROM ci.metadata->>'did'");
+      expect(sql).toContain("en.endorser_did IS DISTINCT FROM ci.metadata->>'did'");
+      expect(sql).toContain("an.annotator_did IS DISTINCT FROM ci.metadata->>'did'");
+    });
+  });
+
+  // ==========================================================================
+  // indexCollection: subscription metadata
+  // ==========================================================================
+
+  describe('indexCollection metadata', () => {
+    it('carries node metadata into the index so a subscription can be found again', async () => {
+      await service.indexCollection(
+        {
+          ...SAMPLE_NODE_RECORD,
+          metadata: {
+            visibility: 'unlisted',
+            subscriptionDid: 'did:plc:followed',
+            activityTypes: ['eprint_by_author'],
+          },
+        },
+        SAMPLE_METADATA
+      );
+
+      const params = pool.query.mock.calls[0]?.[1] as unknown[];
+      const stored = JSON.parse(String(params[7])) as Record<string, unknown>;
+      expect(stored.subscriptionDid).toBe('did:plc:followed');
+      expect(stored.activityTypes).toEqual(['eprint_by_author']);
+    });
+  });
 });
