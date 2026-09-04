@@ -69,7 +69,6 @@ import { KnowledgeGraphService } from './services/knowledge-graph/graph-service.
 import { LayersDataLinkService } from './services/layers/data-link-service.js';
 import { MetricsService } from './services/metrics/metrics-service.js';
 import { ContentReportService } from './services/moderation/content-report-service.js';
-import { NotificationService } from './services/notification/notification-service.js';
 import { PDSRegistry } from './services/pds-discovery/pds-registry.js';
 import { PDSScanner } from './services/pds-discovery/pds-scanner.js';
 import { PDSRateLimiter } from './services/pds-sync/pds-rate-limiter.js';
@@ -568,7 +567,6 @@ function createServices(
   const collaborationService = new CollaborationService({ pool: pgPool, logger });
 
   // Create notification service for pull-based notification queries
-  const notificationService = new NotificationService({ pool: pgPool, logger });
 
   // Create PDS Discovery services
   const pdsRegistry = new PDSRegistry(pgPool, logger);
@@ -657,7 +655,6 @@ function createServices(
     personalGraphService,
     collectionService,
     collaborationService,
-    notificationService,
     adminService,
     backfillManager,
     contentReportService,
