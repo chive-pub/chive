@@ -184,8 +184,26 @@ export default async function EprintPage({ params }: EprintPageProps) {
         .join(' ');
     }
 
+    // The standard.site document is what a link-card consumer resolves to find
+    // the author's publication, so the page has to name it. Best effort: an
+    // eprint submitted without cross-platform discovery has none, and the rest
+    // of the head tags should still be emitted.
+    let standardDocumentUri: string | undefined;
+    try {
+      const backlinks = await serverApi.pub.chive.backlink.list({
+        targetUri: fullUri,
+        sourceType: 'standard.document',
+        limit: 1,
+      });
+      standardDocumentUri = (backlinks.data as unknown as { backlinks?: { sourceUri?: string }[] })
+        .backlinks?.[0]?.sourceUri;
+    } catch {
+      // No document indexed yet; the remaining tags are still worth emitting.
+    }
+
     headTags = buildEntityHeadTags({
       atUri: fullUri,
+      ...(standardDocumentUri ? { standardDocumentUri } : {}),
       canonicalUrl,
       title: value.title,
       description: abstractText.slice(0, 500),

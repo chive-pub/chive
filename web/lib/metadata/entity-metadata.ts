@@ -47,6 +47,19 @@ export interface EntityExternalId {
 export interface EntityMetadataInput {
   /** AT-URI of the entity (e.g., `at://did:.../pub.chive.graph.node/abc`). */
   atUri: string;
+  /**
+   * AT-URI of the `site.standard.document` describing this entity, when one
+   * exists.
+   *
+   * @remarks
+   * This is what makes an eprint legible to the rest of the publishing
+   * ecosystem. A consumer such as Bluesky fetches the page, reads
+   * `at:canonical`, resolves the document, and follows its `site` field to the
+   * author's publication — which is what lets it draw a subscribe control on a
+   * link card. Without the tag there is nothing to resolve and the card falls
+   * back to plain OpenGraph.
+   */
+  standardDocumentUri?: string;
   /** Chive canonical web URL of the entity. */
   canonicalUrl: string;
   /** Display title. */
@@ -176,6 +189,19 @@ export function buildEntityHeadTags(input: EntityMetadataInput): EntityHeadTag[]
     type: 'application/at-uri',
     href: input.atUri,
   });
+
+  // 1b. standard.site discovery. `at:canonical` names the document; the
+  // document names the publication, so a consumer needs only this to reach
+  // both. The `link rel` form is emitted alongside it because consumers in the
+  // ecosystem read one or the other.
+  if (input.standardDocumentUri) {
+    tags.push({ kind: 'meta', name: 'at:canonical', content: input.standardDocumentUri });
+    tags.push({
+      kind: 'link',
+      rel: 'site.standard.document',
+      href: input.standardDocumentUri,
+    });
+  }
 
   // 2. `<link rel="alternate">` for each external identifier (DOI, ORCID, etc.)
   for (const ext of input.externalIds ?? []) {
