@@ -76,17 +76,19 @@ describe('SubscribeButton', () => {
 
     await user.click(screen.getByRole('button', { name: /follow/i }));
     // Turn one of the defaults off, and one non-default on.
-    await user.click(await screen.findByRole('checkbox', { name: 'Reviews of their papers' }));
-    await user.click(screen.getByRole('checkbox', { name: 'Papers citing them' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Reviews' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Citations' }));
     await user.click(screen.getByRole('button', { name: /follow ada lovelace/i }));
 
     await waitFor(() => {
       expect(subscribe).toHaveBeenCalledTimes(1);
     });
     const chosen = (subscribe.mock.calls[0]?.[0] ?? []) as readonly string[];
+    // Groups expand to the event types they cover on the way out.
     expect(chosen).toContain('eprint_by_author');
     expect(chosen).toContain('eprint_referencing_person');
     expect(chosen).not.toContain('review_on_authored_eprint');
+    expect(chosen).not.toContain('review_by_author');
   });
 
   it('will not follow with nothing selected', async () => {
@@ -94,7 +96,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton {...AUTHOR} />);
 
     await user.click(screen.getByRole('button', { name: /follow/i }));
-    for (const name of ['New papers', 'Reviews of their papers', 'Endorsements of their papers']) {
+    for (const name of ['Papers', 'Reviews', 'Endorsements']) {
       await user.click(await screen.findByRole('checkbox', { name }));
     }
 
@@ -121,7 +123,7 @@ describe('SubscribeButton', () => {
     render(<SubscribeButton {...AUTHOR} />);
 
     await user.click(screen.getByRole('button', { name: /following/i }));
-    await user.click(await screen.findByRole('checkbox', { name: 'Papers citing them' }));
+    await user.click(await screen.findByRole('checkbox', { name: 'Citations' }));
     // A separate Save is a step that exists only to be forgotten.
     await user.keyboard('{Escape}');
 

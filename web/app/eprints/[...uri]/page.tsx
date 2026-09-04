@@ -201,9 +201,42 @@ export default async function EprintPage({ params }: EprintPageProps) {
       // No document indexed yet; the remaining tags are still worth emitting.
     }
 
+    // Bluesky needs the publication as well as the document, and the document
+    // is what names it. Read it from the author's own repository: the
+    // publication is not in Chive's index for papers submitted before the
+    // standard.site graph began indexing, so deriving it from the record is
+    // the only route that works for every eprint.
+    let publicationUri: string | undefined;
+    if (standardDocumentUri) {
+      try {
+        const [, , repo, , docRkey] = standardDocumentUri.split('/');
+        const plc = (await (
+          await fetch(`https://plc.directory/${repo}`, { next: { revalidate: 86400 } })
+        ).json()) as { service?: { id?: string; serviceEndpoint?: string }[] };
+        const pds = plc.service?.find((x) => x.id === '#atproto_pds')?.serviceEndpoint;
+        if (pds) {
+          const rec = (await (
+            await fetch(
+              `${pds}/xrpc/com.atproto.repo.getRecord?repo=${repo}` +
+                `&collection=site.standard.document&rkey=${docRkey}`,
+              { next: { revalidate: 3600 } }
+            )
+          ).json()) as { value?: { site?: string } };
+          const site = rec.value?.site;
+          // A document may still name a bare site url rather than a
+          // publication; that form carries no publication to advertise.
+          if (site?.startsWith('at://')) publicationUri = site;
+        }
+      } catch {
+        // Best effort. The document tag alone is still correct, just not enough
+        // for an enhanced card.
+      }
+    }
+
     headTags = buildEntityHeadTags({
       atUri: fullUri,
       ...(standardDocumentUri ? { standardDocumentUri } : {}),
+      ...(publicationUri ? { publicationUri } : {}),
       canonicalUrl,
       title: value.title,
       description: abstractText.slice(0, 500),

@@ -25,7 +25,10 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FeedEventList } from '@/components/collection/collection-feed';
-import { AUTHOR_ACTIVITY_TYPES } from '@/components/subscription/use-author-subscription';
+import {
+  activityTypesFor,
+  AUTHOR_ACTIVITY_TYPES,
+} from '@/components/subscription/use-author-subscription';
 import { useIsAuthenticated } from '@/lib/auth';
 import { useFollowedFeed } from '@/lib/hooks/use-collections';
 
@@ -57,7 +60,12 @@ export default function FeedPage() {
   const [types, setTypes] = useState<string[]>([]);
 
   const { data, isLoading, isError, hasNextPage, fetchNextPage, isFetchingNextPage } =
-    useFollowedFeed({ scope, types, enabled: isAuthenticated });
+    useFollowedFeed({
+      scope,
+      // The checkboxes are groups; the feed asks for event types.
+      types: activityTypesFor(types),
+      enabled: isAuthenticated,
+    });
 
   const events = data?.pages.flatMap((p) => p.events) ?? [];
 

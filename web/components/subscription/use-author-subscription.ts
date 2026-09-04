@@ -40,60 +40,99 @@ import { useAddItemToCollection } from '@/components/collection/use-add-to-colle
 
 /** One kind of activity a reader can choose to follow. */
 export interface AuthorActivityType {
-  /** Feed event type, as `pub.chive.collection.getFeed` names it. */
+  /** Stable id for the group, used in checkbox state and query keys. */
   readonly id: string;
-  /** Checkbox label. */
+  /** Checkbox label. One word wherever one word will do. */
   readonly label: string;
   /** One line saying what arrives when this is on. */
   readonly description: string;
+  /**
+   * Feed event types this group turns on.
+   *
+   * @remarks
+   * A group can cover more than one. "Reviews" means both reviews of their
+   * papers and reviews they write, because a reader choosing what reaches
+   * their feed is not making that distinction — and a filter list is read at a
+   * glance, not studied.
+   */
+  readonly types: readonly string[];
 }
 
 /**
  * The activity a reader can follow from one author.
  *
  * @remarks
- * These are exactly the collection feed branches that key off a person, so
- * each maps to one event type with no translation.
+ * Each group maps to the collection feed event types that key off a person, so
+ * nothing is translated on the way to the query.
  *
  * @public
  */
 export const AUTHOR_ACTIVITY_TYPES: readonly AuthorActivityType[] = [
   {
-    id: 'eprint_by_author',
-    label: 'New papers',
+    id: 'papers',
+    label: 'Papers',
     description: 'Papers they post',
+    types: ['eprint_by_author'],
   },
   {
-    id: 'review_on_authored_eprint',
-    label: 'Reviews of their papers',
-    description: 'When someone else reviews a paper they wrote',
+    id: 'reviews',
+    label: 'Reviews',
+    description: 'Reviews of their papers, and reviews they write',
+    types: ['review_on_authored_eprint', 'review_by_author'],
   },
   {
-    id: 'endorsement_on_authored_eprint',
-    label: 'Endorsements of their papers',
-    description: 'When someone else endorses a paper they wrote',
+    id: 'endorsements',
+    label: 'Endorsements',
+    description: 'Endorsements of their papers, and endorsements they give',
+    types: ['endorsement_on_authored_eprint', 'endorsement_by_author'],
   },
   {
-    id: 'annotation_on_authored_eprint',
-    label: 'Annotations on their papers',
-    description: 'When someone else annotates a paper they wrote',
+    id: 'annotations',
+    label: 'Annotations',
+    description: 'Annotations on their papers',
+    types: ['annotation_on_authored_eprint'],
   },
   {
-    id: 'review_by_author',
-    label: 'Reviews they write',
-    description: 'Reviews they leave on other people’s papers',
-  },
-  {
-    id: 'endorsement_by_author',
-    label: 'Endorsements they give',
-    description: 'Papers they endorse',
-  },
-  {
-    id: 'eprint_referencing_person',
-    label: 'Papers citing them',
+    id: 'citations',
+    label: 'Citations',
     description: 'New papers that cite their work',
+    types: ['eprint_referencing_person'],
   },
 ] as const;
+
+/**
+ * Expands chosen groups into the feed event types they cover.
+ *
+ * @param groupIds - Group ids, as the checkboxes hold them
+ * @returns The event types to ask the feed for
+ *
+ * @public
+ */
+export function activityTypesFor(groupIds: readonly string[]): string[] {
+  const types = new Set<string>();
+  for (const g of AUTHOR_ACTIVITY_TYPES) {
+    if (groupIds.includes(g.id)) for (const t of g.types) types.add(t);
+  }
+  return [...types];
+}
+
+/**
+ * The reverse: which groups a stored list of event types corresponds to.
+ *
+ * @param types - Event types stored on the collection record
+ * @returns Group ids to tick
+ *
+ * @remarks
+ * A group counts as on when any of its types is stored, so a subscription
+ * written before the groups existed still reads back sensibly.
+ *
+ * @public
+ */
+export function activityGroupsFor(types: readonly string[]): string[] {
+  return AUTHOR_ACTIVITY_TYPES.filter((g) => g.types.some((t) => types.includes(t))).map(
+    (g) => g.id
+  );
+}
 
 /**
  * What a reader gets when they subscribe without choosing.
@@ -102,11 +141,12 @@ export const AUTHOR_ACTIVITY_TYPES: readonly AuthorActivityType[] = [
  * Their output and the response to it. The rest are opt-in because a feed
  * that turns everything on by default is a feed people mute.
  */
-export const DEFAULT_ACTIVITY_TYPES: readonly string[] = [
-  'eprint_by_author',
-  'review_on_authored_eprint',
-  'endorsement_on_authored_eprint',
-];
+export const DEFAULT_ACTIVITY_GROUPS: readonly string[] = ['papers', 'reviews', 'endorsements'];
+
+/** The event types those defaults expand to. */
+export const DEFAULT_ACTIVITY_TYPES: readonly string[] = activityTypesFor([
+  ...DEFAULT_ACTIVITY_GROUPS,
+]);
 
 /** What the hook reports about a reader's subscription to one author. */
 export interface AuthorSubscriptionState {

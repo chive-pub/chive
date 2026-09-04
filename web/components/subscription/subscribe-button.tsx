@@ -30,8 +30,10 @@ import { useIsAuthenticated } from '@/lib/auth';
 import { cn } from '@/lib/utils';
 
 import {
+  activityGroupsFor,
+  activityTypesFor,
   AUTHOR_ACTIVITY_TYPES,
-  DEFAULT_ACTIVITY_TYPES,
+  DEFAULT_ACTIVITY_GROUPS,
   useAuthorSubscription,
 } from './use-author-subscription';
 
@@ -81,10 +83,12 @@ export function SubscribeButton({
   const [open, setOpen] = useState(false);
   // Held locally so a reader can tick several boxes before anything is
   // written. Re-synced whenever the stored choice changes underneath.
-  const [draft, setDraft] = useState<string[]>([...DEFAULT_ACTIVITY_TYPES]);
+  // Held as group ids, which is what the checkboxes are. They expand to feed
+  // event types only on the way out; the record and the API speak event types.
+  const [draft, setDraft] = useState<string[]>([...DEFAULT_ACTIVITY_GROUPS]);
 
   useEffect(() => {
-    setDraft([...activityTypes]);
+    setDraft(activityGroupsFor([...activityTypes]));
   }, [activityTypes]);
 
   const toggleType = (id: string): void => {
@@ -101,9 +105,9 @@ export function SubscribeButton({
     // Closing an open editor commits the pending choice. A separate Save is a
     // step that exists only to be forgotten.
     if (!next && subscribed) {
-      const changed =
-        draft.length !== activityTypes.length || draft.some((t) => !activityTypes.includes(t));
-      if (changed) void setActivityTypes(draft);
+      const current = activityGroupsFor([...activityTypes]);
+      const changed = draft.length !== current.length || draft.some((g) => !current.includes(g));
+      if (changed) void setActivityTypes(activityTypesFor(draft));
     }
     setOpen(next);
   };
@@ -226,7 +230,7 @@ export function SubscribeButton({
               className="w-full"
               disabled={isPending || draft.length === 0}
               onClick={() => {
-                void subscribe(draft).then(() => {
+                void subscribe(activityTypesFor(draft)).then(() => {
                   setOpen(false);
                 });
               }}

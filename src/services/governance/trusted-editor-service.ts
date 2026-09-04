@@ -281,10 +281,15 @@ export class TrustedEditorService {
           displayName: user?.display_name ?? undefined,
           role: this.resolveRole(did, (user?.role ?? 'community-member') as GovernanceRole),
           roleGrantedAt: user?.role_granted_at?.getTime() as Timestamp | undefined,
-          roleGrantedBy: user?.role_granted_by as DID | undefined,
+          // A LEFT JOIN yields null, not undefined, and the lexicon declares
+          // this an optional string. Passing null through fails output
+          // validation, which 500s the endpoint for every user who has not
+          // been granted a governance role -- which is everyone by default,
+          // platform administrators included.
+          roleGrantedBy: (user?.role_granted_by ?? undefined) as DID | undefined,
           hasDelegation: !!delegation,
           delegationExpiresAt: delegation?.expires_at.getTime() as Timestamp | undefined,
-          delegationCollections: delegation?.collections as NSID[] | undefined,
+          delegationCollections: (delegation?.collections ?? undefined) as NSID[] | undefined,
           recordsCreatedToday: delegation?.records_created_today ?? 0,
           dailyRateLimit: delegation?.max_records_per_day ?? 0,
           metrics,

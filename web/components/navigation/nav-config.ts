@@ -87,7 +87,7 @@ export const mainNavItems: NavEntry[] = [
         label: 'Your feed',
         href: '/feed',
         icon: Rss,
-        description: 'Activity from authors and collections you follow',
+        description: 'Authors and collections you follow',
       },
       {
         label: 'Eprints',

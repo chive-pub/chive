@@ -61,6 +61,7 @@
             "pub.chive.collection.get",
             "pub.chive.collection.getContaining",
             "pub.chive.collection.getFeed",
+            "pub.chive.collection.getFollowedFeed",
             "pub.chive.collection.getParent",
             "pub.chive.collection.getSubcollections",
             "pub.chive.collection.listByOwner",
@@ -79,6 +80,7 @@
             "pub.chive.claiming.getClaim",
             "pub.chive.claiming.getUserClaims",
             "pub.chive.claiming.getSuggestions",
+            "pub.chive.claiming.startClaimFromExternal",
             "pub.chive.claiming.getSubmissionData",
             "pub.chive.claiming.getPendingClaims",
             "pub.chive.claiming.approveClaim",
@@ -98,6 +100,8 @@
             "pub.chive.collaboration.listInvites",
             "pub.chive.collaboration.listCollaborators",
             "pub.chive.notification.listReviewsOnMyPapers",
+            "pub.chive.notification.listCollectionAdds",
+            "pub.chive.notification.listFollowers",
             "pub.chive.notification.listEndorsementsOnMyPapers"
           ],
           "aud": "*"
