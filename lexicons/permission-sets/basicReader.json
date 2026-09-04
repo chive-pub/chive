@@ -30,6 +30,7 @@
             "pub.chive.collection.get",
             "pub.chive.collection.getContaining",
             "pub.chive.collection.getFeed",
+            "pub.chive.collection.getFollowedFeed",
             "pub.chive.collection.getParent",
             "pub.chive.collection.getSubcollections",
             "pub.chive.collection.listByOwner",
