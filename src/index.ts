@@ -566,6 +566,8 @@ function createServices(
   const collectionService = new CollectionService({ pool: pgPool, logger });
   const collaborationService = new CollaborationService({ pool: pgPool, logger });
 
+  // Create notification service for pull-based notification queries
+
   // Create PDS Discovery services
   const pdsRegistry = new PDSRegistry(pgPool, logger);
 

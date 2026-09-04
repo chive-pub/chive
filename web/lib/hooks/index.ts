@@ -199,9 +199,13 @@ export {
 export {
   useReviewNotifications,
   useEndorsementNotifications,
+  useFollowerNotifications,
+  useCollectionAddNotifications,
   notificationKeys,
   type ReviewNotification,
   type EndorsementNotification,
+  type FollowerNotification,
+  type CollectionAddNotification,
 } from './use-notifications';
 
 export {

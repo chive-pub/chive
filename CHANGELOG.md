@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.20.0] - 2026-09-04
+
+### Added
+
+- **One feed for everything you follow.** Following an author creates a collection, so "everything I follow" and "every collection I hold" are the same question asked at different widths. `/feed` asks it, with a scope control for the width: only the collections created by following someone, every collection you own, collections other people own that you follow, or all of it. The activity checkboxes from a subscription apply here too, so a reader who wants new papers and nothing else can say so once.
+
+  Deduplication happens in the database rather than the browser. A reader who follows the same author from three collections gets three person nodes and so three copies of every event; the feed collapses them into one row that names all three collections. Merging pages in the client could not do that — it cannot collapse two rows that are the same event, and a cursor over merged pages is not a cursor over any one of them. The engine that does this is the collection feed itself, now given a set of collections instead of one, so there is no second implementation to drift.
+
+- **An author is told when someone follows them or collects one of their papers.** Two queries computed from the index rather than a stored notifications table, following the pattern the existing review and endorsement notifications already use, and shown on the notifications dashboard beside them. Neither takes a DID from its parameters: the answer is about whoever is signed in, so reading someone else's is not expressible.
+
+### Fixed
+
+- **The standard.site social graph indexed nothing, ever.** Subscriptions, publications and recommendations were all read off the firehose and all silently discarded: `standard_site_subscriptions`, `standard_site_publications` and `standard_site_recommendations` were empty in production, and a publication written while the indexer was live and fifteen seconds behind the firehose never appeared.
+
+  `loadBuiltinPlugin(plugin, services)` hands those services to the context factory as `config`, so a plugin finds them at `context.config.x`. This one read `context.x`, got `undefined`, and returned at the guard meant for a genuinely absent service — before subscribing to a single event. It loaded, reported healthy, and did nothing. The mistake typechecked because the old code asserted the property onto the context with a cast rather than reading where it lives, which is the reason the fix comes with a test that loads the plugin the way the loader really loads it and asserts it subscribes.
+
+  Until now this made `subscriberCount` permanently zero and meant the `site.standard.graph.subscription` record was never written when following an author, since that write is gated on the author holding a publication the index could see.
+
+- **Importing papers failed with a 500.** `getSuggestions` died on `s.toLowerCase is not a function` while scoring external results. The OpenReview plugin declared `content.authors.value` as `string[]`; the API does not honour that, and a search for a common name returns collaboration papers whose author list is thousands of `{fullname, username}` objects. Author entries are now normalised where they enter, the type no longer claims something untrue, and the scoring path guards the other external sources — one malformed author costs that paper its score rather than blanking the list. The ten seconds before the failure was the plugin search budget, not the cause.
+
+- **An author could not see they had followers.** The count was computed and rendered nowhere, so the follow control said nothing about who was on the other side.
+
+- **An eprint's link card carried no subscribe control.** A standard.site consumer finds the document by fetching the page and reading `at:canonical` from its head; Chive emitted only a `link rel="alternate"` naming the _eprint_ record, which is not a document and resolves to nothing. The page now names its `site.standard.document`, and since the document names the author's publication, that is all a consumer needs to reach both. Papers submitted without cross-platform discovery have no document, and the remaining head tags are emitted regardless.
+
+- **Three event types were invisible in the feed UI.** Reviews, endorsements, and annotations on a tracked author's papers arrived from the server but fell through every icon, label, and attribution switch to the generic "Activity". They now read as what they are, attributed as "On a paper by".
+
 ## [0.19.0] - 2026-09-04
 
 ### Added
@@ -1163,7 +1189,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/chive-pub/chive/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/chive-pub/chive/compare/v0.18.3...v0.19.0
 [0.18.3]: https://github.com/chive-pub/chive/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/chive-pub/chive/compare/v0.18.1...v0.18.2

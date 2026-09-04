@@ -301,6 +301,10 @@ export interface ServerConfig {
   readonly collectionService?: CollectionService;
 
   /**
+   * Notification service instance (optional).
+   */
+
+  /**
    * Collaboration service for indexing invites / acceptances and deriving
    * active collaborators (optional).
    */

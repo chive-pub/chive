@@ -1,0 +1,65 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.collection.getFollowedFeed",
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get one activity feed spanning every collection the authenticated reader follows, deduplicated so an author held in several collections is not repeated.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "scope": {
+            "type": "string",
+            "knownValues": ["subscriptions", "mine", "followed", "all"],
+            "default": "all",
+            "description": "Which collections to draw from. subscriptions: only those created by following an author. mine: every collection you own. followed: collections others own that you follow. all: both."
+          },
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "maxLength": 20,
+            "description": "Restrict the feed to these event types. Omit for all types."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 30,
+            "description": "Maximum events to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["events", "hasMore"],
+          "properties": {
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.collection.defs#feedEventView"
+              },
+              "description": "Feed events in reverse chronological order"
+            },
+            "cursor": {
+              "type": "string",
+              "description": "Pagination cursor for next page"
+            },
+            "hasMore": {
+              "type": "boolean",
+              "description": "Whether more events exist"
+            }
+          }
+        }
+      }
+    }
+  }
+}

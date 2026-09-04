@@ -215,6 +215,133 @@ export interface CollectionServiceOptions {
  *
  * @public
  */
+export interface NotificationPaginationOptions {
+  /** Maximum number of notifications to return (capped at 100). */
+  readonly limit?: number;
+  /** Keyset cursor of the form `{ISO timestamp}::{AT-URI}`. */
+  readonly cursor?: string;
+}
+
+/**
+ * A page of notifications with its continuation cursor.
+ *
+ * @typeParam T - notification shape carried by the page
+ *
+ * @public
+ */
+export interface NotificationPage<T> {
+  /** Notifications in the page, newest first. */
+  readonly items: readonly T[];
+  /** Cursor for the next page, absent when the page is the last one. */
+  readonly cursor?: string;
+  /** Whether more notifications follow this page. */
+  readonly hasMore: boolean;
+}
+
+/**
+ * Someone who follows the authenticated user.
+ *
+ * @remarks
+ * A follow is an ordinary collection in the follower's own repository whose
+ * metadata carries the followed person's DID.
+ *
+ * @public
+ */
+export interface FollowerNotification {
+  /** AT-URI of the follower's collection holding the subscription. */
+  readonly collectionUri: AtUri;
+  /** Label of that collection. */
+  readonly collectionLabel: string;
+  /** DID of the follower. */
+  readonly followerDid: DID;
+  /** Handle of the follower, when the index knows one. */
+  readonly followerHandle?: string;
+  /** Display name of the follower, when the index knows one. */
+  readonly followerDisplayName?: string;
+  /** Activity types the follower subscribed to. */
+  readonly activityTypes?: readonly string[];
+  /** When the follower created the collection. */
+  readonly createdAt: Date;
+}
+
+/**
+ * One of the authenticated user's eprints added to somebody else's collection.
+ *
+ * @public
+ */
+export interface CollectionAddNotification {
+  /** AT-URI of the edge that added the eprint to the collection. */
+  readonly uri: AtUri;
+  /** DID of the person who added the eprint. */
+  readonly actorDid: DID;
+  /** Handle of that person, when the index knows one. */
+  readonly actorHandle?: string;
+  /** Display name of that person, when the index knows one. */
+  readonly actorDisplayName?: string;
+  /** AT-URI of the collection the eprint was added to. */
+  readonly collectionUri: AtUri;
+  /** Label of that collection. */
+  readonly collectionLabel?: string;
+  /** AT-URI of the eprint. */
+  readonly eprintUri: AtUri;
+  /** Title of the eprint. */
+  readonly eprintTitle: string;
+  /** When the eprint was added. */
+  readonly createdAt: Date;
+}
+
+/** Rows per page when a caller does not say. */
+const MAX_LIMIT = 100;
+
+/** Hard ceiling on a page, so a caller cannot ask for the whole table. */
+const DEFAULT_LIMIT = 25;
+/**
+ * Splits a keyset cursor into its timestamp and URI halves.
+ *
+ * @param cursor - cursor of the form `{ISO timestamp}::{AT-URI}`
+ * @returns the parsed pair, or null when the cursor is unusable
+ *
+ * @internal
+ */
+function parseCursor(cursor: string): { timestamp: Date; uri: string } | null {
+  const separator = cursor.indexOf('::');
+  if (separator === -1) return null;
+
+  const timestamp = new Date(cursor.slice(0, separator));
+  const uri = cursor.slice(separator + 2);
+  if (Number.isNaN(timestamp.getTime()) || uri === '') return null;
+
+  return { timestamp, uri };
+}
+
+/**
+ * Builds the cursor pointing just past the last row of a page.
+ *
+ * @param createdAt - timestamp of the last row
+ * @param uri - URI of the last row
+ * @returns the cursor string
+ *
+ * @internal
+ */
+function buildCursor(createdAt: Date, uri: string): string {
+  return `${createdAt.toISOString()}::${uri}`;
+}
+
+/**
+ * Computes notifications for an authenticated user from indexed records.
+ *
+ * @example
+ * ```typescript
+ * const service = new NotificationService({ pool, logger });
+ * const page = await service.listFollowers('did:plc:abc123' as DID, { limit: 25 });
+ * for (const follower of page.items) {
+ *   console.log(`${follower.followerDid} follows you`);
+ * }
+ * ```
+ *
+ * @public
+ */
+
 export class CollectionService {
   private readonly pool: Pool;
   private readonly logger: ILogger;
@@ -1408,9 +1535,22 @@ export class CollectionService {
    * @returns paginated feed events or DatabaseError
    */
   async getCollectionFeed(
-    collectionUri: AtUri,
+    collectionUri: AtUri | readonly AtUri[],
     options: { limit?: number; cursor?: string; types?: string[] } = {}
   ): Promise<Result<CollectionFeedResult, DatabaseError>> {
+    // One collection or many: the engine is the same. Feeding it a set is what
+    // an aggregate feed is, and it is also what makes deduplication correct.
+    // A person held in three collections yields three person nodes and so
+    // three copies of each of their events; the GROUP BY below collapses them
+    // to one row that names all three collections, which a per-collection
+    // query run three times and merged in the caller could not do.
+    const collectionUris = Array.isArray(collectionUri)
+      ? (collectionUri as readonly AtUri[])
+      : [collectionUri as AtUri];
+
+    if (collectionUris.length === 0) {
+      return Ok({ events: [], hasMore: false });
+    }
     const limit = Math.min(options.limit ?? 30, 100);
     const innerLimit = Math.max(limit * 5, 200);
 
@@ -1426,7 +1566,7 @@ export class CollectionService {
         }
       }
 
-      const params: unknown[] = [collectionUri];
+      const params: unknown[] = [collectionUris];
       let paramIdx = 1;
 
       const nextParam = (value: unknown): string => {
@@ -1447,7 +1587,7 @@ export class CollectionService {
             cei.created_at AS added_at
           FROM collection_edges_index cei
           JOIN personal_graph_nodes_index pgn ON cei.target_uri = pgn.uri
-          WHERE cei.source_uri = $1
+          WHERE cei.source_uri = ANY($1::text[])
             AND cei.relation_slug = 'contains'
         )`;
 
@@ -1858,7 +1998,84 @@ export class CollectionService {
         'FEED_QUERY',
         `Failed to get collection feed: ${error instanceof Error ? error.message : String(error)}`
       );
-      this.logger.error('Failed to get collection feed', dbError, { collectionUri });
+      this.logger.error('Failed to get collection feed', dbError, { collectionUris });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Returns one activity feed spanning every collection a reader follows.
+   *
+   * @param ownerDid - The reader
+   * @param options - scope, event-type filter, and pagination
+   * @returns paginated feed events or DatabaseError
+   *
+   * @remarks
+   * A reader who follows the same author from two different collections should
+   * see each of that author's papers once, not twice. That is why this resolves
+   * the collections and hands the whole set to {@link getCollectionFeed} rather
+   * than querying each collection and merging afterwards: merging in the caller
+   * cannot collapse two rows that are the same event, and would also break
+   * pagination, since a cursor over merged pages is not a cursor over any one
+   * of them.
+   *
+   * Scopes:
+   * - `subscriptions` — only the singleton collections created by following an
+   *   author, which is the narrow "people I follow" reading
+   * - `mine` — every collection the reader owns, including hand-built ones
+   * - `followed` — collections other people own that the reader follows
+   * - `all` — owned and followed together
+   *
+   * @public
+   */
+  async getFollowedFeed(
+    ownerDid: DID,
+    options: {
+      scope?: 'subscriptions' | 'mine' | 'followed' | 'all';
+      limit?: number;
+      cursor?: string;
+      types?: string[];
+    } = {}
+  ): Promise<Result<CollectionFeedResult, DatabaseError>> {
+    const scope = options.scope ?? 'all';
+
+    try {
+      const uris: AtUri[] = [];
+
+      if (scope === 'subscriptions' || scope === 'mine' || scope === 'all') {
+        const ownedSql =
+          scope === 'subscriptions'
+            ? `SELECT uri FROM collections_index
+               WHERE owner_did = $1 AND metadata->>'subscriptionDid' IS NOT NULL`
+            : `SELECT uri FROM collections_index WHERE owner_did = $1`;
+        const owned = await this.pool.query<{ uri: string }>(ownedSql, [ownerDid]);
+        uris.push(...owned.rows.map((r) => r.uri as AtUri));
+      }
+
+      if (scope === 'followed' || scope === 'all') {
+        // Joined against collections_index so a follow of something that is not
+        // a collection cannot leak into the set.
+        const followed = await this.pool.query<{ uri: string }>(
+          `SELECT c.uri
+             FROM cosmik_follows_index f
+             JOIN collections_index c ON c.uri = f.subject
+            WHERE f.follower_did = $1`,
+          [ownerDid]
+        );
+        uris.push(...followed.rows.map((r) => r.uri as AtUri));
+      }
+
+      // A collection can be both owned and followed; the feed engine would
+      // handle the duplicate, but sending it twice doubles the CTE for nothing.
+      const unique = [...new Set(uris)] as AtUri[];
+
+      return await this.getCollectionFeed(unique, options);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'FEED_QUERY',
+        `Failed to get followed feed: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to get followed feed', dbError, { ownerDid, scope });
       return Err(dbError);
     }
   }
@@ -2476,6 +2693,174 @@ export class CollectionService {
         `Failed to delete Margin bookmark: ${error instanceof Error ? error.message : String(error)}`
       );
       return Err(dbError);
+    }
+  }
+
+  async listFollowers(
+    did: DID,
+    options: NotificationPaginationOptions = {}
+  ): Promise<NotificationPage<FollowerNotification>> {
+    const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+
+    try {
+      const params: unknown[] = [did];
+      let sql = `
+        SELECT
+          c.uri,
+          c.owner_did,
+          c.label,
+          c.metadata->'activityTypes' AS activity_types,
+          c.created_at,
+          a.handle,
+          a.display_name
+        FROM collections_index c
+        LEFT JOIN authors_index a ON a.did = c.owner_did
+        WHERE c.metadata->>'subscriptionDid' = $1
+          AND c.owner_did <> $1`;
+
+      const cursor = options.cursor ? parseCursor(options.cursor) : null;
+      if (cursor) {
+        sql += ` AND (c.created_at, c.uri) < ($${params.length + 1}, $${params.length + 2})`;
+        params.push(cursor.timestamp, cursor.uri);
+      }
+
+      sql += ` ORDER BY c.created_at DESC, c.uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1);
+
+      const result = await this.pool.query<{
+        uri: string;
+        owner_did: string;
+        label: string;
+        activity_types: string[] | null;
+        created_at: Date;
+        handle: string | null;
+        display_name: string | null;
+      }>(sql, params);
+
+      const hasMore = result.rows.length > limit;
+      const rows = result.rows.slice(0, limit);
+      const lastRow = rows[rows.length - 1];
+
+      return {
+        items: rows.map((row) => ({
+          collectionUri: row.uri as AtUri,
+          collectionLabel: row.label,
+          followerDid: row.owner_did as DID,
+          ...(row.handle !== null ? { followerHandle: row.handle } : {}),
+          ...(row.display_name !== null ? { followerDisplayName: row.display_name } : {}),
+          ...(Array.isArray(row.activity_types) ? { activityTypes: row.activity_types } : {}),
+          createdAt: new Date(row.created_at),
+        })),
+        ...(hasMore && lastRow
+          ? { cursor: buildCursor(new Date(lastRow.created_at), lastRow.uri) }
+          : {}),
+        hasMore,
+      };
+    } catch (error) {
+      this.logger.error('Failed to list followers', error instanceof Error ? error : undefined, {
+        did,
+      });
+      return { items: [], hasMore: false };
+    }
+  }
+
+  /**
+   * Lists the user's eprints that other people added to their collections.
+   *
+   * @param did - DID of the eprint author
+   * @param options - pagination options
+   * @returns a page of collection-add notifications; an empty page when the query fails
+   *
+   * @remarks
+   * A collection item is a personal graph node with `subkind = 'eprint'` whose
+   * `metadata.eprintUri` names the eprint, joined to its collection by a
+   * `contains` edge. The eprint must still be present and undeleted in
+   * `eprints_index` with the user among its authors, so an item pointing at a
+   * withdrawn or re-created record notifies nobody. Edges the user owns
+   * themselves are excluded.
+   *
+   * @public
+   */
+  async listCollectionAdds(
+    did: DID,
+    options: NotificationPaginationOptions = {}
+  ): Promise<NotificationPage<CollectionAddNotification>> {
+    const limit = Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT);
+
+    try {
+      const params: unknown[] = [did];
+      let sql = `
+        SELECT
+          ce.uri,
+          ce.owner_did,
+          ce.source_uri,
+          COALESCE(c.label, cn.label) AS collection_label,
+          n.metadata->>'eprintUri' AS eprint_uri,
+          e.title AS eprint_title,
+          ce.created_at,
+          a.handle,
+          a.display_name
+        FROM collection_edges_index ce
+        JOIN personal_graph_nodes_index n
+          ON n.uri = ce.target_uri AND n.subkind = 'eprint'
+        JOIN eprints_index e
+          ON e.uri = n.metadata->>'eprintUri' AND e.deleted_at IS NULL
+        LEFT JOIN collections_index c ON c.uri = ce.source_uri
+        LEFT JOIN personal_graph_nodes_index cn ON cn.uri = ce.source_uri
+        LEFT JOIN authors_index a ON a.did = ce.owner_did
+        WHERE ce.relation_slug = 'contains'
+          AND ce.owner_did <> $1
+          AND e.authors @> jsonb_build_array(jsonb_build_object('did', $1::text))`;
+
+      const cursor = options.cursor ? parseCursor(options.cursor) : null;
+      if (cursor) {
+        sql += ` AND (ce.created_at, ce.uri) < ($${params.length + 1}, $${params.length + 2})`;
+        params.push(cursor.timestamp, cursor.uri);
+      }
+
+      sql += ` ORDER BY ce.created_at DESC, ce.uri DESC LIMIT $${params.length + 1}`;
+      params.push(limit + 1);
+
+      const result = await this.pool.query<{
+        uri: string;
+        owner_did: string;
+        source_uri: string;
+        collection_label: string | null;
+        eprint_uri: string;
+        eprint_title: string;
+        created_at: Date;
+        handle: string | null;
+        display_name: string | null;
+      }>(sql, params);
+
+      const hasMore = result.rows.length > limit;
+      const rows = result.rows.slice(0, limit);
+      const lastRow = rows[rows.length - 1];
+
+      return {
+        items: rows.map((row) => ({
+          uri: row.uri as AtUri,
+          actorDid: row.owner_did as DID,
+          ...(row.handle !== null ? { actorHandle: row.handle } : {}),
+          ...(row.display_name !== null ? { actorDisplayName: row.display_name } : {}),
+          collectionUri: row.source_uri as AtUri,
+          ...(row.collection_label !== null ? { collectionLabel: row.collection_label } : {}),
+          eprintUri: row.eprint_uri as AtUri,
+          eprintTitle: row.eprint_title,
+          createdAt: new Date(row.created_at),
+        })),
+        ...(hasMore && lastRow
+          ? { cursor: buildCursor(new Date(lastRow.created_at), lastRow.uri) }
+          : {}),
+        hasMore,
+      };
+    } catch (error) {
+      this.logger.error(
+        'Failed to list collection adds',
+        error instanceof Error ? error : undefined,
+        { did }
+      );
+      return { items: [], hasMore: false };
     }
   }
 

@@ -500,6 +500,45 @@ export function useCollectionFeed(
   });
 }
 
+/**
+ * One activity feed across every collection the reader follows.
+ *
+ * @param options - scope, event-type filter and paging
+ * @returns infinite query over the aggregate feed
+ *
+ * @remarks
+ * Deduplicated on the server. A reader who follows the same author from two
+ * collections sees each paper once, attributed to both.
+ *
+ * @public
+ */
+export function useFollowedFeed(options?: {
+  scope?: 'subscriptions' | 'mine' | 'followed' | 'all';
+  types?: string[];
+  limit?: number;
+  enabled?: boolean;
+}) {
+  const { scope = 'all', types, limit = 30, enabled = true } = options ?? {};
+  const typeKey = types && types.length > 0 ? [...types].sort().join(',') : 'all';
+
+  return useInfiniteQuery({
+    queryKey: ['collections', 'followed-feed', scope, typeKey],
+    queryFn: async ({ pageParam }): Promise<CollectionFeedResponse> => {
+      const response = await authApi.pub.chive.collection.getFollowedFeed({
+        scope,
+        limit,
+        cursor: pageParam as string | undefined,
+        ...(types && types.length > 0 ? { types } : {}),
+      });
+      return response.data as unknown as CollectionFeedResponse;
+    },
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => (lastPage.hasMore ? lastPage.cursor : undefined),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
 // =============================================================================
 // MUTATION HOOKS
 // =============================================================================

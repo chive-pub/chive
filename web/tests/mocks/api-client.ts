@@ -336,6 +336,8 @@ export function createMockApiClient() {
         notification: {
           listReviewsOnMyPapers: createNamespaceMocks(),
           listEndorsementsOnMyPapers: createNamespaceMocks(),
+          listFollowers: createNamespaceMocks(),
+          listCollectionAdds: createNamespaceMocks(),
         },
         actor: {
           getMyProfile: createNamespaceMocks(),

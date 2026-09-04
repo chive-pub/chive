@@ -51,11 +51,14 @@ function getEventIcon(type: string) {
       return FileText;
     case 'review_on_eprint':
     case 'review_by_author':
+    case 'review_on_authored_eprint':
       return MessageSquare;
     case 'endorsement_on_eprint':
     case 'endorsement_by_author':
+    case 'endorsement_on_authored_eprint':
       return Star;
     case 'annotation_on_eprint':
+    case 'annotation_on_authored_eprint':
       return Highlighter;
     case 'eprint_referencing_person':
       return Link2;
@@ -106,6 +109,10 @@ function getAttributionPrefix(type: string): string {
     case 'review_by_author':
     case 'endorsement_by_author':
       return 'By';
+    case 'review_on_authored_eprint':
+    case 'endorsement_on_authored_eprint':
+    case 'annotation_on_authored_eprint':
+      return 'On a paper by';
     case 'eprint_in_field':
       return 'In';
     case 'eprint_by_institution':
@@ -189,11 +196,14 @@ function getEventTypeLabel(type: string): string {
       return 'Paper';
     case 'review_on_eprint':
     case 'review_by_author':
+    case 'review_on_authored_eprint':
       return 'Review';
     case 'endorsement_on_eprint':
     case 'endorsement_by_author':
+    case 'endorsement_on_authored_eprint':
       return 'Endorsement';
     case 'annotation_on_eprint':
+    case 'annotation_on_authored_eprint':
       return 'Annotation';
     case 'eprint_referencing_person':
       return 'Reference';
@@ -205,6 +215,132 @@ function getEventTypeLabel(type: string): string {
 // =============================================================================
 // COMPONENT
 // =============================================================================
+
+/**
+ * Props for {@link FeedEventList}.
+ *
+ * @public
+ */
+export interface FeedEventListProps {
+  events: CollectionFeedEvent[];
+  isLoading: boolean;
+  isError: boolean;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  fetchNextPage?: () => void;
+  /** Shown when the feed is empty. */
+  emptyMessage?: string;
+  onItemClick?: (itemUri: string) => void;
+}
+
+/**
+ * Renders a list of feed events.
+ *
+ * @remarks
+ * Shared by the per-collection feed and the aggregate feed across everything a
+ * reader follows. The two differ only in where their events come from, so a
+ * second copy of this would be a second place for the two to drift apart.
+ *
+ * @param props - component props
+ * @returns React element rendering the events
+ *
+ * @public
+ */
+export function FeedEventList({
+  events,
+  isLoading,
+  isError,
+  hasNextPage,
+  isFetchingNextPage,
+  fetchNextPage,
+  emptyMessage = 'No activity yet.',
+  onItemClick,
+}: FeedEventListProps) {
+  return (
+    <>
+      {isLoading ? (
+        <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading activity...
+        </div>
+      ) : isError ? (
+        <p className="mt-3 text-sm text-muted-foreground">Failed to load activity feed.</p>
+      ) : events.length === 0 ? (
+        <p className="mt-3 text-sm text-muted-foreground">No activity yet for this collection.</p>
+      ) : (
+        <div className="mt-3 space-y-2">
+          {events.map((event) => {
+            const Icon = getEventIcon(event.type);
+            const title = getEventTitle(event);
+            const eprintUrl = getEprintUrl(event);
+            const attribution = renderAttribution(event, onItemClick);
+            const snippet = (event.payload.snippet as string) ?? undefined;
+            const typeLabel = getEventTypeLabel(event.type);
+
+            return (
+              <Card key={`${event.eventUri}-${event.type}`} className="p-3">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px] shrink-0">
+                        {typeLabel}
+                      </Badge>
+                      <time className="text-xs text-muted-foreground">
+                        {formatDate(event.eventAt, { includeTime: true, relative: true })}
+                      </time>
+                    </div>
+                    {title && (
+                      <p className="text-sm font-medium mt-1 leading-snug">
+                        {eprintUrl ? (
+                          <Link href={eprintUrl} className="hover:underline">
+                            {title}
+                          </Link>
+                        ) : (
+                          title
+                        )}
+                      </p>
+                    )}
+                    {snippet && (
+                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{snippet}</p>
+                    )}
+                    {attribution && (
+                      <p className="text-xs text-muted-foreground mt-1">{attribution}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+
+          {/* Load more button */}
+          {hasNextPage && (
+            <div className="pt-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchNextPage?.()}
+                disabled={isFetchingNextPage}
+                className="text-xs w-full"
+              >
+                {isFetchingNextPage ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load more'
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
 
 interface CollectionFeedProps {
   collectionUri: string;
@@ -245,88 +381,16 @@ export function CollectionFeed({ collectionUri, onItemClick, className }: Collec
       </CollapsibleTrigger>
 
       <CollapsibleContent>
-        {isLoading ? (
-          <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading activity...
-          </div>
-        ) : isError ? (
-          <p className="mt-3 text-sm text-muted-foreground">Failed to load activity feed.</p>
-        ) : events.length === 0 ? (
-          <p className="mt-3 text-sm text-muted-foreground">No activity yet for this collection.</p>
-        ) : (
-          <div className="mt-3 space-y-2">
-            {events.map((event) => {
-              const Icon = getEventIcon(event.type);
-              const title = getEventTitle(event);
-              const eprintUrl = getEprintUrl(event);
-              const attribution = renderAttribution(event, onItemClick);
-              const snippet = (event.payload.snippet as string) ?? undefined;
-              const typeLabel = getEventTypeLabel(event.type);
-
-              return (
-                <Card key={`${event.eventUri}-${event.type}`} className="p-3">
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[10px] shrink-0">
-                          {typeLabel}
-                        </Badge>
-                        <time className="text-xs text-muted-foreground">
-                          {formatDate(event.eventAt, { includeTime: true, relative: true })}
-                        </time>
-                      </div>
-                      {title && (
-                        <p className="text-sm font-medium mt-1 leading-snug">
-                          {eprintUrl ? (
-                            <Link href={eprintUrl} className="hover:underline">
-                              {title}
-                            </Link>
-                          ) : (
-                            title
-                          )}
-                        </p>
-                      )}
-                      {snippet && (
-                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                          {snippet}
-                        </p>
-                      )}
-                      {attribution && (
-                        <p className="text-xs text-muted-foreground mt-1">{attribution}</p>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-
-            {/* Load more button */}
-            {hasNextPage && (
-              <div className="pt-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
-                  className="text-xs w-full"
-                >
-                  {isFetchingNextPage ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      Loading...
-                    </>
-                  ) : (
-                    'Load more'
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+        <FeedEventList
+          events={events}
+          isLoading={isLoading}
+          isError={isError}
+          hasNextPage={hasNextPage}
+          isFetchingNextPage={isFetchingNextPage}
+          fetchNextPage={() => void fetchNextPage()}
+          emptyMessage="No activity yet for this collection."
+          {...(onItemClick ? { onItemClick } : {})}
+        />
       </CollapsibleContent>
     </Collapsible>
   );

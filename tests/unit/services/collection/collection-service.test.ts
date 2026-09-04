@@ -1761,4 +1761,82 @@ describe('CollectionService', () => {
       expect(stored.activityTypes).toEqual(['eprint_by_author']);
     });
   });
+
+  // ==========================================================================
+  // getFollowedFeed: the aggregate feed across everything a reader follows
+  // ==========================================================================
+
+  describe('getFollowedFeed', () => {
+    const READER = 'did:plc:reader' as DID;
+
+    it('draws only subscription collections when asked for subscriptions', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [{ uri: SAMPLE_COLLECTION_URI }] });
+      pool.query.mockResolvedValue({ rows: [] });
+
+      await service.getFollowedFeed(READER, { scope: 'subscriptions' });
+
+      const lookup = String(pool.query.mock.calls[0]?.[0]);
+      expect(lookup).toContain("metadata->>'subscriptionDid' IS NOT NULL");
+      expect(pool.query.mock.calls[0]?.[1]).toEqual([READER]);
+    });
+
+    it('draws every owned collection when asked for mine', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [{ uri: SAMPLE_COLLECTION_URI }] });
+      pool.query.mockResolvedValue({ rows: [] });
+
+      await service.getFollowedFeed(READER, { scope: 'mine' });
+
+      const lookup = String(pool.query.mock.calls[0]?.[0]);
+      expect(lookup).toContain('FROM collections_index');
+      expect(lookup).not.toContain('subscriptionDid');
+    });
+
+    it('joins followed collections against collections_index', async () => {
+      pool.query.mockResolvedValueOnce({ rows: [] });
+      pool.query.mockResolvedValue({ rows: [] });
+
+      await service.getFollowedFeed(READER, { scope: 'followed' });
+
+      const lookup = String(pool.query.mock.calls[0]?.[0]);
+      // A follow of something that is not a collection must not leak in.
+      expect(lookup).toContain('cosmik_follows_index');
+      expect(lookup).toContain('JOIN collections_index');
+    });
+
+    it('queries every collection in one pass, so one event cannot appear twice', async () => {
+      const second = 'at://did:plc:aswhite/pub.chive.graph.node/second' as AtUri;
+      pool.query.mockResolvedValueOnce({
+        rows: [{ uri: SAMPLE_COLLECTION_URI }, { uri: second }],
+      });
+      pool.query.mockResolvedValueOnce({ rows: [{ uri: second }] });
+      pool.query.mockResolvedValue({ rows: [] });
+
+      await service.getFollowedFeed(READER, { scope: 'all' });
+
+      const feedCall = pool.query.mock.calls.at(-1);
+      const sql = String(feedCall?.[0]);
+      const params = feedCall?.[1] as unknown[];
+
+      // One query over the set, not one query per collection: the GROUP BY can
+      // only collapse duplicate events if they are in the same result.
+      expect(sql).toContain('cei.source_uri = ANY($1::text[])');
+      expect(sql).toContain('GROUP BY type, event_uri');
+      // The collection appearing in both owned and followed is sent once.
+      expect(params[0]).toEqual([SAMPLE_COLLECTION_URI, second]);
+    });
+
+    it('returns an empty page when the reader follows nothing', async () => {
+      pool.query.mockResolvedValue({ rows: [] });
+
+      const result = await service.getFollowedFeed(READER, { scope: 'subscriptions' });
+
+      expect(isOk(result)).toBe(true);
+      if (isOk(result)) {
+        expect(result.value.events).toEqual([]);
+        expect(result.value.hasMore).toBe(false);
+      }
+      // Only the collection lookup ran; there was nothing to build a feed over.
+      expect(pool.query).toHaveBeenCalledTimes(1);
+    });
+  });
 });

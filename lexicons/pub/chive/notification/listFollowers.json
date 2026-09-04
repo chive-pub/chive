@@ -1,0 +1,98 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.notification.listFollowers",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "List the people who follow the current user",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 25,
+            "description": "Maximum results to return"
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Pagination cursor"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["notifications"],
+          "properties": {
+            "notifications": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "#followerNotification"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthenticationRequired"
+        }
+      ]
+    },
+    "followerNotification": {
+      "type": "object",
+      "required": ["collectionUri", "follower", "createdAt"],
+      "properties": {
+        "collectionUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the follower's collection holding the subscription"
+        },
+        "collectionLabel": {
+          "type": "string",
+          "description": "Label of the follower's collection"
+        },
+        "follower": {
+          "type": "ref",
+          "ref": "#actorRef"
+        },
+        "activityTypes": {
+          "type": "array",
+          "description": "Activity types the follower subscribed to",
+          "items": {
+            "type": "string"
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime",
+          "description": "When the follower created the collection"
+        }
+      }
+    },
+    "actorRef": {
+      "type": "object",
+      "required": ["did"],
+      "properties": {
+        "did": {
+          "type": "string",
+          "format": "did"
+        },
+        "handle": {
+          "type": "string"
+        },
+        "displayName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
