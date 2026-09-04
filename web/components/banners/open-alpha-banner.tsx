@@ -40,8 +40,8 @@ export function OpenAlphaBanner() {
 
   return (
     <div className="border-b border-amber-500/20 bg-amber-50 dark:bg-amber-950/30">
-      <div className="container flex items-center gap-3 px-4 py-2.5 text-sm">
-        <Bug className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" />
+      <div className="container flex items-start gap-3 px-4 py-2.5 text-sm sm:items-center">
+        <Bug className="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 sm:mt-0" />
         <p className="flex-1 text-amber-800 dark:text-amber-200">
           Chive is in open alpha. You may encounter bugs or incomplete features. We appreciate and
           encourage{' '}

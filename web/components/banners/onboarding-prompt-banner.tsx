@@ -46,20 +46,25 @@ export function OnboardingPromptBanner() {
 
   return (
     <div className="border-b border-indigo-500/20 bg-indigo-50 dark:bg-indigo-950/30">
-      <div className="container flex items-center gap-3 px-4 py-2.5 text-sm">
-        <Link2 className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
-        <p className="flex-1 text-indigo-800 dark:text-indigo-200">
-          Link your ORCID or academic accounts to get personalized recommendations and claim your
-          publications.
-        </p>
-        <Button
-          asChild
-          variant="outline"
-          size="sm"
-          className="shrink-0 border-indigo-300 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900"
-        >
-          <Link href="/onboarding/link-accounts">Link Accounts</Link>
-        </Button>
+      {/* The prompt and its action sit side by side from `sm` up and stack on a
+          phone. On one row, a 320px screen left the sentence about eighty
+          pixels of width beside two buttons, so it ran to six lines. */}
+      <div className="container flex items-start gap-3 px-4 py-2.5 text-sm">
+        <Link2 className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" />
+        <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <p className="flex-1 text-indigo-800 dark:text-indigo-200">
+            Link your ORCID or academic accounts to get personalized recommendations and claim your
+            publications.
+          </p>
+          <Button
+            asChild
+            variant="outline"
+            size="sm"
+            className="w-fit shrink-0 border-indigo-300 text-indigo-700 hover:bg-indigo-100 dark:border-indigo-700 dark:text-indigo-300 dark:hover:bg-indigo-900"
+          >
+            <Link href="/onboarding/link-accounts">Link Accounts</Link>
+          </Button>
+        </div>
         <Button
           variant="ghost"
           size="icon"

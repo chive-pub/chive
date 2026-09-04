@@ -18,7 +18,7 @@ export function SiteHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 items-center">
         {/* Logo */}
-        <Link href="/" className="mr-6 flex items-center space-x-2">
+        <Link href="/" className="mr-2 flex shrink-0 items-center space-x-2 md:mr-6">
           <Image src="/chive-logo.svg" alt="Chive" width={28} height={28} />
           <span className="text-xl font-bold">Chive</span>
         </Link>
@@ -26,8 +26,11 @@ export function SiteHeader() {
         {/* Desktop Navigation */}
         <MainNav className="hidden md:flex" />
 
-        {/* Right side: Search, Auth, Theme Toggle, Mobile Nav */}
-        <div className="flex flex-1 items-center justify-end space-x-4">
+        {/* Right side: Search, Auth, Theme Toggle, Mobile Nav.
+
+            Five icon buttons at `space-x-4` need more room than a 320px phone
+            has once the wordmark is placed, so the gap tightens below `sm`. */}
+        <div className="flex flex-1 items-center justify-end space-x-1 sm:space-x-4">
           <SearchBar className="hidden sm:flex" />
           <MobileSearch />
           <AuthButton />
