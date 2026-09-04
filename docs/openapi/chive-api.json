@@ -14103,27 +14103,6 @@
         ],
         "type": "object"
       },
-      "pub.chive.subscription.getFeed.feedItem": {
-        "properties": {
-          "createdAt": {
-            "format": "date-time",
-            "type": "string"
-          },
-          "title": {
-            "maxLength": 2048,
-            "type": "string"
-          },
-          "uri": {
-            "format": "at-uri",
-            "type": "string"
-          }
-        },
-        "required": [
-          "uri",
-          "title"
-        ],
-        "type": "object"
-      },
       "pub.chive.subscription.list.subscriptionView": {
         "properties": {
           "createdAt": {
