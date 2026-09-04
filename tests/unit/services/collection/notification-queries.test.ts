@@ -1,5 +1,5 @@
 /**
- * Unit tests for NotificationService.
+ * Unit tests for CollectionService.
  *
  * @packageDocumentation
  */
@@ -7,7 +7,7 @@
 import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
-import { NotificationService } from '../../../../src/services/notification/notification-service.js';
+import { CollectionService } from '../../../../src/services/collection/collection-service.js';
 import type { DID } from '../../../../src/types/atproto.js';
 import type { ILogger } from '../../../../src/types/interfaces/logger.interface.js';
 
@@ -68,16 +68,16 @@ const collectionAddRow = (suffix: string, createdAt: Date): Record<string, unkno
 // Tests
 // ============================================================================
 
-describe('NotificationService', () => {
+describe('CollectionService', () => {
   let pool: MockDatabasePool;
   let logger: ILogger;
-  let service: NotificationService;
+  let service: CollectionService;
 
   beforeEach(() => {
     pool = createMockPool();
     logger = createMockLogger();
-    service = new NotificationService({
-      pool: pool as unknown as ConstructorParameters<typeof NotificationService>[0]['pool'],
+    service = new CollectionService({
+      pool: pool as unknown as ConstructorParameters<typeof CollectionService>[0]['pool'],
       logger,
     });
   });

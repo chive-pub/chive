@@ -1183,7 +1183,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.19.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.20.0...HEAD
+[0.20.0]: https://github.com/chive-pub/chive/compare/v0.19.0...v0.20.0
 [0.19.0]: https://github.com/chive-pub/chive/compare/v0.18.3...v0.19.0
 [0.18.3]: https://github.com/chive-pub/chive/compare/v0.18.2...v0.18.3
 [0.18.2]: https://github.com/chive-pub/chive/compare/v0.18.1...v0.18.2

@@ -27,14 +27,14 @@ export const listFollowers: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: true,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
-    const notificationService = c.get('services').notification;
+    const collectionService = c.get('services').collection;
     const user = c.get('user');
 
     if (!user?.did) {
       throw new AuthenticationError('Authentication required');
     }
 
-    if (!notificationService) {
+    if (!collectionService) {
       // Returning an empty page would be indistinguishable from having no
       // followers, so a switched-off feature would read as a real answer.
       throw new ServiceUnavailableError(
@@ -49,7 +49,7 @@ export const listFollowers: XRPCMethod<QueryParams, void, OutputSchema> = {
       cursor: params.cursor,
     });
 
-    const page = await notificationService.listFollowers(user.did, {
+    const page = await collectionService.listFollowers(user.did, {
       limit: params.limit,
       ...(params.cursor !== undefined ? { cursor: params.cursor } : {}),
     });
