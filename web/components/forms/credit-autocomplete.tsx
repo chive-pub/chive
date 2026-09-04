@@ -178,7 +178,7 @@ export function CreditAutocomplete({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[400px] p-0" align="start">
+        <PopoverContent className="w-[400px] max-w-[calc(100vw-2rem)] p-0" align="start">
           <Command>
             <CommandInput placeholder="Search roles..." />
             <CommandList>

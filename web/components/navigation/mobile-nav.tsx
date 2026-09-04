@@ -50,7 +50,7 @@ export function MobileNav({ className }: MobileNavProps) {
           <span className="sr-only">Toggle menu</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="left-0 top-0 h-full w-3/4 translate-x-0 translate-y-0 rounded-none data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm">
+      <DialogContent className="left-0 top-0 h-full max-h-none w-3/4 translate-x-0 translate-y-0 rounded-none data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm">
         <DialogTitle className="sr-only">Navigation Menu</DialogTitle>
         <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10">
           <div className="flex flex-col space-y-2">
