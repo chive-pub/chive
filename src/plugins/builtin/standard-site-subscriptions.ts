@@ -16,7 +16,7 @@
  */
 
 import type { SubscriptionService } from '../../services/subscription/subscription-service.js';
-import type { IPluginContext, IPluginManifest } from '../../types/interfaces/plugin.interface.js';
+import type { IPluginManifest } from '../../types/interfaces/plugin.interface.js';
 
 import { BasePlugin } from './base-plugin.js';
 
@@ -90,9 +90,12 @@ export class StandardSiteSubscriptionsPlugin extends BasePlugin {
   private subscriptions?: SubscriptionService;
 
   protected override async onInitialize(): Promise<void> {
-    this.subscriptions = (
-      this.context as IPluginContext & { subscriptionService?: SubscriptionService }
-    ).subscriptionService;
+    // `loadBuiltinPlugin(plugin, services)` hands those services to the context
+    // factory as `config`, so they arrive at `context.config`, not on the
+    // context itself. Reading the wrong level left this undefined and the guard
+    // below returned before a single firehose subscription was made, which is
+    // why the standard.site graph indexed nothing at all.
+    this.subscriptions = this.context.config.subscriptionService as SubscriptionService | undefined;
 
     if (!this.subscriptions) {
       this.logger.warn('Subscription service unavailable; standard.site graph will not be indexed');

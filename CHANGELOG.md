@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The standard.site social graph indexed nothing, ever.** Subscriptions, publications and recommendations were all read off the firehose and all silently discarded: `standard_site_subscriptions`, `standard_site_publications` and `standard_site_recommendations` were empty in production, and a publication written while the indexer was live and fifteen seconds behind the firehose never appeared.
+
+  `loadBuiltinPlugin(plugin, services)` hands those services to the context factory as `config`, so a plugin finds them at `context.config.x`. This one read `context.x`, got `undefined`, and returned at the guard meant for a genuinely absent service — before subscribing to a single event. It loaded, reported healthy, and did nothing. The mistake typechecked because the old code asserted the property onto the context with a cast rather than reading where it lives, which is the reason the fix comes with a test that loads the plugin the way the loader really loads it and asserts it subscribes.
+
+  Until now this made `subscriberCount` permanently zero and meant the `site.standard.graph.subscription` record was never written when following an author, since that write is gated on the author holding a publication the index could see.
+
 - **Importing papers failed with a 500.** `getSuggestions` died on `s.toLowerCase is not a function` while scoring external results. The OpenReview plugin declared `content.authors.value` as `string[]`; the API does not honour that, and a search for a common name returns collaboration papers whose author list is thousands of `{fullname, username}` objects. Author entries are now normalised where they enter, the type no longer claims something untrue, and the scoring path guards the other external sources — one malformed author costs that paper its score rather than blanking the list. The ten seconds before the failure was the plugin search budget, not the cause.
 
 - **An author could not see they had followers.** The count was computed and rendered nowhere, so the follow control said nothing about who was on the other side.
