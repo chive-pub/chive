@@ -1,85 +1,136 @@
 'use client';
 
+/**
+ * One reference to a paper from elsewhere in the atmosphere.
+ *
+ * @remarks
+ * These used to render as a grey icon, a two-word label and a line of context,
+ * which said almost nothing and, for most source types, offered no way through
+ * to the thing being described. Two of the links that were offered were wrong:
+ * a `network.cosmik.card` was linked as though it were a Cosmik collection, and
+ * every Leaflet reference was linked as a document, including the comments.
+ *
+ * The card now says which application published the record, what kind of record
+ * it is, when it appeared, and what it said, and it offers the record itself
+ * through a public record browser -- which works for every source type,
+ * including the ones no application renders on the web yet.
+ *
+ * @packageDocumentation
+ */
+
 import {
   BookMarked,
   MessageCircle,
   FileText,
   CalendarDays,
   Highlighter,
-  Users,
   Link2,
+  Clock,
+  Layers as LayersIcon,
+  GitBranch,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+import {
+  ResourceCard,
+  type ResourceAction,
+  type ResourceStat,
+} from '@/components/links/resource-card';
+import { describeAtUri } from '@/lib/atproto/at-uri-links';
 import type { Backlink, BacklinkSourceType } from '@/lib/hooks/use-backlinks';
 
-/**
- * Gets the appropriate icon for a backlink source type.
- */
-function getSourceIcon(sourceType: BacklinkSourceType) {
-  switch (sourceType) {
-    case 'cosmik.collection':
-      return BookMarked;
-    case 'cosmik.connection':
-    case 'cosmik.follow':
-      return Users;
-    case 'leaflet.document':
-    case 'standard.document':
-      return FileText;
-    case 'leaflet.comment':
-      return MessageCircle;
-    case 'calendar.event':
-      return CalendarDays;
-    case 'margin.annotation':
-    case 'margin.highlight':
-    case 'margin.bookmark':
-      return Highlighter;
-    case 'bluesky.post':
-    case 'bluesky.embed':
-      return MessageCircle;
-    case 'other':
-    default:
-      return Link2;
-  }
+/** How a publishing application is drawn. */
+interface AppStyle {
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bgColor: string;
 }
 
 /**
- * Builds a URL for viewing the source of a backlink.
+ * Icon and colour per application.
+ *
+ * @remarks
+ * Keyed on the application name that {@link describeAtUri} derives from the
+ * record's own collection NSID, so a Leaflet comment and a Leaflet document
+ * agree, and an application Chive has not heard of falls through to the
+ * generic link mark rather than borrowing another service's colour.
  */
-function buildSourceUrl(backlink: Backlink): string | null {
-  const { sourceUri, sourceType } = backlink;
+const APP_STYLES: Record<string, AppStyle> = {
+  Leaflet: { icon: FileText, color: 'text-orange-600', bgColor: 'bg-orange-50 dark:bg-orange-950' },
+  Cosmik: {
+    icon: BookMarked,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50 dark:bg-violet-950',
+  },
+  Margin: {
+    icon: Highlighter,
+    color: 'text-yellow-600',
+    bgColor: 'bg-yellow-50 dark:bg-yellow-950',
+  },
+  'Smoke Signal': {
+    icon: CalendarDays,
+    color: 'text-rose-600',
+    bgColor: 'bg-rose-50 dark:bg-rose-950',
+  },
+  'standard.site': {
+    icon: FileText,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
+  },
+  Bluesky: { icon: MessageCircle, color: 'text-sky-600', bgColor: 'bg-sky-50 dark:bg-sky-950' },
+  Layers: {
+    icon: LayersIcon,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950',
+  },
+  Tangled: {
+    icon: GitBranch,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 dark:bg-purple-950',
+  },
+};
 
-  // Parse the AT URI: at://did:plc:xyz/collection/rkey
-  const match = /^at:\/\/([^/]+)\/([^/]+)\/(.+)$/.exec(sourceUri);
-  if (!match) return null;
+const FALLBACK_STYLE: AppStyle = {
+  icon: Link2,
+  color: 'text-muted-foreground',
+  bgColor: 'bg-muted',
+};
 
-  const [, did, , rkey] = match;
-
-  switch (sourceType) {
-    case 'cosmik.collection':
-      // Cosmik collections at cosmik.network/collection/{did}/{rkey}
-      return `https://cosmik.network/collection/${did}/${rkey}`;
-    case 'leaflet.document':
-    case 'leaflet.comment':
-      // Leaflet documents at leaflet.pub/{did}/{rkey}
-      return `https://leaflet.pub/${did}/${rkey}`;
-    case 'bluesky.post':
-    case 'bluesky.embed':
-      // Bluesky posts at bsky.app/profile/{did}/post/{rkey}
-      return `https://bsky.app/profile/${did}/post/${rkey}`;
-    default:
-      // A standard.site document, a calendar event or a Margin annotation has
-      // no single web host: the record is the artefact and each publisher
-      // renders it at its own address. The AT-URI is shown instead of guessing
-      // a link that may not resolve.
-      return null;
-  }
+/**
+ * Icon and colour for a reference.
+ *
+ * @param appName - Application name from the record's collection
+ * @param sourceType - Chive's own classification, used when the collection is unknown
+ * @returns How to draw it
+ */
+function styleFor(appName: string | undefined, sourceType: BacklinkSourceType): AppStyle {
+  if (appName && APP_STYLES[appName]) return APP_STYLES[appName];
+  // A record whose collection Chive does not recognize can still be placed by
+  // the source type the indexing plugin assigned it.
+  const prefix = String(sourceType).split('.')[0];
+  const byPrefix: Record<string, AppStyle> = {
+    cosmik: APP_STYLES.Cosmik,
+    leaflet: APP_STYLES.Leaflet,
+    margin: APP_STYLES.Margin,
+    standard: APP_STYLES['standard.site'],
+    calendar: APP_STYLES['Smoke Signal'],
+    bluesky: APP_STYLES.Bluesky,
+  };
+  return byPrefix[prefix] ?? FALLBACK_STYLE;
 }
 
 /**
- * Gets a short label for the source type.
+ * Gets a human-readable label for a backlink source type.
+ *
+ * @param sourceType - Chive's classification of the source record
+ * @returns A short label
+ *
+ * @remarks
+ * Used only where the record's own collection could not be read from the URI.
+ * The collection is the better answer wherever it is available, because it
+ * distinguishes records the source type conflates.
  */
-function getSourceLabel(sourceType: BacklinkSourceType): string {
+export function getSourceLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
     case 'cosmik.collection':
       return 'Cosmik';
@@ -117,43 +168,52 @@ export interface BacklinkItemProps {
 }
 
 /**
- * Displays a single backlink with source icon, context, and timestamp.
+ * Displays a single reference to this paper from another application.
+ *
+ * @param props - Component props
+ * @returns The card
+ *
+ * @public
  */
 export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
-  const Icon = getSourceIcon(backlink.sourceType);
-  const url = buildSourceUrl(backlink);
-  const label = getSourceLabel(backlink.sourceType);
-  const timeAgo = formatDistanceToNow(new Date(backlink.indexedAt), { addSuffix: true });
+  const record = describeAtUri(backlink.sourceUri);
+  const style = styleFor(record?.appName, backlink.sourceType);
 
-  const content = (
-    <div className={`flex items-start gap-3 py-2 ${className ?? ''}`} data-testid="backlink-item">
-      <Icon className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">{label}</span>
-          <span className="text-xs text-muted-foreground" data-testid="backlink-timestamp">
-            {timeAgo}
-          </span>
-        </div>
-        {backlink.context && (
-          <p className="text-sm text-foreground line-clamp-2 mt-0.5">{backlink.context}</p>
-        )}
-      </div>
-    </div>
-  );
+  const appName = record?.appName ?? getSourceLabel(backlink.sourceType);
+  const kind = record?.kind ?? 'Record';
 
-  if (url) {
-    return (
-      <a
-        href={url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block hover:bg-muted/50 rounded-md -mx-2 px-2 transition-colors"
-      >
-        {content}
-      </a>
-    );
+  // The context is whatever the source record called itself -- an essay's
+  // title, an event's name, the text of an annotation. Where there is one it
+  // is the most informative thing on the card, so it leads.
+  const title = backlink.context?.trim() || `${appName} ${kind.toLowerCase()}`;
+
+  const indexed = new Date(backlink.indexedAt);
+  const stats: ResourceStat[] = [{ label: kind }];
+  if (!Number.isNaN(indexed.getTime())) {
+    stats.push({
+      icon: Clock,
+      label: formatDistanceToNow(indexed, { addSuffix: true }),
+      title: indexed.toLocaleString(),
+    });
   }
 
-  return content;
+  const actions: ResourceAction[] = [];
+  if (record?.webUrl) actions.push({ label: `Open in ${record.appName}`, href: record.webUrl });
+  if (record) actions.push({ label: 'View record', href: record.recordUrl });
+
+  return (
+    <div data-testid="backlink-item" className={className}>
+      <ResourceCard
+        icon={style.icon}
+        iconColor={style.color}
+        iconBg={style.bgColor}
+        title={title}
+        badge={appName}
+        subtitle={backlink.sourceUri}
+        subtitleMono
+        stats={stats}
+        actions={actions}
+      />
+    </div>
+  );
 }
