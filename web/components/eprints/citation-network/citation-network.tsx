@@ -286,8 +286,15 @@ function CitationNetworkCanvas({ eprintUri, height = '70vh', className }: Citati
           className="!border-border !bg-card"
         />
 
-        <Panel position="top-left">
+        <Panel position="top-left" className="max-w-[16rem]">
           <NetworkLegend hasSelection={Boolean(selectedUri && selectedUri !== focusUri)} />
+          {/* Said here rather than above the canvas, because on a paper with no
+              citations there is nothing to hover and the instruction was
+              advice about a graph that was not there. */}
+          <p className="mt-2 rounded-lg border bg-card/95 p-2.5 text-xs leading-snug text-muted-foreground backdrop-blur">
+            Hover a paper for its details. Click one to light up what it cites and what cites it.
+            Zoom out to see the wider network.
+          </p>
         </Panel>
 
         <Panel position="top-right" className="flex flex-wrap items-center gap-2">

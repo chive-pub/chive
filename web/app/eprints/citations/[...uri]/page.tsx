@@ -100,10 +100,6 @@ export default async function CitationNetworkPage({ params }: CitationNetworkPag
         </Link>
         <h1 className="text-3xl font-bold">Citation network</h1>
         {title ? <p className="mt-2 text-muted-foreground">{title}</p> : null}
-        <p className="mt-1 text-sm text-muted-foreground">
-          Hover a paper for its details, click one to light up what it cites and what cites it, and
-          zoom out to see where this paper sits in the wider network.
-        </p>
       </div>
 
       <CitationNetwork eprintUri={fullUri} height="70vh" />
