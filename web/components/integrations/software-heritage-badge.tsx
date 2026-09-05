@@ -3,6 +3,7 @@
 import { ExternalLink, Check, X, Clock } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { ResourceCard, type ResourceStat } from '@/components/links/resource-card';
 import { cn } from '@/lib/utils';
 import type { SoftwareHeritageIntegration } from '@/lib/hooks/use-integrations';
 
@@ -53,51 +54,30 @@ export function SoftwareHeritageBadge({
     );
   }
 
-  // Card variant
+  // Card variant, in the page's standard shape. What is archived, and when it
+  // was last seen, are the two things a reader wants from this card.
+  const stats: ResourceStat[] = [
+    { icon: data.archived ? Check : Clock, label: data.archived ? 'Archived' : 'Not yet archived' },
+  ];
+  if (data.archived && data.lastVisit) {
+    stats.push({ label: `Last visit ${new Date(data.lastVisit).toLocaleDateString()}` });
+  }
+  if (data.archived && data.lastSnapshotSwhid) {
+    stats.push({ label: `${data.lastSnapshotSwhid.slice(0, 24)}…`, title: data.lastSnapshotSwhid });
+  }
+
   return (
-    <a
+    <ResourceCard
+      className={className}
+      icon={data.archived ? Check : X}
+      iconColor="text-white"
+      iconBg={data.archived ? 'bg-emerald-600' : 'bg-amber-600'}
+      title="Software Heritage"
+      badge="Archive"
+      subtitle={data.originUrl}
+      subtitleMono
+      stats={stats}
       href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        'flex flex-col gap-2 rounded-lg border p-4 transition-colors hover:bg-muted/50 no-underline',
-        className
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div
-            className={cn(
-              'flex h-8 w-8 items-center justify-center rounded-md text-white',
-              data.archived ? 'bg-emerald-600' : 'bg-amber-600'
-            )}
-          >
-            {data.archived ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-          </div>
-          <div>
-            <div className="text-sm font-medium">Software Heritage</div>
-            <div className="text-xs text-muted-foreground">
-              {data.archived ? 'Archived' : 'Not yet archived'}
-            </div>
-          </div>
-        </div>
-        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-      </div>
-
-      <p className="text-xs text-muted-foreground line-clamp-1 font-mono">{data.originUrl}</p>
-
-      {data.archived && data.lastVisit && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            Last visit: {new Date(data.lastVisit).toLocaleDateString()}
-          </Badge>
-          {data.lastSnapshotSwhid && (
-            <Badge variant="secondary" className="text-xs font-mono truncate max-w-[200px]">
-              {data.lastSnapshotSwhid.slice(0, 30)}...
-            </Badge>
-          )}
-        </div>
-      )}
-    </a>
+    />
   );
 }

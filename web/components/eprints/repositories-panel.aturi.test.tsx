@@ -120,7 +120,14 @@ describe('RepositoriesPanel with AT-URI datasets', () => {
     );
 
     expect(screen.getByText(NEGRAISING)).toBeInTheDocument();
-    expect(screen.queryByRole('link')).toBeNull();
+    // The web page the record also carried is not what the card acts on, and
+    // an at-uri is not an address a browser can follow. What is offered is the
+    // record itself, through a browser that resolves any at-uri by reading it
+    // from the repository that holds it.
+    const links = screen.getAllByRole('link');
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute('href', `https://pdsls.dev/${NEGRAISING}`);
+    expect(links[0]).toHaveTextContent('View record');
   });
 
   it('still renders an ordinary web repository as a link', () => {

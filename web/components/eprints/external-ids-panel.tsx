@@ -10,10 +10,12 @@
  * @packageDocumentation
  */
 
-import { ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { Link as LinkIcon, BookText, FlaskConical, Landmark, Microscope } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ResourceCard } from '@/components/links/resource-card';
 import { Badge } from '@/components/ui/badge';
+import { summarizeUrl } from '@/lib/atproto/at-uri-links';
 import type { EprintExternalIds } from '@/lib/api/schema';
 
 // =============================================================================
@@ -38,6 +40,12 @@ interface ExternalIdConfig {
   label: string;
   /** Returns the full URL for the identifier, or null if display-only */
   buildUrl: (id: string) => string | null;
+  /** Service icon, so a reader recognizes the row before reading it */
+  icon: React.ComponentType<{ className?: string }>;
+  /** Tailwind text colour for the icon */
+  color: string;
+  /** Tailwind background for the icon tile */
+  bgColor: string;
 }
 
 const EXTERNAL_ID_CONFIGS: ExternalIdConfig[] = [
@@ -45,51 +53,81 @@ const EXTERNAL_ID_CONFIGS: ExternalIdConfig[] = [
     key: 'arxivId',
     label: 'arXiv',
     buildUrl: (id) => `https://arxiv.org/abs/${id}`,
+    icon: BookText,
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 dark:bg-red-950',
   },
   {
     key: 'pmid',
     label: 'PubMed',
     buildUrl: (id) => `https://pubmed.ncbi.nlm.nih.gov/${id}`,
+    icon: Microscope,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 dark:bg-blue-950',
   },
   {
     key: 'pmcid',
     label: 'PubMed Central',
     buildUrl: (id) => `https://www.ncbi.nlm.nih.gov/pmc/articles/${id}`,
+    icon: Microscope,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 dark:bg-blue-950',
   },
   {
     key: 'ssrnId',
     label: 'SSRN',
     buildUrl: (id) => `https://ssrn.com/abstract=${id}`,
+    icon: Landmark,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 dark:bg-amber-950',
   },
   {
     key: 'osf',
     label: 'OSF',
     buildUrl: (id) => `https://osf.io/${id}`,
+    icon: FlaskConical,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50 dark:bg-indigo-950',
   },
   {
     key: 'zenodoDoi',
     label: 'Zenodo',
     buildUrl: (doi) => `https://doi.org/${doi}`,
+    icon: Landmark,
+    color: 'text-sky-600',
+    bgColor: 'bg-sky-50 dark:bg-sky-950',
   },
   {
     key: 'openAlexId',
     label: 'OpenAlex',
     buildUrl: (id) => `https://openalex.org/works/${id}`,
+    icon: BookText,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 dark:bg-emerald-950',
   },
   {
     key: 'semanticScholarId',
     label: 'Semantic Scholar',
     buildUrl: (id) => `https://api.semanticscholar.org/CorpusID:${id}`,
+    icon: BookText,
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-50 dark:bg-violet-950',
   },
   {
     key: 'coreSid',
     label: 'CORE',
     buildUrl: (id) => `https://core.ac.uk/outputs/${id}`,
+    icon: BookText,
+    color: 'text-teal-600',
+    bgColor: 'bg-teal-50 dark:bg-teal-950',
   },
   {
     key: 'magId',
     label: 'Microsoft Academic (legacy)',
     buildUrl: () => null,
+    icon: BookText,
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50 dark:bg-gray-900',
   },
 ];
 
@@ -98,36 +136,34 @@ const EXTERNAL_ID_CONFIGS: ExternalIdConfig[] = [
 // =============================================================================
 
 /**
- * Single external identifier row.
+ * One external identifier, rendered as the page's standard link card.
+ *
+ * @remarks
+ * The identifier leads, because that is the part a reader is looking for --
+ * the same reason the repository card leads with `owner/repo` rather than with
+ * "GitHub". The service name sits beside it as a badge, and the address it
+ * resolves to sits under it, so the row says where it goes before it is
+ * clicked.
  */
 function ExternalIdRow({
-  label,
+  config,
   value,
   url,
 }: {
-  label: string;
+  config: ExternalIdConfig;
   value: string;
   url: string | null;
 }) {
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border bg-card min-h-[44px]">
-      <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap sm:flex-nowrap">
-        <span className="text-sm font-medium shrink-0">{label}</span>
-        {url ? (
-          <a
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm text-muted-foreground hover:text-foreground hover:underline flex items-center gap-1 min-w-0 min-h-[44px] sm:min-h-0"
-          >
-            <span className="truncate font-mono">{value}</span>
-            <ExternalLink className="h-3 w-3 shrink-0" />
-          </a>
-        ) : (
-          <span className="text-sm text-muted-foreground font-mono truncate">{value}</span>
-        )}
-      </div>
-    </div>
+    <ResourceCard
+      icon={config.icon}
+      iconColor={config.color}
+      iconBg={config.bgColor}
+      title={value}
+      badge={config.label}
+      subtitle={url ? summarizeUrl(url) : 'No public address'}
+      {...(url ? { href: url } : {})}
+    />
   );
 }
 
@@ -170,7 +206,7 @@ export function ExternalIdsPanel({ externalIds, className }: ExternalIdsPanelPro
         {presentIds.map((config) => {
           const value = externalIds[config.key] as string;
           const url = config.buildUrl(value);
-          return <ExternalIdRow key={config.key} label={config.label} value={value} url={url} />;
+          return <ExternalIdRow key={config.key} config={config} value={value} url={url} />;
         })}
       </CardContent>
     </Card>

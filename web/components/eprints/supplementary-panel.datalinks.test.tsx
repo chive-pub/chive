@@ -99,3 +99,22 @@ describe('SupplementaryPanel data links', () => {
     expect(code.textContent).toContain('pub.layers.catalog.collection/acceptability');
   });
 });
+
+describe('SupplementaryPanel count', () => {
+  it('counts linked datasets, which the panel also renders', () => {
+    // The badge read "0" above a card, because it counted only uploaded files.
+    render(
+      <SupplementaryPanel
+        items={[]}
+        dataLinks={[
+          {
+            uri: 'at://did:plc:a/pub.layers.eprint.dataLink/1',
+            dataKind: 'corpus',
+            catalogRef: 'at://did:plc:a/pub.layers.catalog.collection/c1',
+          },
+        ]}
+      />
+    );
+    expect(screen.getByText('1')).toBeInTheDocument();
+  });
+});
