@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **A paper shared from Chive carried the generic Chive card.** The share dialog uploads the OpenGraph image as a post thumbnail rather than letting Bluesky refetch the page, and the url it fetched was hardcoded to `?type=default` — so the same link pasted straight into Bluesky showed the paper's own card while sharing it from the paper's page did not. Both now build the url through one helper, which is also what stops them drifting apart again.
+
 - **A record referencing several papers backlinked only one of them.** `backlinks` was unique on `source_uri` alone, while the plugin that writes them emits one row per referenced eprint — so each write overwrote the last and every paper but the final one silently lost its backlink. A Cosmik connection names two eprints by definition and showed on only one; an essay citing three showed on one. The identity of a backlink is the pair, and it is now keyed that way.
 
 ## [0.20.1] - 2026-09-04

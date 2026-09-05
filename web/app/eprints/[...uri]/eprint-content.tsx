@@ -101,6 +101,7 @@ import { createBlueskyPost, type ShareContent } from '@/lib/bluesky';
 import { EprintDocument } from '@/components/documents/eprint-document';
 import { detectDocumentFormat, formatExtension } from '@/lib/documents/document-format';
 import { toast } from 'sonner';
+import { eprintOgImageUrl } from '@/lib/metadata/og-image-url';
 
 /**
  * Map document format to display label for the document tab.
@@ -593,15 +594,26 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
     [agent, eprint, uri, endorsementToShare]
   );
 
-  // Build share content for the dialog
-  // Use default OG image (Chive logo/branding) for all shares
+  // Build share content for the dialog. The card is the paper's own, built by
+  // the same helper the page's metadata uses: a share embeds this image as a
+  // blob rather than letting Bluesky refetch the page, so hardcoding the
+  // default here meant a paper shared from Chive carried generic branding
+  // while the same link pasted into Bluesky carried the paper.
   const shareContent: ShareContent | null = eprint
     ? {
         type: 'eprint',
         url: `${typeof window !== 'undefined' ? window.location.origin : ''}/eprints/${encodeURIComponent(uri)}`,
         title: eprint.title,
         description: (eprint.abstract ?? '').slice(0, 200),
-        ogImageUrl: '/api/og?type=default',
+        ogImageUrl: eprintOgImageUrl({
+          uri,
+          title: eprint.title,
+          authorNames: eprint.authors?.map((a) => a.name),
+          abstract: eprint.abstract ?? undefined,
+          createdAt: eprint.createdAt,
+          keywords: eprint.keywords,
+          publicationStatusSlug: eprint.publicationStatusSlug,
+        }),
       }
     : null;
 
