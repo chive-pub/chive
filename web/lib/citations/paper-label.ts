@@ -26,6 +26,8 @@ export interface CitedPaper {
   readonly authors?: readonly string[];
   readonly year?: number;
   readonly venue?: string;
+  /** DOI of the published version, when the record carries one. */
+  readonly doi?: string;
 }
 
 /**
@@ -202,4 +204,27 @@ export function paperLabel(
  */
 export function papersByUri(papers: readonly CitedPaper[] | undefined): Map<string, CitedPaper> {
   return new Map((papers ?? []).map((paper) => [paper.uri, paper]));
+}
+
+/**
+ * Names every author, as a bibliography would.
+ *
+ * @param authors - The author names the API gave, in order
+ * @returns The full list, or undefined when there is none
+ *
+ * @remarks
+ * Distinct from {@link formatAuthors}, which shortens to "et al." because it
+ * writes labels that have to fit on a graph node. A hover card has the room,
+ * and a bibliography entry that hid most of its authors would not be one. Order
+ * is preserved for the same reason it is there: first authorship is meaningful.
+ *
+ * @public
+ */
+export function formatAuthorList(authors: readonly string[] | undefined): string | undefined {
+  const named = (authors ?? []).map((author) => author.trim()).filter((author) => author !== '');
+
+  if (named.length === 0) return undefined;
+  if (named.length === 1) return named[0];
+  if (named.length === 2) return `${named[0]} and ${named[1]}`;
+  return `${named.slice(0, -1).join(', ')}, and ${named[named.length - 1]}`;
 }
