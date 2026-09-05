@@ -4,7 +4,8 @@
  * @remarks
  * The eprint page's Network tab lists citations as text. This route is where
  * the interactive graph lives, since a force-directed network needs more room
- * than a tab panel gives it.
+ * than a tab panel gives it -- it draws the whole Chive citation graph, opened
+ * on the neighbourhood of one paper.
  *
  * The AT-URI arrives as one percent-encoded path segment, so the route mirrors
  * `/eprints/edit/[...uri]` rather than nesting under `/eprints/[...uri]`: a
@@ -19,7 +20,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 
-import { CitationVisualization } from '@/components/eprints/citation-visualization';
+import { CitationNetwork } from '@/components/eprints/citation-network';
 import { createServerClient } from '@/lib/api/client';
 import type { Record as SubmissionRecord } from '@/lib/api/generated/types/pub/chive/eprint/submission';
 
@@ -99,9 +100,13 @@ export default async function CitationNetworkPage({ params }: CitationNetworkPag
         </Link>
         <h1 className="text-3xl font-bold">Citation network</h1>
         {title ? <p className="mt-2 text-muted-foreground">{title}</p> : null}
+        <p className="mt-1 text-sm text-muted-foreground">
+          Hover a paper for its details, click one to light up what it cites and what cites it, and
+          zoom out to see where this paper sits in the wider network.
+        </p>
       </div>
 
-      <CitationVisualization eprintUri={fullUri} height="70vh" />
+      <CitationNetwork eprintUri={fullUri} height="70vh" />
     </div>
   );
 }

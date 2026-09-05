@@ -135,8 +135,8 @@ export { ConferencePanel } from './conference-panel';
 export type { ConferencePanelProps } from './conference-panel';
 
 // Citation visualization
-export { CitationVisualization, CitationVisualizationSkeleton } from './citation-visualization';
-export type { CitationVisualizationProps } from './citation-visualization';
+export { CitationNetwork, CitationNetworkSkeleton } from './citation-network';
+export type { CitationNetworkProps } from './citation-network/citation-network';
 
 // Schema migration banner
 export { SchemaMigrationBanner, SchemaMigrationBannerSkeleton } from './schema-migration-banner';
