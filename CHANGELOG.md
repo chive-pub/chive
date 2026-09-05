@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2026-09-05
+
+### Added
+
+- **A citation network that is a network.** The graph on an eprint's network page fetched one paper's citing and cited lists, stacked them in two columns, and had no way to draw anything else — so it could only ever show a star. It could not show that two of a paper's citers also cite each other, which is the one thing a network picture exists for.
+
+  `pub.chive.discovery.getCitationNetwork` reads the citation graph as a graph. The whole Chive-to-Chive network arrives in one request, laid out by simulation so that proximity means something, and a reader can zoom out from the paper they came for to see where it sits among the rest. The focused paper's own edges are read before anyone else's, so a network cut short at the limit still contains the paper it was asked about — the one guarantee a client cannot recover for itself.
+
+  Colour carries two things at once. What a paper is to the paper being read against: mustard for that paper, red for the papers it cites, blue for the papers citing it. And which paper that was: the paper a reader arrived on stays solid however far they wander, while a paper they click lights its own neighbourhood in the same three hues a shade paler. Clicking around the graph never repaints where they started, which is what makes it explorable rather than disorienting.
+
+  Hovering a node gives the bibliography entry — every author named, year, venue, DOI — because the nodes themselves carry only a surname and a year. The old ones carried a truncated title and two badges, which is why four fitted on a screen and four hundred could not.
+
+### Fixed
+
+- **The citation graph had no arrows, and no lines either.** Every edge was styled `stroke: var(--green-500)`, a variable this application has never defined, so the browser drew nothing between the boxes at all: no line, no arrowhead, no direction. A citation without direction is not a citation — "A cites B" and "B cites A" were the same absent line. The network now draws from a fixed palette a stylesheet cannot silently withdraw, with an arrowhead on every edge in the edge's own colour, and the styling has moved out of the component into pure functions that a test can hold.
+
+- **Two of the links out of the atmosphere panel went nowhere.** Carried over from the same pass: a `network.cosmik.card` was linked as though it were a Cosmik collection, which 404s, and every Leaflet reference was linked as a document because the indexing plugin files comments under the same source type.
+
+- **An eprint reference could not be named in a bibliography.** `eprintRef` carried title, authors, year and venue but not the DOI, so a hover card built from it was a citation with the identifier missing.
+
 ## [0.21.0] - 2026-09-05
 
 ### Added
@@ -1237,7 +1257,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.21.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.0...HEAD
+[0.22.0]: https://github.com/chive-pub/chive/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/chive-pub/chive/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/chive-pub/chive/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/chive-pub/chive/compare/v0.20.0...v0.20.1

@@ -1,0 +1,94 @@
+{
+  "lexicon": 1,
+  "id": "pub.chive.discovery.getCitationNetwork",
+  "revision": 1,
+  "defs": {
+    "main": {
+      "type": "query",
+      "description": "Get the citation graph between Chive-indexed eprints, so a paper can be shown in the context of the whole network rather than only its own neighbours. Optionally focused on one eprint, whose own edges are then guaranteed to survive truncation.",
+      "parameters": {
+        "type": "params",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the eprint the reader is looking at. Its own citing and cited edges are included before any others, so a truncated network still contains the paper it was asked about."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5000,
+            "default": 1500,
+            "description": "Maximum number of citation edges to return."
+          },
+          "onlyInfluential": {
+            "type": "boolean",
+            "default": false,
+            "description": "Restrict the network to citations marked influential."
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": ["papers", "citations", "truncated"],
+          "properties": {
+            "focusUri": {
+              "type": "string",
+              "format": "at-uri",
+              "description": "Echo of the requested focus, present only when that eprint is in the network."
+            },
+            "papers": {
+              "type": "array",
+              "description": "Every eprint appearing at either end of a returned citation, once each. A lookup rather than metadata repeated on each edge.",
+              "items": {
+                "type": "ref",
+                "ref": "pub.chive.discovery.getCitations#eprintRef"
+              }
+            },
+            "citations": {
+              "type": "array",
+              "description": "Directed edges. A citation runs from the paper doing the citing to the paper being cited.",
+              "items": {
+                "type": "ref",
+                "ref": "#networkEdge"
+              }
+            },
+            "truncated": {
+              "type": "boolean",
+              "description": "Whether the network was cut short at the limit. The focus paper's own edges are never the ones dropped."
+            },
+            "totalCitations": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many citation edges the whole network holds, whether or not they were all returned."
+            }
+          }
+        }
+      },
+      "errors": [{ "name": "NotFound" }, { "name": "ServiceUnavailable" }]
+    },
+    "networkEdge": {
+      "type": "object",
+      "required": ["citingUri", "citedUri"],
+      "properties": {
+        "citingUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the paper doing the citing."
+        },
+        "citedUri": {
+          "type": "string",
+          "format": "at-uri",
+          "description": "AT-URI of the paper being cited."
+        },
+        "isInfluential": {
+          "type": "boolean",
+          "description": "Whether the enrichment source marked this citation influential."
+        }
+      },
+      "description": "One directed citation between two Chive eprints."
+    }
+  }
+}

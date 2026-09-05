@@ -56,6 +56,7 @@ import type { AtUri, DID } from '../../types/atproto.js';
 import { DatabaseError, ValidationError } from '../../types/errors.js';
 import type { IDatabasePool } from '../../types/interfaces/database.interface.js';
 import type {
+  CitationNetworkOptions,
   CitationQueryOptions,
   CitationRelationship,
   EnrichmentInput,
@@ -92,6 +93,15 @@ export interface EprintRef {
   readonly authors: readonly string[];
   readonly year?: number;
   readonly venue?: string;
+  /**
+   * DOI of the published version, when the eprint records one.
+   *
+   * @remarks
+   * A hover card that names a paper without it is not a bibliography entry,
+   * and the network view exists to let a reader recognise a node without
+   * leaving the graph.
+   */
+  readonly doi?: string;
 }
 
 /**
@@ -1428,6 +1438,7 @@ export class DiscoveryService implements IDiscoveryService {
       authors: unknown;
       year: number | null;
       venue: string | null;
+      doi: string | null;
     }>(
       `SELECT
          uri,
@@ -1445,7 +1456,8 @@ export class DiscoveryService implements IDiscoveryService {
              THEN LEFT(published_version->>'publishedAt', 4)::int
            ELSE NULL
          END AS year,
-         published_version->>'journal' AS venue
+         published_version->>'journal' AS venue,
+         published_version->>'doi' AS doi
        FROM eprints_index
        WHERE uri = ANY($1)`,
       [[...new Set(uris)]]
@@ -1460,6 +1472,7 @@ export class DiscoveryService implements IDiscoveryService {
           authors: parseAuthorNames(row.authors),
           ...(row.year !== null ? { year: row.year } : {}),
           ...(row.venue ? { venue: row.venue } : {}),
+          ...(row.doi ? { doi: row.doi } : {}),
         },
       ])
     );
@@ -1471,6 +1484,30 @@ export class DiscoveryService implements IDiscoveryService {
     readonly influentialCitedByCount: number;
   }> {
     return this.citationGraph.getCitationCounts(uri);
+  }
+
+  /**
+   * Reads the citation graph as a graph.
+   *
+   * @param options - Which network to read and how much of it
+   * @returns Directed citations, the network's size, and whether it was cut
+   *
+   * @remarks
+   * Delegates to the graph store. Kept on the service because every other
+   * citation read goes through here, and a handler reaching past it into Neo4j
+   * would be the only one that did.
+   */
+  async getCitationNetwork(options?: CitationNetworkOptions): Promise<{
+    citations: CitationRelationship[];
+    total: number;
+    truncated: boolean;
+  }> {
+    const result = await this.citationGraph.getCitationNetwork(options);
+    return {
+      citations: [...result.citations],
+      total: result.total,
+      truncated: result.truncated,
+    };
   }
 
   /**

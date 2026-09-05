@@ -16,6 +16,8 @@
             "pub.chive.eprint.listByAuthor",
             "pub.chive.eprint.listCitations",
             "pub.chive.eprint.listRelatedWorks",
+            "pub.chive.discovery.getCitationNetwork",
+            "pub.chive.discovery.getCitations",
             "pub.chive.graph.getNode",
             "pub.chive.graph.listNodes",
             "pub.chive.graph.searchNodes",

@@ -861,6 +861,34 @@ export interface CoCitedPaper extends RankableItem {
  * @public
  * @since 0.1.0
  */
+/**
+ * Options for reading the citation network.
+ *
+ * @public
+ */
+export interface CitationNetworkOptions {
+  /** Paper whose edges are guaranteed to be included. */
+  readonly focusUri?: AtUri;
+  /** Maximum edges to return. */
+  readonly limit?: number;
+  /** Restrict to citations the enrichment source marked influential. */
+  readonly onlyInfluential?: boolean;
+}
+
+/**
+ * The citation network, as edges plus a total.
+ *
+ * @public
+ */
+export interface CitationNetworkResult {
+  /** Directed citations, from the citing paper to the cited one. */
+  readonly citations: readonly CitationRelationship[];
+  /** How many edges the whole network holds, whether or not all were returned. */
+  readonly total: number;
+  /** Whether the network was cut short at the limit. */
+  readonly truncated: boolean;
+}
+
 export interface ICitationGraph {
   /**
    * Upserts a batch of citations into the graph.
@@ -905,6 +933,25 @@ export interface ICitationGraph {
    * @returns Papers referenced by the given eprint
    */
   getReferences(paperUri: AtUri, options?: CitationQueryOptions): Promise<CitationQueryResult>;
+
+  /**
+   * Reads the citation graph as a graph, rather than one paper's neighbours.
+   *
+   * @param options - Which network to read and how much of it
+   * @returns Every directed citation in the network, and how many there are
+   *
+   * @remarks
+   * The per-paper queries above answer "who cites this one". They cannot
+   * answer where a paper sits among the others, because they never return an
+   * edge that does not touch the paper asked about -- so a view built on them
+   * shows a star and calls it a network.
+   *
+   * When `focusUri` is given, that paper's own edges are collected first and
+   * the rest of the network fills the remaining budget. A truncated network
+   * therefore always still contains the paper the reader is looking at, which
+   * is the one guarantee the caller cannot recover for itself.
+   */
+  getCitationNetwork(options?: CitationNetworkOptions): Promise<CitationNetworkResult>;
 
   /**
    * Finds papers frequently cited together with a given eprint.

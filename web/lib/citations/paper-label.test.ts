@@ -19,6 +19,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  formatAuthorList,
   formatAuthors,
   formatSurname,
   paperLabel,
@@ -172,5 +173,31 @@ describe('papersByUri', () => {
 
   it('produces an empty index when the response named nothing', () => {
     expect(papersByUri(undefined).size).toBe(0);
+  });
+});
+
+describe('formatAuthorList', () => {
+  it('names every author, unlike the graph label', () => {
+    // A hover card is a bibliography entry; hiding most of the authors would
+    // make it something else.
+    expect(formatAuthorList(['Aaron Steven White', 'Rachel Dudley', 'Jeffrey Lidz'])).toBe(
+      'Aaron Steven White, Rachel Dudley, and Jeffrey Lidz'
+    );
+  });
+
+  it('joins two authors with and', () => {
+    expect(formatAuthorList(['Aaron Steven White', 'Kyle Rawlins'])).toBe(
+      'Aaron Steven White and Kyle Rawlins'
+    );
+  });
+
+  it('leaves a single author alone', () => {
+    expect(formatAuthorList(['Aaron Steven White'])).toBe('Aaron Steven White');
+  });
+
+  it('has nothing to say when the record named nobody', () => {
+    expect(formatAuthorList([])).toBeUndefined();
+    expect(formatAuthorList(undefined)).toBeUndefined();
+    expect(formatAuthorList(['  ', ''])).toBeUndefined();
   });
 });

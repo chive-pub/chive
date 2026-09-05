@@ -101,6 +101,7 @@ function createMockCitationGraph(): ICitationGraph {
     upsertCitationsBatch: vi.fn().mockResolvedValue(undefined),
     ensureEprintNodes: vi.fn().mockResolvedValue(undefined),
     getCitingPapers: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
+    getCitationNetwork: vi.fn().mockResolvedValue({ citations: [], total: 0, truncated: false }),
     getReferences: vi.fn().mockResolvedValue({ citations: [], total: 0, hasMore: false }),
     findCoCitedPapers: vi.fn().mockResolvedValue([]),
     getCitationCounts: vi.fn().mockResolvedValue({
