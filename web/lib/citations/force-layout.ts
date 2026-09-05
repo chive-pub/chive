@@ -42,6 +42,15 @@ export interface LayoutOptions {
   /** How many rounds to run. */
   readonly iterations?: number;
   /**
+   * The size a node is drawn at, so the layout can stop them overlapping.
+   *
+   * @remarks
+   * The simulation treats nodes as points, which is fine for the shape of the
+   * network and useless for reading it: two papers a hundred units apart
+   * overlap completely when each is drawn a hundred and eighty units wide.
+   */
+  readonly nodeSize?: { readonly width: number; readonly height: number };
+  /**
    * A node to place at the origin.
    *
    * @remarks
@@ -197,6 +206,10 @@ export function forceLayout(
     }
   }
 
+  if (options.nodeSize) {
+    separate(xs, ys, count, options.nodeSize.width, options.nodeSize.height);
+  }
+
   // Put the focus at the origin, or the centroid when there is none.
   let originX = 0;
   let originY = 0;
@@ -218,4 +231,65 @@ export function forceLayout(
   }
 
   return positions;
+}
+
+/**
+ * Pushes overlapping nodes apart.
+ *
+ * @param xs - Node x positions, modified in place
+ * @param ys - Node y positions, modified in place
+ * @param count - How many nodes there are
+ * @param width - The width each node is drawn at
+ * @param height - The height each node is drawn at
+ *
+ * @remarks
+ * Run after the simulation rather than during it, so it cannot distort the
+ * shape the simulation found -- it only stops the result from being unreadable.
+ * Each round separates any overlapping pair along whichever axis they overlap
+ * least, which moves them the shortest distance that resolves it.
+ *
+ * A fixed, small number of rounds. Perfect separation is not always possible in
+ * a dense graph and is not worth an unbounded loop; what matters is that labels
+ * stop sitting on top of each other.
+ */
+function separate(
+  xs: Float64Array,
+  ys: Float64Array,
+  count: number,
+  width: number,
+  height: number
+): void {
+  // A little air, so adjacent pills read as separate rather than as touching.
+  const minX = width + 12;
+  const minY = height + 10;
+
+  for (let round = 0; round < 60; round += 1) {
+    let moved = false;
+
+    for (let i = 0; i < count; i += 1) {
+      for (let j = i + 1; j < count; j += 1) {
+        const dx = xs[j] - xs[i];
+        const dy = ys[j] - ys[i];
+        const overlapX = minX - Math.abs(dx);
+        const overlapY = minY - Math.abs(dy);
+        if (overlapX <= 0 || overlapY <= 0) continue;
+
+        moved = true;
+        // Separate along the axis that needs the least movement. Scaled by the
+        // axis extents so a wide node is not pushed a wide node's distance
+        // vertically just because the vertical overlap is numerically smaller.
+        if (overlapX / minX < overlapY / minY) {
+          const push = (overlapX / 2) * (dx >= 0 ? 1 : -1);
+          xs[i] -= push;
+          xs[j] += push;
+        } else {
+          const push = (overlapY / 2) * (dy >= 0 ? 1 : -1);
+          ys[i] -= push;
+          ys[j] += push;
+        }
+      }
+    }
+
+    if (!moved) break;
+  }
 }

@@ -150,3 +150,57 @@ describe('forceLayout', () => {
     }
   });
 });
+
+describe('forceLayout node separation', () => {
+  const SIZE = { width: 184, height: 26 };
+
+  /** Whether two nodes' drawn boxes overlap. */
+  function overlaps(
+    positions: Map<string, { x: number; y: number }>,
+    a: string,
+    b: string
+  ): boolean {
+    const pa = positions.get(a);
+    const pb = positions.get(b);
+    if (!pa || !pb) throw new Error('missing node');
+    return Math.abs(pa.x - pb.x) < SIZE.width && Math.abs(pa.y - pb.y) < SIZE.height;
+  }
+
+  it('stops drawn nodes sitting on top of each other', () => {
+    // The simulation treats nodes as points, so a layout that reads fine as
+    // dots can be unreadable once each dot is 184 pixels wide.
+    const n = nodes(...Array.from({ length: 12 }, (_, i) => `p${String(i)}`));
+    const l = Array.from({ length: 11 }, (_, i) => link('p0', `p${String(i + 1)}`));
+
+    const positions = forceLayout(n, l, { nodeSize: SIZE });
+
+    for (let i = 0; i < 12; i += 1) {
+      for (let j = i + 1; j < 12; j += 1) {
+        expect(overlaps(positions, `p${String(i)}`, `p${String(j)}`)).toBe(false);
+      }
+    }
+  });
+
+  it('leaves the shape of the network alone', () => {
+    // Separation runs after the simulation, so cited papers must still end up
+    // nearer than unrelated ones.
+    const positions = forceLayout(nodes('a', 'b', 'far'), [link('a', 'b')], { nodeSize: SIZE });
+    expect(gap(positions, 'a', 'b')).toBeLessThan(gap(positions, 'a', 'far'));
+  });
+
+  it('stays deterministic with separation on', () => {
+    const n = nodes('a', 'b', 'c', 'd', 'e', 'f');
+    const l = [link('a', 'b'), link('a', 'c'), link('a', 'd'), link('e', 'f')];
+    const first = forceLayout(n, l, { nodeSize: SIZE });
+    const second = forceLayout(n, l, { nodeSize: SIZE });
+    expect([...second.entries()]).toEqual([...first.entries()]);
+  });
+
+  it('keeps the focus at the origin after separating', () => {
+    const positions = forceLayout(nodes('a', 'b', 'c'), [link('a', 'b')], {
+      centerOn: 'a',
+      nodeSize: SIZE,
+    });
+    expect(positions.get('a')).toEqual({ x: 0, y: 0 });
+  });
+});

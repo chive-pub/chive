@@ -105,7 +105,7 @@ function CitationNetworkCanvas({ eprintUri, height = '70vh', className }: Citati
     return forceLayout(
       uris.map((uri) => ({ id: uri })),
       citations.map((citation) => ({ source: citation.citingUri, target: citation.citedUri })),
-      { centerOn: focusUri }
+      { centerOn: focusUri, nodeSize: { width: NODE_WIDTH, height: NODE_HEIGHT } }
     );
   }, [citations, focusUri]);
 
