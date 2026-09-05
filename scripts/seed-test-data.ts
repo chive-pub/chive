@@ -490,7 +490,7 @@ export async function seedPostgres(): Promise<void> {
         await client.query(
           `INSERT INTO backlinks (source_uri, source_type, source_did, target_uri, context, indexed_at, is_deleted)
            VALUES ($1, $2, $3, $4, $5, $6, false)
-           ON CONFLICT (source_uri) DO UPDATE SET context = EXCLUDED.context`,
+           ON CONFLICT (source_uri, target_uri) DO UPDATE SET context = EXCLUDED.context`,
           [
             backlink.sourceUri,
             backlink.sourceType,
