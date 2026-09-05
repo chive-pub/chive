@@ -3,6 +3,8 @@
 import { ExternalLink, Database, FlaskConical, FolderOpen } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { ResourceCard, type ResourceStat } from '@/components/links/resource-card';
+import { summarizeUrl } from '@/lib/atproto/at-uri-links';
 import { cn } from '@/lib/utils';
 import type { DatasetIntegration } from '@/lib/hooks/use-integrations';
 
@@ -90,31 +92,24 @@ export function DatasetLinkItem({ dataset, variant = 'badge', className }: Datas
     );
   }
 
-  // Card variant
+  // Card variant, in the page's standard shape: the deposit's own title leads,
+  // the repository names itself beside it, and the DOI and address read as
+  // facts under it rather than as two anonymous grey lines.
+  const stats: ResourceStat[] = [];
+  if (dataset.doi) stats.push({ label: `DOI: ${dataset.doi}` });
+
   return (
-    <a
+    <ResourceCard
+      className={className}
+      icon={Icon}
+      iconColor="text-white"
+      iconBg={color}
+      title={dataset.title || name}
+      badge={name}
+      subtitle={dataset.url ? summarizeUrl(dataset.url) : undefined}
+      stats={stats}
       href={dataset.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        'flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50 no-underline',
-        className
-      )}
-    >
-      <div className={cn('flex h-8 w-8 items-center justify-center rounded-md shrink-0', color)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-sm font-medium">{name}</div>
-          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-        </div>
-        <p className="text-xs text-muted-foreground truncate">{dataset.title}</p>
-        {dataset.doi && (
-          <span className="text-xs text-muted-foreground font-mono">{dataset.doi}</span>
-        )}
-      </div>
-    </a>
+    />
   );
 }
 

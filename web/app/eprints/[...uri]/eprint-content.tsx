@@ -60,6 +60,7 @@ import { IntegrationPanel } from '@/components/integrations';
 import { RelatedPapersPanel, CitationSummary, CitationListPanel } from '@/components/discovery';
 import { isRichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
+import { useBacklinkCounts } from '@/lib/hooks/use-backlinks';
 import { EnrichmentPanel } from '@/components/enrichment';
 import { Pencil, Trash2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -219,6 +220,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   const createReview = useCreateReview();
   const updateReview = useUpdateReview();
   const deleteReview = useDeleteReview();
+
+  // How many records elsewhere on the network refer to this paper. Read here
+  // only for the tab's count; the panel fetches the references themselves.
+  const { data: backlinkCounts } = useBacklinkCounts(uri);
+  const backlinkTotal = backlinkCounts?.total ?? 0;
 
   // Annotation hooks (separate from reviews -- annotations have text span targets)
   const { data: annotationsData } = useAnnotations(uri);
@@ -859,6 +865,19 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           <TabsTrigger value="related">Related</TabsTrigger>
           <TabsTrigger value="network">Network</TabsTrigger>
           <TabsTrigger value="citations">Citations</TabsTrigger>
+          {/* Everything the wider network has said about this paper, gathered
+              in one place. It used to sit at the bottom of the citations tab,
+              under a heading that named none of the applications it covered,
+              which is where a reader looking for it would never think to
+              look. */}
+          <TabsTrigger value="atmosphere" className="gap-1.5">
+            Atmosphere
+            {backlinkTotal > 0 && (
+              <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-xs">
+                {backlinkTotal}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="metadata">Metadata</TabsTrigger>
           {eprint.versions && eprint.versions.length > 1 && (
             <TabsTrigger value="versions">Versions</TabsTrigger>
@@ -1422,7 +1441,11 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         {/* Citations tab */}
         <TabsContent value="citations" className="space-y-6">
           <CitationListPanel eprintUri={uri} editable={isAuthenticated} />
-          <BacklinksPanel eprintUri={uri} />
+        </TabsContent>
+
+        {/* Atmosphere tab */}
+        <TabsContent value="atmosphere" className="space-y-6">
+          <BacklinksPanel eprintUri={uri} showEmpty />
         </TabsContent>
 
         {/* Metadata tab */}

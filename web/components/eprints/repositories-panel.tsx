@@ -10,12 +10,27 @@
  * @packageDocumentation
  */
 
-import { ExternalLink, Github, Database, Code, Box, FlaskConical, FileText } from 'lucide-react';
+import {
+  ExternalLink,
+  Github,
+  Database,
+  Code,
+  Box,
+  FlaskConical,
+  FileText,
+  CalendarClock,
+  Fingerprint,
+} from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DatasetSnippet } from '@/components/eprints/dataset-snippet';
+import {
+  ResourceCard,
+  type ResourceAction,
+  type ResourceStat,
+} from '@/components/links/resource-card';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { describeAtUri, summarizeUrl } from '@/lib/atproto/at-uri-links';
 import type { Repositories, Preregistration } from '@/lib/api/schema';
 
 // =============================================================================
@@ -331,14 +346,18 @@ function RepositoryCard({
   config: Record<string, PlatformConfig>;
   doi?: string;
 }) {
-  if (!url && !recordUri) return null;
+  // An entry with no address at all still says the author named a resource,
+  // and the tab's count already counted it. Dropping the card silently left a
+  // tab reading "Code 2" over one card, which reads as a bug in Chive rather
+  // than as an incomplete record.
+  const hasAddress = Boolean(url ?? recordUri);
 
   // `recordUri` is where a record reference belongs; `url` is an address a
   // browser can open. Records written before the data shape had `recordUri`
   // put at-uris in `url`, so both are read -- the dedicated field first, the
   // legacy placement after it.
   const reference = recordUri ?? url ?? '';
-  const atKind = atUriKind(reference);
+  const atKind = hasAddress ? atUriKind(reference) : null;
 
   // A Layers dataset is named by its collection or corpus record, and the
   // entries written before the platform was recorded carry `platform: "other"`,
@@ -352,52 +371,51 @@ function RepositoryCard({
   // Use label if provided, otherwise platform config label
   const displayLabel = label || platformConfig.label;
 
-  // An AT-URI is not a browser address. Rendering it as an anchor gives a link
-  // that does nothing and an icon promising it opens somewhere, so the card
-  // drops both and offers the way in that does work: the URI itself, and the
-  // code that loads it.
+  // An AT-URI is not a browser address, so the card never puts one in an
+  // href. It does offer the two links that work: the publishing application's
+  // own page where that route is known, and a record browser, which resolves
+  // any AT-URI by reading it from the PDS that holds it.
   if (atKind) {
+    const record = describeAtUri(reference);
+    const actions: ResourceAction[] = [];
+    if (record?.webUrl) actions.push({ label: `Open in ${record.appName}`, href: record.webUrl });
+    if (record) actions.push({ label: 'View record', href: record.recordUrl });
+
     return (
-      <div className="flex items-start gap-3 p-3 rounded-lg border bg-card">
-        <div className={cn('shrink-0 p-2 rounded-md', platformConfig.bgColor)}>
-          <Icon className={cn('h-5 w-5', platformConfig.color)} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-medium truncate">{displayLabel}</span>
-            <Badge variant="outline" className="text-xs shrink-0">
-              {platformConfig.label}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground break-all mt-0.5">{reference}</p>
-          {atKind === 'collection' && <DatasetSnippet catalogRef={reference} />}
-          {atKind === 'corpus' && <DatasetSnippet corpusRef={reference} />}
-        </div>
-      </div>
+      <ResourceCard
+        icon={Icon}
+        iconColor={platformConfig.color}
+        iconBg={platformConfig.bgColor}
+        title={displayLabel}
+        badge={platformConfig.label}
+        subtitle={reference}
+        subtitleMono
+        actions={actions}
+      >
+        {atKind === 'collection' && <DatasetSnippet catalogRef={reference} />}
+        {atKind === 'corpus' && <DatasetSnippet corpusRef={reference} />}
+      </ResourceCard>
     );
   }
 
+  // The address is already in the record; it was simply never shown. A card
+  // headed "GitHub" over `aaronstevenwhite/chive` says what the one headed
+  // "GitHub" alone could not.
+  const stats: ResourceStat[] = [];
+  if (doi)
+    stats.push({ icon: Fingerprint, label: `DOI: ${doi}`, title: 'Digital Object Identifier' });
+
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-    >
-      <div className={cn('shrink-0 p-2 rounded-md', platformConfig.bgColor)}>
-        <Icon className={cn('h-5 w-5', platformConfig.color)} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{displayLabel}</span>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {platformConfig.label}
-          </Badge>
-        </div>
-        {doi && <p className="text-xs text-muted-foreground truncate mt-0.5">DOI: {doi}</p>}
-      </div>
-      <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-    </a>
+    <ResourceCard
+      icon={Icon}
+      iconColor={platformConfig.color}
+      iconBg={platformConfig.bgColor}
+      title={displayLabel}
+      badge={platformConfig.label}
+      subtitle={url ? summarizeUrl(url) : 'No address on the record'}
+      stats={stats}
+      {...(url ? { href: url } : {})}
+    />
   );
 }
 
@@ -410,35 +428,26 @@ function PreregistrationCard({ prereg }: { prereg: Preregistration }) {
   // Normalize platform slug for icon/color lookup
   const normalizedSlug = normalizePlatformSlug(platformSlugOf(prereg));
   const platformConfig = PREREG_PLATFORM_CONFIG[normalizedSlug] ?? PREREG_PLATFORM_CONFIG.other;
-  const Icon = platformConfig.icon;
-  // Use platform config label for display
-  const displayPlatform = platformConfig.label;
+
+  const stats: ResourceStat[] = [];
+  if (prereg.registrationDate) {
+    stats.push({
+      icon: CalendarClock,
+      label: `Registered ${new Date(prereg.registrationDate).toLocaleDateString()}`,
+    });
+  }
 
   return (
-    <a
+    <ResourceCard
+      icon={platformConfig.icon}
+      iconColor={platformConfig.color}
+      iconBg={platformConfig.bgColor}
+      title="Pre-registration"
+      badge={platformConfig.label}
+      subtitle={summarizeUrl(prereg.url)}
+      stats={stats}
       href={prereg.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="group flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
-    >
-      <div className={cn('shrink-0 p-2 rounded-md', platformConfig.bgColor)}>
-        <Icon className={cn('h-5 w-5', platformConfig.color)} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">Pre-registration</span>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {displayPlatform}
-          </Badge>
-        </div>
-        {prereg.registrationDate && (
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Registered: {new Date(prereg.registrationDate).toLocaleDateString()}
-          </p>
-        )}
-      </div>
-      <ExternalLink className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-    </a>
+    />
   );
 }
 

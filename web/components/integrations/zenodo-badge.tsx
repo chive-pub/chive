@@ -3,6 +3,7 @@
 import { ExternalLink, Download, Eye, Archive, Lock, Unlock } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
+import { ResourceCard, type ResourceStat } from '@/components/links/resource-card';
 import { cn } from '@/lib/utils';
 import type { ZenodoIntegration } from '@/lib/hooks/use-integrations';
 
@@ -20,9 +21,6 @@ export interface ZenodoBadgeProps {
  * Links to the Zenodo record page.
  */
 export function ZenodoBadge({ record, variant = 'badge', className }: ZenodoBadgeProps) {
-  const accessIcon =
-    record.accessRight === 'open' ? <Unlock className="h-3 w-3" /> : <Lock className="h-3 w-3" />;
-
   if (variant === 'badge') {
     return (
       <a
@@ -43,59 +41,31 @@ export function ZenodoBadge({ record, variant = 'badge', className }: ZenodoBadg
     );
   }
 
-  // Card variant
+  // Card variant. The same shape as every other link on the page: the record
+  // leads, the service names itself beside it, and what Zenodo knows about the
+  // deposit -- type, access, version, views, downloads -- reads as facts under
+  // it rather than as a row of unlabelled badges.
+  const stats: ResourceStat[] = [
+    { label: record.resourceType },
+    { icon: record.accessRight === 'open' ? Unlock : Lock, label: record.accessRight },
+  ];
+  if (record.version) stats.push({ label: `v${record.version}` });
+  if (record.stats) {
+    stats.push({ icon: Eye, label: `${record.stats.views.toLocaleString()} views` });
+    stats.push({ icon: Download, label: `${record.stats.downloads.toLocaleString()} downloads` });
+  }
+
   return (
-    <a
+    <ResourceCard
+      className={className}
+      icon={Archive}
+      iconColor="text-white"
+      iconBg="bg-[#024C79]"
+      title={record.doi}
+      badge="Zenodo"
+      description={record.title}
+      stats={stats}
       href={record.url}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={cn(
-        'flex flex-col gap-2 rounded-lg border p-4 transition-colors hover:bg-muted/50 no-underline',
-        className
-      )}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[#024C79] text-white">
-            <Archive className="h-4 w-4" />
-          </div>
-          <div>
-            <div className="text-sm font-medium">Zenodo</div>
-            <div className="text-xs text-muted-foreground font-mono">{record.doi}</div>
-          </div>
-        </div>
-        <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-      </div>
-
-      <p className="text-sm text-muted-foreground line-clamp-2">{record.title}</p>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary" className="text-xs">
-          {record.resourceType}
-        </Badge>
-        <Badge variant="outline" className="text-xs gap-1">
-          {accessIcon}
-          {record.accessRight}
-        </Badge>
-        {record.version && (
-          <Badge variant="outline" className="text-xs">
-            v{record.version}
-          </Badge>
-        )}
-      </div>
-
-      {record.stats && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Eye className="h-3 w-3" />
-            <span>{record.stats.views.toLocaleString()} views</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <Download className="h-3 w-3" />
-            <span>{record.stats.downloads.toLocaleString()} downloads</span>
-          </div>
-        </div>
-      )}
-    </a>
+    />
   );
 }

@@ -27,13 +27,18 @@ import {
   Download,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
 } from 'lucide-react';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  ResourceCard,
+  type ResourceAction,
+  type ResourceStat,
+} from '@/components/links/resource-card';
+import { describeAtUri } from '@/lib/atproto/at-uri-links';
 import { cn } from '@/lib/utils';
 
 // =============================================================================
@@ -160,47 +165,27 @@ function formatFileSize(bytes: number): string {
  */
 function SupplementaryItemCard({ item }: { item: SupplementaryItem }) {
   const config = CATEGORY_CONFIG[item.category];
-  const Icon = config.icon;
+
+  const stats: ResourceStat[] = [];
+  if (item.format) stats.push({ label: item.format.toUpperCase() });
+  if (item.size) stats.push({ label: formatFileSize(item.size) });
+
+  const actions: ResourceAction[] = [];
+  if (item.viewUrl) actions.push({ label: 'View', href: item.viewUrl });
+  if (item.downloadUrl) {
+    actions.push({ label: 'Download', href: item.downloadUrl, download: true, icon: Download });
+  }
 
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-      <div className={cn('shrink-0 mt-0.5', config.color)}>
-        <Icon className="h-5 w-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium truncate">{item.label}</span>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {config.label}
-          </Badge>
-        </div>
-        {item.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{item.description}</p>
-        )}
-        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
-          {item.format && <span className="uppercase">{item.format}</span>}
-          {item.size && <span>{formatFileSize(item.size)}</span>}
-        </div>
-      </div>
-      <div className="flex items-center gap-1 shrink-0">
-        {item.viewUrl && (
-          <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <a href={item.viewUrl} target="_blank" rel="noopener noreferrer">
-              <ExternalLink className="h-4 w-4" />
-              <span className="sr-only">View</span>
-            </a>
-          </Button>
-        )}
-        {item.downloadUrl && (
-          <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0">
-            <a href={item.downloadUrl} download>
-              <Download className="h-4 w-4" />
-              <span className="sr-only">Download</span>
-            </a>
-          </Button>
-        )}
-      </div>
-    </div>
+    <ResourceCard
+      icon={config.icon}
+      iconColor={config.color}
+      title={item.label}
+      badge={config.label}
+      description={item.description}
+      stats={stats}
+      actions={actions}
+    />
   );
 }
 
@@ -211,32 +196,38 @@ function SupplementaryItemCard({ item }: { item: SupplementaryItem }) {
  * `paperSection` is given prominence because it is what makes a link useful:
  * "the corpus" is an offer, "the corpus behind Table 3" is an answer.
  *
- * The card does not link out. All we hold is the AT-URI of the dataLink record
- * in its author's repository, and Layers' web routing is not settled, so any
- * URL we built from that URI today would be a guess that may 404. Showing the
- * dataset and saying where it lives is worth more than a broken link.
+ * Layers' web routing is still unsettled, so the card offers no address on
+ * layers.pub -- a URL built from the AT-URI today would be a guess. It does
+ * offer the record itself through a public record browser, which resolves any
+ * AT-URI by reading it from the repository that holds it, so the dataset is
+ * reachable rather than merely named.
  */
 function DataLinkCard({ link }: { link: DataLinkItem }) {
+  const reference = link.catalogRef ?? link.corpusRef;
+  const record = reference ? describeAtUri(reference) : null;
+
+  const stats: ResourceStat[] = [];
+  if (link.paperSection) stats.push({ label: link.paperSection });
+
+  const actions: ResourceAction[] = record
+    ? [{ label: 'View record', href: record.recordUrl }]
+    : [];
+
   return (
-    <div className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-colors">
-      <div className="shrink-0 mt-0.5 text-violet-500">
-        <Database className="h-5 w-5" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium truncate">{formatDataKind(link.dataKind)}</span>
-          {link.paperSection && (
-            <Badge variant="secondary" className="text-xs shrink-0">
-              {link.paperSection}
-            </Badge>
-          )}
-        </div>
-        {link.description && (
-          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{link.description}</p>
-        )}
-        <DatasetSnippet catalogRef={link.catalogRef} corpusRef={link.corpusRef} />
-      </div>
-    </div>
+    <ResourceCard
+      icon={Database}
+      iconColor="text-violet-600"
+      iconBg="bg-violet-50 dark:bg-violet-950"
+      title={formatDataKind(link.dataKind)}
+      badge="Layers"
+      subtitle={reference}
+      subtitleMono
+      description={link.description}
+      stats={stats}
+      actions={actions}
+    >
+      <DatasetSnippet catalogRef={link.catalogRef} corpusRef={link.corpusRef} />
+    </ResourceCard>
   );
 }
 
@@ -311,8 +302,11 @@ export function SupplementaryPanel({
           <CardTitle className="text-base flex items-center gap-2">
             <Paperclip className="h-4 w-4" />
             Supplementary Materials
+            {/* The panel holds uploaded files and datasets linked on Layers,
+                and it renders both. Counting only the first showed "0" above a
+                card. */}
             <Badge variant="secondary" className="ml-1">
-              {items.length}
+              {items.length + dataLinks.length}
             </Badge>
           </CardTitle>
         </div>

@@ -84,3 +84,67 @@ describe('legacy platform field', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.org/repo');
   });
 });
+
+describe('RepositoriesPanel link detail', () => {
+  it('shows which repository a card means, not merely which service', () => {
+    // A card headed "GitHub" said less than the URL it was built from already
+    // knew. The address was in the record the whole time; it was not shown.
+    render(
+      <RepositoriesPanel
+        only={['code']}
+        repositories={{
+          code: [
+            {
+              url: 'https://github.com/aaronstevenwhite/chive.git',
+              label: 'Chive',
+              platformSlug: 'github',
+            },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByText('github.com/aaronstevenwhite/chive')).toBeInTheDocument();
+  });
+
+  it('shows a DOI alongside the address when the record carries one', () => {
+    render(
+      <RepositoriesPanel
+        only={['data']}
+        repositories={{
+          data: [
+            {
+              url: 'https://zenodo.org/records/123',
+              label: 'Stimuli',
+              platformSlug: 'zenodo',
+              doi: '10.5281/zenodo.123',
+            },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByText('DOI: 10.5281/zenodo.123')).toBeInTheDocument();
+  });
+});
+
+describe('RepositoriesPanel entries without an address', () => {
+  it('renders an entry the author labelled but gave no address', () => {
+    // The tab count counts these, so dropping the card left a tab reading
+    // "Code 2" above one card.
+    render(
+      <RepositoriesPanel
+        only={['code']}
+        repositories={{
+          code: [
+            { url: 'https://github.com/a/b', label: 'Real repo', platformSlug: 'github' },
+            { label: 'Probe repo on Tangled', platformSlug: 'tangled' },
+          ],
+        }}
+      />
+    );
+    expect(screen.getByText('Real repo')).toBeInTheDocument();
+    expect(screen.getByText('Probe repo on Tangled')).toBeInTheDocument();
+    expect(screen.getByText('No address on the record')).toBeInTheDocument();
+    // It says so rather than offering a link that goes nowhere.
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+  });
+});
