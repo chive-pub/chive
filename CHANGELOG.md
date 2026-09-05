@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2026-09-05
+
+### Added
+
+- **An Atmosphere tab, holding everything the network has said about a paper.** References from elsewhere on the network used to sit at the bottom of the Citations tab, under a heading called "Backlinks", as a stack of collapsed accordions that fetched nothing until a reader thought to open one. The section names came from the counts endpoint, which buckets five ways — so a talk, a standard.site document, a Margin annotation and a Cosmik connection all hid behind a heading reading "Other Sources" that named none of them. They now have a tab of their own, loaded at once, filtered by the application that published each record, and the tab says how many there are before it is opened. Where a paper has none, it says so rather than leaving a blank tab, because an empty panel cannot be told from one that failed to load.
+
+### Changed
+
+- **Every link on an eprint page renders through one card.** Code, data, materials, external identifiers, linked resources and atmosphere references each had their own layout: a tinted icon and a platform badge on one tab, a flat row with a monospaced value on another, a small grey icon and a line of context on a third. None of the differences carried meaning — a reader learns nothing from a DOI being styled unlike a repository — and the richest of them, the GitHub card, was the one a reader saw least often. That card is now the shape all of them take, and each fills it with whatever detail its own source can give.
+
+  The detail itself is the point. A card headed "GitHub" now reads `chive-pub/chive` beneath it, and one headed "arXiv" leads with the identifier: the address was in the record all along and simply was not shown. Zenodo reports its deposit type, access, version, views and downloads; Software Heritage says what is archived and when it was last seen; an atmosphere reference says which application published it, what kind of record it is, when it appeared, and what it said.
+
+### Fixed
+
+- **Two link destinations on the atmosphere panel were wrong, and most were missing.** A `network.cosmik.card` was linked to `cosmik.network/collection/{did}/{rkey}`, which 404s — a card is not a collection. Every Leaflet reference was linked as a document, comments included, because the plugin that indexes them files both under one source type. And for a talk, a standard.site document or a Margin annotation, no link was offered at all.
+
+  Links are now built from the collection NSID carried in the record's own URI, which cannot disagree with the record, rather than from Chive's coarser classification. An application's own address is offered only where the route was checked against a live record — Smoke Signal and Bluesky, verified; Cosmik's dropped rather than shipped wrong. Alongside it every reference now carries a link to the record itself in a public record browser, which resolves any AT-URI by reading it from the repository that holds it. That one works for every source type, including the ones no application on the network renders yet.
+
+- **A repository the author named but gave no address for vanished, while the tab still counted it.** A Code tab reading "2" above one card reads as a fault in Chive rather than as an incomplete record. The card renders and says the record carries no address.
+
+- **The supplementary materials count ignored the datasets it was displaying.** It counted uploaded files only, so a paper whose auxiliary material is a dataset linked on Layers showed a badge reading "0" above the card for it.
+
 ## [0.20.2] - 2026-09-05
 
 ### Fixed
@@ -1215,7 +1237,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.20.2...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.21.0...HEAD
+[0.21.0]: https://github.com/chive-pub/chive/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/chive-pub/chive/compare/v0.20.1...v0.20.2
 [0.20.1]: https://github.com/chive-pub/chive/compare/v0.20.0...v0.20.1
 [0.20.0]: https://github.com/chive-pub/chive/compare/v0.19.0...v0.20.0
