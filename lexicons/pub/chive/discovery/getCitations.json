@@ -115,6 +115,11 @@
           "type": "string",
           "maxLength": 512,
           "description": "Journal or proceedings the eprint appeared in, when known."
+        },
+        "doi": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "DOI of the published version, when the eprint records one. A hover card that names a paper without it is not a bibliography entry."
         }
       },
       "description": "An eprint named well enough to identify it on sight. The citation graph stores only URIs on its nodes, so an edge read back from it carries nothing a reader could recognise."

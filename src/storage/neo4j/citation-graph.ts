@@ -46,6 +46,8 @@ import { singleton } from 'tsyringe';
 import type { AtUri } from '../../types/atproto.js';
 import { DatabaseError } from '../../types/errors.js';
 import type {
+  CitationNetworkOptions,
+  CitationNetworkResult,
   CitationQueryOptions,
   CitationQueryResult,
   CitationRelationship,
@@ -377,6 +379,114 @@ export class CitationGraph implements ICitationGraph {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       throw new DatabaseError('QUERY', `Failed to get references: ${error.message}`, error);
+    }
+  }
+
+  /**
+   * Reads the citation graph as a graph.
+   *
+   * @param options - Which network to read and how much of it
+   * @returns Directed citations, the network's true size, and whether it was cut
+   *
+   * @remarks
+   * Two queries rather than one. The focus paper's own edges are read first and
+   * kept whole; the rest of the network then fills whatever budget remains. A
+   * single query with an ORDER BY could not make that guarantee -- Neo4j would
+   * be free to drop the focus paper's edges along with everyone else's, and the
+   * reader would be shown a network that does not contain the paper they asked
+   * about.
+   *
+   * Both ends of every edge are constrained to `subkind = 'eprint'`, matching
+   * the per-paper queries: the graph holds other node kinds, and a CITES edge
+   * that reached one would put a non-paper in a paper network.
+   *
+   * @example
+   * ```typescript
+   * const network = await citationGraph.getCitationNetwork({
+   *   focusUri: 'at://did:plc:abc/pub.chive.eprint.submission/1',
+   *   limit: 1500,
+   * });
+   * ```
+   */
+  async getCitationNetwork(options?: CitationNetworkOptions): Promise<CitationNetworkResult> {
+    const limit = options?.limit ?? 1500;
+    const influentialFilter = options?.onlyInfluential ? 'AND r.isInfluential = true' : '';
+
+    const edgeMatch = `
+      MATCH (citing:Node:Object:Eprint)-[r:CITES]->(cited:Node:Object:Eprint)
+      WHERE citing.subkind = 'eprint' AND cited.subkind = 'eprint'
+        ${influentialFilter}`;
+
+    const countQuery = `${edgeMatch}
+      RETURN count(r) AS total`;
+
+    const focusQuery = `${edgeMatch}
+        AND (citing.uri = $focusUri OR cited.uri = $focusUri)
+      RETURN citing.uri AS citingUri,
+             cited.uri AS citedUri,
+             r.isInfluential AS isInfluential,
+             r.source AS source,
+             toString(r.discoveredAt) AS discoveredAt
+      LIMIT $limit`;
+
+    const restQuery = `${edgeMatch}
+        AND NOT (citing.uri = $focusUri OR cited.uri = $focusUri)
+      WITH citing, cited, r
+      ORDER BY r.isInfluential DESC, r.discoveredAt DESC
+      LIMIT $limit
+      RETURN citing.uri AS citingUri,
+             cited.uri AS citedUri,
+             r.isInfluential AS isInfluential,
+             r.source AS source,
+             toString(r.discoveredAt) AS discoveredAt`;
+
+    const wholeQuery = `${edgeMatch}
+      WITH citing, cited, r
+      ORDER BY r.isInfluential DESC, r.discoveredAt DESC
+      LIMIT $limit
+      RETURN citing.uri AS citingUri,
+             cited.uri AS citedUri,
+             r.isInfluential AS isInfluential,
+             r.source AS source,
+             toString(r.discoveredAt) AS discoveredAt`;
+
+    try {
+      const countResult = await this.connection.executeQuery<Record<string, Neo4jValue>>(
+        countQuery,
+        {}
+      );
+      const total = (countResult.records[0]?.get('total') as number) ?? 0;
+
+      if (!options?.focusUri) {
+        const result = await this.connection.executeQuery<Record<string, Neo4jValue>>(wholeQuery, {
+          limit: neo4j.int(limit),
+        });
+        const citations = result.records.map((record) => this.mapCitationRecord(record));
+        return { citations, total, truncated: total > citations.length };
+      }
+
+      const focusResult = await this.connection.executeQuery<Record<string, Neo4jValue>>(
+        focusQuery,
+        { focusUri: options.focusUri, limit: neo4j.int(limit) }
+      );
+      const focusCitations = focusResult.records.map((record) => this.mapCitationRecord(record));
+
+      const remaining = limit - focusCitations.length;
+      const restCitations =
+        remaining > 0
+          ? (
+              await this.connection.executeQuery<Record<string, Neo4jValue>>(restQuery, {
+                focusUri: options.focusUri,
+                limit: neo4j.int(remaining),
+              })
+            ).records.map((record) => this.mapCitationRecord(record))
+          : [];
+
+      const citations = [...focusCitations, ...restCitations];
+      return { citations, total, truncated: total > citations.length };
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      throw new DatabaseError('QUERY', `Failed to read citation network: ${error.message}`, error);
     }
   }
 

@@ -455,3 +455,126 @@ describe('CitationGraph', () => {
     });
   });
 });
+
+describe('CitationGraph.getCitationNetwork', () => {
+  let citationGraph: CitationGraph;
+  let mockConnection: ReturnType<typeof createMockConnection>;
+
+  const FOCUS = 'at://did:plc:a/pub.chive.eprint.submission/focus' as AtUri;
+
+  /** One row as the driver would hand it back. */
+  function edgeRecord(citingUri: string, citedUri: string, isInfluential = false): MockRecord {
+    return createMockRecord({
+      citingUri,
+      citedUri,
+      isInfluential,
+      source: 'semantic-scholar',
+      discoveredAt: '2026-01-01T00:00:00Z',
+    });
+  }
+
+  function result(records: MockRecord[]): MockQueryResult {
+    return { records, summary: {} };
+  }
+
+  beforeEach(() => {
+    mockConnection = createMockConnection();
+    citationGraph = new CitationGraph(mockConnection);
+  });
+
+  it('reads the whole network when no paper is focused', async () => {
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 2 })]))
+      .mockResolvedValueOnce(result([edgeRecord('a', 'b'), edgeRecord('b', 'c')]));
+
+    const network = await citationGraph.getCitationNetwork({ limit: 100 });
+
+    expect(network.citations).toHaveLength(2);
+    expect(network.total).toBe(2);
+    expect(network.truncated).toBe(false);
+    // Two queries: the count, then the edges. No focus query.
+    expect(mockConnection.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it("reads the focused paper's own edges before anyone else's", async () => {
+    // The guarantee the caller cannot recover for itself: a truncated network
+    // still contains the paper the reader asked about.
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 50 })]))
+      .mockResolvedValueOnce(result([edgeRecord(FOCUS, 'b'), edgeRecord('c', FOCUS)]))
+      .mockResolvedValueOnce(result([edgeRecord('d', 'e')]));
+
+    const network = await citationGraph.getCitationNetwork({ focusUri: FOCUS, limit: 3 });
+
+    expect(network.citations.map((c) => `${c.citingUri}->${c.citedUri}`)).toEqual([
+      `${FOCUS}->b`,
+      `c->${FOCUS}`,
+      'd->e',
+    ]);
+    expect(network.truncated).toBe(true);
+
+    const [, focusCall, restCall] = mockConnection.executeQuery.mock.calls as [
+      unknown,
+      [string, Record<string, unknown>],
+      [string, Record<string, unknown>],
+    ];
+    expect(focusCall[0]).toContain('citing.uri = $focusUri OR cited.uri = $focusUri');
+    expect(restCall[0]).toContain('NOT (citing.uri = $focusUri OR cited.uri = $focusUri)');
+    // The rest of the network only gets the budget the focus did not use.
+    expect(toNumber(restCall[1].limit)).toBe(1);
+  });
+
+  it('does not ask for the rest of the network when the focus filled the budget', async () => {
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 9 })]))
+      .mockResolvedValueOnce(result([edgeRecord(FOCUS, 'b'), edgeRecord('c', FOCUS)]));
+
+    const network = await citationGraph.getCitationNetwork({ focusUri: FOCUS, limit: 2 });
+
+    expect(network.citations).toHaveLength(2);
+    expect(mockConnection.executeQuery).toHaveBeenCalledTimes(2);
+  });
+
+  it('constrains both ends of every edge to eprints', async () => {
+    // The graph holds other node kinds. A CITES edge reaching one would put a
+    // non-paper into a paper network.
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 0 })]))
+      .mockResolvedValueOnce(result([]));
+
+    await citationGraph.getCitationNetwork({});
+
+    for (const call of mockConnection.executeQuery.mock.calls as [string, unknown][]) {
+      expect(call[0]).toContain("citing.subkind = 'eprint'");
+      expect(call[0]).toContain("cited.subkind = 'eprint'");
+    }
+  });
+
+  it('restricts to influential citations when asked', async () => {
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 1 })]))
+      .mockResolvedValueOnce(result([edgeRecord('a', 'b', true)]));
+
+    await citationGraph.getCitationNetwork({ onlyInfluential: true });
+
+    for (const call of mockConnection.executeQuery.mock.calls as [string, unknown][]) {
+      expect(call[0]).toContain('r.isInfluential = true');
+    }
+  });
+
+  it('reports an empty network rather than failing', async () => {
+    mockConnection.executeQuery
+      .mockResolvedValueOnce(result([createMockRecord({ total: 0 })]))
+      .mockResolvedValueOnce(result([]));
+
+    const network = await citationGraph.getCitationNetwork({});
+
+    expect(network).toEqual({ citations: [], total: 0, truncated: false });
+  });
+
+  it('surfaces a query failure as a database error', async () => {
+    mockConnection.executeQuery.mockRejectedValueOnce(new Error('neo4j is down'));
+
+    await expect(citationGraph.getCitationNetwork({})).rejects.toThrow(/citation network/i);
+  });
+});
