@@ -32,13 +32,20 @@ export interface PaperHoverCardProps {
   readonly width: number;
 }
 
-/** What a role says in words. */
+/**
+ * What a role says in words.
+ *
+ * @remarks
+ * Written with an explicit subject. "Cited by this paper" reads either way
+ * round, and which way a citation runs is the whole content of the colour.
+ */
 function describeRole(role: NodeRole): string | undefined {
   if (role.tier === 'none') return undefined;
-  const anchor = role.tier === 'primary' ? 'this paper' : 'the selected paper';
+  const anchor = role.tier === 'primary' ? 'This paper' : 'The selected paper';
   if (role.relation === 'anchor') return role.tier === 'primary' ? 'This paper' : 'Selected';
-  if (role.relation === 'reference') return `Cited by ${anchor}`;
-  if (role.relation === 'citer') return `Cites ${anchor}`;
+  if (role.relation === 'reference') return `${anchor} cites it`;
+  if (role.relation === 'citer')
+    return `Cites ${role.tier === 'primary' ? 'this paper' : 'the selected paper'}`;
   return undefined;
 }
 

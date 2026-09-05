@@ -63,20 +63,22 @@ describe('NetworkLegend', () => {
   it('names the three colours', () => {
     render(<NetworkLegend hasSelection={false} />);
     expect(screen.getByText('This paper')).toBeInTheDocument();
-    expect(screen.getByText('Cites it')).toBeInTheDocument();
-    expect(screen.getByText('Cited by it')).toBeInTheDocument();
+    // Worded with an explicit subject: "Cited by it" reads either way round,
+    // and the direction is the whole content of the colour.
+    expect(screen.getByText('Papers citing it')).toBeInTheDocument();
+    expect(screen.getByText('Papers it cites')).toBeInTheDocument();
   });
 
   it('says nothing about a selection until there is one', () => {
     render(<NetworkLegend hasSelection={false} />);
-    expect(screen.queryByText('Selected')).not.toBeInTheDocument();
+    expect(screen.queryByText('Selected paper')).not.toBeInTheDocument();
   });
 
   it('explains the pale tier once a paper is selected', () => {
     render(<NetworkLegend hasSelection />);
-    expect(screen.getByText('Selected')).toBeInTheDocument();
-    expect(screen.getByText('Cites the selection')).toBeInTheDocument();
-    expect(screen.getByText('Cited by the selection')).toBeInTheDocument();
+    expect(screen.getByText('Selected paper')).toBeInTheDocument();
+    expect(screen.getAllByText('Papers citing it')).toHaveLength(2);
+    expect(screen.getAllByText('Papers it cites')).toHaveLength(2);
   });
 });
 
@@ -129,7 +131,7 @@ describe('PaperHoverCard', () => {
         width={800}
       />
     );
-    expect(screen.getByText('Cited by the selected paper')).toBeInTheDocument();
+    expect(screen.getByText('The selected paper cites it')).toBeInTheDocument();
   });
 
   it('says nothing about a relation a background paper does not have', () => {

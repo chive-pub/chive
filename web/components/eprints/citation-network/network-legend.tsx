@@ -46,15 +46,18 @@ export function NetworkLegend({ hasSelection }: NetworkLegendProps) {
   return (
     <div className="rounded-lg border bg-card/95 p-2.5 backdrop-blur">
       <div className="flex flex-col gap-1.5">
+        {/* Grouped under the paper each colour is read against, and worded with
+            an explicit subject. "Cited by it" is ambiguous about which way the
+            citation runs, which is the one thing these colours encode. */}
         <Key relation="anchor" tier="primary" label="This paper" />
-        <Key relation="citer" tier="primary" label="Cites it" />
-        <Key relation="reference" tier="primary" label="Cited by it" />
+        <Key relation="citer" tier="primary" label="Papers citing it" />
+        <Key relation="reference" tier="primary" label="Papers it cites" />
         {hasSelection && (
           <>
             <span className="my-0.5 border-t" />
-            <Key relation="anchor" tier="secondary" label="Selected" />
-            <Key relation="citer" tier="secondary" label="Cites the selection" />
-            <Key relation="reference" tier="secondary" label="Cited by the selection" />
+            <Key relation="anchor" tier="secondary" label="Selected paper" />
+            <Key relation="citer" tier="secondary" label="Papers citing it" />
+            <Key relation="reference" tier="secondary" label="Papers it cites" />
           </>
         )}
       </div>
