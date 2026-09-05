@@ -1,6 +1,6 @@
 # Lexicons reference
 
-Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 133 queries, and 49 procedures across 26 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
+Chive uses the `pub.chive.*` namespace for all AT Protocol lexicons. These lexicons define 23 record types, 134 queries, and 49 procedures across 26 namespaces. All records are stored in user-controlled PDSes and indexed by the Chive AppView via the ATProto firehose.
 
 For the ATProto lexicon specification, see the [Lexicon Guide](https://atproto.com/guides/lexicon).
 
@@ -1523,13 +1523,14 @@ Discovery endpoints provide personalized recommendations, citation networks, and
 
 ### Discovery queries and procedures
 
-| Lexicon                                  | Type      | Description                                   |
-| ---------------------------------------- | --------- | --------------------------------------------- |
-| `pub.chive.discovery.getRecommendations` | Query     | Get personalized eprint recommendations       |
-| `pub.chive.discovery.getSimilar`         | Query     | Get similar eprints (supports custom weights) |
-| `pub.chive.discovery.getCitations`       | Query     | Get citation network for an eprint            |
-| `pub.chive.discovery.getEnrichment`      | Query     | Get enrichment data for an eprint             |
-| `pub.chive.discovery.recordInteraction`  | Procedure | Record a user interaction for recommendations |
+| Lexicon                                  | Type      | Description                                    |
+| ---------------------------------------- | --------- | ---------------------------------------------- |
+| `pub.chive.discovery.getRecommendations` | Query     | Get personalized eprint recommendations        |
+| `pub.chive.discovery.getSimilar`         | Query     | Get similar eprints (supports custom weights)  |
+| `pub.chive.discovery.getCitations`       | Query     | Get one eprint's citing and cited papers       |
+| `pub.chive.discovery.getCitationNetwork` | Query     | Get the citation graph, to place a paper in it |
+| `pub.chive.discovery.getEnrichment`      | Query     | Get enrichment data for an eprint              |
+| `pub.chive.discovery.recordInteraction`  | Procedure | Record a user interaction for recommendations  |
 
 See [XRPC endpoints](../api-reference/xrpc-endpoints) for parameter and response details.
 

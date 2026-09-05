@@ -5605,6 +5605,30 @@
         ],
         "type": "string"
       },
+      "pub.chive.discovery.getCitationNetwork.networkEdge": {
+        "description": "One directed citation between two Chive eprints.",
+        "properties": {
+          "citedUri": {
+            "description": "AT-URI of the paper being cited.",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "citingUri": {
+            "description": "AT-URI of the paper doing the citing.",
+            "format": "at-uri",
+            "type": "string"
+          },
+          "isInfluential": {
+            "description": "Whether the enrichment source marked this citation influential.",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "citingUri",
+          "citedUri"
+        ],
+        "type": "object"
+      },
       "pub.chive.discovery.getCitations.citation": {
         "properties": {
           "citedUri": {
@@ -5672,6 +5696,11 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "doi": {
+            "description": "DOI of the published version, when the eprint records one. A hover card that names a paper without it is not a bibliography entry.",
+            "maxLength": 256,
+            "type": "string"
           },
           "title": {
             "type": "string"
@@ -25507,6 +25536,125 @@
         "summary": "pub.chive.collection.search",
         "tags": [
           "collection"
+        ]
+      }
+    },
+    "/xrpc/pub.chive.discovery.getCitationNetwork": {
+      "get": {
+        "description": "Get the citation graph between Chive-indexed eprints, so a paper can be shown in the context of the whole network rather than only its own neighbours. Optionally focused on one eprint, whose own edges are then guaranteed to survive truncation.",
+        "operationId": "pub_chive_discovery_getCitationNetwork",
+        "parameters": [
+          {
+            "description": "AT-URI of the eprint the reader is looking at. Its own citing and cited edges are included before any others, so a truncated network still contains the paper it was asked about.",
+            "in": "query",
+            "name": "uri",
+            "required": false,
+            "schema": {
+              "description": "AT-URI of the eprint the reader is looking at. Its own citing and cited edges are included before any others, so a truncated network still contains the paper it was asked about.",
+              "format": "at-uri",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum number of citation edges to return.",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 1500,
+              "description": "Maximum number of citation edges to return.",
+              "maximum": 5000,
+              "minimum": 1,
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Restrict the network to citations marked influential.",
+            "in": "query",
+            "name": "onlyInfluential",
+            "required": false,
+            "schema": {
+              "default": false,
+              "description": "Restrict the network to citations marked influential.",
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "citations": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.discovery.getCitationNetwork.networkEdge"
+                      },
+                      "type": "array"
+                    },
+                    "focusUri": {
+                      "description": "Echo of the requested focus, present only when that eprint is in the network.",
+                      "format": "at-uri",
+                      "type": "string"
+                    },
+                    "papers": {
+                      "items": {
+                        "$ref": "#/components/schemas/pub.chive.discovery.getCitations.eprintRef"
+                      },
+                      "type": "array"
+                    },
+                    "totalCitations": {
+                      "description": "How many citation edges the whole network holds, whether or not they were all returned.",
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "truncated": {
+                      "description": "Whether the network was cut short at the limit. The focus paper's own edges are never the ones dropped.",
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "papers",
+                    "citations",
+                    "truncated"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "error": {
+                      "enum": [
+                        "InvalidRequest",
+                        "NotFound",
+                        "ServiceUnavailable"
+                      ],
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "error",
+                    "message"
+                  ],
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Bad Request"
+          }
+        },
+        "summary": "pub.chive.discovery.getCitationNetwork",
+        "tags": [
+          "discovery"
         ]
       }
     },
