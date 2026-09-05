@@ -146,7 +146,7 @@ export class BacklinkService implements IBacklinkService {
       ) VALUES (
         $1, $2, $3, $4, $5, NOW(), false
       )
-      ON CONFLICT (source_uri) DO UPDATE SET
+      ON CONFLICT (source_uri, target_uri) DO UPDATE SET
         source_type = EXCLUDED.source_type,
         target_uri = EXCLUDED.target_uri,
         context = EXCLUDED.context,
@@ -383,7 +383,7 @@ export class BacklinkService implements IBacklinkService {
         source_uri, source_type, source_did, target_uri, context,
         indexed_at, is_deleted
       ) VALUES ${valuePlaceholders.join(', ')}
-      ON CONFLICT (source_uri) DO UPDATE SET
+      ON CONFLICT (source_uri, target_uri) DO UPDATE SET
         source_type = EXCLUDED.source_type,
         target_uri = EXCLUDED.target_uri,
         context = EXCLUDED.context,
