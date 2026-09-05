@@ -91,6 +91,17 @@ describe('ResourceCard', () => {
     expect(screen.getByText('at://did:plc:x/c/r').className).toContain('break-all');
   });
 
+  it('will not wrap a card that carries something interactive of its own', () => {
+    // A button nested inside a link is not something a browser can represent.
+    render(
+      <ResourceCard icon={Github} title="Dataset" href="https://example.org">
+        <button type="button">Load in Python</button>
+      </ResourceCard>
+    );
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Load in Python' })).toBeInTheDocument();
+  });
+
   it('renders anything it is given below its own content', () => {
     render(
       <ResourceCard icon={Github} title="Dataset">

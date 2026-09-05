@@ -137,7 +137,10 @@ export function ResourceCard({
   children,
   className,
 }: ResourceCardProps) {
-  const linkWraps = Boolean(href) && !actions?.length;
+  // Wrapping the card in an anchor is only safe when nothing inside it is
+  // interactive: a button nested in a link is not something a browser can
+  // represent, and the dataset snippet a card can carry has one.
+  const linkWraps = Boolean(href) && !actions?.length && !children;
 
   const body = (
     <div className="flex items-start gap-3">
