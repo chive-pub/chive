@@ -122,6 +122,26 @@ describe('BacklinkService', () => {
       );
     });
 
+    it('keys the upsert on source and target, so one record can cite several papers', async () => {
+      // A Cosmik connection names two eprints by definition, and an essay may
+      // cite several. `BacklinkTrackingPlugin` writes one row per reference, so
+      // a conflict target of `source_uri` alone made each write overwrite the
+      // last and only the final paper kept its backlink.
+      db.query.mockResolvedValueOnce({ rows: [SAMPLE_BACKLINK_ROW] });
+
+      await service.createBacklink({
+        sourceUri: SAMPLE_SOURCE_URI,
+        sourceType: 'cosmik.connection' as BacklinkSourceType,
+        targetUri: SAMPLE_TARGET_URI,
+      });
+
+      const insert = db.query.mock.calls
+        .map((c) => String(c[0]))
+        .find((q) => q.includes('INSERT INTO backlinks'));
+      expect(insert).toBeDefined();
+      expect(insert).toContain('ON CONFLICT (source_uri, target_uri)');
+    });
+
     it('should extract DID from source URI', async () => {
       db.query.mockResolvedValueOnce({ rows: [SAMPLE_BACKLINK_ROW] });
 

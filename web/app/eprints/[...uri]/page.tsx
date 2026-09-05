@@ -14,6 +14,7 @@ import {
 } from '@/lib/metadata/entity-metadata';
 import { EntityHeadTags } from '@/lib/metadata/EntityHeadTags';
 import { absoluteUrl } from '@/lib/site/url';
+import { eprintOgImageUrl } from '@/lib/metadata/og-image-url';
 
 /**
  * Eprint detail page route parameters.
@@ -58,29 +59,16 @@ export async function generateMetadata({ params }: EprintPageProps): Promise<Met
     // substance, so the abstract, the full author list, the venue and the
     // keywords are all passed. The abstract is capped well short of any URL
     // limit; the card truncates again for its own layout.
-    const venue = value.publishedVersion?.journal ?? '';
-    const year = value.createdAt ? new Date(value.createdAt).getUTCFullYear().toString() : '';
-    const ogImageParams = new URLSearchParams({
-      type: 'eprint',
+    const ogImageUrl = eprintOgImageUrl({
       uri: fullUri,
-      title: value.title.slice(0, 200),
-      author: authorName,
+      title: value.title,
+      authorNames: value.authors.map((a) => a.name),
+      abstract: abstractText,
+      venue: value.publishedVersion?.journal,
+      createdAt: value.createdAt,
+      keywords: value.keywords,
+      publicationStatusSlug: value.publicationStatusSlug,
     });
-    const allAuthors = value.authors
-      .map((a) => a.name)
-      .filter(Boolean)
-      .join('|');
-    if (allAuthors) ogImageParams.set('authors', allAuthors.slice(0, 400));
-    if (abstractText) ogImageParams.set('abstract', abstractText.slice(0, 400));
-    if (venue) ogImageParams.set('venue', venue.slice(0, 120));
-    if (year) ogImageParams.set('year', year);
-    if (value.keywords && value.keywords.length > 0) {
-      ogImageParams.set('fields', value.keywords.slice(0, 3).join(','));
-    }
-    if (value.publicationStatusSlug) {
-      ogImageParams.set('status', value.publicationStatusSlug);
-    }
-    const ogImageUrl = `/api/og?${ogImageParams.toString()}`;
 
     return {
       title: value.title,
