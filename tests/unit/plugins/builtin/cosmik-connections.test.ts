@@ -145,6 +145,56 @@ describe('CosmikConnectionsPlugin', () => {
       expect(refs).toHaveLength(2);
     });
 
+    it('resolves a web address to the eprint it names', () => {
+      // A connection made in Cosmik's own interface names each end by the
+      // address the user was looking at. Stored as that address, the backlink
+      // is keyed on something no eprint can be looked up by: the row exists,
+      // the paper never shows it, and `backlink.list` rejects the URL as a
+      // target so nothing can read it back. Counting the references was not
+      // enough to catch that -- the form is what matters.
+      const record = {
+        $type: 'network.cosmik.connection',
+        source:
+          'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2F123',
+        target:
+          'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Adef%2Fpub.chive.eprint.submission%2F456',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      expect(plugin.extractEprintRefs(record)).toEqual([
+        'at://did:plc:abc/pub.chive.eprint.submission/123',
+        'at://did:plc:def/pub.chive.eprint.submission/456',
+      ]);
+    });
+
+    it('never returns anything that is not an at-uri', () => {
+      const record = {
+        $type: 'network.cosmik.connection',
+        source:
+          'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2F123',
+        target: 'at://did:plc:def/pub.chive.eprint.submission/456',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      for (const ref of plugin.extractEprintRefs(record)) {
+        expect(ref.startsWith('at://')).toBe(true);
+      }
+    });
+
+    it('does not report the same paper twice when both ends name it', () => {
+      const record = {
+        $type: 'network.cosmik.connection',
+        source: 'at://did:plc:abc/pub.chive.eprint.submission/123',
+        target:
+          'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Aabc%2Fpub.chive.eprint.submission%2F123',
+        createdAt: '2026-01-01T00:00:00Z',
+        updatedAt: '2026-01-01T00:00:00Z',
+      };
+      expect(plugin.extractEprintRefs(record)).toEqual([
+        'at://did:plc:abc/pub.chive.eprint.submission/123',
+      ]);
+    });
+
     it('returns empty for non-Chive URLs', () => {
       const record = {
         $type: 'network.cosmik.connection',

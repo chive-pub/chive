@@ -114,12 +114,21 @@ export class CosmikConnectionsPlugin extends BacklinkTrackingPlugin {
   extractEprintRefs(record: unknown): string[] {
     const connection = record as CosmikConnection;
     const refs: string[] = [];
-    if (this.isChiveEprintReference(connection.source)) {
-      refs.push(connection.source);
+
+    // Normalised, not pushed as written. A connection made in Cosmik's own
+    // interface names each end by the address the user was looking at --
+    // `chive.pub/eprints/<encoded at-uri>` -- and a backlink stored under that
+    // URL is keyed on something no eprint can be looked up by. The row exists
+    // and the paper never shows it; `backlink.list` will not even accept the
+    // URL as a target, so nothing can read it back. The card plugin beside this
+    // one already resolves its two URL fields for the same reason.
+    for (const end of [connection.source, connection.target]) {
+      const uri = this.toEprintUri(end);
+      if (uri && !refs.includes(uri)) {
+        refs.push(uri);
+      }
     }
-    if (this.isChiveEprintReference(connection.target)) {
-      refs.push(connection.target);
-    }
+
     return refs;
   }
 
@@ -231,11 +240,6 @@ export class CosmikConnectionsPlugin extends BacklinkTrackingPlugin {
   /**
    * Checks if a string references a Chive eprint via AT-URI or web URL.
    */
-  private isChiveEprintReference(value: string): boolean {
-    if (value.includes('pub.chive.eprint.submission')) return true;
-    if (value.includes('chive.pub/eprints/')) return true;
-    return false;
-  }
 }
 
 export default CosmikConnectionsPlugin;
