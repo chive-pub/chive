@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.2] - 2026-09-06
+
+### Fixed
+
+- **Citation arrows ran through the papers and overshot them.** Every edge was routed between React Flow handles, and a handle is fixed to one side of its node -- with the target handle at the top, an edge whose cited paper sat _above_ its citing one had to travel up through that paper's body to reach its top edge, crossing the pill and leaving the arrowhead inside it. Edges now compute their own endpoints from the two node outlines, so each meets whichever point faces the other. Nothing overshoots, because the endpoint is the boundary, and nothing enters a node, because the segment stops there. The `zIndex` in 0.22.1 had treated a symptom of this rather than its cause.
+
+- **The line showed through the arrowhead.** The fade on an edge was element `opacity`, which applies to the path and the marker alike, so where the line ran under the arrowhead the two composited and the line read as a darker streak through it. The fade is carried in the stroke colour now, and the arrowhead takes exactly that colour.
+
+### Changed
+
+- **A paper more than one citation away is drawn as a dot, with no label.** At fifty papers the names were the clutter, and at five hundred they would be unreadable; the ones worth reading are those beside the paper in hand or beside whatever the reader has clicked. The rest are the shape of the field, which a dot conveys better than a name nobody is reading. Hovering still gives any paper its full bibliography entry, and a dot grows into a labelled pill the moment it attaches to the focus or the selection.
+
 ## [0.22.1] - 2026-09-06
 
 ### Fixed
@@ -1263,7 +1275,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.1...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.2...HEAD
+[0.22.2]: https://github.com/chive-pub/chive/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/chive-pub/chive/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/chive-pub/chive/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/chive-pub/chive/compare/v0.20.2...v0.21.0
