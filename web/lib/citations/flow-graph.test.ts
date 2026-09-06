@@ -66,11 +66,21 @@ describe('buildFlowEdges', () => {
     expect(background?.markerEnd).toBeDefined();
   });
 
-  it('paints lit edges above the background ones', () => {
+  it('paints lit edges above the background ones, by ordering', () => {
     const edges = buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }));
-    const lit = edges.find((edge) => edge.id === 'focus->ref');
-    const dim = edges.find((edge) => edge.id === 'far->other');
-    expect(lit?.zIndex).toBeGreaterThan(dim?.zIndex ?? 0);
+    const ids = edges.map((edge) => edge.id);
+    // Later in the array is painted higher within the edge layer.
+    expect(ids.indexOf('focus->ref')).toBeGreaterThan(ids.indexOf('far->other'));
+    expect(ids.indexOf('citer->focus')).toBeGreaterThan(ids.indexOf('far->other'));
+  });
+
+  it('leaves every edge in the layer React Flow draws beneath the nodes', () => {
+    // An explicit zIndex lifts an edge out of that layer, which put every lit
+    // arrow on top of the papers it runs between.
+    const edges = buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }));
+    for (const edge of edges) {
+      expect(edge.zIndex).toBeUndefined();
+    }
   });
 
   it('runs the edge from the citing paper to the cited one', () => {

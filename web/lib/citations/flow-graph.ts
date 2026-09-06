@@ -132,34 +132,41 @@ export function buildFlowEdges(
   citations: readonly NetworkEdge[],
   roles: ReadonlyMap<string, NodeRole>
 ): Edge[] {
-  return citations.map((citation) => {
+  const built = citations.map((citation) => {
     const key = edgeKey(citation);
     const role = roles.get(key) ?? UNRELATED;
     const style = roleStyle(role);
     const lit = role.tier !== 'none';
 
     return {
-      id: key,
-      source: citation.citingUri,
-      target: citation.citedUri,
-      type: 'straight',
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        width: lit ? 18 : 14,
-        height: lit ? 18 : 14,
-        color: style.stroke,
-      },
-      style: {
-        stroke: style.stroke,
-        strokeWidth: lit ? 1.8 : 1,
-        opacity: lit ? 0.9 : 0.25,
-        ...(lit ? {} : { strokeDasharray: '4 4' }),
-      },
-      // Lit edges paint over the background, so a neighbourhood reads as one
-      // shape rather than as lines crossing a mesh.
-      zIndex: lit ? 1 : 0,
+      lit,
+      edge: {
+        id: key,
+        source: citation.citingUri,
+        target: citation.citedUri,
+        type: 'straight',
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: lit ? 18 : 14,
+          height: lit ? 18 : 14,
+          color: style.stroke,
+        },
+        style: {
+          stroke: style.stroke,
+          strokeWidth: lit ? 1.8 : 1,
+          opacity: lit ? 0.9 : 0.25,
+          ...(lit ? {} : { strokeDasharray: '4 4' }),
+        },
+      } satisfies Edge,
     };
   });
+
+  // Lit edges paint over the background ones, so a neighbourhood reads as one
+  // shape rather than as lines crossing a mesh -- but by ordering rather than
+  // by `zIndex`. An explicit zIndex lifts an edge out of the edge layer, which
+  // React Flow draws beneath the nodes, and put every lit arrow on top of the
+  // papers it runs between. Within the layer, later is painted higher.
+  return [...built.filter((e) => !e.lit), ...built.filter((e) => e.lit)].map((e) => e.edge);
 }
 
 /**
