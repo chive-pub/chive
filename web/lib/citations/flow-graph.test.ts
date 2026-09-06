@@ -13,7 +13,16 @@
 import { MarkerType } from '@xyflow/react';
 import { describe, expect, it } from 'vitest';
 
-import { buildFlowEdges, buildFlowNodes, neighbourhoodOf, nodeLabel } from './flow-graph';
+import {
+  buildFlowEdges,
+  buildFlowNodes,
+  DOT_SIZE,
+  neighbourhoodOf,
+  NODE_HEIGHT,
+  NODE_WIDTH,
+  nodeLabel,
+  sizeFor,
+} from './flow-graph';
 import { assignEdgeRoles, NETWORK_COLORS, type NetworkEdge } from './network-model';
 import type { CitedPaper } from './paper-label';
 
@@ -60,10 +69,25 @@ describe('buildFlowEdges', () => {
   it('fades the rest of the network back rather than hiding it', () => {
     const edges = buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }));
     const background = edges.find((edge) => edge.id === 'far->other');
-    expect(background?.style?.opacity).toBeLessThan(0.5);
+    expect(background?.style?.stroke).toContain('rgba');
     expect(background?.style?.strokeDasharray).toBe('4 4');
     // Still drawn: it is the context the focus sits in.
     expect(background?.markerEnd).toBeDefined();
+  });
+
+  it('never sets opacity, which would show the line through the arrowhead', () => {
+    // Element opacity applies to the path and the marker alike, so where the
+    // line runs under the arrowhead the two composite and the line shows
+    // through it as a darker streak. The fade goes in the colour instead.
+    for (const edge of buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }))) {
+      expect(edge.style?.opacity).toBeUndefined();
+    }
+  });
+
+  it('paints the arrowhead in exactly the colour of its line', () => {
+    for (const edge of buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }))) {
+      expect(edge.markerEnd).toMatchObject({ color: edge.style?.stroke });
+    }
   });
 
   it('paints lit edges above the background ones, by ordering', () => {
@@ -80,6 +104,14 @@ describe('buildFlowEdges', () => {
     const edges = buildFlowEdges(EDGES, assignEdgeRoles(EDGES, { focusUri: 'focus' }));
     for (const edge of edges) {
       expect(edge.zIndex).toBeUndefined();
+    }
+  });
+
+  it('routes every edge through the floating type, not a handle-bound one', () => {
+    // A handle is fixed to one side of a node, so a built-in edge whose target
+    // sat above its source ran up through the target's body to reach its top.
+    for (const edge of buildFlowEdges(EDGES, new Map())) {
+      expect(edge.type).toBe('floating');
     }
   });
 
@@ -113,8 +145,15 @@ describe('buildFlowNodes', () => {
   ]);
 
   it('places each paper where the layout put it', () => {
-    const nodes = buildFlowNodes(positions, papers, new Map());
-    expect(nodes.find((node) => node.id === 'ref')?.position).toEqual({ x: 100, y: 40 });
+    // A labelled node sits exactly where the layout put it; an unlabelled dot
+    // is centred on the same point, which is a smaller box at a shifted origin.
+    const roles = new Map([['ref', { relation: 'citer' as const, tier: 'primary' as const }]]);
+    expect(buildFlowNodes(positions, papers, roles).find((n) => n.id === 'ref')?.position).toEqual({
+      x: 100,
+      y: 40,
+    });
+    const dot = buildFlowNodes(positions, papers, new Map()).find((n) => n.id === 'ref');
+    expect(dot!.position.x + DOT_SIZE / 2).toBe(100 + NODE_WIDTH / 2);
   });
 
   it('carries the role through, so the node can paint itself', () => {
@@ -124,6 +163,27 @@ describe('buildFlowNodes', () => {
       relation: 'anchor',
       tier: 'primary',
     });
+  });
+
+  it('draws a labelled paper as a pill and a background one as a dot', () => {
+    // A few hundred labels is a wall of words; the names worth reading are the
+    // ones beside the paper in hand.
+    const roles = new Map([['focus', { relation: 'anchor' as const, tier: 'primary' as const }]]);
+    const nodes = buildFlowNodes(positions, papers, roles);
+    const focus = nodes.find((node) => node.id === 'focus');
+    const background = nodes.find((node) => node.id === 'ref');
+    expect(focus).toMatchObject({ width: NODE_WIDTH, height: NODE_HEIGHT });
+    expect(background).toMatchObject({ width: DOT_SIZE, height: DOT_SIZE });
+  });
+
+  it('centres a dot where its pill would have been', () => {
+    // Otherwise a paper jumps across the canvas when selecting something makes
+    // it grow a label.
+    const roles = new Map([['focus', { relation: 'anchor' as const, tier: 'primary' as const }]]);
+    const labelled = buildFlowNodes(positions, papers, roles).find((n) => n.id === 'focus');
+    const dot = buildFlowNodes(positions, papers, new Map()).find((n) => n.id === 'focus');
+    expect(labelled!.position.x + NODE_WIDTH / 2).toBe(dot!.position.x + DOT_SIZE / 2);
+    expect(labelled!.position.y + NODE_HEIGHT / 2).toBe(dot!.position.y + DOT_SIZE / 2);
   });
 
   it('treats a paper with no role as background rather than dropping it', () => {
@@ -175,5 +235,22 @@ describe('neighbourhoodOf', () => {
 
   it('returns the paper alone when nothing touches it', () => {
     expect(neighbourhoodOf('alone', EDGES)).toEqual(['alone']);
+  });
+});
+
+describe('sizeFor', () => {
+  it('gives a labelled paper the pill and everything else the dot', () => {
+    expect(sizeFor({ relation: 'anchor', tier: 'primary' })).toEqual({
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    });
+    expect(sizeFor({ relation: 'citer', tier: 'secondary' })).toEqual({
+      width: NODE_WIDTH,
+      height: NODE_HEIGHT,
+    });
+    expect(sizeFor({ relation: 'none', tier: 'none' })).toEqual({
+      width: DOT_SIZE,
+      height: DOT_SIZE,
+    });
   });
 });
