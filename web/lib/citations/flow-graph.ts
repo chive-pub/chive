@@ -15,7 +15,7 @@
 
 import { MarkerType, type Edge, type Node } from '@xyflow/react';
 
-import { edgeKey, roleStyle, type NetworkEdge, type NodeRole } from './network-model';
+import { edgeKey, roleStyle, withAlpha, type NetworkEdge, type NodeRole } from './network-model';
 import { formatAuthors, type CitedPaper } from './paper-label';
 
 /** What a network node carries. */
@@ -50,6 +50,34 @@ export const NODE_WIDTH = 184;
  * @public
  */
 export const NODE_HEIGHT = 26;
+
+/**
+ * The diameter of an unlabelled node.
+ *
+ * @remarks
+ * A paper more than one citation from whatever is being read against carries no
+ * text at all. A few dozen names is a network; a few hundred is a wall of
+ * words, and the names worth reading are the ones beside the paper in hand. The
+ * rest are the shape of the field around it, which a dot conveys and a label
+ * obscures.
+ *
+ * @public
+ */
+export const DOT_SIZE = 12;
+
+/**
+ * The size a node is drawn at, which depends on whether it is labelled.
+ *
+ * @param role - The node's place in the network
+ * @returns Its width and height
+ *
+ * @public
+ */
+export function sizeFor(role: NodeRole): { width: number; height: number } {
+  return role.tier === 'none'
+    ? { width: DOT_SIZE, height: DOT_SIZE }
+    : { width: NODE_WIDTH, height: NODE_HEIGHT };
+}
 
 /**
  * Names a paper the way it would be referred to in passing.
@@ -95,18 +123,24 @@ export function buildFlowNodes(
   papers: ReadonlyMap<string, CitedPaper>,
   roles: ReadonlyMap<string, NodeRole>
 ): Node<FlowNodeData>[] {
-  return [...positions.entries()].map(([uri, position]) => ({
-    id: uri,
-    type: 'paper',
-    position,
-    width: NODE_WIDTH,
-    height: NODE_HEIGHT,
-    data: {
-      label: nodeLabel(papers.get(uri), uri),
-      role: roles.get(uri) ?? UNRELATED,
-      uri,
-    },
-  }));
+  return [...positions.entries()].map(([uri, position]) => {
+    const role = roles.get(uri) ?? UNRELATED;
+    const size = sizeFor(role);
+    return {
+      id: uri,
+      type: 'paper',
+      // An unlabelled dot is centred where its pill would have been, so a paper
+      // does not jump across the canvas when selecting something makes it grow
+      // a label.
+      position: {
+        x: position.x + (NODE_WIDTH - size.width) / 2,
+        y: position.y + (NODE_HEIGHT - size.height) / 2,
+      },
+      width: size.width,
+      height: size.height,
+      data: { label: nodeLabel(papers.get(uri), uri), role, uri },
+    };
+  });
 }
 
 /**
@@ -138,23 +172,29 @@ export function buildFlowEdges(
     const style = roleStyle(role);
     const lit = role.tier !== 'none';
 
+    // The fade is carried in the colour rather than in `opacity`. Element
+    // opacity applies to the path and the arrowhead alike, so wherever the line
+    // runs under the marker the two composite together and the line shows
+    // through the arrowhead as a darker streak. One solid colour on both makes
+    // the overlap invisible.
+    const colour = lit ? style.stroke : withAlpha(style.stroke, 0.28);
+
     return {
       lit,
       edge: {
         id: key,
         source: citation.citingUri,
         target: citation.citedUri,
-        type: 'straight',
+        type: 'floating',
         markerEnd: {
           type: MarkerType.ArrowClosed,
           width: lit ? 18 : 14,
           height: lit ? 18 : 14,
-          color: style.stroke,
+          color: colour,
         },
         style: {
-          stroke: style.stroke,
+          stroke: colour,
           strokeWidth: lit ? 1.8 : 1,
-          opacity: lit ? 0.9 : 0.25,
           ...(lit ? {} : { strokeDasharray: '4 4' }),
         },
       } satisfies Edge,

@@ -33,6 +33,7 @@ import {
   useReactFlow,
   ReactFlowProvider,
   type Edge,
+  type EdgeTypes,
   type Node,
   type NodeTypes,
 } from '@xyflow/react';
@@ -63,6 +64,7 @@ import { formatAuthors, papersByUri } from '@/lib/citations/paper-label';
 import { cn } from '@/lib/utils';
 
 import { NetworkLegend } from './network-legend';
+import { FloatingEdge } from './floating-edge';
 import { NetworkNode } from './network-node';
 import { PaperHoverCard } from './paper-hover-card';
 import { useCitationNetwork } from './use-citation-network';
@@ -77,6 +79,7 @@ export interface CitationNetworkProps {
 }
 
 const nodeTypes: NodeTypes = { paper: NetworkNode };
+const edgeTypes: EdgeTypes = { floating: FloatingEdge };
 
 /**
  * The graph itself.
@@ -263,6 +266,7 @@ function CitationNetworkCanvas({ eprintUri, height = '70vh', className }: Citati
         onNodeMouseLeave={onNodeMouseLeave}
         onInit={onInit}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         // Zooming out to the whole network is the point, so let it go far.
         minZoom={0.05}
         maxZoom={2.5}

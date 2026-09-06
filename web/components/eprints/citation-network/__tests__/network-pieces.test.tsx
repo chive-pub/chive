@@ -37,6 +37,24 @@ describe('NetworkNode', () => {
     expect(screen.getByText('White 2014')).toBeInTheDocument();
   });
 
+  it('draws a paper beyond one citation as a dot, with no text at all', () => {
+    // A few hundred labels is a wall of words. The names worth reading are the
+    // ones beside the paper in hand; the rest are the shape of the field.
+    renderNode({ relation: 'none', tier: 'none' });
+    const node = screen.getByTestId('network-node');
+    expect(node).toHaveAttribute('data-labelled', 'false');
+    expect(node.textContent).toBe('');
+    // Still nameable without reading the canvas.
+    expect(node).toHaveAttribute('aria-label', 'White 2014');
+  });
+
+  it('labels a paper the moment it attaches to the focus or the selection', () => {
+    renderNode({ relation: 'citer', tier: 'secondary' });
+    const node = screen.getByTestId('network-node');
+    expect(node).toHaveAttribute('data-labelled', 'true');
+    expect(screen.getByText('White 2014')).toBeInTheDocument();
+  });
+
   it('records its role, so the colour and the meaning cannot drift apart', () => {
     renderNode({ relation: 'citer', tier: 'secondary' });
     const node = screen.getByTestId('network-node');
