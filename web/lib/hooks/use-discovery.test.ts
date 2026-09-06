@@ -497,3 +497,25 @@ describe('useUpdateDiscoverySettings', () => {
     expect(parsed.relatedPapersSignals.citations).toBe(true);
   });
 });
+
+describe('default discovery signals', () => {
+  it('has co-citation and bibliographic coupling on', async () => {
+    // Both are computed by the same query the citation signal already runs, so
+    // leaving them off hid the part of related work that reads the citation
+    // network rather than the prose.
+    const { DEFAULT_DISCOVERY_SETTINGS } = await import('./use-discovery');
+    expect(DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals).toMatchObject({
+      citations: true,
+      coCitation: true,
+      bibliographicCoupling: true,
+    });
+  });
+
+  it('maps them to the include types the API accepts', async () => {
+    const { buildIncludeTypes, DEFAULT_DISCOVERY_SETTINGS } = await import('./use-discovery');
+    const types = buildIncludeTypes(DEFAULT_DISCOVERY_SETTINGS.relatedPapersSignals);
+    expect(types).toEqual(
+      expect.arrayContaining(['citation', 'co-citation', 'bibliographic-coupling'])
+    );
+  });
+});

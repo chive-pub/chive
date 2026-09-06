@@ -94,7 +94,7 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: 'optional',
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
-    const { discovery, eprint, recommendationService } = c.get('services');
+    const { discovery, eprint } = c.get('services');
 
     // Lexicon codegen produces a union of string | string[] for array query params.
     // When a single value is sent, the XRPC parser passes a plain string, not an array.
@@ -112,9 +112,6 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
       : rawIncludeTypes
         ? [rawIncludeTypes as IncludeType]
         : [];
-    const includeGraphTypes = includeTypes.some(
-      (t) => t === 'co-citation' || t === 'bibliographic-coupling'
-    );
     const includeCollaborative = includeTypes.includes('collaborative');
     const standardTypes = includeTypes.filter(
       (t) => t !== 'co-citation' && t !== 'bibliographic-coupling' && t !== 'collaborative'
@@ -124,7 +121,6 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
       uri: params.uri,
       limit: params.limit,
       includeTypes,
-      includeGraphTypes,
     });
 
     if (!discovery) {
@@ -197,63 +193,23 @@ export const getSimilar: XRPCMethod<QueryParams, void, OutputSchema> = {
       explanation: r.explanation,
     }));
 
-    // Add graph-based similarity if requested and service available
-    if (includeGraphTypes && recommendationService) {
-      try {
-        const graphSimilar = await recommendationService.getSimilar(
-          params.uri as AtUri,
-          params.limit ?? 5
-        );
-        const existingUris = new Set(relatedPapers.map((r) => r.uri));
-
-        for (const paper of graphSimilar) {
-          if (!existingUris.has(paper.uri)) {
-            // Filter by requested graph types
-            const matchesType =
-              (includeTypes.includes('co-citation') && paper.reason === 'co-citation') ||
-              (includeTypes.includes('bibliographic-coupling') &&
-                paper.reason === 'bibliographic-coupling') ||
-              (!includeTypes.includes('co-citation') &&
-                !includeTypes.includes('bibliographic-coupling'));
-
-            if (matchesType) {
-              // Graph similarity is 0-1, scale to 0-1000 for lexicon
-              relatedPapers.push({
-                uri: paper.uri,
-                title: paper.title,
-                abstract: undefined,
-                authors: paper.authors?.map((name) => ({ name })),
-                categories: undefined,
-                publicationDate: undefined,
-                score: Math.round((paper.similarity ?? 0) * 1000),
-                relationshipType:
-                  paper.reason === 'bibliographic-coupling' ? 'bibliographic-coupling' : 'co-cited',
-                explanation:
-                  paper.reason === 'co-citation'
-                    ? `Frequently cited together (${paper.sharedCiters ?? 0} shared citers)`
-                    : `Share ${paper.sharedReferences ?? 0} common references`,
-                sharedReferences: paper.sharedReferences,
-                sharedCiters: paper.sharedCiters,
-              });
-              existingUris.add(paper.uri);
-            }
-          }
-        }
-
-        // Re-sort by score
-        relatedPapers.sort((a, b) => b.score - a.score);
-
-        logger.debug('Added graph similarity results', {
-          graphCount: graphSimilar.length,
-          totalCount: relatedPapers.length,
-        });
-      } catch (error) {
-        // Log but don't fail if graph similarity unavailable
-        logger.warn('Failed to get graph similarity', {
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+    // Co-citation and bibliographic coupling are NOT appended here.
+    //
+    // `findRelatedEprints` already asks the same recommendation engine for the
+    // same pair of measures -- one Cypher query computes both -- and merges the
+    // answer into its weighted blend alongside direct citations, concepts,
+    // semantic similarity and the author network. Asking a second time and
+    // pushing the results onto the end produced two faults at once: the same
+    // papers arrived twice by two routes, and the appended copies carried a raw
+    // 0-1000 similarity that outscored everything the blend had weighted. A
+    // reader who turned these signals on in their settings therefore lost the
+    // citation-derived suggestions entirely and got content similarity instead
+    // -- the opposite of what asking for co-citation means.
+    //
+    // The signals reach the reader through the blend, where they can be
+    // weighted against the others. `includeTypes` still accepts the two values
+    // so a stored setting does not become an error; they simply no longer
+    // trigger a second, unweighted pass.
 
     // Limit to requested count
     const limitedPapers = relatedPapers.slice(0, params.limit ?? 5);
