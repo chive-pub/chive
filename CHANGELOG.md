@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.1] - 2026-09-06
+
+### Fixed
+
+- **Citation arrows were drawn on top of the papers.** Lit edges carried an explicit `zIndex`, which lifts an edge out of the layer React Flow draws beneath the nodes, so every highlighted arrow crossed the pills it ran between and cut through their labels. They keep their place above the faded background edges by ordering within that layer instead, which is where the distinction belonged.
+
 ## [0.22.0] - 2026-09-05
 
 ### Added
@@ -1257,7 +1263,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.0...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.1...HEAD
+[0.22.1]: https://github.com/chive-pub/chive/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/chive-pub/chive/compare/v0.21.0...v0.22.0
 [0.21.0]: https://github.com/chive-pub/chive/compare/v0.20.2...v0.21.0
 [0.20.2]: https://github.com/chive-pub/chive/compare/v0.20.1...v0.20.2
