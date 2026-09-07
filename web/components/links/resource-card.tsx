@@ -37,6 +37,18 @@ export interface ResourceStat {
   readonly label: string;
   /** Screen-reader name, when the label alone would not say what it counts. */
   readonly title?: string;
+  /**
+   * Where the fact points, when it names something reachable.
+   *
+   * @remarks
+   * Some facts are addresses: the paper at the other end of a connection, the
+   * repository a release came from. Those belong on the stats line beside the
+   * kind and the date rather than among the actions, which are the ways into
+   * the record itself.
+   */
+  readonly href?: string;
+  /** Opens `href` in a new tab. Off for a link within Chive. */
+  readonly external?: boolean;
 }
 
 /** A way into the resource. */
@@ -71,8 +83,17 @@ export interface ResourceCardProps {
   readonly iconBg?: string;
   /** What this resource is called. */
   readonly title: string;
-  /** The service it lives on, shown as a badge beside the title. */
+  /** The service it lives on, shown as a badge beneath the title. */
   readonly badge?: string;
+  /**
+   * A second badge for a typed field the resource carries.
+   *
+   * @remarks
+   * A Margin motivation, a Semble relation. Sits beside the service badge
+   * rather than below the card's actions, which is where it lands if it is
+   * passed as a child.
+   */
+  readonly labelBadge?: string;
   /**
    * The address, or the part of it worth reading.
    *
@@ -86,6 +107,15 @@ export interface ResourceCardProps {
   readonly subtitleMono?: boolean;
   /** A sentence or two about the resource. */
   readonly description?: string;
+  /**
+   * Who the resource belongs to.
+   *
+   * @remarks
+   * Its own line, above the small facts. A record in the atmosphere was
+   * written by somebody, and a card that never says who reads as though Chive
+   * wrote it -- which is the opposite of what these cards exist to show.
+   */
+  readonly byline?: ReactNode;
   /** Small facts: stars, a date, a record key. */
   readonly stats?: readonly ResourceStat[];
   /**
@@ -127,9 +157,11 @@ export function ResourceCard({
   iconBg = 'bg-muted',
   title,
   badge,
+  labelBadge,
   subtitle,
   subtitleMono,
   description,
+  byline,
   stats,
   tags,
   href,
@@ -140,7 +172,8 @@ export function ResourceCard({
   // Wrapping the card in an anchor is only safe when nothing inside it is
   // interactive: a button nested in a link is not something a browser can
   // represent, and the dataset snippet a card can carry has one.
-  const linkWraps = Boolean(href) && !actions?.length && !children;
+  const linkWraps =
+    Boolean(href) && !actions?.length && !children && !stats?.some((stat) => stat.href);
 
   const body = (
     <div className="flex items-start gap-3">
@@ -149,14 +182,25 @@ export function ResourceCard({
       </div>
 
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 break-words font-medium leading-tight">{title}</span>
-          {badge && (
-            <Badge variant="outline" className="shrink-0 text-xs font-normal">
-              {badge}
-            </Badge>
-          )}
-        </div>
+        <p className="break-words font-medium leading-tight">{title}</p>
+
+        {/* On its own line, always. Sharing the title's line, it sat beside a
+            short title and wrapped beneath a long one, so no two cards in a
+            list agreed about where to find it. */}
+        {(badge || labelBadge) && (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {badge && (
+              <Badge variant="outline" className="text-xs font-normal">
+                {badge}
+              </Badge>
+            )}
+            {labelBadge && (
+              <Badge variant="secondary" className="text-xs font-normal capitalize">
+                {labelBadge}
+              </Badge>
+            )}
+          </div>
+        )}
 
         {subtitle && (
           <p
@@ -173,22 +217,35 @@ export function ResourceCard({
 
         {description && <p className="line-clamp-3 text-sm text-muted-foreground">{description}</p>}
 
+        {byline && <div className="flex items-center gap-1.5 pt-0.5 text-xs">{byline}</div>}
+
         {stats && stats.length > 0 && (
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 text-xs text-muted-foreground">
             {stats.map((stat, index) => {
               const StatIcon = stat.icon;
-              return (
-                // Two stats can carry the same text -- an unreachable upstream
-                // renders both counts as an em dash -- so the position is the
-                // only key that stays unique.
-                // eslint-disable-next-line react/no-array-index-key
-                <span
-                  key={`${stat.label}-${index}`}
-                  className="flex items-center gap-1"
-                  title={stat.title}
-                >
-                  {StatIcon && <StatIcon className="h-3.5 w-3.5" />}
+              const content = (
+                <>
+                  {StatIcon && <StatIcon className="h-3.5 w-3.5 shrink-0" />}
                   {stat.label}
+                </>
+              );
+              // Two stats can carry the same text -- an unreachable upstream
+              // renders both counts as an em dash -- so the position is the
+              // only key that stays unique.
+              const key = `${stat.label}-${index}`;
+              return stat.href ? (
+                <a
+                  key={key}
+                  href={stat.href}
+                  title={stat.title}
+                  {...(stat.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                  className="flex items-center gap-1 text-foreground hover:underline"
+                >
+                  {content}
+                </a>
+              ) : (
+                <span key={key} className="flex items-center gap-1" title={stat.title}>
+                  {content}
                 </span>
               );
             })}

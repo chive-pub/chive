@@ -114,21 +114,57 @@ export class CosmikConnectionsPlugin extends BacklinkTrackingPlugin {
   extractEprintRefs(record: unknown): string[] {
     const connection = record as CosmikConnection;
     const refs: string[] = [];
-    if (this.isChiveEprintReference(connection.source)) {
-      refs.push(connection.source);
+
+    // Normalised, not pushed as written. A connection made in Cosmik's own
+    // interface names each end by the address the user was looking at --
+    // `chive.pub/eprints/<encoded at-uri>` -- and a backlink stored under that
+    // URL is keyed on something no eprint can be looked up by. The row exists
+    // and the paper never shows it; `backlink.list` will not even accept the
+    // URL as a target, so nothing can read it back. The card plugin beside this
+    // one already resolves its two URL fields for the same reason.
+    for (const end of [connection.source, connection.target]) {
+      const uri = this.toEprintUri(end);
+      if (uri && !refs.includes(uri)) {
+        refs.push(uri);
+      }
     }
-    if (this.isChiveEprintReference(connection.target)) {
-      refs.push(connection.target);
-    }
+
     return refs;
   }
 
   protected override extractContext(record: unknown): string | undefined {
+    // The note the connection carries, and nothing else. The relation is a
+    // typed field; joined onto the front of the note it reached the eprint page
+    // as "type: builds-on - PDS generalises…", with the machine value read as
+    // the first words of a sentence.
     const connection = record as CosmikConnection;
-    const parts: string[] = [];
-    if (connection.connectionType) parts.push(`type: ${connection.connectionType}`);
-    if (connection.note) parts.push(connection.note);
-    return parts.length > 0 ? parts.join(' - ') : undefined;
+    return connection.note || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
+  }
+
+  protected override extractContextLabel(record: unknown): string | undefined {
+    const connection = record as CosmikConnection;
+    return connection.connectionType || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
+  }
+
+  protected override extractRelatedUri(record: unknown, targetUri: string): string | undefined {
+    // A connection is an edge, and a card showing only its note says what the
+    // author thought about a relationship without naming what it relates. The
+    // end that is not this eprint is the missing half.
+    const connection = record as CosmikConnection;
+
+    for (const end of [connection.source, connection.target]) {
+      if (!end) continue;
+      // Compared as eprint URIs, because an end that names a Chive paper does
+      // so by the address the author was looking at -- a `chive.pub/eprints/…`
+      // URL -- while the target it must be told apart from is an AT-URI.
+      if (this.toEprintUri(end) === targetUri) continue;
+      // Normalised where it is a Chive paper, so the read path can join the
+      // index for its title; left as written otherwise, since most ends are
+      // DOIs or catalogue pages that Chive can only show as an address.
+      return this.toEprintUri(end) ?? end;
+    }
+
+    return undefined;
   }
 
   protected override shouldProcess(_record: unknown): boolean {
@@ -231,11 +267,6 @@ export class CosmikConnectionsPlugin extends BacklinkTrackingPlugin {
   /**
    * Checks if a string references a Chive eprint via AT-URI or web URL.
    */
-  private isChiveEprintReference(value: string): boolean {
-    if (value.includes('pub.chive.eprint.submission')) return true;
-    if (value.includes('chive.pub/eprints/')) return true;
-    return false;
-  }
 }
 
 export default CosmikConnectionsPlugin;

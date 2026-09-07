@@ -28,6 +28,8 @@ const indexer = readFileSync(join(process.cwd(), 'src/indexer.ts'), 'utf8');
  */
 const HANDLED_BY: Record<string, string> = {
   'network.cosmik.card': 'cosmik-backlinks',
+  'network.cosmik.collection': 'cosmik-collections',
+  'network.cosmik.collectionLink': 'cosmik-collections',
   'network.cosmik.collectionLinkRemoval': 'cosmik-link-removals',
   'network.cosmik.connection': 'cosmik-connections',
   'network.cosmik.follow': 'cosmik-follows',

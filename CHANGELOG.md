@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2026-09-07
+
+### Added
+
+- **A record in the atmosphere says who wrote it.** These live in their authors' own repositories, which is the whole point of the tab, and a card that never named one read as though Chive had written it. Each now carries the account's avatar, display name and handle on its own line. The handle, not the DID: the DID identifies an account without naming it.
+
+- **Semble collections and their membership are indexed.** Semble draws a card inside a collection, which is where a reader actually sees it, and `network.cosmik.collectionLink` is the record that puts it there. Chive had never read that record: it indexed `collectionLinkRemoval`, the tombstone an owner writes to remove a collaborator's link, and so watched cards being taken out of collections it had never seen them put into. Both the collection and the link are now indexed, and a Semble card on an eprint names the collection holding it and links there.
+
+- **Semble cards link to Semble.** A card's address on Semble is `/profile/{did}/cards/{rkey}`, which today renders "Card page -- coming soon!"; it is the canonical address and will start working when Semble builds the page. A connection has no address at all -- `/connections/{rkey}` is a genuine "Page not found" -- so it is offered none. Both were established in a browser rather than by reading server HTML: Semble renders on the client, so its server response is the same shell whatever the route, and an earlier reading of that shell had concluded there was no card page.
+
+- **A connection names the paper at its other end.** A Cosmik connection is an edge between two entities; Chive stored the note and the relation and dropped both endpoints, so a card said what its author thought about a relationship without ever naming the other half of it. Where that half is an eprint Chive holds, it is shown by title and linked; where it is a DOI or a catalogue page, by its address. The title is resolved at read time rather than stored, so a retitled paper is named correctly everywhere without reindexing.
+
+- **Co-citation and bibliographic coupling reach related work.** Both were implemented and neither was switched on.
+
+- **Margin annotations link back to Margin.** Its permalink addresses a note by its author's handle and answers "Not found" to the DID form, which is all an AT-URI carries, so the link could not be built. Backlink listings now resolve source handles through the existing batched, cached profile hydrator.
+
+### Changed
+
+- **A repository on the Code tab is described as fully as Chive can describe it.** A declared code link and a fetched integration for the same repository were two separate renderings of one thing; they are joined on the normalised URL and drawn as the richer card.
+
+- **The atmosphere counts what it draws.** The panel's corner badge came from the counts endpoint while the list came from the rows, and the two are maintained separately, so a panel could show one number directly above a list of a different length. The tab keeps the total; the panel's own filter row is the count. Its loading skeleton also said "Backlinks", so the section renamed itself as it finished loading.
+
+- **Each service is drawn with its own mark.** Leaflet, Semble, Margin, standard.site and Chive publish vectors; where a service publishes none, the card keeps a generic glyph and the service's name, because a generic glyph identifies nothing on its own.
+
+### Fixed
+
+- **A typed field was rendered as the opening words of a title.** A Margin motivation and a Cosmik relation were prefixed onto the text a reader sees, so a card read "commenting: The gradable adjective case is..." -- structured data presented as the start of a sentence. They are drawn as chips, and in prose casing, since the lexicons disagree about how to spell an enum: Margin writes `commenting`, Cosmik writes `RELATED`, a Chive relation slug is `builds-on`, and rendered as written three chips in one list were in three different cases.
+
+- **A title and a description were joined with a colon.** A Leaflet document and a standard.site document each carry both, and run together they read as one run-on sentence.
+
+- **A connection naming a paper by its Chive web address was indexed under a key nothing could look up.** That is how Semble writes an endpoint -- the address its author was looking at -- so the row existed, the paper never showed it, and `backlink.list` would not accept the URL as a target either. Endpoints are resolved to eprint AT-URIs before being recorded.
+
+- **Chive's own standard.site document is no longer listed as a reference to the paper.** That document _is_ the eprint, published outward; it is not something on the network pointing at it.
+
+- **A collection owner's link removal is applied, not merely announced.** The plugin emitted an event with nothing subscribed to it, so a card an owner removed stayed indexed as a member of the collection, and the tombstone table the migration created for it stayed empty. The tombstone is kept too, because deleting it is how an owner undoes a removal and a deletion event carries only the tombstone's own URI.
+
+- **The record URI is gone from atmosphere cards**, where a "View record" link already goes to the same place.
+
 ## [0.22.2] - 2026-09-06
 
 ### Fixed
@@ -1275,7 +1313,8 @@ Initial release of Chive, a decentralized eprint service built on AT Protocol.
 - Unit test suite with 134 test files covering handlers, services, storage adapters, plugins, and utilities
 - Test infrastructure with Docker test stack, seed data scripts, and cleanup utilities
 
-[Unreleased]: https://github.com/chive-pub/chive/compare/v0.22.2...HEAD
+[Unreleased]: https://github.com/chive-pub/chive/compare/v0.23.0...HEAD
+[0.23.0]: https://github.com/chive-pub/chive/compare/v0.22.2...v0.23.0
 [0.22.2]: https://github.com/chive-pub/chive/compare/v0.22.1...v0.22.2
 [0.22.1]: https://github.com/chive-pub/chive/compare/v0.22.0...v0.22.1
 [0.22.0]: https://github.com/chive-pub/chive/compare/v0.21.0...v0.22.0

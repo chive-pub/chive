@@ -54,6 +54,31 @@ interface BacklinkRow {
   source_type: string;
   source_did: string;
   target_uri: string;
+  /** The source record's own typed field, when it has one. */
+  context_label?: string | null;
+  /** The source record's description, when it has one distinct from its title. */
+  context_detail?: string | null;
+  /** The end of the source record that is not this eprint, when it names one. */
+  related_uri?: string | null;
+  /**
+   * A collection the source record sits inside, joined in on read.
+   *
+   * @remarks
+   * Not a column on `backlinks`. Semble draws a card inside a collection, so
+   * the collection is where a reader actually sees it.
+   */
+  container_uri?: string | null;
+  /** Name of the collection at `container_uri`, joined in on read. */
+  container_name?: string | null;
+  /**
+   * Title of the eprint at `related_uri`, joined in on read.
+   *
+   * @remarks
+   * Not a column on `backlinks`. Present only on rows returned by
+   * {@link BacklinkService.getBacklinks}, and only where the other end is an
+   * eprint this index holds.
+   */
+  related_title?: string | null;
   context: string | null;
   indexed_at: Date;
   is_deleted: boolean;
@@ -135,26 +160,51 @@ export class BacklinkService implements IBacklinkService {
     sourceType: BacklinkSourceType;
     targetUri: string;
     context?: string;
+    /**
+     * A typed field the source record carries alongside its text.
+     *
+     * @remarks
+     * Kept apart from `context` because it is not prose. Prefixed onto the text
+     * -- which is what the plugins did before this existed -- it reached the
+     * eprint page as the opening words of the card's title.
+     */
+    contextLabel?: string;
+    /** The source record's description, kept apart from its title. */
+    contextDetail?: string;
+    /** The end of the source record that is not this eprint, when it names one. */
+    relatedUri?: string;
   }): Promise<Backlink> {
     // Extract DID from source URI (at://did:plc:xxx/collection/rkey)
     const sourceDid = this.extractDidFromUri(data.sourceUri);
 
     const result = await this.db.query<BacklinkRow>(
       `INSERT INTO backlinks (
-        source_uri, source_type, source_did, target_uri, context,
-        indexed_at, is_deleted
+        source_uri, source_type, source_did, target_uri, context, context_label,
+        context_detail, related_uri, indexed_at, is_deleted
       ) VALUES (
-        $1, $2, $3, $4, $5, NOW(), false
+        $1, $2, $3, $4, $5, $6, $7, $8, NOW(), false
       )
       ON CONFLICT (source_uri, target_uri) DO UPDATE SET
         source_type = EXCLUDED.source_type,
         target_uri = EXCLUDED.target_uri,
         context = EXCLUDED.context,
+        context_label = EXCLUDED.context_label,
+        context_detail = EXCLUDED.context_detail,
+        related_uri = EXCLUDED.related_uri,
         indexed_at = NOW(),
         is_deleted = false,
         deleted_at = NULL
       RETURNING *`,
-      [data.sourceUri, data.sourceType, sourceDid, data.targetUri, data.context ?? null]
+      [
+        data.sourceUri,
+        data.sourceType,
+        sourceDid,
+        data.targetUri,
+        data.context ?? null,
+        data.contextLabel ?? null,
+        data.contextDetail ?? null,
+        data.relatedUri ?? null,
+      ]
     );
 
     const row = result.rows[0];
@@ -219,28 +269,51 @@ export class BacklinkService implements IBacklinkService {
       cursor?: string;
     }
   ): Promise<{ backlinks: Backlink[]; cursor?: string }> {
-    const conditions: string[] = ['target_uri = $1', 'is_deleted = false'];
+    // Qualified, because the query joins `eprints_index` for the title of the
+    // other end and both tables have a `uri`-shaped column.
+    const conditions: string[] = ['b.target_uri = $1', 'b.is_deleted = false'];
     const values: unknown[] = [targetUri];
     let paramIndex = 2;
 
     if (options?.sourceType) {
-      conditions.push(`source_type = $${paramIndex++}`);
+      conditions.push(`b.source_type = $${paramIndex++}`);
       values.push(options.sourceType);
     }
 
     if (options?.cursor) {
       const cursorId = parseInt(options.cursor, 10);
-      conditions.push(`id > $${paramIndex++}`);
+      conditions.push(`b.id > $${paramIndex++}`);
       values.push(cursorId);
     }
 
     const limit = Math.min(options?.limit ?? 50, 100);
     values.push(limit + 1);
 
+    // The title of the other end is read from `eprints_index` rather than
+    // stored beside `related_uri`, so a retitled paper is named correctly on
+    // every card that points at it without the backlinks being reindexed. The
+    // join is left, because most related ends are not eprints Chive holds --
+    // they are DOIs and catalogue pages -- and those rows must still come back.
+    // The lateral join answers "which Semble collection is this card in", which
+    // is where a reader actually sees the card. One row, because a backlink is
+    // one row and a card can sit in several collections: the earliest
+    // membership still standing is the one shown.
     const result = await this.db.query<BacklinkRow>(
-      `SELECT * FROM backlinks
+      `SELECT b.*, e.title AS related_title,
+              m.collection_uri AS container_uri,
+              c.name AS container_name
+       FROM backlinks b
+       LEFT JOIN eprints_index e ON e.uri = b.related_uri
+       LEFT JOIN LATERAL (
+         SELECT l.collection_uri
+         FROM cosmik_collection_links_index l
+         WHERE l.card_uri = b.source_uri AND l.is_removed = false
+         ORDER BY l.added_at ASC NULLS LAST, l.uri ASC
+         LIMIT 1
+       ) m ON true
+       LEFT JOIN cosmik_collections_index c ON c.uri = m.collection_uri
        WHERE ${conditions.join(' AND ')}
-       ORDER BY id ASC
+       ORDER BY b.id ASC
        LIMIT $${paramIndex}`,
       values
     );
@@ -424,6 +497,12 @@ export class BacklinkService implements IBacklinkService {
       sourceType: row.source_type as BacklinkSourceType,
       targetUri: row.target_uri,
       context: row.context ?? undefined,
+      contextLabel: row.context_label ?? undefined,
+      contextDetail: row.context_detail ?? undefined,
+      relatedUri: row.related_uri ?? undefined,
+      relatedTitle: row.related_title ?? undefined,
+      containerUri: row.container_uri ?? undefined,
+      containerName: row.container_name ?? undefined,
       indexedAt: row.indexed_at,
       deleted: row.is_deleted,
     };

@@ -105,6 +105,49 @@
           "maxLength": 500,
           "description": "Optional context about the backlink"
         },
+        "contextLabel": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "A typed field the source record carries alongside its text, such as a Margin annotation's motivation or a Cosmik connection's relation. Kept apart from `context` so a reader is not shown structured data as the opening words of a sentence."
+        },
+        "contextDetail": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "The source record's description, where it has one distinct from its title. Kept apart from `context` so the two are not run together into a single sentence."
+        },
+        "sourceHandle": {
+          "type": "string",
+          "description": "Handle of the account the source record belongs to, resolved at read time. Some applications address a record by its author's handle rather than their DID -- Margin's annotation pages are `margin.at/{handle}/annotation/{rkey}` and answer \"Not found\" to a DID -- so a link to the record on its own service cannot be built from the AT-URI alone."
+        },
+        "sourceDisplayName": {
+          "type": "string",
+          "maxLength": 640,
+          "description": "Display name of the account the source record belongs to, resolved at read time alongside `sourceHandle`."
+        },
+        "sourceAvatar": {
+          "type": "string",
+          "format": "uri",
+          "description": "Avatar of the account the source record belongs to, resolved at read time alongside `sourceHandle`. Served by the account's own profile service, not by Chive."
+        },
+        "containerUri": {
+          "type": "string",
+          "description": "A record the source record sits inside, where its service renders it there. Semble draws a card inside a collection, which is where a reader actually sees it, so a Semble card names the collection holding it."
+        },
+        "containerName": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Name of the record at `containerUri`, resolved at read time. Absent where the container has not been indexed, in which case the link is still offered without a name."
+        },
+        "relatedUri": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "The other thing the source record joined this eprint to, where it names one. A Cosmik connection is an edge between two entities, so a card that shows only the note omits half of what the record says; this carries the end that is not this eprint, as an AT-URI or a URL."
+        },
+        "relatedTitle": {
+          "type": "string",
+          "maxLength": 300,
+          "description": "Title of the record named by `relatedUri`, resolved at read time when that record is an eprint Chive has indexed. Absent for an end Chive does not hold, which is then shown by its address."
+        },
         "indexedAt": {
           "type": "string",
           "format": "datetime",

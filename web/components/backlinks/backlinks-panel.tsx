@@ -23,11 +23,10 @@ import { Link2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { describeAtUri } from '@/lib/atproto/at-uri-links';
-import { useBacklinks, useBacklinkCounts, type Backlink } from '@/lib/hooks/use-backlinks';
+import { useBacklinks, type Backlink } from '@/lib/hooks/use-backlinks';
 
 import { BacklinkItem, getSourceLabel } from './backlink-item';
 
@@ -59,7 +58,7 @@ export function BacklinksPanelSkeleton({ className }: { className?: string }) {
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <Link2 className="h-4 w-4" />
-          Backlinks
+          Atmosphere
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -96,7 +95,6 @@ function appNameOf(backlink: Backlink): string {
  * @public
  */
 export function BacklinksPanel({ eprintUri, className, showEmpty = false }: BacklinksPanelProps) {
-  const { data: counts } = useBacklinkCounts(eprintUri);
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } = useBacklinks(
     eprintUri,
     { limit: 20 }
@@ -124,7 +122,12 @@ export function BacklinksPanel({ eprintUri, className, showEmpty = false }: Back
     return <BacklinksPanelSkeleton className={className} />;
   }
 
-  const total = counts?.total ?? backlinks.length;
+  // What is on the page, not what the counts endpoint believes is on it. That
+  // endpoint buckets by source type and is maintained separately from the rows
+  // themselves, so the two drift -- and when they did, the panel showed a
+  // corner badge reading one number directly above a list of a different
+  // length. The tab already carries a total; the panel counts what it draws.
+  const total = backlinks.length;
 
   if (total === 0) {
     if (!showEmpty) return null;
@@ -151,9 +154,6 @@ export function BacklinksPanel({ eprintUri, className, showEmpty = false }: Back
         <CardTitle className="text-base flex items-center gap-2">
           <Link2 className="h-4 w-4" />
           Atmosphere
-          <Badge variant="secondary" className="ml-auto" data-testid="backlinks-count">
-            {total}
-          </Badge>
         </CardTitle>
         <CardDescription>
           Records elsewhere on the network that refer to this paper. Each one lives in its
@@ -168,6 +168,7 @@ export function BacklinksPanel({ eprintUri, className, showEmpty = false }: Back
               size="sm"
               className="h-7 rounded-full px-3 text-xs"
               aria-pressed={app === null}
+              data-testid="backlinks-count"
               onClick={() => {
                 setApp(null);
               }}

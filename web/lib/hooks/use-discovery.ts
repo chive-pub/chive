@@ -484,8 +484,11 @@ export const DEFAULT_DISCOVERY_SETTINGS: DiscoverySettings = {
     citations: true,
     topics: true,
     authors: true,
-    coCitation: false,
-    bibliographicCoupling: false,
+    // On by default. Both are computed by the same Cypher query the citation
+    // signal already runs, and they are what let related work say "frequently
+    // cited together" and "shares references" rather than only "looks similar".
+    coCitation: true,
+    bibliographicCoupling: true,
     collaborative: false,
   },
   relatedPapersWeights: DEFAULT_RELATED_PAPERS_WEIGHTS,

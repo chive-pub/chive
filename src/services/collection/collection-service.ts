@@ -2296,6 +2296,299 @@ export class CollectionService {
   }
 
   // =========================================================================
+  // COSMIK COLLECTIONS AND MEMBERSHIP
+  // =========================================================================
+
+  /**
+   * Indexes a Semble collection.
+   *
+   * @param record - The collection's own fields
+   * @param metadata - Record identity from the firehose
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * Indexed whether or not the collection references an eprint. A card that
+   * cites a paper usually sits in a collection about something else, and the
+   * collection is the only page Semble serves for that card -- so its name has
+   * to be on hand even when the collection itself is nothing to do with Chive.
+   *
+   * @public
+   */
+  async indexCosmikCollection(
+    record: {
+      name?: string;
+      description?: string;
+      accessType?: string;
+      createdAt?: string;
+    },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `INSERT INTO cosmik_collections_index (
+          uri, cid, owner_did, name, description, access_type, created_at,
+          pds_url, indexed_at, updated_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          name = EXCLUDED.name,
+          description = EXCLUDED.description,
+          access_type = EXCLUDED.access_type,
+          updated_at = NOW(),
+          last_synced_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          extractDidFromUri(metadata.uri),
+          record.name ?? null,
+          record.description ?? null,
+          record.accessType ?? null,
+          record.createdAt ?? null,
+          metadata.pdsUrl,
+        ]
+      );
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Cosmik collection: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Cosmik collection', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Removes a Semble collection from the index.
+   *
+   * @param uri - AT-URI of the collection
+   * @returns Result indicating success or failure
+   *
+   * @public
+   */
+  async deleteCosmikCollection(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM cosmik_collections_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      return Err(
+        new DatabaseError(
+          'DELETE',
+          `Failed to delete Cosmik collection: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Indexes a card's membership of a collection.
+   *
+   * @param record - The link's card and collection references
+   * @param metadata - Record identity from the firehose
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * `is_removed` is preserved on conflict. A collection owner's removal
+   * tombstone can arrive before the link it removes -- the two records live in
+   * different repositories and reach the firehose independently -- and
+   * re-indexing the link must not undo a removal that is already known.
+   *
+   * @public
+   */
+  async indexCosmikCollectionLink(
+    record: {
+      cardUri: string;
+      collectionUri: string;
+      addedBy?: string;
+      addedAt?: string;
+    },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `INSERT INTO cosmik_collection_links_index (
+          uri, cid, owner_did, card_uri, collection_uri, added_by, added_at,
+          is_removed, pds_url, indexed_at, updated_at, last_synced_at
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7,
+          COALESCE((SELECT is_removed FROM cosmik_collection_links_index WHERE uri = $1), false),
+          $8, NOW(), NOW(), NOW()
+        )
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          card_uri = EXCLUDED.card_uri,
+          collection_uri = EXCLUDED.collection_uri,
+          added_by = EXCLUDED.added_by,
+          added_at = EXCLUDED.added_at,
+          updated_at = NOW(),
+          last_synced_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          extractDidFromUri(metadata.uri),
+          record.cardUri,
+          record.collectionUri,
+          record.addedBy ?? null,
+          record.addedAt ?? null,
+          metadata.pdsUrl,
+        ]
+      );
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Cosmik collection link: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Cosmik collection link', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Removes a card's membership of a collection from the index.
+   *
+   * @param uri - AT-URI of the link record
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * For the link record's own deletion, by its author. A removal by the
+   * collection's owner is a different event and goes through
+   * {@link CollectionService.markCosmikCollectionLinkRemoved}.
+   *
+   * @public
+   */
+  async deleteCosmikCollectionLink(uri: AtUri): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query('DELETE FROM cosmik_collection_links_index WHERE uri = $1', [uri]);
+      return Ok(undefined);
+    } catch (error) {
+      return Err(
+        new DatabaseError(
+          'DELETE',
+          `Failed to delete Cosmik collection link: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Marks a membership removed, or unmarks it.
+   *
+   * @param linkUri - AT-URI of the link record the tombstone names
+   * @param removed - Whether the link is currently removed
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * The row is written even when no link is indexed yet, so a tombstone that
+   * arrives before its link is not lost -- the two records live in different
+   * repositories and reach the firehose independently. Deleting the tombstone
+   * means the owner put the card back, which is why this also unmarks.
+   *
+   * @public
+   */
+  async markCosmikCollectionLinkRemoved(
+    linkUri: string,
+    removed: boolean
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `UPDATE cosmik_collection_links_index
+         SET is_removed = $2, updated_at = NOW()
+         WHERE uri = $1`,
+        [linkUri, removed]
+      );
+      return Ok(undefined);
+    } catch (error) {
+      return Err(
+        new DatabaseError(
+          'WRITE',
+          `Failed to mark Cosmik collection link removed: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  }
+
+  /**
+   * Indexes a collection owner's removal of a link.
+   *
+   * @param record - The collection and the link the tombstone names
+   * @param metadata - Record identity from the firehose
+   * @returns Result indicating success or failure
+   *
+   * @remarks
+   * The tombstone is kept, not just applied, because deleting it is how an
+   * owner undoes a removal -- and a deletion event carries only the tombstone's
+   * own URI, so without the row there is no way to learn which link to restore.
+   *
+   * @public
+   */
+  async indexCosmikLinkRemoval(
+    record: { collectionUri: string; removedLinkUri: string; removedAt: string },
+    metadata: RecordMetadata
+  ): Promise<Result<void, DatabaseError>> {
+    try {
+      await this.pool.query(
+        `INSERT INTO cosmik_link_removals_index (
+          uri, cid, owner_did, collection_uri, removed_link_uri, removed_at,
+          pds_url, indexed_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        ON CONFLICT (uri) DO UPDATE SET
+          cid = EXCLUDED.cid,
+          collection_uri = EXCLUDED.collection_uri,
+          removed_link_uri = EXCLUDED.removed_link_uri,
+          removed_at = EXCLUDED.removed_at,
+          last_synced_at = NOW()`,
+        [
+          metadata.uri,
+          metadata.cid,
+          extractDidFromUri(metadata.uri),
+          record.collectionUri,
+          record.removedLinkUri,
+          record.removedAt,
+          metadata.pdsUrl,
+        ]
+      );
+      return Ok(undefined);
+    } catch (error) {
+      const dbError = new DatabaseError(
+        'WRITE',
+        `Failed to index Cosmik link removal: ${error instanceof Error ? error.message : String(error)}`
+      );
+      this.logger.error('Failed to index Cosmik link removal', dbError, { uri: metadata.uri });
+      return Err(dbError);
+    }
+  }
+
+  /**
+   * Forgets a removal tombstone, naming the link it had removed.
+   *
+   * @param uri - AT-URI of the tombstone
+   * @returns The link the tombstone named, or null if it was never indexed
+   *
+   * @remarks
+   * The caller needs the link URI to unmark the membership, and a deletion
+   * event carries only the tombstone's own URI.
+   *
+   * @public
+   */
+  async deleteCosmikLinkRemoval(uri: AtUri): Promise<Result<string | null, DatabaseError>> {
+    try {
+      const result = await this.pool.query<{ removed_link_uri: string }>(
+        'DELETE FROM cosmik_link_removals_index WHERE uri = $1 RETURNING removed_link_uri',
+        [uri]
+      );
+      return Ok(result.rows[0]?.removed_link_uri ?? null);
+    } catch (error) {
+      return Err(
+        new DatabaseError(
+          'DELETE',
+          `Failed to delete Cosmik link removal: ${error instanceof Error ? error.message : String(error)}`
+        )
+      );
+    }
+  }
+
+  // =========================================================================
   // COSMIK FOLLOWS
   // =========================================================================
 

@@ -70,12 +70,43 @@ describe('describeAtUri', () => {
     );
   });
 
-  it('offers no application address where the route is unverified', () => {
-    // A `network.cosmik.card` was previously linked as though it were a Cosmik
-    // collection, which 404s. No link is better than a wrong one.
-    expect(describeAtUri(`at://${DID}/network.cosmik.card/3abc`)?.webUrl).toBeUndefined();
+  it('offers a Semble address for a collection and a card', () => {
+    // Checked in a browser, not by fetching HTML: Semble renders on the client,
+    // so its server response is the same shell whatever the route, and reading
+    // that shell is what previously produced the wrong answer here.
+    expect(describeAtUri(`at://${DID}/network.cosmik.collection/3abc`)?.webUrl).toBe(
+      `https://semble.so/profile/${DID}/collections/3abc`
+    );
+    expect(describeAtUri(`at://${DID}/network.cosmik.card/3abc`)?.webUrl).toBe(
+      `https://semble.so/profile/${DID}/cards/3abc`
+    );
+  });
+
+  it('offers no Semble address for a connection, which has no page at all', () => {
+    // `/connections/{rkey}` is a genuine "Page not found", where the card route
+    // is a real page that says "coming soon". No link is better than a wrong
+    // one; a link to a page that is going to exist is better than none.
     expect(describeAtUri(`at://${DID}/network.cosmik.connection/3abc`)?.webUrl).toBeUndefined();
+  });
+
+  it('offers a Margin address only once the handle is known', () => {
+    // Margin addresses a note by its author's handle. The DID form of the same
+    // path answers "Not found", verified against one of Margin's own records,
+    // so the AT-URI alone is not enough to build the link.
     expect(describeAtUri(`at://${DID}/at.margin.note/3abc`)?.webUrl).toBeUndefined();
+    expect(describeAtUri(`at://${DID}/at.margin.note/3abc`, 'someone.example')?.webUrl).toBe(
+      'https://margin.at/someone.example/annotation/3abc'
+    );
+  });
+
+  it('never substitutes the DID where an application wants a handle', () => {
+    // The failure this guards against is silent: the link is built, it opens,
+    // and it shows "Not found".
+    const url = describeAtUri(`at://${DID}/at.margin.note/3abc`, 'someone.example')?.webUrl;
+    expect(url).not.toContain(DID);
+  });
+
+  it('offers no application address where the route is unverified', () => {
     expect(describeAtUri(`at://${DID}/site.standard.document/3abc`)?.webUrl).toBeUndefined();
   });
 

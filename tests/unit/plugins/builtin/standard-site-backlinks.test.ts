@@ -53,22 +53,30 @@ describe('StandardSiteBacklinksPlugin', () => {
   });
 
   describe('extractEprintRefs', () => {
-    it('finds the eprint from a document path', () => {
-      expect(plugin.extractEprintRefs({ title: 'A paper', path: PATH })).toEqual([EPRINT]);
+    it('records nothing for the document Chive published for the eprint', () => {
+      // A document that *is* the paper is not a reference to it. Recorded as a
+      // backlink it came back around onto the paper's own Atmosphere tab -- the
+      // paper citing itself, and the only entry there that told a reader
+      // nothing.
+      expect(plugin.extractEprintRefs({ title: 'A paper', path: PATH })).toEqual([]);
     });
 
-    it('finds the eprint from a legacy content.uri', () => {
-      // Documents written before the schema was corrected carry the eprint
-      // here and have no path. Dropping this branch would make every
-      // already-published Chive document invisible.
-      expect(plugin.extractEprintRefs({ title: 'A paper', content: { uri: EPRINT } })).toEqual([
-        EPRINT,
-      ]);
+    it('records nothing for one written before the schema was corrected', () => {
+      // Those carry the eprint on `content.uri` and have no path, but they are
+      // the same thing: the document Chive published for the paper.
+      expect(plugin.extractEprintRefs({ title: 'A paper', content: { uri: EPRINT } })).toEqual([]);
     });
 
-    it('prefers the path when a document carries both', () => {
-      const other = 'at://did:plc:other/pub.chive.eprint.submission/xyz';
-      expect(plugin.extractEprintRefs({ path: PATH, content: { uri: other } })).toEqual([EPRINT]);
+    it('still records a document someone else wrote about the paper', () => {
+      // The distinction that matters: this one references the eprint in its
+      // body rather than being it.
+      expect(
+        plugin.extractEprintRefs({
+          title: 'On probabilistic semantics',
+          path: '/posts/on-probabilistic-semantics',
+          content: { blocks: [{ uri: EPRINT }] },
+        })
+      ).toEqual([EPRINT]);
     });
 
     it('returns nothing for a document about something else', () => {
@@ -94,18 +102,31 @@ describe('StandardSiteBacklinksPlugin', () => {
       (plugin as unknown as { extractContext(r: unknown): string | undefined }).extractContext(
         record
       );
+    const detail = (record: unknown): string | undefined =>
+      (
+        plugin as unknown as { extractContextDetail(r: unknown): string | undefined }
+      ).extractContextDetail(record);
 
     it('uses the title', () => {
       expect(context({ title: 'A paper' })).toBe('A paper');
     });
 
-    it('appends a description when there is one', () => {
-      expect(context({ title: 'A paper', description: 'On scope' })).toBe('A paper: On scope');
+    it('keeps the description out of the title', () => {
+      // Joined on with a colon, the two read as one run-on sentence on the
+      // eprint page with no visible seam between them.
+      expect(context({ title: 'A paper', description: 'On scope' })).toBe('A paper');
+    });
+
+    it('reports the description separately', () => {
+      expect(detail({ title: 'A paper', description: 'On scope' })).toBe('On scope');
     });
 
     it('truncates a long description', () => {
-      const result = context({ title: 'A paper', description: 'x'.repeat(500) });
-      expect(result?.length).toBeLessThanOrEqual('A paper: '.length + 200);
+      expect(detail({ title: 'A paper', description: 'x'.repeat(900) })?.length).toBe(512);
+    });
+
+    it('reports no description when the document has none', () => {
+      expect(detail({ title: 'A paper' })).toBeUndefined();
     });
 
     it('returns nothing for a document with no title', () => {
