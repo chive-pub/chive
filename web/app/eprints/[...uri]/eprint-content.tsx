@@ -56,7 +56,9 @@ import {
 } from '@/components/endorsements';
 import { LoginPrompt } from '@/components/auth';
 import { TagManager } from '@/components/tags';
-import { IntegrationPanel } from '@/components/integrations';
+import { CodeResources } from '@/components/eprints/code-resources';
+import { DatasetLinks } from '@/components/integrations/dataset-links';
+import { useIntegrations } from '@/lib/hooks/use-integrations';
 import { RelatedPapersPanel, CitationSummary, CitationListPanel } from '@/components/discovery';
 import { isRichTextItem } from '@/lib/types/rich-text';
 import { BacklinksPanel } from '@/components/backlinks';
@@ -224,6 +226,9 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   // How many records elsewhere on the network refer to this paper. Read here
   // only for the tab's count; the panel fetches the references themselves.
   const { data: backlinkCounts } = useBacklinkCounts(uri);
+  // Read here for the Data tab; the Code tab fetches its own copy, which
+  // TanStack serves from the same cache entry.
+  const { data: integrations } = useIntegrations(uri);
   const backlinkTotal = backlinkCounts?.total ?? 0;
 
   // Annotation hooks (separate from reviews -- annotations have text span targets)
@@ -437,7 +442,10 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
   // only `repositories.data` would offer a "Data" tab that omits the datasets
   // someone actually linked.
   const supplementaryCount = eprint?.supplementaryMaterials?.length ?? 0;
-  const dataTabCount = dataCount + dataLinks.length + supplementaryCount;
+  // Deposits Chive fetched from Figshare, Dryad or OSF count too: they render
+  // on this tab now, and a tab that hides what it holds is worse than no tab.
+  const datasetCount = integrations?.datasets?.length ?? 0;
+  const dataTabCount = dataCount + dataLinks.length + supplementaryCount + datasetCount;
   const hasDataTab = dataTabCount > 0;
 
   /**
@@ -1348,7 +1356,7 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
         {/* Code tab */}
         {codeCount > 0 && (
           <TabsContent value="code" className="space-y-6">
-            <RepositoriesPanel repositories={eprint.repositories} only={['code']} title="Code" />
+            <CodeResources eprintUri={uri} repositories={eprint.repositories} />
           </TabsContent>
         )}
 
@@ -1376,6 +1384,16 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
                 this paper are unaffected and will appear here again once Layers responds.
               </p>
             )}
+            {/* Deposits Chive fetched from Figshare, Dryad or OSF. Filed here
+                rather than under Metadata, where they were listed away from
+                everything else that is data for this paper. */}
+            {(integrations?.datasets?.length ?? 0) > 0 && (
+              <>
+                <Separator />
+                <DatasetLinks datasets={integrations!.datasets!} />
+              </>
+            )}
+
             {/* Supplementary materials, including datasets linked on Layers */}
             {((eprint.supplementaryMaterials?.length ?? 0) > 0 || dataLinks.length > 0) && (
               <>
@@ -1495,10 +1513,6 @@ export function EprintDetailContent({ uri }: EprintDetailContentProps) {
           {/* External identifiers */}
           {/* No separator: ExternalIdsPanel returns null when no IDs */}
           <ExternalIdsPanel externalIds={eprint.externalIds} />
-
-          {/* Linked resources (GitHub, Zenodo, etc.) */}
-          {/* No separator: IntegrationPanel returns null when no data */}
-          <IntegrationPanel eprintUri={uri} />
 
           {/* ATProto source information */}
           {eprintSource && (
