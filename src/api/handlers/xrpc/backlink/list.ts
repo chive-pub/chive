@@ -18,6 +18,7 @@ import type {
   QueryParams,
   OutputSchema,
 } from '../../../../lexicons/generated/types/pub/chive/backlink/list.js';
+import type { DID } from '../../../../types/atproto.js';
 import type { BacklinkSourceType } from '../../../../types/interfaces/plugin.interface.js';
 import type { XRPCMethod, XRPCResponse } from '../../../xrpc/types.js';
 
@@ -30,7 +31,7 @@ export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
   auth: false,
   handler: async ({ params, c }): Promise<XRPCResponse<OutputSchema>> => {
     const logger = c.get('logger');
-    const { backlink } = c.get('services');
+    const { backlink, profileHydrator } = c.get('services');
 
     // Debug logging for E2E test debugging
     logger.info('listBacklinks called', {
@@ -60,6 +61,25 @@ export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
       hasCursor: !!result.cursor,
     });
 
+    // Some applications address a record by its author's handle rather than
+    // their DID: Margin renders an annotation at `margin.at/{handle}/annotation
+    // /{rkey}` and answers "Not found" to the DID form. The AT-URI carries only
+    // the DID, so without this the card can offer no way through to the record
+    // on the service that published it. Hydration is batched and cached, and
+    // best-effort -- a card without a handle simply keeps its record link.
+    const didOf = (uri: string): DID | undefined =>
+      /^at:\/\/(did:[a-z]+:[a-zA-Z0-9._:%-]+)/.exec(uri)?.[1] as DID | undefined;
+
+    const sourceDids = [
+      ...new Set(
+        result.backlinks.map((bl) => didOf(bl.sourceUri)).filter((did): did is DID => Boolean(did))
+      ),
+    ];
+
+    const profiles = profileHydrator
+      ? await profileHydrator.hydrate(sourceDids)
+      : new Map<DID, { handle?: string; displayName?: string; avatar?: string }>();
+
     const response: OutputSchema = {
       backlinks: result.backlinks.map((bl) => ({
         id: bl.id,
@@ -69,6 +89,19 @@ export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
         context: bl.context,
         contextLabel: bl.contextLabel,
         contextDetail: bl.contextDetail,
+        ...(() => {
+          const did = didOf(bl.sourceUri);
+          const profile = did ? profiles.get(did) : undefined;
+          return {
+            sourceHandle: profile?.handle,
+            sourceDisplayName: profile?.displayName,
+            sourceAvatar: profile?.avatar,
+          };
+        })(),
+        containerUri: bl.containerUri,
+        containerName: bl.containerName,
+        relatedUri: bl.relatedUri,
+        relatedTitle: bl.relatedTitle,
         indexedAt: bl.indexedAt.toISOString(),
         deleted: bl.deleted,
       })),

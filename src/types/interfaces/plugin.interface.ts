@@ -1545,6 +1545,42 @@ export interface Backlink {
   readonly contextDetail?: string;
 
   /**
+   * The other thing the source record joined this eprint to.
+   *
+   * @remarks
+   * A Cosmik connection is an edge between two entities, so a card showing only
+   * its note omits half of what the record says. This carries the end that is
+   * not this eprint -- an AT-URI where the source named a record, a URL
+   * otherwise, since the things connections join are often DOIs or catalogue
+   * pages rather than ATProto records.
+   */
+  readonly relatedUri?: string;
+
+  /**
+   * Title of the record named by {@link Backlink.relatedUri}.
+   *
+   * @remarks
+   * Resolved at read time from Chive's own index, and so present only where
+   * the other end is an eprint Chive holds. Not stored beside `relatedUri`: a
+   * copy taken at index time would go stale the first time the paper was
+   * retitled.
+   */
+  readonly relatedTitle?: string;
+
+  /**
+   * A record the source record sits inside.
+   *
+   * @remarks
+   * Semble draws a card only within a collection and publishes no address for
+   * the card itself, so the collection holding it is the only page that card
+   * can be opened at. Resolved at read time from the membership index.
+   */
+  readonly containerUri?: string;
+
+  /** Name of the record at {@link Backlink.containerUri}, where it is indexed. */
+  readonly containerName?: string;
+
+  /**
    * When this backlink was indexed.
    */
   readonly indexedAt: Date;
@@ -1625,6 +1661,8 @@ export interface IBacklinkService {
     contextLabel?: string;
     /** The source record's description, kept apart from its title. */
     contextDetail?: string;
+    /** The end of the source record that is not this eprint, when it names one. */
+    relatedUri?: string;
   }): Promise<Backlink>;
 
   /**

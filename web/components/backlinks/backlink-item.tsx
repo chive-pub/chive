@@ -28,17 +28,24 @@ import {
   Clock,
   Layers as LayersIcon,
   GitBranch,
+  ArrowRight,
+  FolderOpen,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+import {
+  ChiveMark,
+  LeafletMark,
+  MarginMark,
+  SembleMark,
+  StandardSiteMark,
+} from '@/components/integrations/brand-marks';
 import {
   ResourceCard,
   type ResourceAction,
   type ResourceStat,
 } from '@/components/links/resource-card';
-import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { describeAtUri } from '@/lib/atproto/at-uri-links';
+import { describeAtUri, summarizeUrl } from '@/lib/atproto/at-uri-links';
 import type { Backlink, BacklinkSourceType } from '@/lib/hooks/use-backlinks';
 
 /** How a publishing application is drawn. */
@@ -91,6 +98,25 @@ const APP_STYLES: Record<string, AppStyle> = {
     color: 'text-purple-600',
     bgColor: 'bg-purple-50 dark:bg-purple-950',
   },
+};
+
+/**
+ * The services that publish a usable vector mark.
+ *
+ * @remarks
+ * A card carrying the service's own mark does not also need to be labelled with
+ * its name -- the mark says it faster than the word does. Where a service
+ * publishes no vector, the card keeps a generic glyph *and* the name, because a
+ * generic glyph on its own identifies nothing.
+ *
+ * Smoke Signal publishes no vector anywhere and so is absent here on purpose.
+ */
+const BRAND_MARKS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Leaflet: LeafletMark,
+  Semble: SembleMark,
+  Margin: MarginMark,
+  'standard.site': StandardSiteMark,
+  Chive: ChiveMark,
 };
 
 const FALLBACK_STYLE: AppStyle = {
@@ -165,6 +191,93 @@ export function getSourceLabel(sourceType: BacklinkSourceType): string {
   }
 }
 
+/**
+ * Renders a machine value as something a reader can read.
+ *
+ * @param label - The value as the source record wrote it
+ * @returns The same value in prose casing
+ *
+ * @remarks
+ * Foreign lexicons disagree about how to spell an enum: Margin writes
+ * `commenting`, Cosmik writes `RELATED`, and a Chive relation slug is
+ * `builds-on`. Rendered as written, the chips in one list are in three
+ * different cases. Lowercasing an all-capitals token and unhyphenating the
+ * rest leaves the CSS to capitalize the first letter, so all three arrive as
+ * "Commenting", "Related", "Builds on".
+ *
+ * Only a token with no lowercase at all is folded, so a value that is
+ * deliberately capitalised part-way -- an initialism inside a phrase -- keeps
+ * its shape.
+ */
+export function humanizeLabel(label: string): string {
+  const cased = /[a-z]/.test(label) ? label : label.toLowerCase();
+  return cased.replace(/[-_]+/g, ' ').trim();
+}
+
+/**
+ * The stat naming what a record joined this paper to.
+ *
+ * @param relatedUri - The other end, as an AT-URI or a URL
+ * @param relatedTitle - Its title, where Chive holds the record
+ * @returns A stat pointing at the other end, or undefined when there is none
+ *
+ * @remarks
+ * Three cases, and only the first can be named: an eprint Chive has indexed
+ * links to its page by title; any other record goes to the record browser,
+ * since no title is available for something Chive does not hold; and anything
+ * else on the web is shown by its address.
+ */
+function relatedEnd(relatedUri?: string, relatedTitle?: string): ResourceStat | undefined {
+  const uri = relatedUri?.trim();
+  if (!uri) return undefined;
+
+  if (uri.startsWith('at://')) {
+    const record = describeAtUri(uri);
+    const isEprint = uri.includes('pub.chive.eprint.submission');
+    return {
+      icon: ArrowRight,
+      label: relatedTitle ?? (isEprint ? 'a paper on Chive' : (record?.kind ?? 'a record')),
+      title: uri,
+      // A paper Chive holds is a page on this site, so it opens in place; a
+      // record it does not hold can only be shown by a record browser.
+      ...(isEprint
+        ? { href: `/eprints/${encodeURIComponent(uri)}` }
+        : record
+          ? { href: record.recordUrl, external: true }
+          : {}),
+    };
+  }
+
+  return { icon: ArrowRight, label: summarizeUrl(uri), title: uri, href: uri, external: true };
+}
+
+/**
+ * The stat naming the collection a record is drawn inside.
+ *
+ * @param containerUri - AT-URI of the containing record
+ * @param containerName - Its name, where Chive has indexed it
+ * @returns A stat pointing at the container, or undefined when there is none
+ *
+ * @remarks
+ * Semble publishes no address for an individual card -- it renders cards only
+ * within a collection -- so the collection is the one page such a card can be
+ * opened at. A card whose collection Chive has not indexed still gets the
+ * link, unnamed, because the address is derivable from the URI alone.
+ */
+function containerEnd(containerUri?: string, containerName?: string): ResourceStat | undefined {
+  const uri = containerUri?.trim();
+  if (!uri) return undefined;
+  const record = describeAtUri(uri);
+  if (!record?.webUrl) return undefined;
+  return {
+    icon: FolderOpen,
+    label: containerName ?? `a ${record.appName} ${record.kind.toLowerCase()}`,
+    title: uri,
+    href: record.webUrl,
+    external: true,
+  };
+}
+
 export interface BacklinkItemProps {
   backlink: Backlink;
   className?: string;
@@ -179,7 +292,9 @@ export interface BacklinkItemProps {
  * @public
  */
 export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
-  const record = describeAtUri(backlink.sourceUri);
+  // The handle is passed because Margin addresses a note by its author's
+  // handle and answers "Not found" to the DID the AT-URI carries.
+  const record = describeAtUri(backlink.sourceUri, backlink.sourceHandle);
   const style = styleFor(record?.appName, backlink.sourceType);
 
   const appName = record?.appName ?? getSourceLabel(backlink.sourceType);
@@ -212,6 +327,44 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
     });
   }
 
+  // The other end of a record that joins this paper to something. A Semble
+  // connection is an edge, and a card carrying only the note said what its
+  // author thought about a relationship without ever naming the other half of
+  // it.
+  const related = relatedEnd(backlink.relatedUri, backlink.relatedTitle);
+  if (related) stats.push(related);
+
+  // Where the record is drawn. A Semble card has no page of its own, so the
+  // collection holding it is the only way through to it on Semble.
+  const container = containerEnd(backlink.containerUri, backlink.containerName);
+  if (container) stats.push(container);
+
+  // The mark identifies the service, so the name is not repeated beside it.
+  const brand = BRAND_MARKS[appName];
+
+  // Who wrote it. These records live in their authors' own repositories, and a
+  // card that never says whose reads as though Chive had written it. The DID
+  // is not shown: it identifies the account without naming it.
+  const handle = backlink.sourceHandle;
+  const byline = handle ? (
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- an avatar served
+          by someone else's profile service, not an asset this app ships. */}
+      {backlink.sourceAvatar && (
+        <img
+          src={backlink.sourceAvatar}
+          alt=""
+          className="h-4 w-4 shrink-0 rounded-full object-cover"
+          loading="lazy"
+        />
+      )}
+      {backlink.sourceDisplayName && (
+        <span className="font-medium text-foreground">{backlink.sourceDisplayName}</span>
+      )}
+      <span className="text-muted-foreground">@{handle}</span>
+    </>
+  ) : undefined;
+
   const actions: ResourceAction[] = [];
   if (record?.webUrl) actions.push({ label: `Open in ${record.appName}`, href: record.webUrl });
   if (record) actions.push({ label: 'View record', href: record.recordUrl });
@@ -219,26 +372,19 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
   return (
     <div data-testid="backlink-item" className={className}>
       <ResourceCard
-        icon={style.icon}
-        iconColor={style.color}
-        iconBg={style.bgColor}
+        icon={brand ?? style.icon}
+        iconColor={brand ? undefined : style.color}
+        // A brand mark carries its own colour, so it sits on a neutral tile
+        // rather than one tinted to a hue the service does not use.
+        iconBg={brand ? 'bg-muted' : style.bgColor}
         title={title}
-        badge={appName}
-        subtitle={backlink.sourceUri}
-        subtitleMono
+        {...(brand ? {} : { badge: appName })}
         description={detail}
+        byline={byline}
         stats={stats}
         actions={actions}
-      >
-        {label && (
-          <Badge
-            variant="outline"
-            className={cn('mt-1 text-xs font-normal capitalize', style.color)}
-          >
-            {label}
-          </Badge>
-        )}
-      </ResourceCard>
+        {...(label ? { labelBadge: humanizeLabel(label) } : {})}
+      />
     </div>
   );
 }

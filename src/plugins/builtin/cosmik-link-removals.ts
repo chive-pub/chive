@@ -16,6 +16,8 @@
  * @since 0.5.2
  */
 
+import type { CollectionService } from '../../services/collection/collection-service.js';
+import type { AtUri, CID } from '../../types/atproto.js';
 import type { IPluginContext, IPluginManifest } from '../../types/interfaces/plugin.interface.js';
 import type { FirehoseRecord } from '../core/backlink-plugin.js';
 
@@ -57,8 +59,14 @@ export class CosmikLinkRemovalsPlugin extends BasePlugin {
     entrypoint: 'cosmik-link-removals.js',
   };
 
+  /**
+   * Collection service, for marking the link the tombstone names.
+   */
+  private collectionService?: CollectionService;
+
   override async initialize(context: IPluginContext): Promise<void> {
     await super.initialize(context);
+    this.collectionService = context.config.collectionService as CollectionService | undefined;
 
     this.context.eventBus.on(
       'firehose.network.cosmik.collectionLinkRemoval',
@@ -71,10 +79,18 @@ export class CosmikLinkRemovalsPlugin extends BasePlugin {
     this.logger.info('Cosmik link removals tracking initialized');
   }
 
-  private handleFirehoseRecord(record: FirehoseRecord): void {
+  private async handleFirehoseRecord(record: FirehoseRecord): Promise<void> {
     try {
       if (record.deleted) {
-        // A deleted removal record means the link was re-added
+        // A deleted removal record means the link was re-added. The event
+        // carries only the tombstone's own URI, so the link it had removed is
+        // read back out of the index before the row goes.
+        const removed = await this.collectionService?.deleteCosmikLinkRemoval(record.uri as AtUri);
+        const linkUri = removed?.ok === true ? removed.value : null;
+        if (linkUri) {
+          await this.collectionService?.markCosmikCollectionLinkRemoved(linkUri, false);
+        }
+
         this.context.eventBus.emit('cosmik.linkRemoval.reverted', {
           uri: record.uri,
           did: record.did,
@@ -82,6 +98,28 @@ export class CosmikLinkRemovalsPlugin extends BasePlugin {
         this.logger.debug('Link removal tombstone deleted (re-added)', { uri: record.uri });
       } else if (record.record) {
         const removal = record.record as unknown as CosmikCollectionLinkRemoval;
+
+        // Applied to the membership index and kept, not merely announced. This
+        // plugin used to emit an event and stop, with nothing subscribed to it,
+        // so a card removed from a collection stayed indexed as a member of it
+        // and the tombstone table it was written for stayed empty.
+        await this.collectionService?.indexCosmikLinkRemoval(
+          {
+            collectionUri: removal.collection.uri,
+            removedLinkUri: removal.removedLink.uri,
+            removedAt: removal.removedAt,
+          },
+          {
+            uri: record.uri as AtUri,
+            cid: (record.cid ?? '') as unknown as CID,
+            indexedAt: record.timestamp,
+            pdsUrl: '',
+          }
+        );
+        await this.collectionService?.markCosmikCollectionLinkRemoved(
+          removal.removedLink.uri,
+          true
+        );
 
         this.context.eventBus.emit('cosmik.linkRemoval.created', {
           uri: record.uri,

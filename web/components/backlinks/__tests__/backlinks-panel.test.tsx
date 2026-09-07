@@ -78,7 +78,9 @@ function counts(total: number) {
 describe('BacklinksPanelSkeleton', () => {
   it('renders a placeholder', () => {
     render(<BacklinksPanelSkeleton />);
-    expect(screen.getByText('Backlinks')).toBeInTheDocument();
+    // The same heading the loaded panel carries. The skeleton used to say
+    // "Backlinks", so the section renamed itself as it finished loading.
+    expect(screen.getByText('Atmosphere')).toBeInTheDocument();
     expect(document.querySelectorAll('[class*="animate-pulse"]').length).toBeGreaterThan(0);
   });
 
@@ -149,7 +151,7 @@ describe('BacklinksPanel', () => {
     });
 
     await vi.waitFor(() => {
-      expect(mockGetCounts).toHaveBeenCalled();
+      expect(mockList).toHaveBeenCalled();
     });
     await vi.waitFor(() => {
       expect(container).toBeEmptyDOMElement();

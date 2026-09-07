@@ -99,4 +99,52 @@ describe('CosmikConnectionsPlugin', () => {
       expect(refs).toHaveLength(0);
     });
   });
+
+  describe('extractRelatedUri', () => {
+    // A connection is an edge between two entities. Chive stored the note and
+    // the relation and dropped both endpoints, so an eprint page showed what
+    // the author thought about a relationship without ever naming the other
+    // half of it.
+    const relatedUri = (record: unknown, targetUri: string): string | undefined =>
+      (
+        plugin as unknown as {
+          extractRelatedUri(record: unknown, targetUri: string): string | undefined;
+        }
+      ).extractRelatedUri(record, targetUri);
+
+    const A = 'at://did:plc:abc/pub.chive.eprint.submission/123';
+    const B = 'at://did:plc:def/pub.chive.eprint.submission/456';
+    const B_URL =
+      'https://chive.pub/eprints/at%3A%2F%2Fdid%3Aplc%3Adef%2Fpub.chive.eprint.submission%2F456';
+
+    it('returns the end that is not the paper being shown', () => {
+      const record = { $type: 'network.cosmik.connection', source: A, target: B_URL };
+      expect(relatedUri(record, A)).toBe(B);
+    });
+
+    it('gives each paper the other one when both ends are eprints', () => {
+      // The record produces a row on both papers, and neither should be told
+      // that it is connected to itself.
+      const record = { $type: 'network.cosmik.connection', source: A, target: B_URL };
+      expect(relatedUri(record, B)).toBe(A);
+    });
+
+    it('normalises a Chive web address to the AT-URI the index is keyed on', () => {
+      // Left as written, the read path could not join the eprint index for a
+      // title, and the card would show a percent-encoded URL.
+      const record = { $type: 'network.cosmik.connection', source: B_URL, target: A };
+      expect(relatedUri(record, A)).toBe(B);
+    });
+
+    it('leaves an end Chive knows nothing about as the address it was written as', () => {
+      const doi = 'https://doi.org/10.1007/3-540-61780-9_66';
+      const record = { $type: 'network.cosmik.connection', source: A, target: doi };
+      expect(relatedUri(record, A)).toBe(doi);
+    });
+
+    it('returns nothing when the record names only this paper', () => {
+      const record = { $type: 'network.cosmik.connection', source: A, target: A };
+      expect(relatedUri(record, A)).toBeUndefined();
+    });
+  });
 });

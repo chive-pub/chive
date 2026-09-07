@@ -242,6 +242,10 @@ describe('CosmikConnectionsPlugin', () => {
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
         context: undefined,
         contextLabel: 'cites',
+        contextDetail: undefined,
+        // The end that is not this paper. Without it a card can say what its
+        // author thought about a relationship but never name the other half.
+        relatedUri: 'https://example.com/paper',
       });
     });
 

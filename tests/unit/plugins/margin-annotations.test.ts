@@ -118,7 +118,20 @@ describe('MarginNotesPlugin', () => {
   });
 
   describe('extractContext', () => {
-    it('combines motivation and body excerpt for a comment', () => {
+    // The motivation used to be prefixed onto the note's text, so the eprint
+    // page rendered a card titled "commenting: The gradable adjective case
+    // is…" -- a machine value read as the opening words of a sentence. The
+    // text and the typed field are now extracted separately.
+    const context = (record: unknown): string | undefined =>
+      (plugin as unknown as { extractContext: (r: unknown) => string | undefined }).extractContext(
+        record
+      );
+    const label = (record: unknown): string | undefined =>
+      (
+        plugin as unknown as { extractContextLabel: (r: unknown) => string | undefined }
+      ).extractContextLabel(record);
+
+    it('takes the note as written, with the motivation kept beside it', () => {
       const record = {
         $type: 'at.margin.note',
         motivation: 'commenting',
@@ -126,14 +139,13 @@ describe('MarginNotesPlugin', () => {
         body: { value: 'Great paper on NLP and decoder transformers' },
         createdAt: '2026-01-01T00:00:00Z',
       };
-      const context = (
-        plugin as unknown as { extractContext: (r: unknown) => string | undefined }
-      ).extractContext(record);
-      expect(context).toContain('commenting');
-      expect(context).toContain('Great paper');
+      expect(context(record)).toBe('Great paper on NLP and decoder transformers');
+      expect(label(record)).toBe('commenting');
     });
 
-    it('includes color tag for a highlight', () => {
+    it('drops the colour, which says nothing a reader of the paper needs', () => {
+      // A highlight's colour is Margin's own presentation. Joined onto the
+      // text it appeared on the card as a hex code in the title.
       const record = {
         $type: 'at.margin.note',
         motivation: 'highlighting',
@@ -141,24 +153,33 @@ describe('MarginNotesPlugin', () => {
         color: '#ffeb3b',
         createdAt: '2026-01-01T00:00:00Z',
       };
-      const context = (
-        plugin as unknown as { extractContext: (r: unknown) => string | undefined }
-      ).extractContext(record);
-      expect(context).toContain('highlighting');
-      expect(context).toContain('#ffeb3b');
+      expect(context(record)).toBeUndefined();
+      expect(context(record) ?? '').not.toContain('#ffeb3b');
+      expect(label(record)).toBe('highlighting');
     });
 
-    it('returns just the motivation for an empty bookmark', () => {
+    it('leaves an empty bookmark with nothing but its motivation', () => {
       const record = {
         $type: 'at.margin.note',
         motivation: 'bookmarking',
         target: { source: 'https://chive.pub/eprints/test' },
         createdAt: '2026-01-01T00:00:00Z',
       };
-      const context = (
-        plugin as unknown as { extractContext: (r: unknown) => string | undefined }
-      ).extractContext(record);
-      expect(context).toBe('bookmarking');
+      // The card falls back to naming itself, rather than titling itself
+      // "bookmarking".
+      expect(context(record)).toBeUndefined();
+      expect(label(record)).toBe('bookmarking');
+    });
+
+    it('truncates a note long enough to be a card of its own', () => {
+      const record = {
+        $type: 'at.margin.note',
+        motivation: 'commenting',
+        target: { source: 'https://chive.pub/eprints/test' },
+        body: { value: 'x'.repeat(400) },
+        createdAt: '2026-01-01T00:00:00Z',
+      };
+      expect(context(record)).toHaveLength(200);
     });
   });
 });

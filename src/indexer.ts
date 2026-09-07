@@ -33,6 +33,7 @@ import { PinoLogger } from './observability/logger.js';
 import { initTelemetry } from './observability/telemetry.js';
 import { CalendarEventsPlugin } from './plugins/builtin/calendar-events.js';
 import { CosmikBacklinksPlugin } from './plugins/builtin/cosmik-backlinks.js';
+import { CosmikCollectionsPlugin } from './plugins/builtin/cosmik-collections.js';
 import { CosmikConnectionsPlugin } from './plugins/builtin/cosmik-connections.js';
 import { CosmikFollowsPlugin } from './plugins/builtin/cosmik-follows.js';
 import { CosmikLinkRemovalsPlugin } from './plugins/builtin/cosmik-link-removals.js';
@@ -553,6 +554,7 @@ async function main(): Promise<void> {
       await pluginManager.loadBuiltinPlugin(new CosmikBacklinksPlugin(), pluginContext);
       await pluginManager.loadBuiltinPlugin(new CosmikConnectionsPlugin(), pluginContext);
       await pluginManager.loadBuiltinPlugin(new CosmikFollowsPlugin(), pluginContext);
+      await pluginManager.loadBuiltinPlugin(new CosmikCollectionsPlugin(), pluginContext);
       await pluginManager.loadBuiltinPlugin(new CosmikLinkRemovalsPlugin(), pluginContext);
       logger.info('Cosmik ecosystem plugins loaded');
     } catch (err) {

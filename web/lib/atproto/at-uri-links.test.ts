@@ -70,12 +70,36 @@ describe('describeAtUri', () => {
     );
   });
 
-  it('offers no application address where the route is unverified', () => {
-    // A `network.cosmik.card` was previously linked as though it were a Cosmik
-    // collection, which 404s. No link is better than a wrong one.
+  it('offers a Semble address for a collection but not for a card or a connection', () => {
+    // Checked against live records: the collection page is server-rendered
+    // with the collection's own title, while `/cards/{rkey}` returns the same
+    // empty shell for a real record key as for an invented one, and no
+    // per-connection address exists at all. No link is better than a wrong one.
+    expect(describeAtUri(`at://${DID}/network.cosmik.collection/3abc`)?.webUrl).toBe(
+      `https://semble.so/profile/${DID}/collections/3abc`
+    );
     expect(describeAtUri(`at://${DID}/network.cosmik.card/3abc`)?.webUrl).toBeUndefined();
     expect(describeAtUri(`at://${DID}/network.cosmik.connection/3abc`)?.webUrl).toBeUndefined();
+  });
+
+  it('offers a Margin address only once the handle is known', () => {
+    // Margin addresses a note by its author's handle. The DID form of the same
+    // path answers "Not found", verified against one of Margin's own records,
+    // so the AT-URI alone is not enough to build the link.
     expect(describeAtUri(`at://${DID}/at.margin.note/3abc`)?.webUrl).toBeUndefined();
+    expect(describeAtUri(`at://${DID}/at.margin.note/3abc`, 'someone.example')?.webUrl).toBe(
+      'https://margin.at/someone.example/annotation/3abc'
+    );
+  });
+
+  it('never substitutes the DID where an application wants a handle', () => {
+    // The failure this guards against is silent: the link is built, it opens,
+    // and it shows "Not found".
+    const url = describeAtUri(`at://${DID}/at.margin.note/3abc`, 'someone.example')?.webUrl;
+    expect(url).not.toContain(DID);
+  });
+
+  it('offers no application address where the route is unverified', () => {
     expect(describeAtUri(`at://${DID}/site.standard.document/3abc`)?.webUrl).toBeUndefined();
   });
 

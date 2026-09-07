@@ -3807,6 +3807,15 @@
       "pub.chive.backlink.list.backlink": {
         "description": "Backlink record",
         "properties": {
+          "containerName": {
+            "description": "Name of the record at `containerUri`, resolved at read time. Absent where the container has not been indexed, in which case the link is still offered without a name.",
+            "maxLength": 300,
+            "type": "string"
+          },
+          "containerUri": {
+            "description": "A record the source record sits inside, where its service renders it only there. Semble serves no address for an individual card -- it draws cards inside a collection -- so a Semble card can be opened only at the collection holding it, and this names that collection.",
+            "type": "string"
+          },
           "context": {
             "description": "Optional context about the backlink",
             "maxLength": 500,
@@ -3833,6 +3842,30 @@
           "indexedAt": {
             "description": "Timestamp when the backlink was indexed",
             "format": "date-time",
+            "type": "string"
+          },
+          "relatedTitle": {
+            "description": "Title of the record named by `relatedUri`, resolved at read time when that record is an eprint Chive has indexed. Absent for an end Chive does not hold, which is then shown by its address.",
+            "maxLength": 300,
+            "type": "string"
+          },
+          "relatedUri": {
+            "description": "The other thing the source record joined this eprint to, where it names one. A Cosmik connection is an edge between two entities, so a card that shows only the note omits half of what the record says; this carries the end that is not this eprint, as an AT-URI or a URL.",
+            "maxLength": 512,
+            "type": "string"
+          },
+          "sourceAvatar": {
+            "description": "Avatar of the account the source record belongs to, resolved at read time alongside `sourceHandle`. Served by the account's own profile service, not by Chive.",
+            "format": "uri",
+            "type": "string"
+          },
+          "sourceDisplayName": {
+            "description": "Display name of the account the source record belongs to, resolved at read time alongside `sourceHandle`.",
+            "maxLength": 640,
+            "type": "string"
+          },
+          "sourceHandle": {
+            "description": "Handle of the account the source record belongs to, resolved at read time. Some applications address a record by its author's handle rather than their DID -- Margin's annotation pages are `margin.at/{handle}/annotation/{rkey}` and answer \"Not found\" to a DID -- so a link to the record on its own service cannot be built from the AT-URI alone.",
             "type": "string"
           },
           "sourceType": {

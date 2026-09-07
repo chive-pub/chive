@@ -224,9 +224,17 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
     const contextLabel = this.extractContextLabel(record);
     const contextDetail = this.extractContextDetail(record);
 
-    // Create backlinks for each reference
+    // Create backlinks for each reference. The related end is resolved per
+    // target rather than once for the record: a connection whose two ends are
+    // both Chive eprints produces a row on each paper, and each of those rows
+    // wants the *other* paper.
     for (const targetUri of eprintRefs) {
-      await this.createBacklink(uri, targetUri, context, contextLabel, contextDetail);
+      await this.createBacklink(uri, targetUri, {
+        context,
+        contextLabel,
+        contextDetail,
+        relatedUri: this.extractRelatedUri(record, targetUri),
+      });
     }
 
     this.logger.debug('Processed backlinks from record', {
@@ -265,17 +273,24 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    *
    * @param sourceUri - AT-URI of the source record
    * @param targetUri - AT-URI of the target eprint
-   * @param context - Optional context (title, description)
-   * @param contextLabel - The source record's own typed field, when it has one
+   * @param display - What the source record said, split into the fields a card
+   * draws separately
    *
    * @returns Created backlink
    */
   protected async createBacklink(
     sourceUri: string,
     targetUri: string,
-    context?: string,
-    contextLabel?: string,
-    contextDetail?: string
+    display: {
+      /** What the record calls itself. */
+      context?: string;
+      /** A typed field it carries alongside that text. */
+      contextLabel?: string;
+      /** Its description, where it has one distinct from its title. */
+      contextDetail?: string;
+      /** The end it joined this eprint to, where it names one. */
+      relatedUri?: string;
+    } = {}
   ): Promise<Backlink | null> {
     if (!this.backlinkService) {
       this.logger.warn('Backlink service not available');
@@ -286,9 +301,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
       sourceUri,
       sourceType: this.sourceType,
       targetUri,
-      context,
-      contextLabel,
-      contextDetail,
+      ...display,
     });
 
     this.recordCounter('backlinks_created', { source_type: this.sourceType });
@@ -382,6 +395,28 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    */
   protected extractContextDetail(record: unknown): string | undefined {
     void record;
+    return undefined;
+  }
+
+  /**
+   * Extracts the other end of a record that joins this eprint to something.
+   *
+   * @param record - The source record
+   * @param targetUri - AT-URI of the eprint this backlink is for
+   * @returns The other end as an AT-URI or a URL, or undefined when the record
+   * joins nothing
+   *
+   * @remarks
+   * A Cosmik connection names two entities; a card that shows only its note
+   * omits half of what it says. The target is passed because a record can name
+   * this eprint at either end -- and can name a Chive eprint at *both*, in
+   * which case each paper's row wants the opposite one.
+   *
+   * Most source types join nothing to anything and leave this alone.
+   */
+  protected extractRelatedUri(record: unknown, targetUri: string): string | undefined {
+    void record;
+    void targetUri;
     return undefined;
   }
 

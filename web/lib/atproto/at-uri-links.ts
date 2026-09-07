@@ -84,7 +84,7 @@ interface AtmosphereApp {
    * the honest answer for an app whose web routing is private or unsettled,
    * and it costs nothing: {@link recordBrowserUrl} still applies.
    */
-  readonly webUrl?: (parts: AtUriParts) => string;
+  readonly webUrl?: (parts: AtUriParts & { handle?: string }) => string | undefined;
 }
 
 /**
@@ -116,9 +116,15 @@ const APPS: Record<string, AtmosphereApp> = {
     name: 'Semble',
     kind: 'Connection',
   },
+  // Verified against a live record: this address is server-rendered with the
+  // collection's own title. The sibling `/cards/{rkey}` is not -- it returns
+  // the same empty shell for a real record key as for an invented one -- and
+  // no per-connection address was found at all, so cards and connections
+  // deliberately carry no `webUrl`.
   'network.cosmik.collection': {
     name: 'Semble',
     kind: 'Collection',
+    webUrl: ({ did, rkey }) => `https://semble.so/profile/${did}/collections/${rkey}`,
   },
   'site.standard.document': {
     name: 'standard.site',
@@ -140,13 +146,21 @@ const APPS: Record<string, AtmosphereApp> = {
     kind: 'Event',
     webUrl: ({ did, rkey }) => `https://smokesignal.events/${did}/${rkey}`,
   },
+  // Margin addresses a note by its author's *handle*: the DID form of this
+  // path answers "Not found", verified against one of Margin's own records.
+  // So the link exists only once the handle has been resolved, and the card
+  // falls back to the record browser until then.
   'at.margin.note': {
     name: 'Margin',
     kind: 'Note',
+    webUrl: ({ handle, rkey }) =>
+      handle ? `https://margin.at/${handle}/annotation/${rkey}` : undefined,
   },
   'at.margin.reply': {
     name: 'Margin',
     kind: 'Reply',
+    webUrl: ({ handle, rkey }) =>
+      handle ? `https://margin.at/${handle}/annotation/${rkey}` : undefined,
   },
   'app.bsky.feed.post': {
     name: 'Bluesky',
@@ -187,6 +201,9 @@ export interface AtmosphereRecord extends AtUriParts {
  * Describes a record named by an AT-URI.
  *
  * @param uri - An AT-URI
+ * @param handle - The record owner's handle, where it has been resolved. Some
+ * applications address a record by handle rather than DID and cannot be linked
+ * to without it.
  * @returns How to name and open the record, or `null` if the URI is malformed
  *
  * @remarks
@@ -197,11 +214,11 @@ export interface AtmosphereRecord extends AtUriParts {
  *
  * @public
  */
-export function describeAtUri(uri: string): AtmosphereRecord | null {
+export function describeAtUri(uri: string, handle?: string): AtmosphereRecord | null {
   const parts = parseAtUri(uri);
   if (!parts) return null;
   const app = APPS[parts.collection];
-  const webUrl = app?.webUrl?.(parts);
+  const webUrl = app?.webUrl?.({ ...parts, handle });
   return {
     ...parts,
     appName: app?.name ?? parts.collection,
