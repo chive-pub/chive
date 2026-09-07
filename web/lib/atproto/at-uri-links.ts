@@ -108,19 +108,21 @@ const APPS: Record<string, AtmosphereApp> = {
   },
   // Semble is what the application is called; `network.cosmik` is the
   // namespace of the company that publishes it. A reader recognises the former.
+  // Checked in a browser, because Semble renders its pages on the client and
+  // its server HTML says nothing about which routes exist. A card's address is
+  // real and answers "Card page -- coming soon!"; it is linked anyway, since it
+  // is the canonical address and starts working the day Semble builds it.
+  // `/connections/{rkey}` is a genuine "Page not found", so a connection has no
+  // address to offer.
   'network.cosmik.card': {
     name: 'Semble',
     kind: 'Card',
+    webUrl: ({ did, rkey }) => `https://semble.so/profile/${did}/cards/${rkey}`,
   },
   'network.cosmik.connection': {
     name: 'Semble',
     kind: 'Connection',
   },
-  // Verified against a live record: this address is server-rendered with the
-  // collection's own title. The sibling `/cards/{rkey}` is not -- it returns
-  // the same empty shell for a real record key as for an invented one -- and
-  // no per-connection address was found at all, so cards and connections
-  // deliberately carry no `webUrl`.
   'network.cosmik.collection': {
     name: 'Semble',
     kind: 'Collection',

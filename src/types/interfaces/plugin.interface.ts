@@ -1571,9 +1571,8 @@ export interface Backlink {
    * A record the source record sits inside.
    *
    * @remarks
-   * Semble draws a card only within a collection and publishes no address for
-   * the card itself, so the collection holding it is the only page that card
-   * can be opened at. Resolved at read time from the membership index.
+   * Semble draws a card within a collection, which is where a reader actually
+   * sees it. Resolved at read time from the membership index.
    */
   readonly containerUri?: string;
 

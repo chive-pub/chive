@@ -2,19 +2,16 @@
  * Migration indexing what a Semble collection holds.
  *
  * @remarks
- * Semble publishes no address for an individual card. Verified against live
- * records: `semble.so/profile/{did}/cards/{rkey}` returns the same empty shell
- * for a real record key as for an invented one, and a populated collection page
- * carries no links to the cards on it -- they are rendered inline. The only
- * per-record page Semble serves is the collection.
+ * Semble draws a card inside a collection, and the collection is where a
+ * reader actually sees it: the card's own page exists as a route but currently
+ * renders "Card page -- coming soon!". So a card citing an eprint is best
+ * placed by naming the collection holding it, and membership is its own
+ * record: `network.cosmik.collectionLink` names a card and a collection.
  *
- * So a card that cites an eprint can be opened on Semble only through the
- * collection it belongs to, and membership is its own record:
- * `network.cosmik.collectionLink` names a card and a collection. Chive had
- * never indexed it. It indexed `collectionLinkRemoval` -- the tombstone written
- * when a collection owner removes a collaborator's link, which it cannot delete
- * from another user's repository -- and so watched links being taken out of
- * collections it had never seen them put into.
+ * Chive had never indexed it. It indexed `collectionLinkRemoval` -- the
+ * tombstone written when a collection owner removes a collaborator's link,
+ * which it cannot delete from another user's repository -- and so watched
+ * links being taken out of collections it had never seen them put into.
  *
  * Two tables:
  *

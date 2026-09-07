@@ -64,9 +64,8 @@ interface BacklinkRow {
    * A collection the source record sits inside, joined in on read.
    *
    * @remarks
-   * Not a column on `backlinks`. Semble draws a card only inside a collection
-   * and serves no address for the card itself, so the collection is the only
-   * page such a backlink can be opened at.
+   * Not a column on `backlinks`. Semble draws a card inside a collection, so
+   * the collection is where a reader actually sees it.
    */
   container_uri?: string | null;
   /** Name of the collection at `container_uri`, joined in on read. */
@@ -295,10 +294,10 @@ export class BacklinkService implements IBacklinkService {
     // every card that points at it without the backlinks being reindexed. The
     // join is left, because most related ends are not eprints Chive holds --
     // they are DOIs and catalogue pages -- and those rows must still come back.
-    // The lateral join answers "which Semble collection is this card in",
-    // which is the only address Semble serves for a card. One row, because a
-    // backlink is one row and a card can sit in several collections: the
-    // earliest membership still standing is the one shown.
+    // The lateral join answers "which Semble collection is this card in", which
+    // is where a reader actually sees the card. One row, because a backlink is
+    // one row and a card can sit in several collections: the earliest
+    // membership still standing is the one shown.
     const result = await this.db.query<BacklinkRow>(
       `SELECT b.*, e.title AS related_title,
               m.collection_uri AS container_uri,

@@ -63,7 +63,9 @@ describe('BacklinkItem', () => {
     expect(screen.queryByRole('link', { name: /open in leaflet/i })).toBeNull();
   });
 
-  it('offers no Cosmik address for a Cosmik card', () => {
+  it('links a Cosmik card to Semble by its own address, not a collection one', () => {
+    // This card was once linked as though it were a Cosmik collection, at an
+    // address that 404s.
     render(
       <BacklinkItem
         backlink={backlink({
@@ -72,12 +74,27 @@ describe('BacklinkItem', () => {
         })}
       />
     );
-    const links = screen.getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /open in semble/i })).toHaveAttribute(
+      'href',
+      `https://semble.so/profile/${DID}/cards/3abc`
+    );
+    expect(screen.getByRole('link', { name: /view record/i })).toHaveAttribute(
       'href',
       `https://pdsls.dev/at://${DID}/network.cosmik.card/3abc`
     );
+  });
+
+  it('offers no Semble address for a connection, which has no page', () => {
+    render(
+      <BacklinkItem
+        backlink={backlink({
+          sourceUri: `at://${DID}/network.cosmik.connection/3abc`,
+          sourceType: 'cosmik.connection',
+          context: 'A note.',
+        })}
+      />
+    );
+    expect(screen.queryByRole('link', { name: /open in semble/i })).toBeNull();
   });
 
   it('offers the Smoke Signal page for a calendar event, alongside the record', () => {

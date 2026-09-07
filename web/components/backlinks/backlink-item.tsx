@@ -259,10 +259,9 @@ function relatedEnd(relatedUri?: string, relatedTitle?: string): ResourceStat | 
  * @returns A stat pointing at the container, or undefined when there is none
  *
  * @remarks
- * Semble publishes no address for an individual card -- it renders cards only
- * within a collection -- so the collection is the one page such a card can be
- * opened at. A card whose collection Chive has not indexed still gets the
- * link, unnamed, because the address is derivable from the URI alone.
+ * Semble renders a card within a collection, which is where a reader actually
+ * sees it. A card whose collection Chive has not indexed still gets the link,
+ * unnamed, because the address is derivable from the URI alone.
  */
 function containerEnd(containerUri?: string, containerName?: string): ResourceStat | undefined {
   const uri = containerUri?.trim();
@@ -334,8 +333,8 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
   const related = relatedEnd(backlink.relatedUri, backlink.relatedTitle);
   if (related) stats.push(related);
 
-  // Where the record is drawn. A Semble card has no page of its own, so the
-  // collection holding it is the only way through to it on Semble.
+  // Where the record is drawn. A Semble card's own page is still a placeholder,
+  // so the collection holding it is where a reader sees the card today.
   const container = containerEnd(backlink.containerUri, backlink.containerName);
   if (container) stats.push(container);
 

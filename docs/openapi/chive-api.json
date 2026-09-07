@@ -3813,7 +3813,7 @@
             "type": "string"
           },
           "containerUri": {
-            "description": "A record the source record sits inside, where its service renders it only there. Semble serves no address for an individual card -- it draws cards inside a collection -- so a Semble card can be opened only at the collection holding it, and this names that collection.",
+            "description": "A record the source record sits inside, where its service renders it there. Semble draws a card inside a collection, which is where a reader actually sees it, so a Semble card names the collection holding it.",
             "type": "string"
           },
           "context": {

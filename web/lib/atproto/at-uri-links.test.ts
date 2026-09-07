@@ -70,15 +70,22 @@ describe('describeAtUri', () => {
     );
   });
 
-  it('offers a Semble address for a collection but not for a card or a connection', () => {
-    // Checked against live records: the collection page is server-rendered
-    // with the collection's own title, while `/cards/{rkey}` returns the same
-    // empty shell for a real record key as for an invented one, and no
-    // per-connection address exists at all. No link is better than a wrong one.
+  it('offers a Semble address for a collection and a card', () => {
+    // Checked in a browser, not by fetching HTML: Semble renders on the client,
+    // so its server response is the same shell whatever the route, and reading
+    // that shell is what previously produced the wrong answer here.
     expect(describeAtUri(`at://${DID}/network.cosmik.collection/3abc`)?.webUrl).toBe(
       `https://semble.so/profile/${DID}/collections/3abc`
     );
-    expect(describeAtUri(`at://${DID}/network.cosmik.card/3abc`)?.webUrl).toBeUndefined();
+    expect(describeAtUri(`at://${DID}/network.cosmik.card/3abc`)?.webUrl).toBe(
+      `https://semble.so/profile/${DID}/cards/3abc`
+    );
+  });
+
+  it('offers no Semble address for a connection, which has no page at all', () => {
+    // `/connections/{rkey}` is a genuine "Page not found", where the card route
+    // is a real page that says "coming soon". No link is better than a wrong
+    // one; a link to a page that is going to exist is better than none.
     expect(describeAtUri(`at://${DID}/network.cosmik.connection/3abc`)?.webUrl).toBeUndefined();
   });
 

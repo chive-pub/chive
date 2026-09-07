@@ -2,15 +2,11 @@
  * Semble collection and membership tracking plugin.
  *
  * @remarks
- * Semble serves no address for an individual card. Verified against live
- * records: `semble.so/profile/{did}/cards/{rkey}` returns the same empty shell
- * for a real record key as for an invented one, and a populated collection page
- * carries no links to the cards on it -- Semble renders them inline. The
- * collection is the only page a card has.
- *
- * So the collection a card belongs to is the only way to open that card on the
- * service that published it, and membership is its own record. This plugin
- * indexes both halves:
+ * Semble draws a card inside a collection, and the collection is where a reader
+ * sees it: the card's own page is a route that currently renders "Card page --
+ * coming soon!". So the collection a card belongs to is what places that card
+ * on the service that published it, and membership is its own record. This
+ * plugin indexes both halves:
  *
  * 1. `network.cosmik.collection` -- for the collection's name, so a card can
  *    say which collection it is in rather than only that it is in one.

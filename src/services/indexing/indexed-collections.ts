@@ -108,11 +108,10 @@ export const OBSERVED_COLLECTIONS: readonly string[] = [
   // Cosmik — collection cards, connections, follows, and link removals.
   'network.cosmik.card',
   // A collection and the records that put cards in one. Semble renders a card
-  // only inside a collection -- it publishes no per-card address at all -- so
-  // the collection is the only page a card on an eprint can be opened at, and
-  // these two are what say which collection that is. The removal tombstone was
-  // observed without them, which is to say Chive watched links being taken out
-  // of collections it had never seen them put into.
+  // inside a collection, so the collection is what places a card that cites an
+  // eprint, and these two are what say which collection that is. The removal
+  // tombstone was observed without them, which is to say Chive watched links
+  // being taken out of collections it had never seen them put into.
   'network.cosmik.collection',
   'network.cosmik.collectionLink',
   'network.cosmik.collectionLinkRemoval',
