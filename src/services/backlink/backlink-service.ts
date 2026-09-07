@@ -54,6 +54,8 @@ interface BacklinkRow {
   source_type: string;
   source_did: string;
   target_uri: string;
+  /** The source record's own typed field, when it has one. */
+  context_label?: string | null;
   context: string | null;
   indexed_at: Date;
   is_deleted: boolean;
@@ -135,26 +137,43 @@ export class BacklinkService implements IBacklinkService {
     sourceType: BacklinkSourceType;
     targetUri: string;
     context?: string;
+    /**
+     * A typed field the source record carries alongside its text.
+     *
+     * @remarks
+     * Kept apart from `context` because it is not prose. Prefixed onto the text
+     * -- which is what the plugins did before this existed -- it reached the
+     * eprint page as the opening words of the card's title.
+     */
+    contextLabel?: string;
   }): Promise<Backlink> {
     // Extract DID from source URI (at://did:plc:xxx/collection/rkey)
     const sourceDid = this.extractDidFromUri(data.sourceUri);
 
     const result = await this.db.query<BacklinkRow>(
       `INSERT INTO backlinks (
-        source_uri, source_type, source_did, target_uri, context,
+        source_uri, source_type, source_did, target_uri, context, context_label,
         indexed_at, is_deleted
       ) VALUES (
-        $1, $2, $3, $4, $5, NOW(), false
+        $1, $2, $3, $4, $5, $6, NOW(), false
       )
       ON CONFLICT (source_uri, target_uri) DO UPDATE SET
         source_type = EXCLUDED.source_type,
         target_uri = EXCLUDED.target_uri,
         context = EXCLUDED.context,
+        context_label = EXCLUDED.context_label,
         indexed_at = NOW(),
         is_deleted = false,
         deleted_at = NULL
       RETURNING *`,
-      [data.sourceUri, data.sourceType, sourceDid, data.targetUri, data.context ?? null]
+      [
+        data.sourceUri,
+        data.sourceType,
+        sourceDid,
+        data.targetUri,
+        data.context ?? null,
+        data.contextLabel ?? null,
+      ]
     );
 
     const row = result.rows[0];
@@ -424,6 +443,7 @@ export class BacklinkService implements IBacklinkService {
       sourceType: row.source_type as BacklinkSourceType,
       targetUri: row.target_uri,
       context: row.context ?? undefined,
+      contextLabel: row.context_label ?? undefined,
       indexedAt: row.indexed_at,
       deleted: row.is_deleted,
     };

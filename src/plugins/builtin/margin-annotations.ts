@@ -123,12 +123,17 @@ export class MarginNotesPlugin extends BacklinkTrackingPlugin {
   }
 
   protected override extractContext(record: unknown): string | undefined {
+    // The note's own words, and nothing else. The motivation and the colour
+    // are structured fields; joined onto the front of the text they reached the
+    // eprint page as the opening of the card's title -- "commenting: The
+    // gradable adjective case is…".
     const note = record as MarginNote;
-    const parts: string[] = [];
-    if (note.motivation) parts.push(note.motivation);
-    if (note.color) parts.push(`color=${note.color}`);
-    if (note.body?.value) parts.push(note.body.value.slice(0, 200));
-    return parts.length > 0 ? parts.join(': ') : undefined;
+    return note.body?.value?.slice(0, 200) || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
+  }
+
+  protected override extractContextLabel(record: unknown): string | undefined {
+    const note = record as MarginNote;
+    return note.motivation || undefined;
   }
 
   protected override shouldProcess(_record: unknown): boolean {

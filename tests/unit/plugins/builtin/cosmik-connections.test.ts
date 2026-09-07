@@ -68,7 +68,8 @@ const createMockBacklinkService = (): IBacklinkService => ({
     sourceUri: 'at://did:plc:user/network.cosmik.connection/abc123',
     sourceType: 'cosmik.connection',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
-    context: 'type: cites',
+    context: undefined,
+    contextLabel: 'cites',
     indexedAt: new Date(),
     deleted: false,
   }),
@@ -239,7 +240,8 @@ describe('CosmikConnectionsPlugin', () => {
         sourceUri: 'at://did:plc:user/network.cosmik.connection/abc',
         sourceType: 'cosmik.connection',
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
-        context: 'type: cites',
+        context: undefined,
+        contextLabel: 'cites',
       });
     });
 

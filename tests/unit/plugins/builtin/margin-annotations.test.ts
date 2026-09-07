@@ -70,7 +70,8 @@ const createMockBacklinkService = (): IBacklinkService => ({
     sourceUri: 'at://did:plc:user/at.margin.note/abc123',
     sourceType: 'margin.annotation',
     targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz789',
-    context: 'commenting: Great paper!',
+    context: 'Great paper!',
+    contextLabel: 'commenting',
     indexedAt: new Date(),
     deleted: false,
   }),
@@ -147,7 +148,11 @@ describe('MarginNotesPlugin', () => {
         sourceType: 'margin.annotation',
         // The AT-URI the address resolves to, not the address itself.
         targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
-        context: expect.stringContaining('commenting'),
+        context: 'This is a well-written paper with novel results.',
+        // The motivation is a typed field now, not a prefix on the text. Joined
+        // onto the front it reached the eprint page as the first words of the
+        // card's title: "commenting: This is a well-written paper…".
+        contextLabel: 'commenting',
       });
     });
 
@@ -187,11 +192,14 @@ describe('MarginNotesPlugin', () => {
           sourceUri: 'at://did:plc:user/at.margin.note/hl1',
           // The AT-URI the address resolves to, not the address itself.
           targetUri: 'at://did:plc:author/pub.chive.eprint.submission/xyz',
-          context: expect.stringContaining('highlighting'),
+          contextLabel: 'highlighting',
         })
       );
+      // The highlight colour is not prose and is not shown to a reader. It was
+      // being joined into the context too, so a card could read
+      // "highlighting: color=#ffeb3b" where its text should be.
       const call = (backlinkService.createBacklink as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
-      expect(call?.context).toContain('#ffeb3b');
+      expect(call?.context ?? '').not.toContain('#ffeb3b');
     });
 
     it('creates a backlink for a bookmark (motivation: bookmarking)', async () => {
@@ -225,7 +233,7 @@ describe('MarginNotesPlugin', () => {
       expect(backlinkService.createBacklink).toHaveBeenCalledWith(
         expect.objectContaining({
           sourceUri: 'at://did:plc:user/at.margin.note/bm1',
-          context: expect.stringContaining('bookmarking'),
+          contextLabel: 'bookmarking',
         })
       );
     });

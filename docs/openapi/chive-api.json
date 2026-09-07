@@ -3812,6 +3812,11 @@
             "maxLength": 500,
             "type": "string"
           },
+          "contextLabel": {
+            "description": "A typed field the source record carries alongside its text, such as a Margin annotation's motivation or a Cosmik connection's relation. Kept apart from `context` so a reader is not shown structured data as the opening words of a sentence.",
+            "maxLength": 128,
+            "type": "string"
+          },
           "deleted": {
             "description": "Whether the backlink has been deleted",
             "type": "boolean"

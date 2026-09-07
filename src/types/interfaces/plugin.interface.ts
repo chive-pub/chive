@@ -1526,6 +1526,16 @@ export interface Backlink {
   readonly context?: string;
 
   /**
+   * A typed field the source record carries alongside its text.
+   *
+   * @remarks
+   * A Margin annotation's motivation, a Cosmik connection's relation. Kept
+   * apart from {@link Backlink.context} because it is not prose: prefixed onto
+   * the text, it reached the eprint page as the opening words of a title.
+   */
+  readonly contextLabel?: string;
+
+  /**
    * When this backlink was indexed.
    */
   readonly indexedAt: Date;
@@ -1602,6 +1612,8 @@ export interface IBacklinkService {
     sourceType: BacklinkSourceType;
     targetUri: string;
     context?: string;
+    /** The source record's own typed field, when it has one. */
+    contextLabel?: string;
   }): Promise<Backlink>;
 
   /**

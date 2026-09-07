@@ -105,6 +105,11 @@
           "maxLength": 500,
           "description": "Optional context about the backlink"
         },
+        "contextLabel": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "A typed field the source record carries alongside its text, such as a Margin annotation's motivation or a Cosmik connection's relation. Kept apart from `context` so a reader is not shown structured data as the opening words of a sentence."
+        },
         "indexedAt": {
           "type": "string",
           "format": "datetime",

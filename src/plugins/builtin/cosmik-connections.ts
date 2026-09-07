@@ -133,11 +133,17 @@ export class CosmikConnectionsPlugin extends BacklinkTrackingPlugin {
   }
 
   protected override extractContext(record: unknown): string | undefined {
+    // The note the connection carries, and nothing else. The relation is a
+    // typed field; joined onto the front of the note it reached the eprint page
+    // as "type: builds-on - PDS generalises…", with the machine value read as
+    // the first words of a sentence.
     const connection = record as CosmikConnection;
-    const parts: string[] = [];
-    if (connection.connectionType) parts.push(`type: ${connection.connectionType}`);
-    if (connection.note) parts.push(connection.note);
-    return parts.length > 0 ? parts.join(' - ') : undefined;
+    return connection.note || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
+  }
+
+  protected override extractContextLabel(record: unknown): string | undefined {
+    const connection = record as CosmikConnection;
+    return connection.connectionType || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
   }
 
   protected override shouldProcess(_record: unknown): boolean {

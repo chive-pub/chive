@@ -108,6 +108,44 @@ describe('BacklinkItem', () => {
     expect(screen.getByText('Margin note')).toBeInTheDocument();
   });
 
+  it('draws a typed field as a chip, not as the first words of the title', () => {
+    // A Margin motivation and a Cosmik relation used to be joined onto the
+    // front of the text, so a card read "commenting: The gradable adjective
+    // case is…" -- a machine value presented as the opening of a sentence.
+    render(
+      <BacklinkItem
+        backlink={backlink({
+          sourceUri: `at://${DID}/at.margin.note/3abc`,
+          sourceType: 'margin.annotation',
+          context: 'The gradable adjective case is the one to read first.',
+          contextLabel: 'commenting',
+        })}
+      />
+    );
+    const card = screen.getByTestId('backlink-item');
+    expect(
+      within(card).getByText('The gradable adjective case is the one to read first.')
+    ).toBeInTheDocument();
+    expect(within(card).getByText('commenting')).toBeInTheDocument();
+    // The title must not carry the label.
+    expect(within(card).queryByText(/^commenting:/)).toBeNull();
+  });
+
+  it('shows no chip when the source record has no typed field', () => {
+    render(
+      <BacklinkItem
+        backlink={backlink({
+          sourceUri: `at://${DID}/pub.leaflet.document/3abc`,
+          sourceType: 'leaflet.document',
+          context: 'Probe essay',
+        })}
+      />
+    );
+    const card = screen.getByTestId('backlink-item');
+    expect(within(card).getByText('Probe essay')).toBeInTheDocument();
+    expect(within(card).queryByText('commenting')).toBeNull();
+  });
+
   it('shows the record URI, so a reader can find it without a web address', () => {
     const uri = `at://${DID}/site.standard.document/3abc`;
     render(

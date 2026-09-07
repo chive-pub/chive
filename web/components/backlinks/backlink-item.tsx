@@ -36,6 +36,8 @@ import {
   type ResourceAction,
   type ResourceStat,
 } from '@/components/links/resource-card';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 import { describeAtUri } from '@/lib/atproto/at-uri-links';
 import type { Backlink, BacklinkSourceType } from '@/lib/hooks/use-backlinks';
 
@@ -187,6 +189,13 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
   // is the most informative thing on the card, so it leads.
   const title = backlink.context?.trim() || `${appName} ${kind.toLowerCase()}`;
 
+  // A typed field the source record carries -- a Margin motivation, a Cosmik
+  // relation. Drawn as a chip rather than joined onto the front of the title,
+  // which is where it used to appear: a card read "commenting: The gradable
+  // adjective case is…", presenting a machine value as the first words of a
+  // sentence.
+  const label = backlink.contextLabel?.trim();
+
   const indexed = new Date(backlink.indexedAt);
   const stats: ResourceStat[] = [{ label: kind }];
   if (!Number.isNaN(indexed.getTime())) {
@@ -213,7 +222,16 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
         subtitleMono
         stats={stats}
         actions={actions}
-      />
+      >
+        {label && (
+          <Badge
+            variant="outline"
+            className={cn('mt-1 text-xs font-normal capitalize', style.color)}
+          >
+            {label}
+          </Badge>
+        )}
+      </ResourceCard>
     </div>
   );
 }
