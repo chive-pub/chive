@@ -47,6 +47,10 @@ export function up(pgm: MigrationBuilder): void {
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
     updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    // Every `*_index` table carries this: it is how a row's staleness against
+    // the repository it came from is judged, and the compliance suite asserts
+    // that none is missing it.
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   pgm.createIndex('cosmik_collections_index', 'owner_did');
@@ -71,6 +75,7 @@ export function up(pgm: MigrationBuilder): void {
     pds_url: { type: 'text' },
     indexed_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
     updated_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
+    last_synced_at: { type: 'timestamptz', notNull: true, default: pgm.func('NOW()') },
   });
 
   // The read path asks "which collection is this card in", once per Semble

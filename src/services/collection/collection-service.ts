@@ -2327,14 +2327,15 @@ export class CollectionService {
       await this.pool.query(
         `INSERT INTO cosmik_collections_index (
           uri, cid, owner_did, name, description, access_type, created_at,
-          pds_url, indexed_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          pds_url, indexed_at, updated_at, last_synced_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW(), NOW())
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
           name = EXCLUDED.name,
           description = EXCLUDED.description,
           access_type = EXCLUDED.access_type,
-          updated_at = NOW()`,
+          updated_at = NOW(),
+          last_synced_at = NOW()`,
         [
           metadata.uri,
           metadata.cid,
@@ -2407,11 +2408,11 @@ export class CollectionService {
       await this.pool.query(
         `INSERT INTO cosmik_collection_links_index (
           uri, cid, owner_did, card_uri, collection_uri, added_by, added_at,
-          is_removed, pds_url, indexed_at, updated_at
+          is_removed, pds_url, indexed_at, updated_at, last_synced_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7,
           COALESCE((SELECT is_removed FROM cosmik_collection_links_index WHERE uri = $1), false),
-          $8, NOW(), NOW()
+          $8, NOW(), NOW(), NOW()
         )
         ON CONFLICT (uri) DO UPDATE SET
           cid = EXCLUDED.cid,
@@ -2419,7 +2420,8 @@ export class CollectionService {
           collection_uri = EXCLUDED.collection_uri,
           added_by = EXCLUDED.added_by,
           added_at = EXCLUDED.added_at,
-          updated_at = NOW()`,
+          updated_at = NOW(),
+          last_synced_at = NOW()`,
         [
           metadata.uri,
           metadata.cid,
