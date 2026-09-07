@@ -59,7 +59,8 @@ interface AppStyle {
  */
 const APP_STYLES: Record<string, AppStyle> = {
   Leaflet: { icon: FileText, color: 'text-orange-600', bgColor: 'bg-orange-50 dark:bg-orange-950' },
-  Cosmik: {
+  // Semble is the application's name; `network.cosmik` is only its namespace.
+  Semble: {
     icon: BookMarked,
     color: 'text-violet-600',
     bgColor: 'bg-violet-50 dark:bg-violet-950',
@@ -111,7 +112,7 @@ function styleFor(appName: string | undefined, sourceType: BacklinkSourceType): 
   // the source type the indexing plugin assigned it.
   const prefix = String(sourceType).split('.')[0];
   const byPrefix: Record<string, AppStyle> = {
-    cosmik: APP_STYLES.Cosmik,
+    cosmik: APP_STYLES.Semble,
     leaflet: APP_STYLES.Leaflet,
     margin: APP_STYLES.Margin,
     standard: APP_STYLES['standard.site'],
@@ -135,11 +136,11 @@ function styleFor(appName: string | undefined, sourceType: BacklinkSourceType): 
 export function getSourceLabel(sourceType: BacklinkSourceType): string {
   switch (sourceType) {
     case 'cosmik.collection':
-      return 'Cosmik';
+      return 'Semble';
     case 'cosmik.connection':
-      return 'Cosmik connection';
+      return 'Semble connection';
     case 'cosmik.follow':
-      return 'Cosmik follow';
+      return 'Semble follow';
     case 'leaflet.document':
       return 'Leaflet';
     case 'leaflet.comment':
@@ -196,6 +197,11 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
   // sentence.
   const label = backlink.contextLabel?.trim();
 
+  // The record's own description, set beneath the title rather than joined onto
+  // it with a colon. A Leaflet document has both, and run together they read as
+  // one sentence with no visible seam.
+  const detail = backlink.contextDetail?.trim();
+
   const indexed = new Date(backlink.indexedAt);
   const stats: ResourceStat[] = [{ label: kind }];
   if (!Number.isNaN(indexed.getTime())) {
@@ -220,6 +226,7 @@ export function BacklinkItem({ backlink, className }: BacklinkItemProps) {
         badge={appName}
         subtitle={backlink.sourceUri}
         subtitleMono
+        description={detail}
         stats={stats}
         actions={actions}
       >

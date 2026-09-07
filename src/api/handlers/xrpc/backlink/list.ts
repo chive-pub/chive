@@ -68,6 +68,7 @@ export const list: XRPCMethod<QueryParams, void, OutputSchema> = {
         targetUri: bl.targetUri,
         context: bl.context,
         contextLabel: bl.contextLabel,
+        contextDetail: bl.contextDetail,
         indexedAt: bl.indexedAt.toISOString(),
         deleted: bl.deleted,
       })),

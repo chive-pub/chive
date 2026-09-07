@@ -286,13 +286,18 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
    * @returns A title, or the opening of a comment
    */
   protected override extractContext(record: unknown): string | undefined {
+    // What the document calls itself, and nothing else. The description used to
+    // be joined on with a colon, so a card read "A tripartite implementation of
+    // PDS: How the Haskell implementation regiments the framework's
+    // abstractions." as one run-on title with no way to see where the title
+    // ended.
     if (record === null || typeof record !== 'object') {
       return undefined;
     }
     const value = record as LeafletDocument & LeafletComment;
 
     if (value.title) {
-      return value.description ? `${value.title}: ${value.description}` : value.title;
+      return value.title;
     }
 
     // Comments have no title; their opening line is the useful context.
@@ -301,6 +306,16 @@ export class LeafletBacklinksPlugin extends BacklinkTrackingPlugin {
     }
 
     return undefined;
+  }
+
+  protected override extractContextDetail(record: unknown): string | undefined {
+    if (record === null || typeof record !== 'object') {
+      return undefined;
+    }
+    const value = record as LeafletDocument;
+    // Only where there is a title to be distinct from: a comment's opening line
+    // is already serving as the context and must not be repeated beneath it.
+    return value.title && value.description ? value.description : undefined;
   }
 
   /**

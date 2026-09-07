@@ -186,6 +186,6 @@ describe('BacklinksPanel', () => {
     await user.click(screen.getByRole('button', { name: /load more/i }));
 
     expect(await screen.findByText('Probe card')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Cosmik 1' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Semble 1' })).toBeInTheDocument();
   });
 });

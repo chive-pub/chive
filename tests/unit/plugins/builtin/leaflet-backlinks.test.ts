@@ -339,9 +339,9 @@ describe('LeafletBacklinksPlugin', () => {
   });
 
   describe('extractContext', () => {
-    it('uses a document title and description', () => {
+    it('uses the document title, leaving the description to its own field', () => {
       expect(internals(plugin).extractContext(DOCUMENT_WITH_FACET_LINK)).toBe(
-        'Notes on quantifier scope: Reading notes'
+        'Notes on quantifier scope'
       );
     });
 
@@ -382,5 +382,45 @@ describe('LeafletBacklinksPlugin', () => {
       expect(internals(plugin).shouldProcess(null)).toBe(false);
       expect(internals(plugin).shouldProcess('nope')).toBe(false);
     });
+  });
+});
+
+describe('LeafletBacklinksPlugin title and description', () => {
+  const plugin = new LeafletBacklinksPlugin();
+  const context = (r: unknown): string | undefined =>
+    (plugin as unknown as { extractContext(r: unknown): string | undefined }).extractContext(r);
+  const detail = (r: unknown): string | undefined =>
+    (
+      plugin as unknown as { extractContextDetail(r: unknown): string | undefined }
+    ).extractContextDetail(r);
+
+  const doc = {
+    $type: 'pub.leaflet.document',
+    title: 'A tripartite implementation of Probabilistic Dynamic Semantics',
+    description: "How the Haskell implementation regiments the framework's abstractions.",
+  };
+
+  it('keeps the description out of the title', () => {
+    // The two were joined with a colon, so a card read them as one run-on
+    // sentence with no way to see where the title ended.
+    expect(context(doc)).toBe('A tripartite implementation of Probabilistic Dynamic Semantics');
+  });
+
+  it('reports the description separately', () => {
+    expect(detail(doc)).toBe(
+      "How the Haskell implementation regiments the framework's abstractions."
+    );
+  });
+
+  it('reports no description for a document that has none', () => {
+    expect(detail({ $type: 'pub.leaflet.document', title: 'Untitled thoughts' })).toBeUndefined();
+  });
+
+  it('does not repeat a commentopening line as its own description', () => {
+    // A comment has no title, so its opening line serves as the context. Shown
+    // again beneath itself it would read twice.
+    const comment = { $type: 'pub.leaflet.comment', plaintext: 'A short remark.' };
+    expect(context(comment)).toBe('A short remark.');
+    expect(detail(comment)).toBeUndefined();
   });
 });

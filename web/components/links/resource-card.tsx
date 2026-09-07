@@ -149,14 +149,18 @@ export function ResourceCard({
       </div>
 
       <div className="min-w-0 flex-1 space-y-1">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <span className="min-w-0 break-words font-medium leading-tight">{title}</span>
-          {badge && (
-            <Badge variant="outline" className="shrink-0 text-xs font-normal">
+        <p className="break-words font-medium leading-tight">{title}</p>
+
+        {/* On its own line, always. Sharing the title's line, it sat beside a
+            short title and wrapped beneath a long one, so no two cards in a
+            list agreed about where to find it. */}
+        {badge && (
+          <div>
+            <Badge variant="outline" className="text-xs font-normal">
               {badge}
             </Badge>
-          )}
-        </div>
+          </div>
+        )}
 
         {subtitle && (
           <p

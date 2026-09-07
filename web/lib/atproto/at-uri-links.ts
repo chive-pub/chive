@@ -106,16 +106,18 @@ const APPS: Record<string, AtmosphereApp> = {
     name: 'Leaflet',
     kind: 'Comment',
   },
+  // Semble is what the application is called; `network.cosmik` is the
+  // namespace of the company that publishes it. A reader recognises the former.
   'network.cosmik.card': {
-    name: 'Cosmik',
+    name: 'Semble',
     kind: 'Card',
   },
   'network.cosmik.connection': {
-    name: 'Cosmik',
+    name: 'Semble',
     kind: 'Connection',
   },
   'network.cosmik.collection': {
-    name: 'Cosmik',
+    name: 'Semble',
     kind: 'Collection',
   },
   'site.standard.document': {

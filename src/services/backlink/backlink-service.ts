@@ -56,6 +56,8 @@ interface BacklinkRow {
   target_uri: string;
   /** The source record's own typed field, when it has one. */
   context_label?: string | null;
+  /** The source record's description, when it has one distinct from its title. */
+  context_detail?: string | null;
   context: string | null;
   indexed_at: Date;
   is_deleted: boolean;
@@ -146,6 +148,8 @@ export class BacklinkService implements IBacklinkService {
      * eprint page as the opening words of the card's title.
      */
     contextLabel?: string;
+    /** The source record's description, kept apart from its title. */
+    contextDetail?: string;
   }): Promise<Backlink> {
     // Extract DID from source URI (at://did:plc:xxx/collection/rkey)
     const sourceDid = this.extractDidFromUri(data.sourceUri);
@@ -153,15 +157,16 @@ export class BacklinkService implements IBacklinkService {
     const result = await this.db.query<BacklinkRow>(
       `INSERT INTO backlinks (
         source_uri, source_type, source_did, target_uri, context, context_label,
-        indexed_at, is_deleted
+        context_detail, indexed_at, is_deleted
       ) VALUES (
-        $1, $2, $3, $4, $5, $6, NOW(), false
+        $1, $2, $3, $4, $5, $6, $7, NOW(), false
       )
       ON CONFLICT (source_uri, target_uri) DO UPDATE SET
         source_type = EXCLUDED.source_type,
         target_uri = EXCLUDED.target_uri,
         context = EXCLUDED.context,
         context_label = EXCLUDED.context_label,
+        context_detail = EXCLUDED.context_detail,
         indexed_at = NOW(),
         is_deleted = false,
         deleted_at = NULL
@@ -173,6 +178,7 @@ export class BacklinkService implements IBacklinkService {
         data.targetUri,
         data.context ?? null,
         data.contextLabel ?? null,
+        data.contextDetail ?? null,
       ]
     );
 
@@ -444,6 +450,7 @@ export class BacklinkService implements IBacklinkService {
       targetUri: row.target_uri,
       context: row.context ?? undefined,
       contextLabel: row.context_label ?? undefined,
+      contextDetail: row.context_detail ?? undefined,
       indexedAt: row.indexed_at,
       deleted: row.is_deleted,
     };

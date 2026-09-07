@@ -1536,6 +1536,15 @@ export interface Backlink {
   readonly contextLabel?: string;
 
   /**
+   * The source record's description, where it has one distinct from its title.
+   *
+   * @remarks
+   * Joined onto the title with a colon -- which is what the Leaflet and
+   * standard.site plugins did -- the two read as a single run-on sentence.
+   */
+  readonly contextDetail?: string;
+
+  /**
    * When this backlink was indexed.
    */
   readonly indexedAt: Date;
@@ -1614,6 +1623,8 @@ export interface IBacklinkService {
     context?: string;
     /** The source record's own typed field, when it has one. */
     contextLabel?: string;
+    /** The source record's description, kept apart from its title. */
+    contextDetail?: string;
   }): Promise<Backlink>;
 
   /**

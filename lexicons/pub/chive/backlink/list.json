@@ -110,6 +110,11 @@
           "maxLength": 128,
           "description": "A typed field the source record carries alongside its text, such as a Margin annotation's motivation or a Cosmik connection's relation. Kept apart from `context` so a reader is not shown structured data as the opening words of a sentence."
         },
+        "contextDetail": {
+          "type": "string",
+          "maxLength": 512,
+          "description": "The source record's description, where it has one distinct from its title. Kept apart from `context` so the two are not run together into a single sentence."
+        },
         "indexedAt": {
           "type": "string",
           "format": "datetime",

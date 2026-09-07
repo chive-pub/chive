@@ -127,15 +127,23 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
 
     const document = record as StandardDocument;
 
-    // A document that *is* an eprint names exactly one, and that identity beats
-    // anything its body happens to link to.
-    const fromPath = eprintUriFromPath(document.path);
-    if (this.isEprintUri(fromPath)) {
-      return [fromPath];
+    // A document that *is* the eprint is not a reference to it.
+    //
+    // Chive publishes one of these for every submission so that standard.site
+    // readers can find the paper. Recorded as a backlink, it came back around
+    // and appeared on the paper's own Atmosphere tab -- the paper citing
+    // itself, in effect, and the only entry there that told a reader nothing.
+    // `path` carries the eprint's AT-URI on these, and `content.uri` did on the
+    // ones written before the schema was corrected.
+    //
+    // A document *someone else* wrote about the paper still counts, and falls
+    // through to the walk below.
+    if (this.isEprintUri(eprintUriFromPath(document.path))) {
+      return [];
     }
 
     if (this.isEprintUri(document.content?.uri)) {
-      return [document.content.uri];
+      return [];
     }
 
     return collectEprintRefs(record);
@@ -148,18 +156,20 @@ export class StandardSiteBacklinksPlugin extends BacklinkTrackingPlugin {
    * @returns The document's title, with its description when there is one
    */
   protected override extractContext(record: unknown): string | undefined {
+    // The document's title alone. Its description was joined on with a colon,
+    // which ran the two together into one sentence on the eprint page.
+    if (record === null || typeof record !== 'object') {
+      return undefined;
+    }
+    return (record as StandardDocument).title || undefined; // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing -- coerces empty string to undefined
+  }
+
+  protected override extractContextDetail(record: unknown): string | undefined {
     if (record === null || typeof record !== 'object') {
       return undefined;
     }
     const document = record as StandardDocument;
-
-    if (!document.title) {
-      return undefined;
-    }
-
-    return document.description
-      ? `${document.title}: ${document.description.slice(0, 200)}`
-      : document.title;
+    return document.title && document.description ? document.description.slice(0, 512) : undefined;
   }
 }
 

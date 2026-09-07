@@ -222,10 +222,11 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
     // Extract context (title, description, etc.)
     const context = this.extractContext(record);
     const contextLabel = this.extractContextLabel(record);
+    const contextDetail = this.extractContextDetail(record);
 
     // Create backlinks for each reference
     for (const targetUri of eprintRefs) {
-      await this.createBacklink(uri, targetUri, context, contextLabel);
+      await this.createBacklink(uri, targetUri, context, contextLabel, contextDetail);
     }
 
     this.logger.debug('Processed backlinks from record', {
@@ -273,7 +274,8 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
     sourceUri: string,
     targetUri: string,
     context?: string,
-    contextLabel?: string
+    contextLabel?: string,
+    contextDetail?: string
   ): Promise<Backlink | null> {
     if (!this.backlinkService) {
       this.logger.warn('Backlink service not available');
@@ -286,6 +288,7 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
       targetUri,
       context,
       contextLabel,
+      contextDetail,
     });
 
     this.recordCounter('backlinks_created', { source_type: this.sourceType });
@@ -361,6 +364,23 @@ export abstract class BacklinkTrackingPlugin extends BasePlugin {
    * Override in a subclass whose record type carries one.
    */
   protected extractContextLabel(record: unknown): string | undefined {
+    void record;
+    return undefined;
+  }
+
+  /**
+   * Extracts the source record's description, where it has one.
+   *
+   * @param record - The source record
+   * @returns The description, or undefined when the record has none
+   *
+   * @remarks
+   * Distinct from {@link BacklinkTrackingPlugin.extractContext}, which is what
+   * the record calls itself. Joined onto the title with a colon -- which the
+   * Leaflet and standard.site plugins did -- the two are rendered as one
+   * run-on sentence with no way for a reader to tell where the title ends.
+   */
+  protected extractContextDetail(record: unknown): string | undefined {
     void record;
     return undefined;
   }
